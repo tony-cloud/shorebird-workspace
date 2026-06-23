@@ -1,0 +1,26 @@
+# Platform/generated checkout metadata.
+.gclient
+.gclient_entries
+.gclient_previous_*
+.cipd/
+buildtools/
+sdk/
+
+# Root scratch output.
+build_log*.txt
+build_patched_sdk.*
+compare_tool.dart
+test_bytecode.dart
+*.log
+
+# Local agent state.
+.agents/
+
+# Dart/Flutter build output in root-owned test fixtures.
+**/.dart_tool/
+**/build/
+
+# Local editor/OS files.
+.DS_Store
+.idea/
+.vscode/

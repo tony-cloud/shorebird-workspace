@@ -1,0 +1,19 @@
+name: license_flavor_patch_test
+description: Test app for encrypted flavor/license AOT patch verification.
+publish_to: none
+
+environment:
+  sdk: ^3.9.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
+  assets:
+    - shorebird.yaml

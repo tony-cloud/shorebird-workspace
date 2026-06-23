@@ -1,0 +1,5 @@
+app_id: license-flavor-patch-test
+flavors:
+  free: license-flavor-free
+  pro: license-flavor-pro
+  enterprise: license-flavor-enterprise

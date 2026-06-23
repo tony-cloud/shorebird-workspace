@@ -1,0 +1,28 @@
+[submodule "dart-sdk-new"]
+	path = dart-sdk-new
+	url = https://git.tonycloud.org/dart-lang/sdk.git
+	branch = tonycloud/dev
+[submodule "depot_tools"]
+	path = depot_tools
+	url = https://chromium.googlesource.com/chromium/tools/depot_tools.git
+	branch = main
+[submodule "flutter"]
+	path = flutter
+	url = https://git.tonycloud.org/flutter/flutter.git
+	branch = shorebird/dev
+[submodule "shorebird"]
+	path = shorebird
+	url = https://git.tonycloud.org/flutter/shorebird.git
+	branch = main
+[submodule "shorebird-engine"]
+	path = shorebird-engine
+	url = https://github.com/shorebirdtech/engine.git
+	branch = shorebird/dev
+[submodule "shorebird-server"]
+	path = shorebird-server
+	url = https://git.tonycloud.org/flutter/shorebird-server.git
+	branch = main
+[submodule "updater"]
+	path = updater
+	url = https://git.tonycloud.org/flutter/shorebird-updater.git
+	branch = main
