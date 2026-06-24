@@ -13,28 +13,6 @@ Last verified: 2026-06-24.
 | `shorebird-server` | `https://git.tonycloud.org/flutter/shorebird-server.git` | `main` | `774954fce70181846995ebcad842e9c54e57f1a2` |
 | `updater` | `https://git.tonycloud.org/flutter/shorebird-updater.git` | `main` | `3ac748ff28eb4ebb53630c66230b9b1be5df73c2` |
 
-## Removed Top-Level Repositories
-
-| Path | Previous remote URL | Reason |
-| --- | --- | --- |
-| `shorebird-engine` | `https://github.com/shorebirdtech/engine.git` | Separate Flutter engine checkouts are obsolete for this workspace. The archived upstream engine repository points contributors to `flutter/flutter/engine`, and this workspace's `flutter` submodule already contains `flutter/engine/src/flutter`. |
-
-## Generated Or Obsolete Root Folders
-
-The following root folders are not part of the meta-workspace and can be
-regenerated or replaced by tracked source:
-
-| Path | Reason |
-| --- | --- |
-| `.cipd` | Local CIPD cache created by gclient/depot_tools. |
-| `buildtools` | Ad hoc root tool download/output; Dart build tools live under `dart-sdk-new/buildtools`. |
-| `dart-sdk` | Empty stale SDK checkout. |
-| `hello_shorebird_test` | Old throwaway Flutter app. The active fixture is `testapps/license_flavor_patch_test`. |
-| `patches` | Earlier one-off patch files superseded by source changes and `packages/open_aot_patch_tools`. |
-| `sdk` | Generated Windows toolchain cache. |
-| `testapp2` | Old throwaway Flutter app. |
-| `testapp3` | Old throwaway Flutter app. |
-
 ## Submodule Policy
 
 Only top-level project repositories are submodules. Third-party repositories and
@@ -50,8 +28,9 @@ Root-owned content should be limited to:
 
 ## Nested Git Checkouts Observed
 
-These repositories were found under top-level checkouts. They are managed by the
-owning repository's DEPS/gclient workflow, not by the root `.gitmodules` file.
+These repositories currently exist under top-level checkouts. They are managed
+by the owning repository's DEPS/gclient workflow, not by the root `.gitmodules`
+file.
 
 | Path | Remote URL |
 | --- | --- |
