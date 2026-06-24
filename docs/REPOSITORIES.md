@@ -10,9 +10,14 @@ Last verified: 2026-06-24.
 | `depot_tools` | `https://chromium.googlesource.com/chromium/tools/depot_tools.git` | `main` | `90f5d4d14de66a5aae4a55b554ad4565111169af` |
 | `flutter` | `https://git.tonycloud.org/flutter/flutter.git` | `shorebird/dev` | `9754ce03d76fb06c23a72ddbd8b7137bfa85446c` |
 | `shorebird` | `https://git.tonycloud.org/flutter/shorebird.git` | `main` | `c824005c2dc65f56b0fa078984fadb649876fce7` |
-| `shorebird-engine` | `https://github.com/shorebirdtech/engine.git` | `shorebird/dev` | `e4575c7403bd3453d04bfa03e01218e5a0bca0c6` |
 | `shorebird-server` | `https://git.tonycloud.org/flutter/shorebird-server.git` | `main` | `774954fce70181846995ebcad842e9c54e57f1a2` |
 | `updater` | `https://git.tonycloud.org/flutter/shorebird-updater.git` | `main` | `3ac748ff28eb4ebb53630c66230b9b1be5df73c2` |
+
+## Removed Top-Level Repositories
+
+| Path | Previous remote URL | Reason |
+| --- | --- | --- |
+| `shorebird-engine` | `https://github.com/shorebirdtech/engine.git` | Separate Flutter engine checkouts are obsolete for this workspace. The archived upstream engine repository points contributors to `flutter/flutter/engine`, and this workspace's `flutter` submodule already contains `flutter/engine/src/flutter`. |
 
 ## Generated Or Obsolete Root Folders
 

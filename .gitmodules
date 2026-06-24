@@ -14,10 +14,6 @@
 	path = shorebird
 	url = https://git.tonycloud.org/flutter/shorebird.git
 	branch = main
-[submodule "shorebird-engine"]
-	path = shorebird-engine
-	url = https://github.com/shorebirdtech/engine.git
-	branch = shorebird/dev
 [submodule "shorebird-server"]
 	path = shorebird-server
 	url = https://git.tonycloud.org/flutter/shorebird-server.git
