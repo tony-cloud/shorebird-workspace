@@ -2,8 +2,10 @@
 .gclient
 .gclient_entries
 .gclient_previous_*
+.gcs_entries
 .cipd/
 buildtools/
+engine/
 sdk/
 
 # Root scratch output.
