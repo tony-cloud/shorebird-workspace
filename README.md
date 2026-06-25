@@ -53,14 +53,16 @@ execute source-level checks and build distributable CLI/server artifacts:
 - `mirror-metadata` with `artifacts_manifest.yaml` for the artifact proxy
 - self-hosted `shorebird-server` archives for Linux, macOS, and Windows
 
-Manual `workflow_dispatch` runs with `full_sdk_build=true` build the large SDK
-and engine outputs: patched Dart SDK archives for Linux x64 and macOS arm64,
-Linux x64 desktop engine artifacts, Android arm64 engine artifacts, Flutter web
-SDK artifacts, and Apple iOS/macOS engine artifacts. A successful full SDK run
-also uploads `open-shorebird-artifact-mirror`, a publish-ready mirror archive
-assembled from the produced patch-tool, metadata, engine, and web artifacts,
-plus `open-shorebird-release-manifest`, a checksum-verified provenance index
-for the CLI, server, SDK, engine, and mirror archives.
+Default push and pull request runs also build the large SDK and engine outputs:
+patched Dart SDK archives for Linux x64 and macOS arm64, Linux x64 desktop
+engine artifacts, Android arm64 engine artifacts, Flutter web SDK artifacts,
+and Apple iOS/macOS engine artifacts. A successful full SDK run also uploads
+`open-shorebird-artifact-mirror`, a publish-ready mirror archive assembled from
+the produced patch-tool, metadata, engine, and web artifacts, plus
+`open-shorebird-release-manifest`, a checksum-verified provenance index for the
+CLI, server, SDK, engine, and mirror archives. Manual `workflow_dispatch` runs
+keep `full_sdk_build=true` by default; set it to `false` only when you want a
+source/CLI/server-only run.
 Use `scripts/validate_release_manifest.py` to audit a downloaded manifest
 against the downloaded workflow artifacts before publishing or mirroring them.
 The wrapper `scripts/verify_downloaded_release_artifacts.sh` runs that manifest
@@ -74,12 +76,11 @@ After upload, `scripts/verify_hosted_full_sdk_build.sh --repo owner/repo --ref m
 dispatches the hosted full SDK workflow, waits for it, downloads artifacts, and
 runs the downloaded-release verifier. It uses `gh` when available, or the
 GitHub REST API with `GITHUB_TOKEN`/`GH_TOKEN`, `curl`, `jq`, and `unzip`.
-The heavy SDK/engine jobs default to custom runner labels
-`open-shorebird-linux-heavy` and `open-shorebird-macos-heavy`, then run an early
-disk-capacity preflight. Register larger/self-hosted runners with those labels
-or override `linux_heavy_runner` / `macos_heavy_runner` at dispatch time. The
-dispatch inputs `sdk_min_free_disk_gb` and `engine_min_free_disk_gb` control
-the preflight thresholds.
+The heavy SDK/engine jobs default to managed GitHub-hosted runners
+`ubuntu-latest` and `macos-latest`, then run an early disk-capacity preflight.
+Override `linux_heavy_runner` / `macos_heavy_runner` only when you want larger
+or self-hosted runners. The dispatch inputs `sdk_min_free_disk_gb` and
+`engine_min_free_disk_gb` control the preflight thresholds.
 The CI contract is validated by
 `scripts/verify_ci_workflow.sh`; it rejects `dart_dynamic_modules=true`,
 legacy `aot-tools.dill` publishing, missing checksum sidecars, and missing

@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       full_sdk_build:
-        description: Build custom SDK and engine artifacts.
+        description: Build custom SDK and engine artifacts during manual dispatch.
         required: false
-        default: false
+        default: true
         type: boolean
       run_gclient_sync:
         description: Run gclient sync before heavy SDK/engine builds.
@@ -24,22 +24,22 @@ on:
       linux_heavy_runner:
         description: Runner label for Linux SDK/Android/web heavy jobs.
         required: false
-        default: open-shorebird-linux-heavy
+        default: ubuntu-latest
         type: string
       macos_heavy_runner:
         description: Runner label for macOS SDK and Apple engine heavy jobs.
         required: false
-        default: open-shorebird-macos-heavy
+        default: macos-latest
         type: string
       sdk_min_free_disk_gb:
         description: Minimum free disk GiB required before SDK-only heavy jobs.
         required: false
-        default: 35
+        default: 8
         type: number
       engine_min_free_disk_gb:
         description: Minimum free disk GiB required before engine heavy jobs.
         required: false
-        default: 40
+        default: 8
         type: number
       run_runtime_smokes:
         description: Run Android/Linux runtime patch smokes on provisioned runners.
@@ -76,8 +76,8 @@ env:
   DEPOT_TOOLS_UPDATE: "0"
   PUB_CACHE: ${{ github.workspace }}/.pub-cache
   BASE_FLUTTER_ENGINE_REVISION: ${{ inputs.base_flutter_engine_revision || '' }}
-  SDK_MIN_FREE_DISK_GB: ${{ inputs.sdk_min_free_disk_gb || 35 }}
-  ENGINE_MIN_FREE_DISK_GB: ${{ inputs.engine_min_free_disk_gb || 40 }}
+  SDK_MIN_FREE_DISK_GB: ${{ inputs.sdk_min_free_disk_gb || 8 }}
+  ENGINE_MIN_FREE_DISK_GB: ${{ inputs.engine_min_free_disk_gb || 8 }}
 
 jobs:
   source-checks:
@@ -505,9 +505,9 @@ jobs:
   custom-dart-sdk:
     name: Build custom Dart SDK
     needs: source-checks
-    runs-on: ${{ inputs.linux_heavy_runner || 'open-shorebird-linux-heavy' }}
+    runs-on: ${{ inputs.linux_heavy_runner || 'ubuntu-latest' }}
     timeout-minutes: 180
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.full_sdk_build }}
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.full_sdk_build }}
     steps:
       - name: Checkout workspace
         uses: actions/checkout@v4
@@ -618,9 +618,9 @@ jobs:
   custom-dart-sdk-macos:
     name: Build custom Dart SDK (macOS arm64)
     needs: source-checks
-    runs-on: ${{ inputs.macos_heavy_runner || 'open-shorebird-macos-heavy' }}
+    runs-on: ${{ inputs.macos_heavy_runner || 'macos-latest' }}
     timeout-minutes: 180
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.full_sdk_build }}
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.full_sdk_build }}
     steps:
       - name: Checkout workspace
         uses: actions/checkout@v4
@@ -728,9 +728,9 @@ jobs:
   linux-engine:
     name: Build Linux engine artifacts
     needs: source-checks
-    runs-on: ${{ inputs.linux_heavy_runner || 'open-shorebird-linux-heavy' }}
+    runs-on: ${{ inputs.linux_heavy_runner || 'ubuntu-latest' }}
     timeout-minutes: 240
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.full_sdk_build }}
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.full_sdk_build }}
     steps:
       - name: Checkout workspace
         uses: actions/checkout@v4
@@ -888,9 +888,9 @@ jobs:
   android-engine:
     name: Build Android engine artifacts
     needs: source-checks
-    runs-on: ${{ inputs.linux_heavy_runner || 'open-shorebird-linux-heavy' }}
+    runs-on: ${{ inputs.linux_heavy_runner || 'ubuntu-latest' }}
     timeout-minutes: 240
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.full_sdk_build }}
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.full_sdk_build }}
     steps:
       - name: Checkout workspace
         uses: actions/checkout@v4
@@ -1056,9 +1056,9 @@ jobs:
   web-sdk:
     name: Build web SDK artifact
     needs: source-checks
-    runs-on: ${{ inputs.linux_heavy_runner || 'open-shorebird-linux-heavy' }}
+    runs-on: ${{ inputs.linux_heavy_runner || 'ubuntu-latest' }}
     timeout-minutes: 180
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.full_sdk_build }}
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.full_sdk_build }}
     steps:
       - name: Checkout workspace
         uses: actions/checkout@v4
@@ -1175,9 +1175,9 @@ jobs:
   ios-engine:
     name: Build Apple engine artifacts
     needs: source-checks
-    runs-on: ${{ inputs.macos_heavy_runner || 'open-shorebird-macos-heavy' }}
+    runs-on: ${{ inputs.macos_heavy_runner || 'macos-latest' }}
     timeout-minutes: 300
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.full_sdk_build }}
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.full_sdk_build }}
     steps:
       - name: Checkout workspace
         uses: actions/checkout@v4
@@ -1475,7 +1475,7 @@ jobs:
       - ios-engine
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.full_sdk_build }}
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.full_sdk_build }}
     steps:
       - name: Checkout workspace
         uses: actions/checkout@v4

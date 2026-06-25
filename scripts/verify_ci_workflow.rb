@@ -1459,8 +1459,9 @@ end
 %w[custom-dart-sdk custom-dart-sdk-macos linux-engine android-engine web-sdk ios-engine].each do |job_name|
   condition = jobs.fetch(job_name).fetch('if', '').to_s
   assert!(
-    condition.include?('workflow_dispatch') && condition.include?('full_sdk_build'),
-    "#{job_name} must be gated by manual full_sdk_build dispatch"
+    condition.include?("github.event_name != 'workflow_dispatch'") &&
+      condition.include?('inputs.full_sdk_build'),
+    "#{job_name} must run on default push/PR CI and allow manual full_sdk_build opt-out"
   )
   run_text = job_runs(jobs.fetch(job_name)).join("\n")
   assert!(
@@ -1487,9 +1488,9 @@ end
 end
 artifact_mirror_condition = jobs.fetch('artifact-mirror').fetch('if', '').to_s
 assert!(
-  artifact_mirror_condition.include?('workflow_dispatch') &&
+  artifact_mirror_condition.include?("github.event_name != 'workflow_dispatch'") &&
     artifact_mirror_condition.include?('full_sdk_build'),
-  'artifact-mirror must be gated by manual full_sdk_build dispatch'
+  'artifact-mirror must run on default push/PR CI and allow manual full_sdk_build opt-out'
 )
 %w[cli-artifacts linux-engine android-engine web-sdk ios-engine].each do |dependency|
   assert!(
@@ -1623,17 +1624,20 @@ assert!(
   'server artifacts must be uploaded'
 )
 assert!(
-  inputs.dig('linux_heavy_runner', 'default') == 'open-shorebird-linux-heavy' &&
-    inputs.dig('macos_heavy_runner', 'default') == 'open-shorebird-macos-heavy',
-  'heavy SDK/engine workflow inputs must default to custom large-runner labels'
+  inputs.dig('full_sdk_build', 'default') == true &&
+    inputs.dig('linux_heavy_runner', 'default') == 'ubuntu-latest' &&
+    inputs.dig('macos_heavy_runner', 'default') == 'macos-latest' &&
+    inputs.dig('sdk_min_free_disk_gb', 'default') == 8 &&
+    inputs.dig('engine_min_free_disk_gb', 'default') == 8,
+  'heavy SDK/engine workflow inputs must default to managed GitHub-hosted runners and enabled full builds'
 )
 assert!(
-  jobs.fetch('custom-dart-sdk').fetch('runs-on').to_s.include?("inputs.linux_heavy_runner || 'open-shorebird-linux-heavy'") &&
-    jobs.fetch('android-engine').fetch('runs-on').to_s.include?("inputs.linux_heavy_runner || 'open-shorebird-linux-heavy'") &&
-    jobs.fetch('web-sdk').fetch('runs-on').to_s.include?("inputs.linux_heavy_runner || 'open-shorebird-linux-heavy'") &&
-    jobs.fetch('custom-dart-sdk-macos').fetch('runs-on').to_s.include?("inputs.macos_heavy_runner || 'open-shorebird-macos-heavy'") &&
-    jobs.fetch('ios-engine').fetch('runs-on').to_s.include?("inputs.macos_heavy_runner || 'open-shorebird-macos-heavy'"),
-  'heavy SDK/engine jobs must default to custom large-runner labels, not standard hosted runners'
+  jobs.fetch('custom-dart-sdk').fetch('runs-on').to_s.include?("inputs.linux_heavy_runner || 'ubuntu-latest'") &&
+    jobs.fetch('android-engine').fetch('runs-on').to_s.include?("inputs.linux_heavy_runner || 'ubuntu-latest'") &&
+    jobs.fetch('web-sdk').fetch('runs-on').to_s.include?("inputs.linux_heavy_runner || 'ubuntu-latest'") &&
+    jobs.fetch('custom-dart-sdk-macos').fetch('runs-on').to_s.include?("inputs.macos_heavy_runner || 'macos-latest'") &&
+    jobs.fetch('ios-engine').fetch('runs-on').to_s.include?("inputs.macos_heavy_runner || 'macos-latest'"),
+  'heavy SDK/engine jobs must default to managed GitHub-hosted runners'
 )
 assert!(
   workflow.dig('env', 'JAVA_VERSION').to_s == '17',

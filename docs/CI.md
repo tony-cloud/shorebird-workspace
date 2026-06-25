@@ -291,43 +291,39 @@ provide Java on `PATH` because the smoke builds APKs before seeding the patch.
 
 ## Heavy SDK Builds
 
-Use `workflow_dispatch` with `full_sdk_build=true` to build the custom SDK
-artifacts. These jobs are intentionally manual because they run `gclient sync`
-and build large engine/Dart outputs.
+Default push and pull request runs build the custom SDK and engine artifacts.
+Manual `workflow_dispatch` runs also build them by default because
+`full_sdk_build=true` is the default input value; set `full_sdk_build=false`
+only for source/CLI/server-only manual runs.
 
 The heavy jobs install Chromium's `depot_tools` into the workflow workspace
-before running `gclient`, so they can bootstrap from a clean runner. Full
-Dart/Flutter engine builds are large enough that standard GitHub-hosted runners
-are not a realistic default for `full_sdk_build=true`. The workflow therefore
-defaults heavy jobs to custom labels:
+before running `gclient`, so they can bootstrap from a clean runner. The
+workflow defaults heavy jobs to managed GitHub-hosted runners:
 
-- `open-shorebird-linux-heavy` for Linux SDK, Linux engine, Android engine, and
-  web SDK builds
-- `open-shorebird-macos-heavy` for macOS Dart SDK, iOS engine, and macOS engine
+- `ubuntu-latest` for Linux SDK, Linux engine, Android engine, and web SDK
   builds
+- `macos-latest` for macOS Dart SDK, iOS engine, and macOS engine builds
 
-Register self-hosted or larger runners with those labels, or override
-`linux_heavy_runner` / `macos_heavy_runner` when dispatching the workflow.
-Every manual SDK/engine job also runs `scripts/check_ci_capacity.sh` before
-`gclient sync` or `ninja`; SDK-only jobs require at least 35 GiB free and engine
-jobs require at least 40 GiB free by default. Adjust the dispatch thresholds
-only for runner images whose dependency caches make a lower threshold
-intentional.
+Override `linux_heavy_runner` / `macos_heavy_runner` when a repository wants
+larger or self-hosted runners. Every SDK/engine job also runs
+`scripts/check_ci_capacity.sh` before `gclient sync` or `ninja`; SDK-only jobs
+and engine jobs require at least 8 GiB free by default. Raise the dispatch
+thresholds for runner images where a larger preflight budget should be enforced.
 The hosted Android engine job also provisions Temurin Java 17 before building
-Android JAR/APK-related engine artifacts. Every manual SDK/engine job verifies
+Android JAR/APK-related engine artifacts. Every SDK/engine job verifies
 `python3`, `gclient`, and `ninja` before generating build files, so
 PATH/toolchain problems fail before a long build starts. CI sets
 `DEPOT_TOOLS_UPDATE=0`, and the local bootstrap scripts default the same way,
 so depot_tools uses the pinned submodule revision unless explicitly overridden.
 
-Manual heavy builds accept these workflow inputs:
+Manual dispatch accepts these workflow inputs:
 
 | Input | Default | Used by |
 | --- | --- | --- |
-| `linux_heavy_runner` | `open-shorebird-linux-heavy` | `custom-dart-sdk`, `linux-engine`, `android-engine`, `web-sdk` |
-| `macos_heavy_runner` | `open-shorebird-macos-heavy` | `custom-dart-sdk-macos`, `ios-engine` / Apple engine artifacts |
-| `sdk_min_free_disk_gb` | `35` | Minimum free disk GiB for `custom-dart-sdk` and `custom-dart-sdk-macos` |
-| `engine_min_free_disk_gb` | `40` | Minimum free disk GiB for Linux, Android, web, iOS, and macOS engine builds |
+| `linux_heavy_runner` | `ubuntu-latest` | `custom-dart-sdk`, `linux-engine`, `android-engine`, `web-sdk` |
+| `macos_heavy_runner` | `macos-latest` | `custom-dart-sdk-macos`, `ios-engine` / Apple engine artifacts |
+| `sdk_min_free_disk_gb` | `8` | Minimum free disk GiB for `custom-dart-sdk` and `custom-dart-sdk-macos` |
+| `engine_min_free_disk_gb` | `8` | Minimum free disk GiB for Linux, Android, web, iOS, and macOS engine builds |
 | `base_flutter_engine_revision` | empty | Optional upstream Flutter engine revision recorded in `artifacts_manifest.yaml` for non-overridden artifact proxy fallbacks |
 
 Use these inputs to move the SDK/engine jobs onto different larger or
