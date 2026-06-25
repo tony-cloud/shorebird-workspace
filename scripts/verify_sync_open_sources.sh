@@ -22,9 +22,9 @@ make_workspace() {
   cp "$ROOT/scripts/sync_open_sources.sh" "$workspace/scripts/sync_open_sources.sh"
   chmod +x "$workspace/scripts/sync_open_sources.sh"
 
-  init_git_checkout "$workspace/dart-sdk-new"
-  mkdir -p "$workspace/dart-sdk-new/runtime/vm"
-  : > "$workspace/dart-sdk-new/runtime/vm/dart_api_impl.h"
+  init_git_checkout "$workspace/dart-sdk"
+  mkdir -p "$workspace/dart-sdk/runtime/vm"
+  : > "$workspace/dart-sdk/runtime/vm/dart_api_impl.h"
 
   init_git_checkout "$workspace/updater"
   mkdir -p "$workspace/updater/library/include"
@@ -35,7 +35,7 @@ make_workspace() {
 
 run_sync() {
   local workspace="$1"
-  DART_SRC="$workspace/dart-sdk-new" \
+  DART_SRC="$workspace/dart-sdk" \
     UPDATER_SRC="$workspace/updater" \
     "$workspace/scripts/sync_open_sources.sh"
 }
@@ -47,7 +47,7 @@ assert_links_to_workspace_sources() {
 
   test -L "$dart_target"
   test -L "$updater_target"
-  [[ "$(real_path "$dart_target")" == "$(real_path "$workspace/dart-sdk-new")" ]]
+  [[ "$(real_path "$dart_target")" == "$(real_path "$workspace/dart-sdk")" ]]
   [[ "$(real_path "$updater_target")" == "$(real_path "$workspace/updater")" ]]
   test -f "$dart_target/runtime/vm/dart_api_impl.h"
   test -f "$updater_target/library/include/updater_engine.h"
@@ -88,7 +88,7 @@ test -f "$dirty_dart/untracked.txt"
 
 forbidden_dart_remote_workspace="$TMP_DIR/forbidden-dart-remote"
 make_workspace "$forbidden_dart_remote_workspace"
-git -C "$forbidden_dart_remote_workspace/dart-sdk-new" remote add origin \
+git -C "$forbidden_dart_remote_workspace/dart-sdk" remote add origin \
   https://github.com/dart-lang/sdk.git
 if run_sync "$forbidden_dart_remote_workspace" >"$TMP_DIR/forbidden-dart-remote.log" 2>&1; then
   echo "expected forbidden Dart SDK remote to fail" >&2
@@ -111,7 +111,7 @@ grep -q "updater submodule source checkout uses forbidden remote fragment" \
 forbidden_updater_url_workspace="$TMP_DIR/forbidden-updater-url"
 make_workspace "$forbidden_updater_url_workspace"
 rm -rf "$forbidden_updater_url_workspace/updater"
-if DART_SRC="$forbidden_updater_url_workspace/dart-sdk-new" \
+if DART_SRC="$forbidden_updater_url_workspace/dart-sdk" \
   UPDATER_SRC="$forbidden_updater_url_workspace/missing-updater" \
   UPDATER_URL=https://github.com/shorebirdtech/updater.git \
   "$forbidden_updater_url_workspace/scripts/sync_open_sources.sh" \

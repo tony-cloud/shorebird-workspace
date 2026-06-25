@@ -346,7 +346,7 @@ Android dependencies, and emsdk; the Apple engine job uses the same flag to
 include iOS, Android, and emsdk
 dependencies on macOS.
 Before building, `scripts/sync_open_sources.sh` links
-`flutter/engine/src/flutter/third_party/dart` to the `dart-sdk-new` submodule
+`flutter/engine/src/flutter/third_party/dart` to the `dart-sdk` submodule
 and `flutter/engine/src/flutter/third_party/updater` to the `updater`
 submodule. It does not clone the official `shorebirdtech/updater` repository by
 default; set `UPDATER_URL` explicitly only when testing a different updater

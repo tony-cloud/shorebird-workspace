@@ -89,13 +89,13 @@ check_forbidden_in_tree "$ROOT/shorebird/packages/artifact_proxy/lib" dart
 check_forbidden_in_tree "$ROOT/shorebird/packages/shorebird_cli/lib" dart
 check_forbidden_in_tree "$ROOT/shorebird/packages/shorebird_code_push_client/lib" dart
 
-require_contains "$ROOT/.gitmodules" "https://git.tonycloud.org/dart-lang/sdk.git"
-require_contains "$ROOT/.gitmodules" "https://git.tonycloud.org/flutter/flutter.git"
+require_contains "$ROOT/.gitmodules" "https://github.com/tony-cloud/dart-sdk.git"
+require_contains "$ROOT/.gitmodules" "https://github.com/tony-cloud/flutter.git"
 require_contains "$ROOT/.gitmodules" "https://git.tonycloud.org/flutter/shorebird.git"
 require_contains "$ROOT/.gitmodules" "https://git.tonycloud.org/flutter/shorebird-server.git"
 require_contains "$ROOT/.gitmodules" "https://git.tonycloud.org/flutter/shorebird-updater.git"
 
-require_contains "$ROOT/flutter/DEPS" '"dart_sdk_git": "https://git.tonycloud.org/dart-lang/sdk.git"'
+require_contains "$ROOT/flutter/DEPS" '"dart_sdk_git": "https://github.com/tony-cloud/dart-sdk.git"'
 require_contains "$ROOT/flutter/DEPS" '"updater_git": "https://git.tonycloud.org/flutter/shorebird-updater.git"'
 
 require_contains "$ROOT/flutter/packages/flutter_tools/lib/src/cache.dart" \

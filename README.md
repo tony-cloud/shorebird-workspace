@@ -9,15 +9,15 @@ platform scripts in this root repository.
 
 | Path | Role | Remote | Branch |
 | --- | --- | --- | --- |
-| `dart-sdk-new` | Dart SDK fork with AOT patch runtime work | `https://git.tonycloud.org/dart-lang/sdk.git` | `tonycloud/dev` |
-| `flutter` | Flutter fork used by app and engine integration tests; engine sources live under `flutter/engine/src/flutter` | `https://git.tonycloud.org/flutter/flutter.git` | `shorebird/dev` |
+| `dart-sdk` | Dart SDK fork with AOT patch runtime work | `https://github.com/tony-cloud/dart-sdk.git` | `tonycloud/dev` |
+| `flutter` | Flutter fork used by app and engine integration tests; engine sources live under `flutter/engine/src/flutter` | `https://github.com/tony-cloud/flutter.git` | `tonycloud/dev` |
 | `shorebird` | CLI, protocol/client packages, open patch tools | `https://git.tonycloud.org/flutter/shorebird.git` | `main` |
 | `shorebird-server` | Self-hosted CodePush/auth/management server | `https://git.tonycloud.org/flutter/shorebird-server.git` | `main` |
 | `updater` | Runtime updater and patch package tooling | `https://git.tonycloud.org/flutter/shorebird-updater.git` | `main` |
 | `depot_tools` | Chromium/Dart checkout tooling | `https://chromium.googlesource.com/chromium/tools/depot_tools.git` | `main` |
 
 The Dart SDK checkout has additional gclient-managed dependencies under
-`dart-sdk-new/third_party`. They are intentionally not top-level submodules.
+`dart-sdk/third_party`. They are intentionally not top-level submodules.
 
 ## First Checkout
 

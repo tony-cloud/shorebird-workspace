@@ -29,7 +29,7 @@ flutter_dart_updater="$ROOT/flutter/bin/internal/update_dart_sdk.ps1"
 [[ -f "$flutter_dart_updater" ]] || fail "missing Flutter Dart SDK updater: $flutter_dart_updater"
 
 require_contains "$shorebird_launcher" \
-  '$defaultFlutterGitUrl = "https://git.tonycloud.org/flutter/flutter.git"'
+  '$defaultFlutterGitUrl = "https://github.com/tony-cloud/flutter.git"'
 require_contains "$shorebird_launcher" \
   '$defaultFlutterStorageBaseUrl = "http://localhost:8080/download.flutter.io"'
 require_contains "$shorebird_launcher" 'SHOREBIRD_FLUTTER_GIT_URL'

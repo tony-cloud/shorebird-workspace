@@ -4,7 +4,7 @@ import 'dart:io';
 Future<void> main() async {
   final appDir = File.fromUri(Platform.script).parent.parent;
   final workspaceRoot = appDir.parent.parent;
-  final dartRoot = Directory('${workspaceRoot.path}/dart-sdk-new');
+  final dartRoot = Directory('${workspaceRoot.path}/dart-sdk');
   final patchBuildDir = _resolvePatchBuildDir(dartRoot);
   final toolWorkspace = Directory('${workspaceRoot.path}/shorebird');
   final workDir = Directory('${appDir.path}/build/open_aot_patch_verify');

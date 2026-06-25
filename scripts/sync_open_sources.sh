@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DART_SRC="${DART_SRC:-$ROOT/dart-sdk-new}"
+DART_SRC="${DART_SRC:-$ROOT/dart-sdk}"
 DART_TARGET="$ROOT/flutter/engine/src/flutter/third_party/dart"
 UPDATER_SRC="${UPDATER_SRC:-$ROOT/updater}"
 UPDATER_URL="${UPDATER_URL:-}"

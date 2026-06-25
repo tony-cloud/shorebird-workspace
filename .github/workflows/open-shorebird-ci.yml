@@ -547,7 +547,7 @@ jobs:
         run: gclient sync --no-history
 
       - name: Generate patched Dart SDK build files
-        working-directory: dart-sdk-new
+        working-directory: dart-sdk
         run: |
           python3 tools/gn.py \
             --mode release \
@@ -555,15 +555,15 @@ jobs:
             --gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=true'
 
       - name: Verify patched Dart SDK args
-        run: ./scripts/verify_dart_sdk_args.sh dart-sdk-new/out/ReleaseX64/args.gn
+        run: ./scripts/verify_dart_sdk_args.sh dart-sdk/out/ReleaseX64/args.gn
 
       - name: Build patched Dart SDK
-        working-directory: dart-sdk-new
+        working-directory: dart-sdk
         run: |
           ninja -C out/ReleaseX64 create_sdk runtime gen_snapshot dartaotruntime
 
       - name: Run focused patch API tests
-        working-directory: dart-sdk-new/out/ReleaseX64
+        working-directory: dart-sdk/out/ReleaseX64
         run: |
           ./run_vm_tests DartAPI_AotPatchingConfiguration
           ./run_vm_tests DartAPI_BytecodePatchReloadConfiguration
@@ -571,11 +571,11 @@ jobs:
       - name: Package Dart SDK artifact
         run: |
           mkdir -p artifacts/custom-dart-sdk-linux-x64
-          cp -R dart-sdk-new/out/ReleaseX64/dart-sdk artifacts/custom-dart-sdk-linux-x64/
-          cp dart-sdk-new/out/ReleaseX64/gen_snapshot artifacts/custom-dart-sdk-linux-x64/
-          cp dart-sdk-new/out/ReleaseX64/dartaotruntime artifacts/custom-dart-sdk-linux-x64/
-          cp dart-sdk-new/out/ReleaseX64/args.gn artifacts/custom-dart-sdk-linux-x64/
-          dart_sdk_revision="$(git -C dart-sdk-new rev-parse HEAD)"
+          cp -R dart-sdk/out/ReleaseX64/dart-sdk artifacts/custom-dart-sdk-linux-x64/
+          cp dart-sdk/out/ReleaseX64/gen_snapshot artifacts/custom-dart-sdk-linux-x64/
+          cp dart-sdk/out/ReleaseX64/dartaotruntime artifacts/custom-dart-sdk-linux-x64/
+          cp dart-sdk/out/ReleaseX64/args.gn artifacts/custom-dart-sdk-linux-x64/
+          dart_sdk_revision="$(git -C dart-sdk rev-parse HEAD)"
           cat > artifacts/custom-dart-sdk-linux-x64/manifest.json <<EOF
           {
             "name": "custom-dart-sdk-linux-x64",
@@ -583,7 +583,7 @@ jobs:
             "dart_sdk_git_sha": "${dart_sdk_revision}",
             "runner_os": "${{ runner.os }}",
             "dart_arch": "x64",
-            "dart_build_dir": "dart-sdk-new/out/ReleaseX64",
+            "dart_build_dir": "dart-sdk/out/ReleaseX64",
             "dart_dynamic_modules": false,
             "dart_enable_aot_patching": true,
             "dart_enable_shorebird_interpreter": true,
@@ -657,7 +657,7 @@ jobs:
         run: gclient sync --no-history
 
       - name: Generate patched Dart SDK build files
-        working-directory: dart-sdk-new
+        working-directory: dart-sdk
         run: |
           python3 tools/gn.py \
             --mode release \
@@ -665,15 +665,15 @@ jobs:
             --gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=true'
 
       - name: Verify patched Dart SDK args
-        run: ./scripts/verify_dart_sdk_args.sh dart-sdk-new/xcodebuild/ReleaseARM64/args.gn
+        run: ./scripts/verify_dart_sdk_args.sh dart-sdk/xcodebuild/ReleaseARM64/args.gn
 
       - name: Build patched Dart SDK
-        working-directory: dart-sdk-new
+        working-directory: dart-sdk
         run: |
           ninja -C xcodebuild/ReleaseARM64 create_sdk runtime gen_snapshot dartaotruntime
 
       - name: Run focused patch API tests
-        working-directory: dart-sdk-new/xcodebuild/ReleaseARM64
+        working-directory: dart-sdk/xcodebuild/ReleaseARM64
         run: |
           ./run_vm_tests DartAPI_AotPatchingConfiguration
           ./run_vm_tests DartAPI_BytecodePatchReloadConfiguration
@@ -681,11 +681,11 @@ jobs:
       - name: Package Dart SDK artifact
         run: |
           mkdir -p artifacts/custom-dart-sdk-macos-arm64
-          cp -R dart-sdk-new/xcodebuild/ReleaseARM64/dart-sdk artifacts/custom-dart-sdk-macos-arm64/
-          cp dart-sdk-new/xcodebuild/ReleaseARM64/gen_snapshot artifacts/custom-dart-sdk-macos-arm64/
-          cp dart-sdk-new/xcodebuild/ReleaseARM64/dartaotruntime artifacts/custom-dart-sdk-macos-arm64/
-          cp dart-sdk-new/xcodebuild/ReleaseARM64/args.gn artifacts/custom-dart-sdk-macos-arm64/
-          dart_sdk_revision="$(git -C dart-sdk-new rev-parse HEAD)"
+          cp -R dart-sdk/xcodebuild/ReleaseARM64/dart-sdk artifacts/custom-dart-sdk-macos-arm64/
+          cp dart-sdk/xcodebuild/ReleaseARM64/gen_snapshot artifacts/custom-dart-sdk-macos-arm64/
+          cp dart-sdk/xcodebuild/ReleaseARM64/dartaotruntime artifacts/custom-dart-sdk-macos-arm64/
+          cp dart-sdk/xcodebuild/ReleaseARM64/args.gn artifacts/custom-dart-sdk-macos-arm64/
+          dart_sdk_revision="$(git -C dart-sdk rev-parse HEAD)"
           cat > artifacts/custom-dart-sdk-macos-arm64/manifest.json <<EOF
           {
             "name": "custom-dart-sdk-macos-arm64",
@@ -693,7 +693,7 @@ jobs:
             "dart_sdk_git_sha": "${dart_sdk_revision}",
             "runner_os": "${{ runner.os }}",
             "dart_arch": "arm64",
-            "dart_build_dir": "dart-sdk-new/xcodebuild/ReleaseARM64",
+            "dart_build_dir": "dart-sdk/xcodebuild/ReleaseARM64",
             "dart_dynamic_modules": false,
             "dart_enable_aot_patching": true,
             "dart_enable_shorebird_interpreter": true,

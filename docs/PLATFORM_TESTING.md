@@ -91,9 +91,9 @@ The bootstrap scripts run:
 7. self-hosted server Go tests
 8. license/flavor AOT verification when an AOT patch SDK build already exists.
    The verifier checks `AOT_PATCH_BUILD_DIR` first, then common local outputs
-   such as `dart-sdk-new/xcodebuild/ReleaseARM64`,
-   `dart-sdk-new/out/ReleaseARM64AotPatch`, and
-   `dart-sdk-new/out/ReleaseX64AotPatch`.
+   such as `dart-sdk/xcodebuild/ReleaseARM64`,
+   `dart-sdk/out/ReleaseARM64AotPatch`, and
+   `dart-sdk/out/ReleaseX64AotPatch`.
 9. iOS interpreter route verification when local `ios_release` and
    `host_release_arm64` engine args exist. This checks that
    `DART_DYNAMIC_MODULES` is off, the no-DDM interpreter route is on for both

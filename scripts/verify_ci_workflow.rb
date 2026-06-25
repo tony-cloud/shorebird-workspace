@@ -562,9 +562,9 @@ assert!(
   "package metadata must point at the open workspace, not official Shorebird metadata: #{official_package_metadata_matches.join(', ')}"
 )
 expected_submodules = {
-  'dart-sdk-new' => ['https://git.tonycloud.org/dart-lang/sdk.git', 'tonycloud/dev'],
+  'dart-sdk' => ['https://github.com/tony-cloud/dart-sdk.git', 'tonycloud/dev'],
   'depot_tools' => ['https://chromium.googlesource.com/chromium/tools/depot_tools.git', 'main'],
-  'flutter' => ['https://git.tonycloud.org/flutter/flutter.git', 'shorebird/dev'],
+  'flutter' => ['https://github.com/tony-cloud/flutter.git', 'tonycloud/dev'],
   'shorebird' => ['https://git.tonycloud.org/flutter/shorebird.git', 'main'],
   'shorebird-server' => ['https://git.tonycloud.org/flutter/shorebird-server.git', 'main'],
   'updater' => ['https://git.tonycloud.org/flutter/shorebird-updater.git', 'main'],
@@ -597,8 +597,8 @@ forbidden_gitmodule_fragments.each do |fragment|
   )
 end
 assert!(
-  write_gclient.include?('"url": "https://git.tonycloud.org/dart-lang/sdk.git"') &&
-    write_gclient.include?('"url": "https://git.tonycloud.org/flutter/flutter.git"') &&
+  write_gclient.include?('"url": "https://github.com/tony-cloud/dart-sdk.git"') &&
+    write_gclient.include?('"url": "https://github.com/tony-cloud/flutter.git"') &&
     !write_gclient.include?('github.com/shorebirdtech'),
   'gclient generation must use the open Dart/Flutter forks and avoid official Shorebird remotes'
 )
@@ -645,8 +645,8 @@ assert!(
     '/openapi.yaml',
   ],
   'docs/REPOSITORIES.md' => [
-    'https://git.tonycloud.org/dart-lang/sdk.git',
-    'https://git.tonycloud.org/flutter/flutter.git',
+    'https://github.com/tony-cloud/dart-sdk.git',
+    'https://github.com/tony-cloud/flutter.git',
     'https://git.tonycloud.org/flutter/shorebird.git',
     'https://git.tonycloud.org/flutter/shorebird-server.git',
     'https://git.tonycloud.org/flutter/shorebird-updater.git',
@@ -681,7 +681,7 @@ assert!(
     'Asset changes are not part of a Dart code patch',
   ],
   'shorebird/docs/getting-started/flutter-version/README.md' => [
-    'https://git.tonycloud.org/flutter/flutter.git',
+    'https://github.com/tony-cloud/flutter.git',
     'http://localhost:8080/artifacts',
   ],
 }.each do |path, required_texts|
@@ -700,7 +700,7 @@ end
 assert!(
   shorebird_flutter.include?('SHOREBIRD_FLUTTER_GIT_URL') &&
     shorebird_flutter.include?('defaultFlutterGitUrl') &&
-    shorebird_flutter.include?('https://git.tonycloud.org/flutter/flutter.git'),
+    shorebird_flutter.include?('https://github.com/tony-cloud/flutter.git'),
   'shorebird Flutter installer must default to the open fork and allow SHOREBIRD_FLUTTER_GIT_URL override'
 )
 assert!(
@@ -790,7 +790,7 @@ assert!(
 }.each do |path, text|
   assert!(
     text.include?('SHOREBIRD_FLUTTER_GIT_URL') &&
-      text.include?('https://git.tonycloud.org/flutter/flutter.git') &&
+      text.include?('https://github.com/tony-cloud/flutter.git') &&
       text.include?('SHOREBIRD_FLUTTER_STORAGE_BASE_URL') &&
       text.include?('FLUTTER_STORAGE_BASE_URL') &&
       text.include?('http://localhost:8080/download.flutter.io') &&
@@ -894,7 +894,7 @@ assert!(
   'Flutter Gradle plugin defaults must use the open local Flutter mirror'
 )
 assert!(
-  flutter_deps.include?('"dart_sdk_git": "https://git.tonycloud.org/dart-lang/sdk.git"') &&
+  flutter_deps.include?('"dart_sdk_git": "https://github.com/tony-cloud/dart-sdk.git"') &&
     flutter_deps.include?('"updater_git": "https://git.tonycloud.org/flutter/shorebird-updater.git"') &&
     !flutter_deps.include?('git@github.com:shorebirdtech/dart-sdk.git') &&
     !flutter_deps.include?('github.com/shorebirdtech/updater.git') &&
@@ -1086,7 +1086,7 @@ assert!(
 assert!(
   verify_open_infrastructure_defaults.include?('BUILD_SENSITIVE_FILES') &&
     verify_open_infrastructure_defaults.include?('check_forbidden_in_tree "$ROOT/shorebird/packages/artifact_proxy/lib" dart') &&
-    verify_open_infrastructure_defaults.include?('https://git.tonycloud.org/dart-lang/sdk.git') &&
+    verify_open_infrastructure_defaults.include?('https://github.com/tony-cloud/dart-sdk.git') &&
     verify_open_infrastructure_defaults.include?('https://git.tonycloud.org/flutter/shorebird-updater.git') &&
     verify_open_infrastructure_defaults.include?('http://localhost:8080/download.flutter.io') &&
     verify_open_infrastructure_defaults.include?('http://localhost:8080/artifacts') &&
@@ -1103,7 +1103,7 @@ assert!(
   verify_powershell_open_defaults.include?('shorebird/bin/shorebird.ps1') &&
     verify_powershell_open_defaults.include?('flutter/bin/internal/update_dart_sdk.ps1') &&
     verify_powershell_open_defaults.include?('System.Management.Automation.Language.Parser') &&
-    verify_powershell_open_defaults.include?('https://git.tonycloud.org/flutter/flutter.git') &&
+    verify_powershell_open_defaults.include?('https://github.com/tony-cloud/flutter.git') &&
     verify_powershell_open_defaults.include?('http://localhost:8080/download.flutter.io') &&
     verify_powershell_open_defaults.include?('download.shorebird.dev') &&
     verify_powershell_open_defaults.include?('github.com/shorebirdtech/flutter.git'),
@@ -1732,7 +1732,7 @@ assert!(
 )
 %w[custom-dart-sdk custom-dart-sdk-macos].each do |job_name|
   assert!(
-    run_text_by_job.fetch(job_name).include?('dart_sdk_revision="$(git -C dart-sdk-new rev-parse HEAD)"') &&
+    run_text_by_job.fetch(job_name).include?('dart_sdk_revision="$(git -C dart-sdk rev-parse HEAD)"') &&
       run_text_by_job.fetch(job_name).include?('"dart_sdk_git_sha": "${dart_sdk_revision}"'),
     "#{job_name} manifest must record the Dart SDK source revision"
   )
@@ -1890,11 +1890,11 @@ end
   )
 end
 assert!(
-  run_text_by_job.fetch('custom-dart-sdk').include?('verify_dart_sdk_args.sh dart-sdk-new/out/ReleaseX64/args.gn'),
+  run_text_by_job.fetch('custom-dart-sdk').include?('verify_dart_sdk_args.sh dart-sdk/out/ReleaseX64/args.gn'),
   'Linux Dart SDK job must verify patched SDK args'
 )
 assert!(
-  run_text_by_job.fetch('custom-dart-sdk-macos').include?('verify_dart_sdk_args.sh dart-sdk-new/xcodebuild/ReleaseARM64/args.gn'),
+  run_text_by_job.fetch('custom-dart-sdk-macos').include?('verify_dart_sdk_args.sh dart-sdk/xcodebuild/ReleaseARM64/args.gn'),
   'macOS Dart SDK job must verify patched SDK args'
 )
 %w[custom-dart-sdk custom-dart-sdk-macos].each do |job_name|

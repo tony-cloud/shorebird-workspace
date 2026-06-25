@@ -1,6 +1,6 @@
-[submodule "dart-sdk-new"]
-	path = dart-sdk-new
-	url = https://git.tonycloud.org/dart-lang/sdk.git
+[submodule "dart-sdk"]
+	path = dart-sdk
+	url = https://github.com/tony-cloud/dart-sdk.git
 	branch = tonycloud/dev
 [submodule "depot_tools"]
 	path = depot_tools
@@ -8,8 +8,8 @@
 	branch = main
 [submodule "flutter"]
 	path = flutter
-	url = https://git.tonycloud.org/flutter/flutter.git
-	branch = shorebird/dev
+	url = https://github.com/tony-cloud/flutter.git
+	branch = tonycloud/dev
 [submodule "shorebird"]
 	path = shorebird
 	url = https://git.tonycloud.org/flutter/shorebird.git

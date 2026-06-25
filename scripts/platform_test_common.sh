@@ -68,9 +68,9 @@ run bash -lc "cd '$ROOT/shorebird-server' && '$GO_BIN' test ./..."
 AOT_PATCH_BUILD_DIR="${AOT_PATCH_BUILD_DIR:-}"
 if [[ -z "$AOT_PATCH_BUILD_DIR" ]]; then
   for candidate in \
-    "$ROOT/dart-sdk-new/xcodebuild/ReleaseARM64" \
-    "$ROOT/dart-sdk-new/out/ReleaseARM64AotPatch" \
-    "$ROOT/dart-sdk-new/out/ReleaseX64AotPatch"; do
+    "$ROOT/dart-sdk/xcodebuild/ReleaseARM64" \
+    "$ROOT/dart-sdk/out/ReleaseARM64AotPatch" \
+    "$ROOT/dart-sdk/out/ReleaseX64AotPatch"; do
     if [[ -f "$candidate/args.gn" ]]; then
       AOT_PATCH_BUILD_DIR="$candidate"
       break

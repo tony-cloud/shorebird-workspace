@@ -33,13 +33,13 @@ esac
 cat > "$ROOT/.gclient" <<EOF
 solutions = [
   {
-    "name": "dart-sdk-new",
-    "url": "https://git.tonycloud.org/dart-lang/sdk.git",
+    "name": "dart-sdk",
+    "url": "https://github.com/tony-cloud/dart-sdk.git",
     "deps_file": "DEPS",
     "managed": False,
     "custom_deps": {},
     "custom_vars": {
-      "dart_root": "dart-sdk-new",
+      "dart_root": "dart-sdk",
       "download_android_deps": $DART_DOWNLOAD_ANDROID_DEPS,
       "checkout_javascript_engines": False,
       "checkout_benchmarks_internal": False,
@@ -57,7 +57,7 @@ if [[ "$INCLUDE_ENGINE_DEPS" == "1" ]]; then
 solutions = [
   {
     "name": ".",
-    "url": "https://git.tonycloud.org/flutter/flutter.git",
+    "url": "https://github.com/tony-cloud/flutter.git",
     "deps_file": "DEPS",
     "managed": False,
     "custom_deps": {
