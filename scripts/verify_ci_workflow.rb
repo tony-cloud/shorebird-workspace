@@ -196,6 +196,8 @@ required_files = %w[
   flutter/dev/tools/create_api_docs.dart
   flutter/engine/src/flutter/build/zip_bundle.gni
   flutter/engine/src/flutter/runtime/dart_isolate.cc
+  flutter/engine/src/flutter/runtime/shorebird/BUILD.gn
+  flutter/engine/src/flutter/shell/platform/embedder/BUILD.gn
   flutter/engine/src/flutter/lib/web_ui/dev/steps/copy_artifacts_step.dart
   flutter/packages/shorebird_tests/test/shorebird_tests.dart
   updater/library/src/config.rs
@@ -396,6 +398,14 @@ flutter_dart_build = read_repo_file(
 flutter_engine_archives_build = read_repo_file(
   repo_root,
   'flutter/engine/src/flutter/build/archives/BUILD.gn'
+)
+flutter_runtime_shorebird_build = read_repo_file(
+  repo_root,
+  'flutter/engine/src/flutter/runtime/shorebird/BUILD.gn'
+)
+flutter_embedder_build = read_repo_file(
+  repo_root,
+  'flutter/engine/src/flutter/shell/platform/embedder/BUILD.gn'
 )
 flutter_linux_build = read_repo_file(
   repo_root,
@@ -943,6 +953,14 @@ assert!(
     flutter_dart_isolate.include?('return UnquoteYamlValue(GetYamlValue(config.yaml_config, key));') &&
     !flutter_dart_isolate.include?('#include "flutter/shell/common/shorebird/shorebird.h"'),
   'dart_isolate.cc must avoid depending on the full Shorebird wrapper target so GN header checks pass'
+)
+assert!(
+  flutter_runtime_shorebird_build.include?('$dart_src/runtime/bin:shared_object_loaders') &&
+    !flutter_runtime_shorebird_build.include?('$dart_src/runtime/bin:elf_loader') &&
+    flutter_embedder_build.include?(%q("$dart_src/runtime/bin:common_embedder_dart_io",
+      "$dart_src/runtime/bin:shared_object_loaders")) &&
+    !flutter_embedder_build.include?('if (is_ios || is_mac)'),
+  'Shorebird patch cache and embedder targets must depend on shared_object_loaders so GN header checks allow both ELF and Mach-O loader includes'
 )
 assert!(
   flutter_web_ui_copy_artifacts.include?("io.Platform.environment['FLUTTER_STORAGE_BASE_URL']") &&
@@ -1923,7 +1941,9 @@ end
 
 assert!(
   run_text_by_job.fetch('ios-engine').include?('--shorebird-interpreter') &&
-    run_text_by_job.fetch('ios-engine').include?("--gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=true shorebird_use_interpreter=true'") &&
+    run_text_by_job.fetch('ios-engine').include?('--no-prebuilt-dart-sdk') &&
+    run_text_by_job.fetch('ios-engine').include?("--gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=true shorebird_use_interpreter=true flutter_prebuilt_dart_sdk=false'") &&
+    run_text_by_job.fetch('ios-engine').include?("--gn-args='flutter_prebuilt_dart_sdk=false'") &&
     run_text_by_job.fetch('ios-engine').include?('verify_ios_interpreter_route.sh') &&
     run_text_by_job.fetch('ios-engine').include?('test -x flutter/engine/src/out/host_release_arm64/gen_snapshot') &&
     run_text_by_job.fetch('ios-engine').include?('host_release_arm64/gen_snapshot') &&
@@ -1939,6 +1959,7 @@ assert!(
   verify_ios_interpreter_route.include?('json.load(file)') &&
     verify_ios_interpreter_route.include?('metadata = artifact.get("metadata")') &&
     verify_ios_interpreter_route.scan('require_gn_value "$args_file" dart_enable_aot_patching true').length >= 2 &&
+    verify_ios_interpreter_route.scan('require_gn_value "$args_file" flutter_prebuilt_dart_sdk false').length >= 2 &&
     verify_ios_interpreter_route.include?('sub("[[:space:]]*$", "", value)') &&
     verify_ios_interpreter_route.include?('require(metadata, "runtime_mode", "dart-bytecode-interpreter", "metadata")') &&
     verify_ios_interpreter_route.include?('require(metadata, "target_os", "ios", "metadata")') &&
@@ -1955,6 +1976,7 @@ assert!(
     verify_ios_interpreter_route_validator.scan('dart_enable_aot_patching = true').length >= 2 &&
     verify_ios_interpreter_route_validator.include?('dart_enable_aot_patching = false') &&
     verify_ios_interpreter_route_validator.include?('shorebird_use_interpreter = false') &&
+    verify_ios_interpreter_route_validator.scan('flutter_prebuilt_dart_sdk = false').length >= 2 &&
     verify_ios_interpreter_route_validator.include?('write_artifact "$bad_runtime" "dart-dynamic-modules"') &&
     verify_ios_interpreter_route_validator.include?('write_artifact "$bad_target" "dart-bytecode-interpreter" "android"') &&
     verify_ios_interpreter_route_validator.include?('unexpectedly accepted malformed JSON') &&
@@ -1971,11 +1993,13 @@ assert!(
 )
 assert!(
   run_text_by_job.fetch('linux-engine').include?('verify_engine_args.sh') &&
+    run_text_by_job.fetch('linux-engine').include?('--no-prebuilt-dart-sdk') &&
     run_text_by_job.fetch('linux-engine').include?('flutter/engine/src/out/linux_release_x64/args.gn') &&
     run_text_by_job.fetch('linux-engine').include?('dart_enable_aot_patching=true') &&
     run_text_by_job.fetch('linux-engine').include?('dart_enable_shorebird_interpreter=false') &&
     run_text_by_job.fetch('linux-engine').include?('shorebird_enable_aot_patching=true') &&
     run_text_by_job.fetch('linux-engine').include?('shorebird_use_interpreter=false') &&
+    run_text_by_job.fetch('linux-engine').include?('flutter_prebuilt_dart_sdk=false') &&
     run_text_by_job.fetch('linux-engine').include?('linux-x64-flutter-gtk.zip') &&
     run_text_by_job.fetch('linux-engine').include?('flutter_patched_sdk_product.zip') &&
     run_text_by_job.fetch('linux-engine').include?('mirror/shorebird/flutter_infra_release/flutter/${engine_revision}/linux-x64-release/artifacts.zip') &&
@@ -1984,29 +2008,35 @@ assert!(
 )
 assert!(
   run_text_by_job.fetch('android-engine').include?('verify_engine_args.sh') &&
+    run_text_by_job.fetch('android-engine').include?('--no-prebuilt-dart-sdk') &&
     run_text_by_job.fetch('android-engine').include?('flutter/engine/src/out/android_release_arm64/args.gn') &&
     run_text_by_job.fetch('android-engine').include?('dart_enable_aot_patching=true') &&
     run_text_by_job.fetch('android-engine').include?('dart_enable_shorebird_interpreter=false') &&
     run_text_by_job.fetch('android-engine').include?('shorebird_enable_aot_patching=true') &&
     run_text_by_job.fetch('android-engine').include?('shorebird_use_interpreter=false') &&
+    run_text_by_job.fetch('android-engine').include?('flutter_prebuilt_dart_sdk=false') &&
     run_text_by_job.fetch('android-engine').include?('mirror/shorebird/flutter_infra_release/flutter/${engine_revision}/android-arm64-release/artifacts.zip') &&
     run_text_by_job.fetch('android-engine').include?('mirror/shorebird/flutter_infra_release/flutter/${engine_revision}/android-arm64-release/symbols.zip'),
   'Android engine job must build and verify the native AOT patch runtime without DDM or interpreter mode'
 )
 assert!(
   run_text_by_job.fetch('web-sdk').include?('verify_engine_args.sh') &&
+    run_text_by_job.fetch('web-sdk').include?('--no-prebuilt-dart-sdk') &&
     run_text_by_job.fetch('web-sdk').include?('flutter/engine/src/out/wasm_release/args.gn') &&
     run_text_by_job.fetch('web-sdk').include?('dart_dynamic_modules=false') &&
+    run_text_by_job.fetch('web-sdk').include?('flutter_prebuilt_dart_sdk=false') &&
     run_text_by_job.fetch('web-sdk').include?('mirror/shorebird/flutter_infra_release/flutter/${engine_revision}/flutter-web-sdk.zip'),
   'web SDK job must explicitly disable and verify DDM'
 )
 assert!(
   run_text_by_job.fetch('ios-engine').include?('verify_engine_args.sh') &&
+    run_text_by_job.fetch('ios-engine').include?('--no-prebuilt-dart-sdk') &&
     run_text_by_job.fetch('ios-engine').include?('flutter/engine/src/out/macos_release_arm64/args.gn') &&
     run_text_by_job.fetch('ios-engine').include?('dart_enable_aot_patching=true') &&
     run_text_by_job.fetch('ios-engine').include?('dart_enable_shorebird_interpreter=false') &&
     run_text_by_job.fetch('ios-engine').include?('shorebird_enable_aot_patching=true') &&
     run_text_by_job.fetch('ios-engine').include?('shorebird_use_interpreter=false') &&
+    run_text_by_job.fetch('ios-engine').include?('flutter_prebuilt_dart_sdk=false') &&
     run_text_by_job.fetch('ios-engine').include?('FlutterMacOS.framework.zip') &&
     run_text_by_job.fetch('ios-engine').include?('flutter_patched_sdk_product.zip') &&
     run_text_by_job.fetch('ios-engine').include?('mirror/shorebird/flutter_infra_release/flutter/${engine_revision}/darwin-arm64-release/FlutterMacOS.framework.zip'),

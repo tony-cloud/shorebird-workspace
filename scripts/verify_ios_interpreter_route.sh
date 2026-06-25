@@ -71,6 +71,7 @@ verify_ios_engine_args() {
   require_gn_value "$args_file" dart_enable_shorebird_interpreter true
   require_gn_value "$args_file" shorebird_use_interpreter true
   require_gn_value "$args_file" shorebird_enable_aot_patching false
+  require_gn_value "$args_file" flutter_prebuilt_dart_sdk false
 }
 
 verify_host_engine_args() {
@@ -82,6 +83,7 @@ verify_host_engine_args() {
   require_gn_value "$args_file" dart_enable_aot_patching true
   require_gn_value "$args_file" dart_enable_shorebird_interpreter true
   require_gn_value "$args_file" shorebird_use_interpreter true
+  require_gn_value "$args_file" flutter_prebuilt_dart_sdk false
 }
 
 app_bundle_from_ipa() {

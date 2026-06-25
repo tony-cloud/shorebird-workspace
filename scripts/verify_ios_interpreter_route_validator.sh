@@ -21,6 +21,7 @@ shorebird_use_interpreter = false
 shorebird_use_interpreter = true
 shorebird_enable_aot_patching = true
 shorebird_enable_aot_patching = false
+flutter_prebuilt_dart_sdk = false
 EOF
 
 cat > "$HOST_ENGINE_DIR/args.gn" <<'EOF'
@@ -33,6 +34,7 @@ dart_enable_shorebird_interpreter = false
 dart_enable_shorebird_interpreter = true
 shorebird_use_interpreter = false
 shorebird_use_interpreter = true
+flutter_prebuilt_dart_sdk = false
 EOF
 
 write_artifact() {

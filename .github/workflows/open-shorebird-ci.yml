@@ -790,7 +790,8 @@ jobs:
           ./flutter/tools/gn \
             --runtime-mode=release \
             --target-dir=linux_release_x64 \
-            --gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=false shorebird_enable_aot_patching=true shorebird_use_interpreter=false'
+            --no-prebuilt-dart-sdk \
+            --gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=false shorebird_enable_aot_patching=true shorebird_use_interpreter=false flutter_prebuilt_dart_sdk=false'
 
       - name: Build Linux engine
         working-directory: flutter/engine/src
@@ -808,7 +809,8 @@ jobs:
             dart_enable_aot_patching=true \
             dart_enable_shorebird_interpreter=false \
             shorebird_enable_aot_patching=true \
-            shorebird_use_interpreter=false
+            shorebird_use_interpreter=false \
+            flutter_prebuilt_dart_sdk=false
 
       - name: Package Linux engine artifacts
         run: |
@@ -950,7 +952,8 @@ jobs:
             --runtime-mode=release \
             --android-cpu=arm64 \
             --target-dir=android_release_arm64 \
-            --gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=false shorebird_enable_aot_patching=true shorebird_use_interpreter=false'
+            --no-prebuilt-dart-sdk \
+            --gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=false shorebird_enable_aot_patching=true shorebird_use_interpreter=false flutter_prebuilt_dart_sdk=false'
 
       - name: Build Android engine
         working-directory: flutter/engine/src
@@ -969,7 +972,8 @@ jobs:
             dart_enable_aot_patching=true \
             dart_enable_shorebird_interpreter=false \
             shorebird_enable_aot_patching=true \
-            shorebird_use_interpreter=false
+            shorebird_use_interpreter=false \
+            flutter_prebuilt_dart_sdk=false
 
       - name: Package Android engine artifacts
         run: |
@@ -1111,7 +1115,8 @@ jobs:
             --web \
             --runtime-mode=release \
             --target-dir=wasm_release \
-            --gn-args='dart_dynamic_modules=false'
+            --no-prebuilt-dart-sdk \
+            --gn-args='dart_dynamic_modules=false flutter_prebuilt_dart_sdk=false'
 
       - name: Build web SDK
         working-directory: flutter/engine/src
@@ -1121,7 +1126,8 @@ jobs:
         run: |
           ./scripts/verify_engine_args.sh \
             flutter/engine/src/out/wasm_release/args.gn \
-            dart_dynamic_modules=false
+            dart_dynamic_modules=false \
+            flutter_prebuilt_dart_sdk=false
 
       - name: Package web SDK artifact
         run: |
@@ -1228,7 +1234,8 @@ jobs:
             --mac-cpu=arm64 \
             --target-dir=host_release_arm64 \
             --shorebird-interpreter \
-            --gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=true shorebird_use_interpreter=true'
+            --no-prebuilt-dart-sdk \
+            --gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=true shorebird_use_interpreter=true flutter_prebuilt_dart_sdk=false'
 
       - name: Build host snapshotter
         working-directory: flutter/engine/src
@@ -1241,7 +1248,9 @@ jobs:
             --ios \
             --runtime-mode=release \
             --target-dir=ios_release \
-            --shorebird-interpreter
+            --shorebird-interpreter \
+            --no-prebuilt-dart-sdk \
+            --gn-args='flutter_prebuilt_dart_sdk=false'
 
       - name: Build iOS engine
         working-directory: flutter/engine/src
@@ -1261,7 +1270,8 @@ jobs:
             --runtime-mode=release \
             --mac-cpu=arm64 \
             --target-dir=macos_release_arm64 \
-            --gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=false shorebird_enable_aot_patching=true shorebird_use_interpreter=false'
+            --no-prebuilt-dart-sdk \
+            --gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=false shorebird_enable_aot_patching=true shorebird_use_interpreter=false flutter_prebuilt_dart_sdk=false'
 
       - name: Build macOS engine
         working-directory: flutter/engine/src
@@ -1279,7 +1289,8 @@ jobs:
             dart_enable_aot_patching=true \
             dart_enable_shorebird_interpreter=false \
             shorebird_enable_aot_patching=true \
-            shorebird_use_interpreter=false
+            shorebird_use_interpreter=false \
+            flutter_prebuilt_dart_sdk=false
 
       - name: Package iOS engine artifacts
         run: |
