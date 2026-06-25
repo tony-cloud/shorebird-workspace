@@ -196,6 +196,7 @@ required_files = %w[
   flutter/dev/integration_tests/pure_android_host_apps/host_app_kotlin_gradle_dsl/settings.gradle.kts
   flutter/dev/tools/create_api_docs.dart
   flutter/engine/src/flutter/build/zip_bundle.gni
+  flutter/engine/src/flutter/pubspec.yaml
   flutter/engine/src/flutter/runtime/dart_isolate.cc
   flutter/engine/src/flutter/runtime/shorebird/BUILD.gn
   flutter/engine/src/flutter/shell/platform/embedder/BUILD.gn
@@ -377,6 +378,10 @@ flutter_aar_init_script = read_repo_file(
   'flutter/packages/flutter_tools/gradle/aar_init_script.gradle'
 )
 flutter_deps = read_repo_file(repo_root, 'flutter/DEPS')
+flutter_engine_pubspec = read_repo_file(
+  repo_root,
+  'flutter/engine/src/flutter/pubspec.yaml'
+)
 flutter_post_process_docs = read_repo_file(repo_root, 'flutter/dev/bots/post_process_docs.dart')
 flutter_unpublish_package = read_repo_file(repo_root, 'flutter/dev/bots/unpublish_package.dart')
 flutter_android_host_app_settings = read_repo_file(
@@ -612,6 +617,12 @@ assert!(
     write_gclient.include?('"url": "https://github.com/tony-cloud/flutter.git"') &&
     !write_gclient.include?('github.com/shorebirdtech'),
   'gclient generation must use the open Dart/Flutter forks and avoid official Shorebird remotes'
+)
+assert!(
+  flutter_engine_pubspec.include?('frontend_server_client:') &&
+    flutter_engine_pubspec.include?('./third_party/dart/third_party/pkg/webdev/frontend_server_client') &&
+    !write_gclient.include?('"engine/src/flutter/third_party/dart/third_party/pkg/webdev": None'),
+  'Flutter engine pub get needs Dart third_party/pkg/webdev for frontend_server_client, so write_gclient must not suppress it'
 )
 {
   'README.md' => [

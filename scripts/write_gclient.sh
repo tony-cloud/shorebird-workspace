@@ -82,7 +82,6 @@ solutions = [
       "engine/src/flutter/third_party/dart/third_party/pkg/tools": None,
       "engine/src/flutter/third_party/dart/third_party/pkg/vector_math": None,
       "engine/src/flutter/third_party/dart/third_party/pkg/web": None,
-      "engine/src/flutter/third_party/dart/third_party/pkg/webdev": None,
       "engine/src/flutter/third_party/dart/third_party/pkg/webdriver": None,
       "engine/src/flutter/third_party/dart/third_party/pkg/webkit_inspection_protocol": None,
       "engine/src/flutter/third_party/dart/tools/sdks/dart-sdk": None,
