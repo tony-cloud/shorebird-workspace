@@ -964,6 +964,10 @@ assert!(
   'Shorebird patch cache and embedder targets must depend on shared_object_loaders so GN header checks allow both ELF and Mach-O loader includes'
 )
 assert!(
+  flutter_ios_build.include?('"//flutter/shell/common/shorebird:updater"'),
+  'iOS Flutter framework source must directly depend on the Shorebird updater target because FlutterDartProject.mm includes updater.h'
+)
+assert!(
   flutter_web_ui_copy_artifacts.include?("io.Platform.environment['FLUTTER_STORAGE_BASE_URL']") &&
     flutter_web_ui_copy_artifacts.include?('http://localhost:8080/download.flutter.io') &&
     flutter_web_ui_copy_artifacts.include?('storageBaseUri.resolve') &&
