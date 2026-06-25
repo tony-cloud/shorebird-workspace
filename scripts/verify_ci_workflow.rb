@@ -122,6 +122,7 @@ required_files = %w[
   docs/CI.md
   docs/PLATFORM_TESTING.md
   docs/REPOSITORIES.md
+  dart-sdk/DEPS
   shorebird/README.md
   shorebird/OPEN_SOURCE_REPLACEMENTS.md
   shorebird/docs/account/api-keys/README.md
@@ -146,6 +147,7 @@ required_files = %w[
   scripts/verify_ci_workflow.rb
   scripts/verify_ci_workflow.sh
   scripts/verify_ci_capacity.sh
+  scripts/verify_dart_tool_sdk.sh
   scripts/verify_dart_sdk_args.sh
   scripts/verify_engine_args.sh
   scripts/verify_hosted_full_sdk_build.sh
@@ -378,6 +380,7 @@ flutter_aar_init_script = read_repo_file(
   'flutter/packages/flutter_tools/gradle/aar_init_script.gradle'
 )
 flutter_deps = read_repo_file(repo_root, 'flutter/DEPS')
+dart_deps = read_repo_file(repo_root, 'dart-sdk/DEPS')
 flutter_engine_pubspec = read_repo_file(
   repo_root,
   'flutter/engine/src/flutter/pubspec.yaml'
@@ -924,6 +927,21 @@ assert!(
     !flutter_deps.include?('shorebirdtech/_build_engine'),
   'Flutter DEPS must point Dart/updater dependencies at open remotes and avoid Shorebird private prebuilt buckets'
 )
+dart_revision_ok, dart_revision = capture_command(
+  'git',
+  '-C',
+  repo_path(repo_root, 'dart-sdk'),
+  'rev-parse',
+  'HEAD'
+)
+assert!(dart_revision_ok, 'must be able to read the Dart SDK submodule revision')
+dart_tool_sdk_tag = dart_deps[/"sdk_tag": "([^"]+)"/, 1]
+assert!(dart_tool_sdk_tag, 'Dart DEPS must declare sdk_tag for the bootstrap tool SDK')
+assert!(
+  flutter_deps.include?("\"dart_sdk_revision\": \"#{dart_revision}\"") &&
+    flutter_deps.include?("'version': '#{dart_tool_sdk_tag}'"),
+  'Flutter DEPS must keep its Dart source/tool SDK pins aligned with the workspace Dart SDK'
+)
 assert!(
   flutter_android_host_app_settings.include?('System.getenv("FLUTTER_STORAGE_BASE_URL") ?: "http://localhost:8080"') &&
     flutter_android_host_app_settings.include?('$flutterStorageUrl/download.flutter.io') &&
@@ -1066,6 +1084,7 @@ verify_ios_interpreter_route_validator = read_repo_file(
 )
 verify_engine_args = read_repo_file(repo_root, 'scripts/verify_engine_args.sh')
 verify_dart_sdk_args = read_repo_file(repo_root, 'scripts/verify_dart_sdk_args.sh')
+verify_dart_tool_sdk = read_repo_file(repo_root, 'scripts/verify_dart_tool_sdk.sh')
 assert!(
   bootstrap_linux.include?('exec "$ROOT/scripts/platform_test_common.sh" linux') &&
     bootstrap_macos.include?('exec "$ROOT/scripts/platform_test_common.sh" macos'),
@@ -1152,6 +1171,12 @@ assert!(
     verify_sync_open_sources.include?('expected forbidden updater source remote to fail') &&
     verify_sync_open_sources.include?('expected forbidden explicit UPDATER_URL to fail'),
   'source sync smoke test must reject upstream Dart SDK and official Shorebird updater remotes'
+)
+assert!(
+  verify_dart_tool_sdk.include?('pkg/front_end/pubspec.yaml') &&
+    verify_dart_tool_sdk.include?('Dart tool SDK version does not satisfy front_end SDK constraint') &&
+    verify_dart_tool_sdk.include?('Flutter engine Dart checkout points at'),
+  'Dart tool SDK verifier must reject stale bootstrap SDKs and broken Flutter engine Dart links'
 )
 assert!(
   sync_flutter_prebuilt_dart_sdk.include?('dart-sdk/tools/sdks/dart-sdk') &&
@@ -2023,6 +2048,7 @@ assert!(
 )
 assert!(
   run_text_by_job.fetch('linux-engine').include?('verify_engine_args.sh') &&
+    run_text_by_job.fetch('linux-engine').include?('verify_dart_tool_sdk.sh') &&
     run_text_by_job.fetch('linux-engine').include?('--no-prebuilt-dart-sdk') &&
     run_text_by_job.fetch('linux-engine').include?('flutter/engine/src/out/linux_release_x64/args.gn') &&
     run_text_by_job.fetch('linux-engine').include?('dart_enable_aot_patching=true') &&
@@ -2038,6 +2064,7 @@ assert!(
 )
 assert!(
   run_text_by_job.fetch('android-engine').include?('verify_engine_args.sh') &&
+    run_text_by_job.fetch('android-engine').include?('verify_dart_tool_sdk.sh') &&
     run_text_by_job.fetch('android-engine').include?('rustup target add aarch64-linux-android') &&
     run_text_by_job.fetch('android-engine').include?('--no-prebuilt-dart-sdk') &&
     run_text_by_job.fetch('android-engine').include?('flutter/engine/src/out/android_release_arm64/args.gn') &&
@@ -2052,6 +2079,7 @@ assert!(
 )
 assert!(
   run_text_by_job.fetch('web-sdk').include?('verify_engine_args.sh') &&
+    run_text_by_job.fetch('web-sdk').include?('verify_dart_tool_sdk.sh') &&
     run_text_by_job.fetch('web-sdk').include?('sync_flutter_prebuilt_dart_sdk.sh linux-x64') &&
     run_text_by_job.fetch('web-sdk').include?('flutter/engine/src/out/wasm_release/args.gn') &&
     run_text_by_job.fetch('web-sdk').include?('dart_dynamic_modules=false') &&
@@ -2061,6 +2089,7 @@ assert!(
 )
 assert!(
   run_text_by_job.fetch('ios-engine').include?('verify_engine_args.sh') &&
+    run_text_by_job.fetch('ios-engine').include?('verify_dart_tool_sdk.sh') &&
     run_text_by_job.fetch('ios-engine').include?('--no-prebuilt-dart-sdk') &&
     run_text_by_job.fetch('ios-engine').include?('flutter/engine/src/out/macos_release_arm64/args.gn') &&
     run_text_by_job.fetch('ios-engine').include?('dart_enable_aot_patching=true') &&

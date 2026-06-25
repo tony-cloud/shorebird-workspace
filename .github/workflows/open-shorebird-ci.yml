@@ -784,6 +784,9 @@ jobs:
         working-directory: flutter
         run: gclient sync --no-history
 
+      - name: Verify Dart tool SDK
+        run: ./scripts/verify_dart_tool_sdk.sh
+
       - name: Configure Linux engine
         working-directory: flutter/engine/src
         run: |
@@ -946,6 +949,9 @@ jobs:
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_gclient_sync }}
         working-directory: flutter
         run: gclient sync --no-history
+
+      - name: Verify Dart tool SDK
+        run: ./scripts/verify_dart_tool_sdk.sh
 
       - name: Configure Android engine
         working-directory: flutter/engine/src
@@ -1111,6 +1117,9 @@ jobs:
         working-directory: flutter
         run: gclient sync --no-history
 
+      - name: Verify Dart tool SDK
+        run: ./scripts/verify_dart_tool_sdk.sh
+
       - name: Sync Flutter prebuilt Dart SDK
         run: ./scripts/sync_flutter_prebuilt_dart_sdk.sh linux-x64
 
@@ -1233,6 +1242,9 @@ jobs:
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_gclient_sync }}
         working-directory: flutter
         run: gclient sync --no-history
+
+      - name: Verify Dart tool SDK
+        run: ./scripts/verify_dart_tool_sdk.sh
 
       - name: Configure host snapshotter
         working-directory: flutter/engine/src
