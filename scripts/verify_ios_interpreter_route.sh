@@ -14,6 +14,7 @@ CHECKED_IPA=""
 CHECKED_PATCH_ARTIFACT=""
 ENTITLEMENTS_CHECKED=0
 APP_STORE_STRICT_CHECKED=0
+NO_BUNDLED_KEY_CHECKED=0
 CLEANUP_DIR=""
 
 cleanup() {
@@ -35,14 +36,14 @@ read_gn_value() {
     $1 == key && $2 == "=" {
       value = $0
       sub("^[[:space:]]*" key "[[:space:]]*=[[:space:]]*", "", value)
-      print value
+      sub("[[:space:]]*$", "", value)
       found = 1
-      exit
     }
     END {
       if (!found) {
         exit 1
       }
+      print value
     }
   ' "$file"
 }
@@ -66,6 +67,7 @@ verify_ios_engine_args() {
 
   require_gn_value "$args_file" target_os '"ios"'
   require_gn_value "$args_file" dart_dynamic_modules false
+  require_gn_value "$args_file" dart_enable_aot_patching true
   require_gn_value "$args_file" dart_enable_shorebird_interpreter true
   require_gn_value "$args_file" shorebird_use_interpreter true
   require_gn_value "$args_file" shorebird_enable_aot_patching false
@@ -77,6 +79,7 @@ verify_host_engine_args() {
 
   require_gn_value "$args_file" target_os '"mac"'
   require_gn_value "$args_file" dart_dynamic_modules false
+  require_gn_value "$args_file" dart_enable_aot_patching true
   require_gn_value "$args_file" dart_enable_shorebird_interpreter true
   require_gn_value "$args_file" shorebird_use_interpreter true
 }
@@ -143,6 +146,24 @@ verify_entitlements() {
   fi
 }
 
+verify_no_bundled_patch_key() {
+  local app_bundle="$1"
+  [[ "$APP_STORE_STRICT" == "1" ]] || return 0
+
+  local shorebird_yaml
+  shorebird_yaml="$(
+    find "$app_bundle" -name "shorebird.yaml" -type f -print -quit
+  )"
+  if [[ -z "$shorebird_yaml" ]]; then
+    return 0
+  fi
+
+  if grep -Eq '^[[:space:]]*aot_patch_key_hex[[:space:]]*:' "$shorebird_yaml"; then
+    fail "APP_STORE_STRICT=1 rejects bundled aot_patch_key_hex in $shorebird_yaml"
+  fi
+  NO_BUNDLED_KEY_CHECKED=1
+}
+
 verify_app_bundle() {
   if [[ -n "$IOS_APP_BUNDLE" && -n "$IOS_IPA" ]]; then
     fail "set only one of IOS_APP_BUNDLE or IOS_IPA"
@@ -165,6 +186,7 @@ verify_app_bundle() {
   fi
 
   verify_entitlements "$IOS_APP_BUNDLE"
+  verify_no_bundled_patch_key "$IOS_APP_BUNDLE"
 }
 
 file_magic_hex() {
@@ -186,31 +208,105 @@ verify_patch_artifact() {
       ;;
   esac
 
-  local compact_json
-  compact_json="$(LC_ALL=C tr -d '[:space:]' < "$IOS_PATCH_ARTIFACT")"
+  local python_bin
+  python_bin=python3
+  if ! command -v "$python_bin" >/dev/null 2>&1; then
+    python_bin=python
+  fi
+  command -v "$python_bin" >/dev/null 2>&1 ||
+    fail "python3 or python is required to inspect IOS_PATCH_ARTIFACT"
 
-  if [[ "$compact_json" != \{* ]]; then
-    fail "iOS patch artifact must be the encrypted open JSON wrapper, not a raw native/code payload"
-  fi
-  if ! grep -Fq '"format":"open-aot-vmcode-encrypted-v1"' <<<"$compact_json"; then
-    fail "iOS patch artifact is not an open encrypted VM code artifact"
-  fi
-  if grep -Fq '"runtime_mode":"dart-dynamic-modules"' <<<"$compact_json" ||
-     grep -Fq '"runtime_mode":"dynamic-modules"' <<<"$compact_json"; then
-    fail "iOS patch artifact uses DART_DYNAMIC_MODULES runtime mode"
-  fi
-  if ! grep -Fq '"runtime_mode":"dart-bytecode-interpreter"' <<<"$compact_json"; then
-    fail "iOS patch artifact must declare runtime_mode dart-bytecode-interpreter"
-  fi
-  if ! grep -Fq '"target_os":"ios"' <<<"$compact_json"; then
-    fail "iOS patch artifact must target iOS"
-  fi
-  if ! grep -Fq '"target_arch":"arm64"' <<<"$compact_json"; then
-    fail "iOS patch artifact must target arm64"
-  fi
-  if ! grep -Fq '"payload_kind":"full-snapshot"' <<<"$compact_json"; then
-    fail "current iOS interpreter mapper requires payload_kind full-snapshot"
-  fi
+  "$python_bin" - "$IOS_PATCH_ARTIFACT" <<'PY'
+import base64
+import binascii
+import json
+import re
+import sys
+
+path = sys.argv[1]
+
+try:
+    with open(path, encoding="utf-8") as file:
+        artifact = json.load(file)
+except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+    raise SystemExit(
+        "iOS patch artifact must be the encrypted open JSON wrapper, "
+        f"not a raw native/code payload: {error}"
+    )
+
+if not isinstance(artifact, dict):
+    raise SystemExit("iOS patch artifact JSON must be an object")
+
+metadata = artifact.get("metadata")
+if not isinstance(metadata, dict):
+    raise SystemExit("iOS patch artifact must contain metadata object")
+
+
+def require(mapping, key, expected, scope):
+    actual = mapping.get(key)
+    if actual != expected:
+        raise SystemExit(
+            f"iOS patch artifact {scope}.{key} is {actual!r}; "
+            f"expected {expected!r}"
+        )
+
+
+require(artifact, "format", "open-aot-vmcode-encrypted-v1", "artifact")
+runtime_mode = metadata.get("runtime_mode")
+if runtime_mode in {"dart-dynamic-modules", "dynamic-modules"}:
+    raise SystemExit("iOS patch artifact uses DART_DYNAMIC_MODULES runtime mode")
+require(metadata, "runtime_mode", "dart-bytecode-interpreter", "metadata")
+require(metadata, "target_os", "ios", "metadata")
+require(metadata, "target_arch", "arm64", "metadata")
+require(artifact, "payload_kind", "full-snapshot", "artifact")
+
+encryption = artifact.get("encryption")
+if not isinstance(encryption, dict):
+    raise SystemExit("iOS patch artifact must contain encryption object")
+require(encryption, "algorithm", "AES-256-GCM", "encryption")
+
+
+def require_base64(mapping, key, scope):
+    value = mapping.get(key)
+    if not isinstance(value, str) or not value:
+        raise SystemExit(f"iOS patch artifact {scope}.{key} must be non-empty")
+    try:
+        decoded = base64.b64decode(value, validate=True)
+    except (binascii.Error, ValueError) as error:
+        raise SystemExit(
+            f"iOS patch artifact {scope}.{key} is not valid base64: {error}"
+        )
+    if not decoded:
+        raise SystemExit(f"iOS patch artifact {scope}.{key} decodes to empty bytes")
+    return decoded
+
+
+require_base64(artifact, "encrypted_payload_base64", "artifact")
+require_base64(encryption, "nonce_base64", "encryption")
+require_base64(encryption, "tag_base64", "encryption")
+
+key_id = encryption.get("key_id")
+if not isinstance(key_id, str) or not key_id:
+    raise SystemExit("iOS patch artifact encryption.key_id must be non-empty")
+
+hex_pattern = re.compile(r"^[0-9a-f]{64}$")
+for scope, mapping, key in (
+    ("artifact", artifact, "payload_sha256"),
+    ("encryption", encryption, "aad_sha256"),
+):
+    value = mapping.get(key)
+    if not isinstance(value, str) or not hex_pattern.fullmatch(value):
+        raise SystemExit(
+            f"iOS patch artifact {scope}.{key} must be a lowercase SHA-256 hex digest"
+        )
+
+reconstructed_size = artifact.get("reconstructed_size")
+if reconstructed_size is not None:
+    if not isinstance(reconstructed_size, int) or reconstructed_size <= 0:
+        raise SystemExit(
+            "iOS patch artifact reconstructed_size must be a positive integer"
+        )
+PY
 
   CHECKED_PATCH_ARTIFACT="$IOS_PATCH_ARTIFACT"
 }
@@ -239,6 +335,9 @@ if [[ "$ENTITLEMENTS_CHECKED" == "1" ]]; then
 fi
 if [[ "$APP_STORE_STRICT_CHECKED" == "1" ]]; then
   echo "  App Store strict: get-task-allow is not true"
+fi
+if [[ "$NO_BUNDLED_KEY_CHECKED" == "1" ]]; then
+  echo "  key material:     no bundled aot_patch_key_hex"
 fi
 if [[ -n "$CHECKED_PATCH_ARTIFACT" ]]; then
   echo "  patch artifact:   encrypted interpreter full-snapshot for ios/arm64"

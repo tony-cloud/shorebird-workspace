@@ -7,8 +7,13 @@ INCLUDE_ENGINE_DEPS="${INCLUDE_ENGINE_DEPS:-0}"
 
 case "$PLATFORM" in
   linux)
-    TARGET_OS='["linux"]'
-    DART_DOWNLOAD_ANDROID_DEPS="False"
+    if [[ "$INCLUDE_ENGINE_DEPS" == "1" ]]; then
+      TARGET_OS='["linux", "android"]'
+      DART_DOWNLOAD_ANDROID_DEPS="True"
+    else
+      TARGET_OS='["linux"]'
+      DART_DOWNLOAD_ANDROID_DEPS="False"
+    fi
     ;;
   macos)
     if [[ "$INCLUDE_ENGINE_DEPS" == "1" ]]; then
