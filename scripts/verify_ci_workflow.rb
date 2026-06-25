@@ -1470,6 +1470,21 @@ end
       run_text.include?('ninja --version'),
     "#{job_name} must verify depot_tools-provided build tools before heavy builds"
   )
+  gclient_sync_steps = jobs.fetch(job_name).fetch('steps', []).select do |step|
+    step.fetch('name', '').start_with?('gclient sync')
+  end
+  assert!(
+    !gclient_sync_steps.empty?,
+    "#{job_name} must run gclient sync before heavy builds"
+  )
+  gclient_sync_steps.each do |step|
+    condition = step.fetch('if', '').to_s
+    assert!(
+      condition.include?("github.event_name != 'workflow_dispatch'") &&
+        condition.include?('inputs.run_gclient_sync'),
+      "#{job_name} #{step.fetch('name')} must run on push/PR CI and allow manual run_gclient_sync opt-out"
+    )
+  end
 end
 {
   'custom-dart-sdk' => 'SDK_MIN_FREE_DISK_GB',

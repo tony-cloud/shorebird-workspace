@@ -543,7 +543,7 @@ jobs:
         run: ./scripts/sync_open_sources.sh
 
       - name: gclient sync
-        if: ${{ inputs.run_gclient_sync }}
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_gclient_sync }}
         run: gclient sync --no-history
 
       - name: Generate patched Dart SDK build files
@@ -653,7 +653,7 @@ jobs:
         run: ./scripts/sync_open_sources.sh
 
       - name: gclient sync
-        if: ${{ inputs.run_gclient_sync }}
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_gclient_sync }}
         run: gclient sync --no-history
 
       - name: Generate patched Dart SDK build files
@@ -776,11 +776,11 @@ jobs:
         run: ./scripts/sync_open_sources.sh
 
       - name: gclient sync
-        if: ${{ inputs.run_gclient_sync }}
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_gclient_sync }}
         run: gclient sync --no-history
 
       - name: gclient sync Flutter engine deps
-        if: ${{ inputs.run_gclient_sync }}
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_gclient_sync }}
         working-directory: flutter
         run: gclient sync --no-history
 
@@ -934,11 +934,11 @@ jobs:
         run: ./scripts/sync_open_sources.sh
 
       - name: gclient sync
-        if: ${{ inputs.run_gclient_sync }}
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_gclient_sync }}
         run: gclient sync --no-history
 
       - name: gclient sync Flutter engine deps
-        if: ${{ inputs.run_gclient_sync }}
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_gclient_sync }}
         working-directory: flutter
         run: gclient sync --no-history
 
@@ -1096,11 +1096,11 @@ jobs:
         run: ./scripts/sync_open_sources.sh
 
       - name: gclient sync
-        if: ${{ inputs.run_gclient_sync }}
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_gclient_sync }}
         run: gclient sync --no-history
 
       - name: gclient sync Flutter engine deps
-        if: ${{ inputs.run_gclient_sync }}
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_gclient_sync }}
         working-directory: flutter
         run: gclient sync --no-history
 
@@ -1212,11 +1212,11 @@ jobs:
         run: ./scripts/sync_open_sources.sh
 
       - name: gclient sync
-        if: ${{ inputs.run_gclient_sync }}
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_gclient_sync }}
         run: gclient sync --no-history
 
       - name: gclient sync Flutter engine deps
-        if: ${{ inputs.run_gclient_sync }}
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_gclient_sync }}
         working-directory: flutter
         run: gclient sync --no-history
 
