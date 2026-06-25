@@ -999,10 +999,31 @@ jobs:
             cp "$out/arm64_v8a_release.jar" artifacts/android-engine/
           fi
 
-          gen_snapshot="$(find "$out" -path '*/gen_snapshot_arm64' -type f -print -quit)"
-          analyze_snapshot="$(find "$out" -path '*/analyze_snapshot_arm64' -type f -print -quit)"
-          test -n "$gen_snapshot"
-          test -n "$analyze_snapshot"
+          gen_snapshot=""
+          for candidate in "$out/gen_snapshot_arm64" "$out/clang_x64/gen_snapshot" "$out/universal/gen_snapshot"; do
+            if [ -f "$candidate" ]; then
+              gen_snapshot="$candidate"
+              break
+            fi
+          done
+          if [ -z "$gen_snapshot" ]; then
+            echo "missing Android gen_snapshot tool under $out" >&2
+            find "$out" -maxdepth 3 -type f -name 'gen_snapshot*' -print >&2
+            exit 66
+          fi
+
+          analyze_snapshot=""
+          for candidate in "$out/analyze_snapshot_arm64" "$out/clang_x64/analyze_snapshot" "$out/universal/analyze_snapshot"; do
+            if [ -f "$candidate" ]; then
+              analyze_snapshot="$candidate"
+              break
+            fi
+          done
+          if [ -z "$analyze_snapshot" ]; then
+            echo "missing Android analyze_snapshot tool under $out" >&2
+            find "$out" -maxdepth 3 -type f -name 'analyze_snapshot*' -print >&2
+            exit 66
+          fi
           cp "$gen_snapshot" artifacts/android-engine/gen_snapshot_arm64
           cp "$analyze_snapshot" artifacts/android-engine/analyze_snapshot_arm64
 

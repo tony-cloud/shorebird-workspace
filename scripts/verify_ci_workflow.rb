@@ -2073,6 +2073,8 @@ assert!(
     run_text_by_job.fetch('android-engine').include?('shorebird_enable_aot_patching=true') &&
     run_text_by_job.fetch('android-engine').include?('shorebird_use_interpreter=false') &&
     run_text_by_job.fetch('android-engine').include?('flutter_prebuilt_dart_sdk=false') &&
+    run_text_by_job.fetch('android-engine').include?('$out/clang_x64/gen_snapshot') &&
+    run_text_by_job.fetch('android-engine').include?('$out/clang_x64/analyze_snapshot') &&
     run_text_by_job.fetch('android-engine').include?('mirror/shorebird/flutter_infra_release/flutter/${engine_revision}/android-arm64-release/artifacts.zip') &&
     run_text_by_job.fetch('android-engine').include?('mirror/shorebird/flutter_infra_release/flutter/${engine_revision}/android-arm64-release/symbols.zip'),
   'Android engine job must build and verify the native AOT patch runtime without DDM or interpreter mode'
