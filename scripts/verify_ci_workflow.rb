@@ -1999,8 +1999,13 @@ assert!(
     run_text_by_job.fetch('ios-engine').include?('--no-prebuilt-dart-sdk') &&
     run_text_by_job.fetch('ios-engine').include?("--gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=true shorebird_use_interpreter=true flutter_prebuilt_dart_sdk=false'") &&
     run_text_by_job.fetch('ios-engine').include?("--gn-args='flutter_prebuilt_dart_sdk=false'") &&
+    run_text_by_job.fetch('ios-engine').include?('create_macos_gen_snapshots') &&
+    run_text_by_job.fetch('ios-engine').include?('create_macos_analyze_snapshots') &&
     run_text_by_job.fetch('ios-engine').include?('verify_ios_interpreter_route.sh') &&
-    run_text_by_job.fetch('ios-engine').include?('test -x flutter/engine/src/out/host_release_arm64/gen_snapshot') &&
+    run_text_by_job.fetch('ios-engine').include?('require_executable flutter/engine/src/out/host_release_arm64/gen_snapshot') &&
+    run_text_by_job.fetch('ios-engine').include?('require_directory flutter/engine/src/out/ios_release/Flutter.xcframework') &&
+    run_text_by_job.fetch('ios-engine').include?('require_executable flutter/engine/src/out/ios_release/analyze_snapshot_arm64') &&
+    run_text_by_job.fetch('ios-engine').include?('missing required path: $path') &&
     run_text_by_job.fetch('ios-engine').include?('host_release_arm64/gen_snapshot') &&
     run_text_by_job.fetch('ios-engine').include?('ios-release/artifacts.zip') &&
     run_text_by_job.fetch('ios-engine').include?('mirror/shorebird/flutter_infra_release/flutter/${engine_revision}/ios-release/artifacts.zip') &&

@@ -1314,7 +1314,8 @@ jobs:
         run: |
           ninja -C out/ios_release \
             flutter/shell/platform/darwin/ios:flutter_framework \
-            create_macos_gen_snapshots
+            create_macos_gen_snapshots \
+            create_macos_analyze_snapshots
 
       - name: Verify iOS interpreter route
         run: ./scripts/verify_ios_interpreter_route.sh
@@ -1353,10 +1354,36 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts/ios-engine/host_release_arm64 artifacts/ios-engine/ios-release
-          test -x flutter/engine/src/out/host_release_arm64/gen_snapshot
-          test -d flutter/engine/src/out/ios_release/Flutter.xcframework
-          test -x flutter/engine/src/out/ios_release/universal/gen_snapshot_arm64
-          test -x flutter/engine/src/out/ios_release/analyze_snapshot_arm64
+
+          require_path() {
+            local path="$1"
+            if [ ! -e "$path" ]; then
+              echo "missing required path: $path" >&2
+              find flutter/engine/src/out/ios_release -maxdepth 3 \( -name 'Flutter*' -o -name '*snapshot*' \) -print >&2 || true
+              exit 1
+            fi
+          }
+
+          require_directory() {
+            require_path "$1"
+            if [ ! -d "$1" ]; then
+              echo "required path is not a directory: $1" >&2
+              exit 1
+            fi
+          }
+
+          require_executable() {
+            require_path "$1"
+            if [ ! -x "$1" ]; then
+              echo "required path is not executable: $1" >&2
+              exit 1
+            fi
+          }
+
+          require_executable flutter/engine/src/out/host_release_arm64/gen_snapshot
+          require_directory flutter/engine/src/out/ios_release/Flutter.xcframework
+          require_executable flutter/engine/src/out/ios_release/universal/gen_snapshot_arm64
+          require_executable flutter/engine/src/out/ios_release/analyze_snapshot_arm64
           cp -R flutter/engine/src/out/ios_release/Flutter.framework artifacts/ios-engine/
           cp -R flutter/engine/src/out/ios_release/Flutter.xcframework artifacts/ios-engine/
           cp flutter/engine/src/out/host_release_arm64/gen_snapshot artifacts/ios-engine/host_release_arm64/
