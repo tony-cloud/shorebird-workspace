@@ -152,6 +152,8 @@ That helper dispatches `open-shorebird-ci.yml` with `full_sdk_build=true`,
 waits for the hosted workflow run to succeed, downloads all artifacts, and runs
 `scripts/verify_downloaded_release_artifacts.sh` against the downloaded output
 with the workflow run's `headSha`.
+It uses GitHub CLI when `gh` is installed; otherwise it uses the GitHub REST API
+with `GITHUB_TOKEN` or `GH_TOKEN` plus `curl`, `jq`, and `unzip`.
 Use `--linux-heavy-runner`, `--macos-heavy-runner`, and the disk-threshold flags
 when the repository uses custom larger/self-hosted runner labels.
 For local release assembly or reassembly after downloading workflow artifacts,

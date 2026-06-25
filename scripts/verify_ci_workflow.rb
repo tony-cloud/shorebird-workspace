@@ -1280,6 +1280,10 @@ assert!(
     verify_hosted_full_sdk_build.include?('-f full_sdk_build=true') &&
     verify_hosted_full_sdk_build.include?('-f run_runtime_smokes=false') &&
     verify_hosted_full_sdk_build.include?('gh run download "$run_id"') &&
+    verify_hosted_full_sdk_build.include?('GITHUB_TOKEN or GH_TOKEN is required') &&
+    verify_hosted_full_sdk_build.include?('api_request POST "/actions/workflows/$WORKFLOW/dispatches"') &&
+    verify_hosted_full_sdk_build.include?('archive_download_url') &&
+    verify_hosted_full_sdk_build.include?('unzip -q "$zip_path" -d "$artifact_dir"') &&
     verify_hosted_full_sdk_build.include?('--json status,conclusion,url,headSha') &&
     verify_hosted_full_sdk_build.include?('--github-sha "$run_head_sha"') &&
     verify_hosted_full_sdk_build.include?('unable to read headSha') &&

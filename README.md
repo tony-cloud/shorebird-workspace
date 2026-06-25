@@ -72,7 +72,8 @@ is untracked or if a required root/submodule checkout still has uncommitted
 changes.
 After upload, `scripts/verify_hosted_full_sdk_build.sh --repo owner/repo --ref main`
 dispatches the hosted full SDK workflow, waits for it, downloads artifacts, and
-runs the downloaded-release verifier.
+runs the downloaded-release verifier. It uses `gh` when available, or the
+GitHub REST API with `GITHUB_TOKEN`/`GH_TOKEN`, `curl`, `jq`, and `unzip`.
 The heavy SDK/engine jobs default to custom runner labels
 `open-shorebird-linux-heavy` and `open-shorebird-macos-heavy`, then run an early
 disk-capacity preflight. Register larger/self-hosted runners with those labels
