@@ -921,6 +921,9 @@ jobs:
           distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
 
+      - name: Install Android Rust target
+        run: rustup target add aarch64-linux-android
+
       - name: Free Ubuntu runner disk
         run: ./scripts/free_ci_disk_linux.sh
 
@@ -1108,6 +1111,9 @@ jobs:
         working-directory: flutter
         run: gclient sync --no-history
 
+      - name: Sync Flutter prebuilt Dart SDK
+        run: ./scripts/sync_flutter_prebuilt_dart_sdk.sh linux-x64
+
       - name: Configure web SDK
         working-directory: flutter/engine/src
         run: |
@@ -1115,8 +1121,7 @@ jobs:
             --web \
             --runtime-mode=release \
             --target-dir=wasm_release \
-            --no-prebuilt-dart-sdk \
-            --gn-args='dart_dynamic_modules=false flutter_prebuilt_dart_sdk=false'
+            --gn-args='dart_dynamic_modules=false'
 
       - name: Build web SDK
         working-directory: flutter/engine/src
@@ -1127,7 +1132,7 @@ jobs:
           ./scripts/verify_engine_args.sh \
             flutter/engine/src/out/wasm_release/args.gn \
             dart_dynamic_modules=false \
-            flutter_prebuilt_dart_sdk=false
+            flutter_prebuilt_dart_sdk=true
 
       - name: Package web SDK artifact
         run: |
@@ -1205,6 +1210,9 @@ jobs:
           python3 --version
           gclient help >/dev/null
           ninja --version
+
+      - name: Install Apple Rust targets
+        run: rustup target add aarch64-apple-ios aarch64-apple-darwin
 
       - name: Check runner capacity
         run: CI_MIN_FREE_DISK_GB="$ENGINE_MIN_FREE_DISK_GB" ./scripts/check_ci_capacity.sh

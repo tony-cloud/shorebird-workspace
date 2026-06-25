@@ -136,6 +136,7 @@ required_files = %w[
   scripts/linux_runtime_patch_smoke.sh
   scripts/verify_open_infrastructure_defaults.sh
   scripts/safe_extract_tar.py
+  scripts/sync_flutter_prebuilt_dart_sdk.sh
   scripts/sync_open_sources.sh
   scripts/validate_artifact_mirror.py
   scripts/validate_release_manifest.py
@@ -1023,6 +1024,10 @@ platform_test_common = read_repo_file(repo_root, 'scripts/platform_test_common.s
 bootstrap_linux = read_repo_file(repo_root, 'scripts/bootstrap_linux.sh')
 bootstrap_macos = read_repo_file(repo_root, 'scripts/bootstrap_macos.sh')
 sync_open_sources = read_repo_file(repo_root, 'scripts/sync_open_sources.sh')
+sync_flutter_prebuilt_dart_sdk = read_repo_file(
+  repo_root,
+  'scripts/sync_flutter_prebuilt_dart_sdk.sh'
+)
 verify_sync_open_sources = read_repo_file(
   repo_root,
   'scripts/verify_sync_open_sources.sh'
@@ -1132,6 +1137,15 @@ assert!(
     verify_sync_open_sources.include?('expected forbidden updater source remote to fail') &&
     verify_sync_open_sources.include?('expected forbidden explicit UPDATER_URL to fail'),
   'source sync smoke test must reject upstream Dart SDK and official Shorebird updater remotes'
+)
+assert!(
+  sync_flutter_prebuilt_dart_sdk.include?('dart-sdk/tools/sdks/dart-sdk') &&
+    sync_flutter_prebuilt_dart_sdk.include?('flutter/engine/src/flutter/prebuilts/$HOST_CONFIG/dart-sdk') &&
+    sync_flutter_prebuilt_dart_sdk.include?('bin/dartaotruntime') &&
+    sync_flutter_prebuilt_dart_sdk.include?('bin/snapshots/kernel_worker_aot.dart.snapshot') &&
+    sync_flutter_prebuilt_dart_sdk.include?('ln -s') &&
+    !sync_flutter_prebuilt_dart_sdk.include?('shorebird-dart-sdk-prebuilt'),
+  'Flutter web prebuilt Dart SDK sync must link the open Dart tool SDK into Flutter prebuilts'
 )
 assert!(
   job_runs(jobs.fetch('source-checks')).join("\n").include?('./scripts/verify_release_manifest.sh'),
@@ -1941,6 +1955,7 @@ end
 
 assert!(
   run_text_by_job.fetch('ios-engine').include?('--shorebird-interpreter') &&
+    run_text_by_job.fetch('ios-engine').include?('rustup target add aarch64-apple-ios aarch64-apple-darwin') &&
     run_text_by_job.fetch('ios-engine').include?('--no-prebuilt-dart-sdk') &&
     run_text_by_job.fetch('ios-engine').include?("--gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=true shorebird_use_interpreter=true flutter_prebuilt_dart_sdk=false'") &&
     run_text_by_job.fetch('ios-engine').include?("--gn-args='flutter_prebuilt_dart_sdk=false'") &&
@@ -2008,6 +2023,7 @@ assert!(
 )
 assert!(
   run_text_by_job.fetch('android-engine').include?('verify_engine_args.sh') &&
+    run_text_by_job.fetch('android-engine').include?('rustup target add aarch64-linux-android') &&
     run_text_by_job.fetch('android-engine').include?('--no-prebuilt-dart-sdk') &&
     run_text_by_job.fetch('android-engine').include?('flutter/engine/src/out/android_release_arm64/args.gn') &&
     run_text_by_job.fetch('android-engine').include?('dart_enable_aot_patching=true') &&
@@ -2021,10 +2037,10 @@ assert!(
 )
 assert!(
   run_text_by_job.fetch('web-sdk').include?('verify_engine_args.sh') &&
-    run_text_by_job.fetch('web-sdk').include?('--no-prebuilt-dart-sdk') &&
+    run_text_by_job.fetch('web-sdk').include?('sync_flutter_prebuilt_dart_sdk.sh linux-x64') &&
     run_text_by_job.fetch('web-sdk').include?('flutter/engine/src/out/wasm_release/args.gn') &&
     run_text_by_job.fetch('web-sdk').include?('dart_dynamic_modules=false') &&
-    run_text_by_job.fetch('web-sdk').include?('flutter_prebuilt_dart_sdk=false') &&
+    run_text_by_job.fetch('web-sdk').include?('flutter_prebuilt_dart_sdk=true') &&
     run_text_by_job.fetch('web-sdk').include?('mirror/shorebird/flutter_infra_release/flutter/${engine_revision}/flutter-web-sdk.zip'),
   'web SDK job must explicitly disable and verify DDM'
 )

@@ -441,15 +441,17 @@ verifies the Android artifacts/symbols zips, `flutter.jar`, `libflutter.so`,
 host snapshot/analyzer tools, args file, manifest, and mirror subtree.
 
 `web-sdk` builds the Flutter web SDK archive from `wasm_release` with
-`dart_dynamic_modules=false` and `flutter_prebuilt_dart_sdk=false`, then uploads
+`dart_dynamic_modules=false` and `flutter_prebuilt_dart_sdk=true`, then uploads
 `flutter-web-sdk.zip`, a mirror-ready copy of that SDK archive, `args.gn`, a
-manifest with the Flutter engine revision, and a `.sha256` sidecar. The engine
-and web jobs use `--no-prebuilt-dart-sdk` because the open workspace disables
-Flutter's private prebuilt Dart SDK download path and builds from the linked
-Dart checkout instead. Web is still not a Shorebird CodePush release platform
-in this CLI/protocol; this job exists to keep the open Flutter SDK/web artifacts
-buildable from the workspace. CI extracts the web SDK archive before upload and
-verifies the SDK zip, args file, manifest, and mirror subtree.
+manifest with the Flutter engine revision, and a `.sha256` sidecar. The web job
+does not download Flutter's private prebuilt Dart SDK; it links
+`dart-sdk/tools/sdks/dart-sdk` into Flutter's expected prebuilt path before
+running GN. Native engine jobs use `--no-prebuilt-dart-sdk` because the open
+workspace builds those SDK artifacts from the linked Dart checkout instead. Web
+is still not a Shorebird CodePush release platform in this CLI/protocol; this
+job exists to keep the open Flutter SDK/web artifacts buildable from the
+workspace. CI extracts the web SDK archive before upload and verifies the SDK
+zip, args file, manifest, and mirror subtree.
 
 Set `run_gclient_sync=false` only for debugging a runner image that already has
 all gclient-managed dependencies restored.
