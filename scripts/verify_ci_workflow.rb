@@ -2056,6 +2056,8 @@ assert!(
     run_text_by_job.fetch('linux-engine').include?('shorebird_enable_aot_patching=true') &&
     run_text_by_job.fetch('linux-engine').include?('shorebird_use_interpreter=false') &&
     run_text_by_job.fetch('linux-engine').include?('flutter_prebuilt_dart_sdk=false') &&
+    !run_text_by_job.fetch('linux-engine').include?('flutter/build/archives:artifacts') &&
+    run_text_by_job.fetch('linux-engine').include?("zipfile.ZipInfo('gen_snapshot')") &&
     run_text_by_job.fetch('linux-engine').include?('linux-x64-flutter-gtk.zip') &&
     run_text_by_job.fetch('linux-engine').include?('flutter_patched_sdk_product.zip') &&
     run_text_by_job.fetch('linux-engine').include?('mirror/shorebird/flutter_infra_release/flutter/${engine_revision}/linux-x64-release/artifacts.zip') &&

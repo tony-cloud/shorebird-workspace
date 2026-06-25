@@ -801,8 +801,7 @@ jobs:
         run: |
           ninja -C out/linux_release_x64 \
             flutter/shell/platform/linux:flutter_gtk \
-            flutter/build/archives:flutter_patched_sdk \
-            flutter/build/archives:artifacts
+            flutter/build/archives:flutter_patched_sdk
 
       - name: Verify Linux engine args
         run: |
@@ -824,6 +823,23 @@ jobs:
           gtk_zip="$(find "$out/zip_archives" -name 'linux-x64-flutter-gtk.zip' -type f -print -quit)"
           patched_sdk_zip="$(find "$out/zip_archives" -name 'flutter_patched_sdk_product.zip' -type f -print -quit)"
           artifacts_zip="$(find "$out/zip_archives" -path '*/linux-x64-release/artifacts.zip' -type f -print -quit)"
+          if [ -z "$artifacts_zip" ]; then
+            test -x "$out/gen_snapshot"
+            artifacts_zip="$out/zip_archives/linux-x64-release/artifacts.zip"
+            mkdir -p "$(dirname "$artifacts_zip")"
+            python3 - "$out/gen_snapshot" "$artifacts_zip" <<'PY'
+          from pathlib import Path
+          import sys
+          import zipfile
+
+          source = Path(sys.argv[1])
+          output = Path(sys.argv[2])
+          info = zipfile.ZipInfo('gen_snapshot')
+          info.external_attr = (source.stat().st_mode & 0xFFFF) << 16
+          with zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as archive:
+              archive.writestr(info, source.read_bytes(), zipfile.ZIP_DEFLATED)
+          PY
+          fi
           test -n "$gtk_zip"
           test -n "$patched_sdk_zip"
           test -n "$artifacts_zip"
