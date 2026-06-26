@@ -1253,6 +1253,9 @@ write_release_manifest = read_repo_file(repo_root, 'scripts/write_release_manife
 verify_release_manifest = read_repo_file(repo_root, 'scripts/verify_release_manifest.sh')
 assert!(
   assemble_artifact_mirror.include?('scan_for_shorebird_trees "$INPUT_DIR"') &&
+    assemble_artifact_mirror.include?('scan_for_downloaded_metadata_trees "$INPUT_DIR"') &&
+    assemble_artifact_mirror.include?('copy_tree_to_shorebird_prefix') &&
+    assemble_artifact_mirror.include?('<engine>/artifacts_manifest.yaml') &&
     assemble_artifact_mirror.include?("find \"$INPUT_DIR\" -type f \\( -name '*.tar.gz' -o -name '*.tgz' \\)") &&
     assemble_artifact_mirror.include?('scripts/safe_extract_tar.py') &&
     assemble_artifact_mirror.include?('conflicting mirror file') &&
@@ -1294,6 +1297,7 @@ assert!(
     verify_assemble_artifact_mirror.include?('patch-darwin-x64.zip') &&
     verify_assemble_artifact_mirror.include?('patch-darwin-arm64.zip') &&
     verify_assemble_artifact_mirror.include?('patch-windows-x64.zip') &&
+    verify_assemble_artifact_mirror.include?('mirror-metadata/$ENGINE_REVISION') &&
     verify_assemble_artifact_mirror.include?('artifacts_manifest.yaml') &&
     verify_assemble_artifact_mirror.include?('unexpectedly allowed a conflicting mirror file') &&
     verify_assemble_artifact_mirror.include?('unexpectedly allowed an unsafe tar member') &&
@@ -1321,6 +1325,7 @@ assert!(
     verify_artifact_mirror_workflow_assembly.include?('verify_downloaded_release_artifacts.sh') &&
     verify_artifact_mirror_workflow_assembly.include?('validate_artifact_mirror.py') &&
     verify_artifact_mirror_workflow_assembly.include?('safe_extract_tar.py') &&
+    verify_artifact_mirror_workflow_assembly.include?('mirror-metadata/$ENGINE_REVISION') &&
     verify_artifact_mirror_workflow_assembly.include?('mirror-metadata/*artifacts_manifest.yaml') &&
     verify_artifact_mirror_workflow_assembly.include?('flutter_patched_sdk_product.zip') &&
     verify_artifact_mirror_workflow_assembly.include?('unexpectedly accepted downloaded artifacts for the wrong github_sha') &&

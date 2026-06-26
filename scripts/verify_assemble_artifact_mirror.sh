@@ -14,13 +14,15 @@ INPUT_DIR="$TMP_DIR/downloaded-artifacts"
 OUTPUT_DIR="$TMP_DIR/mirror"
 mkdir -p "$INPUT_DIR"
 
-mkdir -p "$INPUT_DIR/mirror-metadata/artifacts/mirror/shorebird/$ENGINE_REVISION"
-cat > "$INPUT_DIR/mirror-metadata/artifacts/mirror/shorebird/$ENGINE_REVISION/artifacts_manifest.yaml" <<EOF
+mkdir -p "$INPUT_DIR/mirror-metadata/$ENGINE_REVISION"
+cat > "$INPUT_DIR/mirror-metadata/$ENGINE_REVISION/artifacts_manifest.yaml" <<EOF
 flutter_engine_revision: 'base-engine'
 storage_bucket: 'shorebird'
 artifact_overrides:
   - 'flutter_infra_release/flutter/\$engine/linux-x64-release/artifacts.zip'
 EOF
+"$ROOT/scripts/write_sha256.sh" \
+  "$INPUT_DIR/mirror-metadata/$ENGINE_REVISION/artifacts_manifest.yaml"
 
 mkdir -p "$INPUT_DIR/mirror-patch/artifacts/mirror/shorebird/$ENGINE_REVISION"
 "$PYTHON_BIN" - "$INPUT_DIR/mirror-patch/artifacts/mirror/shorebird/$ENGINE_REVISION" <<'PY'

@@ -38,18 +38,19 @@ mkdir -p "$OUTPUT_DIR"
 
 FOUND_TREES=0
 
-copy_shorebird_tree() {
+copy_tree_to_shorebird_prefix() {
   local tree="$1"
+  local prefix="$2"
   local source_file rel_file target_file
 
   FOUND_TREES=$((FOUND_TREES + 1))
   while IFS= read -r -d '' source_file; do
     rel_file="${source_file#"$tree"/}"
-    target_file="$OUTPUT_DIR/shorebird/$rel_file"
+    target_file="$OUTPUT_DIR/shorebird/$prefix$rel_file"
     mkdir -p "$(dirname "$target_file")"
     if [[ -e "$target_file" ]]; then
       if ! cmp -s "$source_file" "$target_file"; then
-        echo "conflicting mirror file: shorebird/$rel_file" >&2
+        echo "conflicting mirror file: shorebird/$prefix$rel_file" >&2
         echo "  existing: $target_file" >&2
         echo "  incoming: $source_file" >&2
         exit 70
@@ -58,6 +59,10 @@ copy_shorebird_tree() {
     fi
     cp -p "$source_file" "$target_file"
   done < <(find "$tree" -type f -print0)
+}
+
+copy_shorebird_tree() {
+  copy_tree_to_shorebird_prefix "$1" ""
 }
 
 scan_for_shorebird_trees() {
@@ -69,7 +74,26 @@ scan_for_shorebird_trees() {
   done < <(find "$search_root" -type d -name shorebird -print0)
 }
 
+scan_for_downloaded_metadata_trees() {
+  local search_root="$1"
+  local manifest_path metadata_dir engine_revision
+
+  # actions/upload-artifact strips the non-wildcard prefix from
+  # artifacts/mirror/shorebird/**/artifacts_manifest.yaml, so the downloaded
+  # mirror-metadata artifact is shaped as <engine>/artifacts_manifest.yaml.
+  while IFS= read -r -d '' manifest_path; do
+    if [[ "$manifest_path" == */shorebird/* ]]; then
+      continue
+    fi
+
+    metadata_dir="$(dirname "$manifest_path")"
+    engine_revision="$(basename "$metadata_dir")"
+    copy_tree_to_shorebird_prefix "$metadata_dir" "$engine_revision/"
+  done < <(find "$search_root" -type f -name artifacts_manifest.yaml -print0)
+}
+
 scan_for_shorebird_trees "$INPUT_DIR"
+scan_for_downloaded_metadata_trees "$INPUT_DIR"
 
 archive_index=0
 while IFS= read -r -d '' archive_path; do

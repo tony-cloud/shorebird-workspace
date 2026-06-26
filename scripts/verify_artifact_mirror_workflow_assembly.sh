@@ -63,8 +63,8 @@ for target in \
   write_artifact "$DOWNLOADED/$target" "$target"
 done
 
-mkdir -p "$DOWNLOADED/mirror-metadata/artifacts/mirror/shorebird/$ENGINE_REVISION"
-cat > "$DOWNLOADED/mirror-metadata/artifacts/mirror/shorebird/$ENGINE_REVISION/artifacts_manifest.yaml" <<EOF
+mkdir -p "$DOWNLOADED/mirror-metadata/$ENGINE_REVISION"
+cat > "$DOWNLOADED/mirror-metadata/$ENGINE_REVISION/artifacts_manifest.yaml" <<EOF
 flutter_engine_revision: 'base-engine'
 storage_bucket: 'shorebird'
 artifact_overrides:
@@ -78,7 +78,7 @@ artifact_overrides:
   - 'flutter_infra_release/flutter/\$engine/darwin-arm64-release/FlutterMacOS.framework.zip'
 EOF
 "$ROOT/scripts/write_sha256.sh" \
-  "$DOWNLOADED/mirror-metadata/artifacts/mirror/shorebird/$ENGINE_REVISION/artifacts_manifest.yaml"
+  "$DOWNLOADED/mirror-metadata/$ENGINE_REVISION/artifacts_manifest.yaml"
 
 write_patch_artifact() {
   local artifact_name="$1"
