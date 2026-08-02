@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print
+
 import 'package:license_flavor_patch_test/license.dart';
 
 void main() {

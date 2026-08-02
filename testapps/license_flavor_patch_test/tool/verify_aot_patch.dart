@@ -5,7 +5,7 @@ Future<void> main() async {
   final appDir = File.fromUri(Platform.script).parent.parent;
   final workspaceRoot = appDir.parent.parent;
   final dartRoot = Directory('${workspaceRoot.path}/dart-sdk-new');
-  final patchBuildDir = Directory('${dartRoot.path}/out/ReleaseX64AotPatch');
+  final patchBuildDir = _resolvePatchBuildDir(dartRoot);
   final toolWorkspace = Directory('${workspaceRoot.path}/shorebird');
   final workDir = Directory('${appDir.path}/build/open_aot_patch_verify');
 
@@ -17,11 +17,37 @@ Future<void> main() async {
     );
   }
   final args = argsFile.readAsStringSync();
-  if (!args.contains('dart_enable_aot_patching = true') ||
-      !args.contains('dart_dynamic_modules = false')) {
+  if (!_gnBool(args, 'dart_enable_aot_patching') ||
+      _gnBool(args, 'dart_dynamic_modules')) {
     throw StateError(
       '${argsFile.path} must enable AOT patching and disable dynamic modules.',
     );
+  }
+  final targetOs = _targetOs(args);
+  final targetArch = _targetArch(args);
+  final dart = _resolveExecutable([
+    '${patchBuildDir.path}/dart-sdk/bin/dart',
+    '${patchBuildDir.path}/dart',
+    '${dartRoot.path}/tools/sdks/dart-sdk/bin/dart',
+  ], 'dart');
+  final genSnapshot = _resolveExecutable([
+    '${patchBuildDir.path}/gen_snapshot_product',
+    '${patchBuildDir.path}/exe.stripped/gen_snapshot_product',
+    '${patchBuildDir.path}/gen_snapshot',
+    '${patchBuildDir.path}/exe.stripped/gen_snapshot',
+  ], 'gen_snapshot');
+  final dartaotruntime = _resolveExecutable([
+    '${patchBuildDir.path}/dartaotruntime_product',
+    '${patchBuildDir.path}/exe.stripped/dartaotruntime_product',
+    '${patchBuildDir.path}/dartaotruntime',
+    '${patchBuildDir.path}/dart-sdk/bin/dartaotruntime',
+    '${patchBuildDir.path}/exe.stripped/dartaotruntime',
+  ], 'dartaotruntime');
+  final vmPlatformProduct = File(
+    '${patchBuildDir.path}/vm_platform_product.dill',
+  );
+  if (!vmPlatformProduct.existsSync()) {
+    throw StateError('Missing ${vmPlatformProduct.path}.');
   }
 
   if (workDir.existsSync()) {
@@ -53,7 +79,10 @@ Future<void> main() async {
   await _compileAot(
     workspaceRoot: workspaceRoot,
     dartRoot: dartRoot,
-    patchBuildDir: patchBuildDir,
+    dart: dart,
+    genSnapshot: genSnapshot,
+    vmPlatformProduct: vmPlatformProduct,
+    targetOs: targetOs,
     packageConfig: packageConfig,
     licenseType: 'free',
     outputVmcode: baseVmcode,
@@ -62,7 +91,10 @@ Future<void> main() async {
   await _compileAot(
     workspaceRoot: workspaceRoot,
     dartRoot: dartRoot,
-    patchBuildDir: patchBuildDir,
+    dart: dart,
+    genSnapshot: genSnapshot,
+    vmPlatformProduct: vmPlatformProduct,
+    targetOs: targetOs,
     packageConfig: packageConfig,
     licenseType: 'pro',
     outputVmcode: patchVmcode,
@@ -71,12 +103,12 @@ Future<void> main() async {
   );
 
   _expectStatus(
-    await _runAot(patchBuildDir, baseVmcode),
+    await _runAot(dartaotruntime, baseVmcode),
     license: 'free',
     proFeature: false,
   );
   _expectStatus(
-    await _runAot(patchBuildDir, patchVmcode),
+    await _runAot(dartaotruntime, patchVmcode),
     license: 'pro',
     proFeature: true,
   );
@@ -94,7 +126,7 @@ Future<void> main() async {
   const beforeExpiry = '2029-01-01T00:00:00Z';
   const afterExpiry = '2031-01-01T00:00:00Z';
 
-  await _runTool(toolWorkspace, [
+  await _runTool(toolWorkspace, dart, [
     'link',
     '--base=${baseVmcode.path}',
     '--patch=${patchVmcode.path}',
@@ -105,9 +137,9 @@ Future<void> main() async {
     '--base-license-type=free',
     '--flavor-id=pro',
     '--license-type=pro',
-    '--sdk-hash=${_sha256File(File('${patchBuildDir.path}/gen_snapshot.exe'))}',
-    '--target-os=windows',
-    '--target-arch=x64',
+    '--sdk-hash=${_sha256File(genSnapshot)}',
+    '--target-os=$targetOs',
+    '--target-arch=$targetArch',
     '--obfuscation-map-hash=${_sha256File(baseMap)}',
     '--offline-expires-at=$offlineExpiresAt',
     '--full-snapshot=true',
@@ -123,7 +155,7 @@ Future<void> main() async {
     throw StateError('Expected normalized offline_expires_at metadata.');
   }
 
-  await _runTool(toolWorkspace, [
+  await _runTool(toolWorkspace, dart, [
     'encrypt',
     '--input=${artifact.path}',
     '--output=${encrypted.path}',
@@ -132,7 +164,7 @@ Future<void> main() async {
     '--nonce-hex=$nonceHex',
   ]);
 
-  await _runTool(toolWorkspace, [
+  await _runTool(toolWorkspace, dart, [
     'verify',
     '--input=${encrypted.path}',
     '--key-hex=$keyHex',
@@ -144,7 +176,7 @@ Future<void> main() async {
     '--base=${baseVmcode.path}',
     '--now=$beforeExpiry',
   ]);
-  await _runToolExpectFailure(toolWorkspace, [
+  await _runToolExpectFailure(toolWorkspace, dart, [
     'verify',
     '--input=${encrypted.path}',
     '--key-hex=$keyHex',
@@ -155,7 +187,7 @@ Future<void> main() async {
     '--base=${baseVmcode.path}',
     '--now=$afterExpiry',
   ]);
-  await _runToolExpectFailure(toolWorkspace, [
+  await _runToolExpectFailure(toolWorkspace, dart, [
     'verify',
     '--input=${encrypted.path}',
     '--key-hex=$wrongKeyHex',
@@ -165,7 +197,7 @@ Future<void> main() async {
     '--license-type=pro',
     '--base=${baseVmcode.path}',
   ]);
-  await _runToolExpectFailure(toolWorkspace, [
+  await _runToolExpectFailure(toolWorkspace, dart, [
     'verify',
     '--input=${encrypted.path}',
     '--key-hex=$keyHex',
@@ -176,7 +208,7 @@ Future<void> main() async {
     '--base=${baseVmcode.path}',
   ]);
 
-  await _runTool(toolWorkspace, [
+  await _runTool(toolWorkspace, dart, [
     'dump-blobs',
     '--input=${encrypted.path}',
     '--key-hex=$keyHex',
@@ -189,12 +221,12 @@ Future<void> main() async {
   }
 
   _expectStatus(
-    await _runAot(patchBuildDir, reconstructedVmcode),
+    await _runAot(dartaotruntime, reconstructedVmcode),
     license: 'pro',
     proFeature: true,
   );
 
-  await _runToolExpectFailure(toolWorkspace, [
+  await _runToolExpectFailure(toolWorkspace, dart, [
     'dump-blobs',
     '--input=${encrypted.path}',
     '--key-hex=$keyHex',
@@ -215,27 +247,29 @@ Future<void> main() async {
 Future<void> _compileAot({
   required Directory workspaceRoot,
   required Directory dartRoot,
-  required Directory patchBuildDir,
+  required File dart,
+  required File genSnapshot,
+  required File vmPlatformProduct,
+  required String targetOs,
   required File packageConfig,
   required String licenseType,
   required File outputVmcode,
   required File saveObfuscationMap,
   File? loadObfuscationMap,
 }) async {
-  final dart = '${dartRoot.path}/tools/sdks/dart-sdk/bin/dart.exe';
   final genKernel = '${dartRoot.path}/pkg/vm/bin/gen_kernel.dart';
   final source =
       '${workspaceRoot.path}/testapps/license_flavor_patch_test/bin/license_status.dart';
   final dill = File('${outputVmcode.parent.path}/${licenseType}_app.dill');
-  await _run(dart, [
+  await _run(dart.path, [
     genKernel,
     '--packages',
     packageConfig.path,
     '--platform',
-    '${patchBuildDir.path}/vm_platform_product.dill',
+    vmPlatformProduct.path,
     '--aot',
     '--target-os',
-    'windows',
+    targetOs,
     '-Ddart.vm.product=true',
     '-DLICENSE_TYPE=$licenseType',
     '-o',
@@ -245,10 +279,8 @@ Future<void> _compileAot({
     source,
   ]);
 
-  final genSnapshot = '${patchBuildDir.path}/gen_snapshot.exe';
-  await _run(genSnapshot, [
-    '--snapshot-kind=app-aot-elf',
-    '--elf=${outputVmcode.path}',
+  await _run(genSnapshot.path, [
+    ..._snapshotOutputArgs(targetOs, outputVmcode),
     '--strip',
     '--obfuscate',
     if (loadObfuscationMap != null)
@@ -258,39 +290,108 @@ Future<void> _compileAot({
   ]);
 }
 
-Future<String> _runAot(Directory patchBuildDir, File vmcode) async {
-  final result = await _run('${patchBuildDir.path}/dartaotruntime.exe', [
-    vmcode.path,
-  ]);
+Future<String> _runAot(File dartaotruntime, File vmcode) async {
+  final result = await _run(dartaotruntime.path, [vmcode.path]);
   return result.stdout as String;
 }
 
 Future<ProcessResult> _runTool(
   Directory toolWorkspace,
+  File dart,
   List<String> args,
 ) async {
-  return _run(
-    '${toolWorkspace.parent.path}/dart-sdk-new/tools/sdks/dart-sdk/bin/dart.exe',
-    ['packages/open_aot_patch_tools/bin/open_aot_patch_tools.dart', ...args],
-    workingDirectory: toolWorkspace,
-  );
+  return _run(dart.path, [
+    'packages/open_aot_patch_tools/bin/open_aot_patch_tools.dart',
+    ...args,
+  ], workingDirectory: toolWorkspace);
 }
 
 Future<ProcessResult> _runToolExpectFailure(
   Directory toolWorkspace,
+  File dart,
   List<String> args,
 ) async {
-  final result = await Process.run(
-    '${toolWorkspace.parent.path}/dart-sdk-new/tools/sdks/dart-sdk/bin/dart.exe',
-    ['packages/open_aot_patch_tools/bin/open_aot_patch_tools.dart', ...args],
-    workingDirectory: toolWorkspace.path,
-  );
+  final result = await Process.run(dart.path, [
+    'packages/open_aot_patch_tools/bin/open_aot_patch_tools.dart',
+    ...args,
+  ], workingDirectory: toolWorkspace.path);
   if (result.exitCode == 0) {
     throw StateError(
       'Expected open_aot_patch_tools ${args.join(' ')} to fail.',
     );
   }
   return result;
+}
+
+Directory _resolvePatchBuildDir(Directory dartRoot) {
+  final override = Platform.environment['AOT_PATCH_BUILD_DIR'];
+  if (override != null && override.isNotEmpty) {
+    return Directory(override);
+  }
+  final candidates = [
+    '${dartRoot.path}/xcodebuild/ReleaseARM64',
+    '${dartRoot.path}/out/ReleaseARM64AotPatch',
+    '${dartRoot.path}/out/ReleaseX64AotPatch',
+  ];
+  for (final path in candidates) {
+    final dir = Directory(path);
+    if (File('${dir.path}/args.gn').existsSync()) {
+      return dir;
+    }
+  }
+  return Directory(candidates.first);
+}
+
+File _resolveExecutable(List<String> candidates, String name) {
+  final suffix = Platform.isWindows ? '.exe' : '';
+  for (final path in candidates) {
+    final file = File('$path$suffix');
+    if (file.existsSync()) {
+      return file;
+    }
+  }
+  throw StateError(
+    'Unable to find $name. Tried:\n'
+    '${candidates.map((path) => '  $path$suffix').join('\n')}',
+  );
+}
+
+bool _gnBool(String args, String key) {
+  final value = _gnString(args, key);
+  return value == 'true';
+}
+
+String? _gnString(String args, String key) {
+  final match = RegExp(
+    '^$key = (?:"([^"]+)"|(true|false))\$',
+    multiLine: true,
+  ).firstMatch(args);
+  return match?.group(1) ?? match?.group(2);
+}
+
+String _targetOs(String args) {
+  final targetOs = _gnString(args, 'target_os') ?? Platform.operatingSystem;
+  return switch (targetOs) {
+    'mac' => 'macos',
+    'win' => 'windows',
+    _ => targetOs,
+  };
+}
+
+String _targetArch(String args) {
+  return _gnString(args, 'dart_target_arch') ??
+      _gnString(args, 'target_cpu') ??
+      'x64';
+}
+
+List<String> _snapshotOutputArgs(String targetOs, File outputVmcode) {
+  return switch (targetOs) {
+    'ios' || 'macos' => [
+      '--snapshot-kind=app-aot-macho-dylib',
+      '--macho=${outputVmcode.path}',
+    ],
+    _ => ['--snapshot-kind=app-aot-elf', '--elf=${outputVmcode.path}'],
+  };
 }
 
 Future<ProcessResult> _run(
@@ -340,15 +441,16 @@ void _expectStatus(
 }
 
 String _sha256File(File file) {
-  final result = Process.runSync('certutil', [
-    '-hashfile',
-    file.path,
-    'SHA256',
-  ]);
+  final (executable, args) = switch (Platform.operatingSystem) {
+    'windows' => ('certutil', ['-hashfile', file.path, 'SHA256']),
+    'macos' => ('shasum', ['-a', '256', file.path]),
+    _ => ('sha256sum', [file.path]),
+  };
+  final result = Process.runSync(executable, args);
   if (result.exitCode != 0) {
     throw ProcessException(
-      'certutil',
-      ['-hashfile', file.path, 'SHA256'],
+      executable,
+      args,
       result.stderr.toString(),
       result.exitCode,
     );

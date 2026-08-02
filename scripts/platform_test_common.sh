@@ -55,12 +55,34 @@ run bash -lc "cd '$ROOT/shorebird/packages/shorebird_cli' && '$DART_BIN' pub get
 run bash -lc "cd '$ROOT/shorebird/packages/open_aot_patch_tools' && '$DART_BIN' pub get && '$DART_BIN' test"
 run bash -lc "cd '$ROOT/shorebird-server' && '$GO_BIN' test ./..."
 
-AOT_ARGS="$ROOT/dart-sdk-new/out/ReleaseX64AotPatch/args.gn"
-if [[ -f "$AOT_ARGS" ]]; then
-  run bash -lc "cd '$ROOT/testapps/license_flavor_patch_test' && '$FLUTTER_BIN' pub get && '$DART_BIN' run tool/verify_aot_patch.dart"
+AOT_PATCH_BUILD_DIR="${AOT_PATCH_BUILD_DIR:-}"
+if [[ -z "$AOT_PATCH_BUILD_DIR" ]]; then
+  for candidate in \
+    "$ROOT/dart-sdk-new/xcodebuild/ReleaseARM64" \
+    "$ROOT/dart-sdk-new/out/ReleaseARM64AotPatch" \
+    "$ROOT/dart-sdk-new/out/ReleaseX64AotPatch"; do
+    if [[ -f "$candidate/args.gn" ]]; then
+      AOT_PATCH_BUILD_DIR="$candidate"
+      break
+    fi
+  done
+fi
+
+if [[ -n "$AOT_PATCH_BUILD_DIR" && -f "$AOT_PATCH_BUILD_DIR/args.gn" ]]; then
+  run bash -lc "cd '$ROOT/testapps/license_flavor_patch_test' && '$FLUTTER_BIN' pub get && AOT_PATCH_BUILD_DIR='$AOT_PATCH_BUILD_DIR' '$DART_BIN' run tool/verify_aot_patch.dart"
 else
   echo
-  echo "==> skipping license/flavor AOT verification; missing $AOT_ARGS"
+  echo "==> skipping license/flavor AOT verification; missing AOT patch args.gn"
+fi
+
+if [[ "$PLATFORM" == "macos" ]]; then
+  if [[ -f "$ROOT/flutter/engine/src/out/ios_release/args.gn" &&
+        -f "$ROOT/flutter/engine/src/out/host_release_arm64/args.gn" ]]; then
+    run "$ROOT/scripts/verify_ios_interpreter_route.sh"
+  else
+    echo
+    echo "==> skipping iOS interpreter route verification; missing ios_release or host_release_arm64 args.gn"
+  fi
 fi
 
 if [[ "$PLATFORM" == "macos" && "${RUN_IOS_SMOKE:-0}" == "1" ]]; then
