@@ -7,8 +7,13 @@ INCLUDE_ENGINE_DEPS="${INCLUDE_ENGINE_DEPS:-0}"
 
 case "$PLATFORM" in
   linux)
-    TARGET_OS='["linux"]'
-    DART_DOWNLOAD_ANDROID_DEPS="False"
+    if [[ "$INCLUDE_ENGINE_DEPS" == "1" ]]; then
+      TARGET_OS='["linux", "android"]'
+      DART_DOWNLOAD_ANDROID_DEPS="True"
+    else
+      TARGET_OS='["linux"]'
+      DART_DOWNLOAD_ANDROID_DEPS="False"
+    fi
     ;;
   macos)
     if [[ "$INCLUDE_ENGINE_DEPS" == "1" ]]; then
@@ -28,13 +33,13 @@ esac
 cat > "$ROOT/.gclient" <<EOF
 solutions = [
   {
-    "name": "dart-sdk-new",
-    "url": "https://git.tonycloud.org/dart-lang/sdk.git",
+    "name": "dart-sdk",
+    "url": "https://github.com/tony-cloud/dart-sdk.git",
     "deps_file": "DEPS",
     "managed": False,
     "custom_deps": {},
     "custom_vars": {
-      "dart_root": "dart-sdk-new",
+      "dart_root": "dart-sdk",
       "download_android_deps": $DART_DOWNLOAD_ANDROID_DEPS,
       "checkout_javascript_engines": False,
       "checkout_benchmarks_internal": False,
@@ -52,7 +57,7 @@ if [[ "$INCLUDE_ENGINE_DEPS" == "1" ]]; then
 solutions = [
   {
     "name": ".",
-    "url": "https://git.tonycloud.org/flutter/flutter.git",
+    "url": "https://github.com/tony-cloud/flutter.git",
     "deps_file": "DEPS",
     "managed": False,
     "custom_deps": {
@@ -77,7 +82,6 @@ solutions = [
       "engine/src/flutter/third_party/dart/third_party/pkg/tools": None,
       "engine/src/flutter/third_party/dart/third_party/pkg/vector_math": None,
       "engine/src/flutter/third_party/dart/third_party/pkg/web": None,
-      "engine/src/flutter/third_party/dart/third_party/pkg/webdev": None,
       "engine/src/flutter/third_party/dart/third_party/pkg/webdriver": None,
       "engine/src/flutter/third_party/dart/third_party/pkg/webkit_inspection_protocol": None,
       "engine/src/flutter/third_party/dart/tools/sdks/dart-sdk": None,

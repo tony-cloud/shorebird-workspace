@@ -21,6 +21,8 @@ test_bytecode.dart
 # Dart/Flutter build output in root-owned test fixtures.
 **/.dart_tool/
 **/build/
+**/__pycache__/
+*.pyc
 
 # Local editor/OS files.
 .DS_Store
