@@ -1306,7 +1306,6 @@ jobs:
             --runtime-mode=release \
             --mac-cpu=arm64 \
             --target-dir=host_release_arm64 \
-            --shorebird-interpreter \
             --no-prebuilt-dart-sdk \
             --gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=true shorebird_use_interpreter=true flutter_prebuilt_dart_sdk=false'
 
@@ -1321,7 +1320,6 @@ jobs:
             --ios \
             --runtime-mode=release \
             --target-dir=ios_release \
-            --shorebird-interpreter \
             --no-prebuilt-dart-sdk \
             --gn-args='flutter_prebuilt_dart_sdk=false'
 
