@@ -1105,7 +1105,7 @@ jobs:
 
   web-sdk:
     name: Build web SDK artifact
-    needs: source-checks
+    needs: [source-checks, custom-dart-sdk]
     runs-on: ${{ inputs.linux_heavy_runner || 'ubuntu-latest' }}
     timeout-minutes: 180
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.full_sdk_build }}
@@ -1153,6 +1153,22 @@ jobs:
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_gclient_sync }}
         working-directory: flutter
         run: gclient sync --no-history
+
+      - name: Download custom Dart tool SDK
+        uses: actions/download-artifact@v4
+        with:
+          name: custom-dart-sdk-linux-x64
+          path: artifacts/custom-dart-sdk-linux-x64
+
+      - name: Install custom Dart tool SDK
+        run: |
+          set -euo pipefail
+          archive=artifacts/custom-dart-sdk-linux-x64/custom-dart-sdk-linux-x64.tar.gz
+          tar -C artifacts/custom-dart-sdk-linux-x64 -xzf "$archive"
+          custom_sdk=artifacts/custom-dart-sdk-linux-x64/custom-dart-sdk-linux-x64/dart-sdk
+          test -x "$custom_sdk/bin/dart"
+          rm -rf dart-sdk/tools/sdks/dart-sdk
+          cp -R "$custom_sdk" dart-sdk/tools/sdks/dart-sdk
 
       - name: Verify Dart tool SDK
         run: ./scripts/verify_dart_tool_sdk.sh
