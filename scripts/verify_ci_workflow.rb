@@ -978,11 +978,9 @@ assert!(
   'engine Dart SDK BUILD.gn must use the Dart SDK copy_tree template available in this checkout'
 )
 assert!(
-  flutter_dart_isolate.include?('#include "flutter/shell/common/shorebird/updater.h"') &&
-    flutter_dart_isolate.include?('std::string GetYamlValue(') &&
-    flutter_dart_isolate.include?('return UnquoteYamlValue(GetYamlValue(config.yaml_config, key));') &&
-    !flutter_dart_isolate.include?('#include "flutter/shell/common/shorebird/shorebird.h"'),
-  'dart_isolate.cc must avoid depending on the full Shorebird wrapper target so GN header checks pass'
+  !flutter_dart_isolate.include?('#include "flutter/shell/common/shorebird/shorebird.h"') &&
+    !flutter_dart_isolate.include?('#include "flutter/shell/common/shorebird/updater.h"'),
+  'dart_isolate.cc must remain independent of Shorebird wrapper targets so GN header checks pass'
 )
 assert!(
   flutter_runtime_shorebird_build.include?('$dart_src/runtime/bin:shared_object_loaders') &&
