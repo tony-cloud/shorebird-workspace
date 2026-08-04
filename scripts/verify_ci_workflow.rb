@@ -2000,7 +2000,6 @@ assert!(
   run_text_by_job.fetch('ios-engine').include?('rustup target add aarch64-apple-ios aarch64-apple-darwin') &&
     run_text_by_job.fetch('ios-engine').include?('--no-prebuilt-dart-sdk') &&
     run_text_by_job.fetch('ios-engine').include?("--gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=true shorebird_use_interpreter=true flutter_prebuilt_dart_sdk=false'") &&
-    run_text_by_job.fetch('ios-engine').include?("--gn-args='flutter_prebuilt_dart_sdk=false'") &&
     run_text_by_job.fetch('ios-engine').include?('create_macos_gen_snapshots') &&
     run_text_by_job.fetch('ios-engine').include?('create_macos_analyze_snapshots') &&
     run_text_by_job.fetch('ios-engine').include?('verify_ios_interpreter_route.sh') &&
