@@ -2012,6 +2012,8 @@ assert!(
     run_text_by_job.fetch('ios-engine').include?('create_macos_gen_snapshots') &&
     run_text_by_job.fetch('ios-engine').include?('create_macos_analyze_snapshots') &&
     run_text_by_job.fetch('ios-engine').include?('verify_ios_interpreter_route.sh') &&
+    run_text_by_job.fetch('ios-engine').include?('out/ios_release/obj') &&
+    run_text_by_job.fetch('ios-engine').include?('out/host_release_arm64/obj') &&
     run_text_by_job.fetch('ios-engine').include?('require_executable flutter/engine/src/out/host_release_arm64/gen_snapshot') &&
     run_text_by_job.fetch('ios-engine').include?('require_directory flutter/engine/src/out/ios_release/Flutter.xcframework') &&
     run_text_by_job.fetch('ios-engine').include?('require_executable flutter/engine/src/out/ios_release/analyze_snapshot_arm64') &&

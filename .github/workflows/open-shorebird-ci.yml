@@ -1338,6 +1338,19 @@ jobs:
       - name: Verify iOS interpreter route
         run: ./scripts/verify_ios_interpreter_route.sh
 
+      - name: Reclaim Apple build disk
+        run: |
+          set -euo pipefail
+          # The iOS build has already been verified and packaged inputs are
+          # still present. Remove only intermediate GN/Ninja trees before the
+          # second Apple engine build needs the same runner disk.
+          rm -rf \
+            flutter/engine/src/out/ios_release/obj \
+            flutter/engine/src/out/ios_release/gen \
+            flutter/engine/src/out/host_release_arm64/obj \
+            flutter/engine/src/out/host_release_arm64/gen
+          df -h .
+
       - name: Configure macOS engine
         working-directory: flutter/engine/src
         run: |
