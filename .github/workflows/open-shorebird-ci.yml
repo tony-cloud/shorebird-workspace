@@ -29,7 +29,7 @@ on:
       macos_heavy_runner:
         description: Runner label for macOS SDK and Apple engine heavy jobs.
         required: false
-        default: macos-14
+        default: macos-15
         type: string
       sdk_min_free_disk_gb:
         description: Minimum free disk GiB required before SDK-only heavy jobs.
@@ -618,7 +618,7 @@ jobs:
   custom-dart-sdk-macos:
     name: Build custom Dart SDK (macOS arm64)
     needs: source-checks
-    runs-on: ${{ inputs.macos_heavy_runner || 'macos-14' }}
+    runs-on: ${{ inputs.macos_heavy_runner || 'macos-15' }}
     timeout-minutes: 180
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.full_sdk_build }}
     steps:
@@ -1248,7 +1248,7 @@ jobs:
   ios-engine:
     name: Build Apple engine artifacts
     needs: source-checks
-    runs-on: ${{ inputs.macos_heavy_runner || 'macos-14' }}
+    runs-on: ${{ inputs.macos_heavy_runner || 'macos-15' }}
     timeout-minutes: 300
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.full_sdk_build }}
     steps:

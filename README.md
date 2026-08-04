@@ -77,7 +77,7 @@ dispatches the hosted full SDK workflow, waits for it, downloads artifacts, and
 runs the downloaded-release verifier. It uses `gh` when available, or the
 GitHub REST API with `GITHUB_TOKEN`/`GH_TOKEN`, `curl`, `jq`, and `unzip`.
 The heavy SDK/engine jobs default to managed GitHub-hosted runners
-`ubuntu-latest` and `macos-14`, then run an early disk-capacity preflight.
+`ubuntu-latest` and `macos-15`, then run an early disk-capacity preflight.
 Override `linux_heavy_runner` / `macos_heavy_runner` only when you want larger
 or self-hosted runners. The dispatch inputs `sdk_min_free_disk_gb` and
 `engine_min_free_disk_gb` control the preflight thresholds.

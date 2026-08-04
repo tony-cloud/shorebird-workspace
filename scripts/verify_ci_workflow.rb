@@ -1716,7 +1716,7 @@ assert!(
 assert!(
   inputs.dig('full_sdk_build', 'default') == true &&
     inputs.dig('linux_heavy_runner', 'default') == 'ubuntu-latest' &&
-    inputs.dig('macos_heavy_runner', 'default') == 'macos-14' &&
+    inputs.dig('macos_heavy_runner', 'default') == 'macos-15' &&
     inputs.dig('sdk_min_free_disk_gb', 'default') == 8 &&
     inputs.dig('engine_min_free_disk_gb', 'default') == 8,
   'heavy SDK/engine workflow inputs must default to managed GitHub-hosted runners and enabled full builds'
@@ -1725,8 +1725,8 @@ assert!(
   jobs.fetch('custom-dart-sdk').fetch('runs-on').to_s.include?("inputs.linux_heavy_runner || 'ubuntu-latest'") &&
     jobs.fetch('android-engine').fetch('runs-on').to_s.include?("inputs.linux_heavy_runner || 'ubuntu-latest'") &&
     jobs.fetch('web-sdk').fetch('runs-on').to_s.include?("inputs.linux_heavy_runner || 'ubuntu-latest'") &&
-    jobs.fetch('custom-dart-sdk-macos').fetch('runs-on').to_s.include?("inputs.macos_heavy_runner || 'macos-14'") &&
-    jobs.fetch('ios-engine').fetch('runs-on').to_s.include?("inputs.macos_heavy_runner || 'macos-14'"),
+    jobs.fetch('custom-dart-sdk-macos').fetch('runs-on').to_s.include?("inputs.macos_heavy_runner || 'macos-15'") &&
+    jobs.fetch('ios-engine').fetch('runs-on').to_s.include?("inputs.macos_heavy_runner || 'macos-15'"),
   'heavy SDK/engine jobs must default to managed GitHub-hosted runners'
 )
 assert!(
