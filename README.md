@@ -55,14 +55,22 @@ execute source-level checks and build distributable CLI/server artifacts:
 
 Default push and pull request runs also build the large SDK and engine outputs:
 patched Dart SDK archives for Linux x64 and macOS arm64, Linux x64 desktop
-engine artifacts, Android arm64 engine artifacts, Flutter web SDK artifacts,
-and Apple iOS/macOS engine artifacts. A successful full SDK run also uploads
+engine artifacts, Android arm64 engine artifacts, and Apple iOS/macOS engine
+artifacts. Shorebird does not support web patching, so web is excluded from the
+default build and artifact mirror. A successful full SDK run also uploads
 `open-shorebird-artifact-mirror`, a publish-ready mirror archive assembled from
-the produced patch-tool, metadata, engine, and web artifacts, plus
+the produced patch-tool, metadata, and native engine artifacts, plus
 `open-shorebird-release-manifest`, a checksum-verified provenance index for the
 CLI, server, SDK, engine, and mirror archives. Manual `workflow_dispatch` runs
 keep `full_sdk_build=true` by default; set it to `false` only when you want a
-source/CLI/server-only run.
+source/CLI/server-only run. The unsupported web recipe is manual-only and
+requires `run_unsupported_web_build=true`.
+
+After the complete native matrix succeeds on the default branch, CI publishes
+updater-compatible `dart-sdk-linux-x64.zip` and
+`dart-sdk-darwin-arm64.zip` assets in a commit-versioned GitHub Release and
+marks it latest. Flutter's SDK updater downloads those tested files from this
+repository's `releases/latest/download` endpoint.
 Use `scripts/validate_release_manifest.py` to audit a downloaded manifest
 against the downloaded workflow artifacts before publishing or mirroring them.
 The wrapper `scripts/verify_downloaded_release_artifacts.sh` runs that manifest

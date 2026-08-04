@@ -482,9 +482,9 @@ assert!(
     generated_artifact_manifest.include?('flutter_infra_release/flutter/$engine/android-arm64-release/artifacts.zip') &&
     generated_artifact_manifest.include?('flutter_infra_release/flutter/$engine/linux-x64-release/artifacts.zip') &&
     generated_artifact_manifest.include?('flutter_infra_release/flutter/$engine/ios-release/artifacts.zip') &&
-    generated_artifact_manifest.include?('flutter_infra_release/flutter/$engine/flutter-web-sdk.zip') &&
+    !generated_artifact_manifest.include?('flutter_infra_release/flutter/$engine/flutter-web-sdk.zip') &&
     generated_artifact_manifest.include?('flutter_infra_release/flutter/$engine/darwin-arm64-release/FlutterMacOS.framework.zip'),
-  'artifact manifest helper must emit open mirror overrides for CI-produced engine artifacts'
+  'artifact manifest helper must emit supported native mirror overrides and exclude unsupported web artifacts'
 )
 generated_manifest_yaml = YAML.safe_load(generated_artifact_manifest)
 generated_artifact_overrides = generated_manifest_yaml.fetch('artifact_overrides')
@@ -1037,7 +1037,7 @@ assert!(
 assert!(
   flutter_web_sdk_build.include?('zip_bundle_from_file("flutter_web_sdk_archive")') &&
     flutter_web_sdk_build.include?('output = "flutter-web-sdk.zip"'),
-  'web SDK BUILD.gn must still define flutter-web-sdk.zip used by CI'
+  'upstream web SDK BUILD.gn definition must remain intact even though unsupported web CI is disabled'
 )
 assert!(
   flutter_ios_build.include?('action("flutter_framework")') &&
@@ -1483,6 +1483,7 @@ required_jobs = %w[
   web-sdk
   ios-engine
   artifact-mirror
+  publish-sdk-release
   linux-runtime-smoke
   android-runtime-smoke
 ]
@@ -1511,6 +1512,7 @@ required_inputs = %w[
   sdk_min_free_disk_gb
   engine_min_free_disk_gb
   run_runtime_smokes
+  run_unsupported_web_build
   linux_runtime_runner
   android_runtime_runner
   android_serial
@@ -1540,7 +1542,7 @@ assert!(
   )
 end
 
-%w[custom-dart-sdk custom-dart-sdk-macos linux-engine android-engine web-sdk ios-engine].each do |job_name|
+%w[custom-dart-sdk custom-dart-sdk-macos linux-engine android-engine ios-engine].each do |job_name|
   condition = jobs.fetch(job_name).fetch('if', '').to_s
   assert!(
     condition.include?("github.event_name != 'workflow_dispatch'") &&
@@ -1575,7 +1577,6 @@ end
   'custom-dart-sdk-macos' => 'SDK_MIN_FREE_DISK_GB',
   'linux-engine' => 'ENGINE_MIN_FREE_DISK_GB',
   'android-engine' => 'ENGINE_MIN_FREE_DISK_GB',
-  'web-sdk' => 'ENGINE_MIN_FREE_DISK_GB',
   'ios-engine' => 'ENGINE_MIN_FREE_DISK_GB',
 }.each do |job_name, disk_env_var|
   run_text = job_runs(jobs.fetch(job_name)).join("\n")
@@ -1591,12 +1592,22 @@ assert!(
     artifact_mirror_condition.include?('full_sdk_build'),
   'artifact-mirror must run on default push/PR CI and allow manual full_sdk_build opt-out'
 )
-%w[cli-artifacts linux-engine android-engine web-sdk ios-engine].each do |dependency|
+%w[cli-artifacts linux-engine android-engine ios-engine].each do |dependency|
   assert!(
     Array(jobs.fetch('artifact-mirror').fetch('needs', [])).include?(dependency),
     "artifact-mirror must depend on #{dependency}"
   )
 end
+assert!(
+  jobs.fetch('web-sdk').fetch('if', '').to_s.include?("github.event_name == 'workflow_dispatch'") &&
+    jobs.fetch('web-sdk').fetch('if', '').to_s.include?('inputs.run_unsupported_web_build') &&
+    inputs.dig('run_unsupported_web_build', 'default') == false,
+  'unsupported web SDK build must be disabled by default and manual-only'
+)
+assert!(
+  Array(jobs.fetch('artifact-mirror').fetch('needs', [])).none? { |dependency| dependency == 'web-sdk' },
+  'artifact-mirror must not depend on the unsupported web SDK build'
+)
 %w[server-artifacts custom-dart-sdk custom-dart-sdk-macos].each do |dependency|
   assert!(
     Array(jobs.fetch('artifact-mirror').fetch('needs', [])).include?(dependency),
@@ -1792,7 +1803,6 @@ required_uploads = {
   'custom-dart-sdk-macos' => ['custom-dart-sdk-macos-arm64'],
   'linux-engine' => ['linux-engine-x64'],
   'android-engine' => ['android-engine-arm64'],
-  'web-sdk' => ['flutter-web-sdk'],
   'ios-engine' => ['ios-interpreter-engine', 'macos-engine-arm64'],
   'artifact-mirror' => ['open-shorebird-artifact-mirror', 'open-shorebird-release-manifest'],
 }
@@ -1853,7 +1863,42 @@ end
     "#{job_name} must extract and smoke-test the downloadable Dart SDK archive layout"
   )
 end
-%w[linux-engine android-engine web-sdk ios-engine].each do |job_name|
+release_sdk_assets = {
+  'custom-dart-sdk' => 'dart-sdk-linux-x64.zip',
+  'custom-dart-sdk-macos' => 'dart-sdk-darwin-arm64.zip',
+}
+release_sdk_assets.each do |job_name, asset_name|
+  run_text = run_text_by_job.fetch(job_name)
+  upload_text = jobs.fetch(job_name).fetch('steps', []).filter_map do |step|
+    next unless step['uses'].to_s == 'actions/upload-artifact@v4'
+
+    step.dig('with', 'path').to_s
+  end.join("\n")
+  assert!(
+    run_text.include?(asset_name) &&
+      run_text.include?("#{asset_name}.sha256") &&
+      run_text.include?('release_sdk_extract_dir="$(mktemp -d)"') &&
+      upload_text.include?(asset_name) &&
+      upload_text.include?("#{asset_name}.sha256"),
+    "#{job_name} must package, smoke-test, checksum, and upload updater-compatible #{asset_name}"
+  )
+end
+publish_release = jobs.fetch('publish-sdk-release')
+publish_release_condition = publish_release.fetch('if', '').to_s
+publish_release_runs = job_runs(publish_release).join("\n")
+assert!(
+  Array(publish_release.fetch('needs', [])).include?('artifact-mirror') &&
+    publish_release_condition.include?("github.event_name == 'push'") &&
+    publish_release_condition.include?('github.event.repository.default_branch') &&
+    publish_release.dig('permissions', 'contents').to_s == 'write' &&
+    publish_release_runs.include?('gh release create') &&
+    publish_release_runs.include?('--latest') &&
+    publish_release_runs.include?('dart-sdk-linux-x64.zip') &&
+    publish_release_runs.include?('dart-sdk-darwin-arm64.zip') &&
+    publish_release_runs.include?('releases/latest/download/$asset'),
+  'SDK release job must publish updater-compatible assets only after native artifact assembly and verify latest release downloads'
+)
+%w[linux-engine android-engine ios-engine].each do |job_name|
   assert!(
     run_text_by_job.fetch(job_name).include?('engine_revision="$(cat flutter/bin/internal/engine.version)"') &&
       run_text_by_job.fetch(job_name).include?('"engine_revision": "${engine_revision}"'),
@@ -1886,14 +1931,6 @@ engine_archive_checks = {
     'test -f "$engine_extract_dir/android-engine/analyze_snapshot_arm64"',
     'test -f "$engine_extract_dir/android-engine/mirror/shorebird/flutter_infra_release/flutter/$engine_revision/android-arm64-release/artifacts.zip"',
     'test -f "$engine_extract_dir/android-engine/mirror/shorebird/flutter_infra_release/flutter/$engine_revision/android-arm64-release/symbols.zip"',
-  ],
-  'web-sdk' => [
-    'sdk_extract_dir="$(mktemp -d)"',
-    'tar -C "$sdk_extract_dir" -xzf flutter-web-sdk.tar.gz',
-    'test -f "$sdk_extract_dir/web-sdk/manifest.json"',
-    'test -f "$sdk_extract_dir/web-sdk/wasm_release.args.gn"',
-    'test -f "$sdk_extract_dir/web-sdk/flutter-web-sdk.zip"',
-    'test -f "$sdk_extract_dir/web-sdk/mirror/shorebird/flutter_infra_release/flutter/$engine_revision/flutter-web-sdk.zip"',
   ],
   'ios-engine' => [
     'engine_extract_dir="$(mktemp -d)"',
@@ -1950,9 +1987,6 @@ expected_outputs = {
   'android-engine' => [
     'android-engine-arm64.tar.gz',
   ],
-  'web-sdk' => [
-    'flutter-web-sdk.tar.gz',
-  ],
   'ios-engine' => [
     'ios-interpreter-engine.tar.gz',
     'macos-engine-arm64.tar.gz',
@@ -1979,7 +2013,6 @@ end
   custom-dart-sdk-macos
   linux-engine
   android-engine
-  web-sdk
   ios-engine
   artifact-mirror
 ].each do |job_name|
@@ -2099,6 +2132,7 @@ assert!(
   'Android engine job must build and verify the native AOT patch runtime without DDM or interpreter mode'
 )
 assert!(
+  jobs.fetch('web-sdk').fetch('if', '').to_s.include?('inputs.run_unsupported_web_build') &&
   run_text_by_job.fetch('web-sdk').include?('verify_engine_args.sh') &&
     run_text_by_job.fetch('web-sdk').include?('verify_dart_tool_sdk.sh') &&
     run_text_by_job.fetch('web-sdk').include?('sync_flutter_prebuilt_dart_sdk.sh linux-x64') &&
@@ -2106,7 +2140,7 @@ assert!(
     run_text_by_job.fetch('web-sdk').include?('dart_dynamic_modules=false') &&
     run_text_by_job.fetch('web-sdk').include?('flutter_prebuilt_dart_sdk=true') &&
     run_text_by_job.fetch('web-sdk').include?('mirror/shorebird/flutter_infra_release/flutter/${engine_revision}/flutter-web-sdk.zip'),
-  'web SDK job must explicitly disable and verify DDM'
+  'unsupported web SDK recipe must remain disabled while retaining explicit DDM safeguards'
 )
 assert!(
   run_text_by_job.fetch('ios-engine').include?('verify_engine_args.sh') &&
@@ -2148,7 +2182,6 @@ assert!(
   custom-dart-sdk-macos-arm64
   linux-engine-x64
   android-engine-arm64
-  flutter-web-sdk
   ios-interpreter-engine
   macos-engine-arm64
 ].each do |download_name|
@@ -2167,7 +2200,6 @@ assert!(
     artifact_mirror_run_text.include?('cp -R downloaded-artifacts/mirror-* mirror-input/') &&
     artifact_mirror_run_text.include?('cp -R downloaded-artifacts/linux-engine-x64 mirror-input/') &&
     artifact_mirror_run_text.include?('cp -R downloaded-artifacts/android-engine-arm64 mirror-input/') &&
-    artifact_mirror_run_text.include?('cp -R downloaded-artifacts/flutter-web-sdk mirror-input/') &&
     artifact_mirror_run_text.include?('cp -R downloaded-artifacts/ios-interpreter-engine mirror-input/') &&
     artifact_mirror_run_text.include?('cp -R downloaded-artifacts/macos-engine-arm64 mirror-input/') &&
     artifact_mirror_run_text.match?(
@@ -2200,7 +2232,6 @@ assert!(
   custom-dart-sdk-macos-arm64/*custom-dart-sdk-macos-arm64.tar.gz
   linux-engine-x64/*linux-engine-x64.tar.gz
   android-engine-arm64/*android-engine-arm64.tar.gz
-  flutter-web-sdk/*flutter-web-sdk.tar.gz
   ios-interpreter-engine/*ios-interpreter-engine.tar.gz
   macos-engine-arm64/*macos-engine-arm64.tar.gz
   mirror-patch-linux-x64.zip/*patch-linux-x64.zip
@@ -2226,7 +2257,6 @@ end
   linux-x64-release/artifacts.zip
   linux-x64-release/linux-x64-flutter-gtk.zip
   ios-release/artifacts.zip
-  flutter-web-sdk.zip
   darwin-arm64-release/FlutterMacOS.framework.zip
   flutter_patched_sdk_product.zip
 ].each do |required_path|

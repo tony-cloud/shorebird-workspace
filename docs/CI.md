@@ -105,7 +105,7 @@ already laid out under `shorebird/flutter_infra_release/...`; copy that subtree
 to the same artifact mirror root to satisfy the generated
 `artifacts_manifest.yaml` overrides.
 On `full_sdk_build=true` runs, `artifact-mirror` downloads the mirror metadata,
-all platform patch ZIPs, and the Linux/Android/web/iOS/macOS engine artifacts,
+all platform patch ZIPs, and the Linux/Android/iOS/macOS engine artifacts,
 then uploads `open-shorebird-artifact-mirror`. It also downloads the CLI,
 server, and custom Dart SDK artifacts and uploads
 `open-shorebird-release-manifest`, a JSON manifest that verifies every archived
@@ -303,8 +303,7 @@ The heavy jobs install Chromium's `depot_tools` into the workflow workspace
 before running `gclient`, so they can bootstrap from a clean runner. The
 workflow defaults heavy jobs to managed GitHub-hosted runners:
 
-- `ubuntu-latest` for Linux SDK, Linux engine, Android engine, and web SDK
-  builds
+- `ubuntu-latest` for Linux SDK, Linux engine, and Android engine builds
 - `macos-15` for macOS Dart SDK, iOS engine, and macOS engine builds
 
 Override `linux_heavy_runner` / `macos_heavy_runner` when a repository wants
@@ -323,10 +322,11 @@ Manual dispatch accepts these workflow inputs:
 
 | Input | Default | Used by |
 | --- | --- | --- |
-| `linux_heavy_runner` | `ubuntu-latest` | `custom-dart-sdk`, `linux-engine`, `android-engine`, `web-sdk` |
+| `linux_heavy_runner` | `ubuntu-latest` | `custom-dart-sdk`, `linux-engine`, `android-engine`; also the manual unsupported web recipe |
 | `macos_heavy_runner` | `macos-15` | `custom-dart-sdk-macos`, `ios-engine` / Apple engine artifacts |
 | `sdk_min_free_disk_gb` | `8` | Minimum free disk GiB for `custom-dart-sdk` and `custom-dart-sdk-macos` |
-| `engine_min_free_disk_gb` | `8` | Minimum free disk GiB for Linux, Android, web, iOS, and macOS engine builds |
+| `engine_min_free_disk_gb` | `8` | Minimum free disk GiB for Linux, Android, iOS, and macOS engine builds |
+| `run_unsupported_web_build` | `false` | Explicitly opt into the experimental web recipe; web is not part of supported-platform CI or the artifact mirror |
 | `base_flutter_engine_revision` | empty | Optional upstream Flutter engine revision recorded in `artifacts_manifest.yaml` for non-overridden artifact proxy fallbacks |
 
 Use these inputs to move the SDK/engine jobs onto different larger or
@@ -378,6 +378,12 @@ flags. The workflow also uploads `.sha256` sidecars for the SDK archives.
 Before writing the checksum, each SDK job extracts the archive, verifies
 `manifest.json`, `args.gn`, `gen_snapshot`, `dartaotruntime`, and
 `dart-sdk/bin/dart`, then runs the extracted `dart --version`.
+
+The same jobs package updater-compatible `dart-sdk-linux-x64.zip` and
+`dart-sdk-darwin-arm64.zip` files with checksum sidecars. After
+`artifact-mirror` proves every supported native producer succeeded,
+`publish-sdk-release` creates a commit-versioned GitHub Release, marks it
+latest, and verifies both assets through `releases/latest/download`.
 
 `ios-engine` builds:
 
@@ -443,7 +449,11 @@ revision, and a `.sha256` sidecar. CI extracts the archive before upload and
 verifies the Android artifacts/symbols zips, `flutter.jar`, `libflutter.so`,
 host snapshot/analyzer tools, args file, manifest, and mirror subtree.
 
-`web-sdk` builds the Flutter web SDK archive from `wasm_release` with
+Shorebird does not support web patching, so `web-sdk` is excluded from push and
+pull-request CI, is not an `artifact-mirror` dependency, and is disabled on
+manual runs by default. Setting `run_unsupported_web_build=true` during a
+manual dispatch runs the retained experimental recipe. It builds the Flutter
+web SDK archive from `wasm_release` with
 `dart_dynamic_modules=false` and `flutter_prebuilt_dart_sdk=true`, then uploads
 `flutter-web-sdk.zip`, a mirror-ready copy of that SDK archive, `args.gn`, a
 manifest with the Flutter engine revision, and a `.sha256` sidecar. The web job
@@ -453,8 +463,9 @@ running GN. Native engine jobs use `--no-prebuilt-dart-sdk` because the open
 workspace builds those SDK artifacts from the linked Dart checkout instead. Web
 is still not a Shorebird CodePush release platform in this CLI/protocol; this
 job exists to keep the open Flutter SDK/web artifacts buildable from the
-workspace. CI extracts the web SDK archive before upload and verifies the SDK
-zip, args file, manifest, and mirror subtree.
+workspace. When explicitly enabled, the recipe extracts the web SDK archive
+before upload and verifies the SDK zip, args file, manifest, and mirror subtree;
+its output is intentionally not published as a supported Shorebird artifact.
 
 Set `run_gclient_sync=false` only for debugging a runner image that already has
 all gclient-managed dependencies restored.

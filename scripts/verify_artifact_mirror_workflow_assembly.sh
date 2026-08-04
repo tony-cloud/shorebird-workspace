@@ -74,7 +74,6 @@ artifact_overrides:
   - 'flutter_infra_release/flutter/\$engine/linux-x64-release/linux-x64-flutter-gtk.zip'
   - 'flutter_infra_release/flutter/\$engine/ios-release/artifacts.zip'
   - 'flutter_infra_release/flutter/\$engine/flutter_patched_sdk_product.zip'
-  - 'flutter_infra_release/flutter/\$engine/flutter-web-sdk.zip'
   - 'flutter_infra_release/flutter/\$engine/darwin-arm64-release/FlutterMacOS.framework.zip'
 EOF
 "$ROOT/scripts/write_sha256.sh" \
@@ -133,9 +132,6 @@ make_engine_archive \
   artifacts.zip android-artifacts \
   symbols.zip android-symbols
 make_engine_archive \
-  flutter-web-sdk flutter-web-sdk.tar.gz web-sdk . \
-  flutter-web-sdk.zip web-sdk
-make_engine_archive \
   ios-interpreter-engine ios-interpreter-engine.tar.gz ios-engine ios-release \
   artifacts.zip ios-artifacts
 make_engine_archive \
@@ -147,7 +143,6 @@ mkdir -p "$mirror_input"
 cp -R "$DOWNLOADED"/mirror-* "$mirror_input/"
 cp -R "$DOWNLOADED/linux-engine-x64" "$mirror_input/"
 cp -R "$DOWNLOADED/android-engine-arm64" "$mirror_input/"
-cp -R "$DOWNLOADED/flutter-web-sdk" "$mirror_input/"
 cp -R "$DOWNLOADED/ios-interpreter-engine" "$mirror_input/"
 cp -R "$DOWNLOADED/macos-engine-arm64" "$mirror_input/"
 
@@ -187,7 +182,6 @@ cp "$TMP_DIR/open-shorebird-artifact-mirror.tar.gz.sha256" "$manifest_input/open
   --require 'custom-dart-sdk-macos-arm64/*custom-dart-sdk-macos-arm64.tar.gz' \
   --require 'linux-engine-x64/*linux-engine-x64.tar.gz' \
   --require 'android-engine-arm64/*android-engine-arm64.tar.gz' \
-  --require 'flutter-web-sdk/*flutter-web-sdk.tar.gz' \
   --require 'ios-interpreter-engine/*ios-interpreter-engine.tar.gz' \
   --require 'macos-engine-arm64/*macos-engine-arm64.tar.gz' \
   --require 'mirror-patch-linux-x64.zip/*patch-linux-x64.zip' \

@@ -50,6 +50,11 @@ on:
         required: false
         default: false
         type: boolean
+      run_unsupported_web_build:
+        description: Manually run the experimental web recipe (not part of supported-platform CI).
+        required: false
+        default: false
+        type: boolean
       linux_runtime_runner:
         description: Runner label for the Linux runtime smoke job.
         required: false
@@ -608,7 +613,16 @@ jobs:
           test -x "$sdk_extract_dir/custom-dart-sdk-linux-x64/gen_snapshot"
           test -x "$sdk_extract_dir/custom-dart-sdk-linux-x64/dartaotruntime"
           "$sdk_extract_dir/custom-dart-sdk-linux-x64/dart-sdk/bin/dart" --version
+          (
+            cd dart-sdk/out/ReleaseX64
+            zip -qr "$GITHUB_WORKSPACE/dart-sdk-linux-x64.zip" dart-sdk
+          )
+          release_sdk_extract_dir="$(mktemp -d)"
+          unzip -q dart-sdk-linux-x64.zip -d "$release_sdk_extract_dir"
+          test -x "$release_sdk_extract_dir/dart-sdk/bin/dart"
+          "$release_sdk_extract_dir/dart-sdk/bin/dart" --version
           ./scripts/write_sha256.sh custom-dart-sdk-linux-x64.tar.gz custom-dart-sdk-linux-x64.tar.gz.sha256
+          ./scripts/write_sha256.sh dart-sdk-linux-x64.zip dart-sdk-linux-x64.zip.sha256
 
       - name: Upload custom Dart SDK
         uses: actions/upload-artifact@v4
@@ -617,6 +631,8 @@ jobs:
           path: |
             custom-dart-sdk-linux-x64.tar.gz
             custom-dart-sdk-linux-x64.tar.gz.sha256
+            dart-sdk-linux-x64.zip
+            dart-sdk-linux-x64.zip.sha256
           if-no-files-found: error
 
   custom-dart-sdk-macos:
@@ -718,7 +734,16 @@ jobs:
           test -x "$sdk_extract_dir/custom-dart-sdk-macos-arm64/gen_snapshot"
           test -x "$sdk_extract_dir/custom-dart-sdk-macos-arm64/dartaotruntime"
           "$sdk_extract_dir/custom-dart-sdk-macos-arm64/dart-sdk/bin/dart" --version
+          (
+            cd dart-sdk/xcodebuild/ReleaseARM64
+            zip -qr "$GITHUB_WORKSPACE/dart-sdk-darwin-arm64.zip" dart-sdk
+          )
+          release_sdk_extract_dir="$(mktemp -d)"
+          unzip -q dart-sdk-darwin-arm64.zip -d "$release_sdk_extract_dir"
+          test -x "$release_sdk_extract_dir/dart-sdk/bin/dart"
+          "$release_sdk_extract_dir/dart-sdk/bin/dart" --version
           ./scripts/write_sha256.sh custom-dart-sdk-macos-arm64.tar.gz custom-dart-sdk-macos-arm64.tar.gz.sha256
+          ./scripts/write_sha256.sh dart-sdk-darwin-arm64.zip dart-sdk-darwin-arm64.zip.sha256
 
       - name: Upload custom Dart SDK
         uses: actions/upload-artifact@v4
@@ -727,6 +752,8 @@ jobs:
           path: |
             custom-dart-sdk-macos-arm64.tar.gz
             custom-dart-sdk-macos-arm64.tar.gz.sha256
+            dart-sdk-darwin-arm64.zip
+            dart-sdk-darwin-arm64.zip.sha256
           if-no-files-found: error
 
   linux-engine:
@@ -1112,7 +1139,9 @@ jobs:
     needs: [source-checks, custom-dart-sdk]
     runs-on: ${{ inputs.linux_heavy_runner || 'ubuntu-latest' }}
     timeout-minutes: 180
-    if: ${{ github.event_name != 'workflow_dispatch' || inputs.full_sdk_build }}
+    # Shorebird does not support web patching. This recipe is excluded from
+    # push/PR CI and requires explicit opt-in during a manual experiment.
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_unsupported_web_build }}
     steps:
       - name: Checkout workspace
         uses: actions/checkout@v4
@@ -1597,7 +1626,6 @@ jobs:
       - custom-dart-sdk-macos
       - linux-engine
       - android-engine
-      - web-sdk
       - ios-engine
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -1654,12 +1682,6 @@ jobs:
           name: android-engine-arm64
           path: downloaded-artifacts/android-engine-arm64
 
-      - name: Download web SDK mirror artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: flutter-web-sdk
-          path: downloaded-artifacts/flutter-web-sdk
-
       - name: Download iOS engine mirror artifacts
         uses: actions/download-artifact@v4
         with:
@@ -1682,7 +1704,6 @@ jobs:
           cp -R downloaded-artifacts/mirror-* mirror-input/
           cp -R downloaded-artifacts/linux-engine-x64 mirror-input/
           cp -R downloaded-artifacts/android-engine-arm64 mirror-input/
-          cp -R downloaded-artifacts/flutter-web-sdk mirror-input/
           cp -R downloaded-artifacts/ios-interpreter-engine mirror-input/
           cp -R downloaded-artifacts/macos-engine-arm64 mirror-input/
           ./scripts/assemble_artifact_mirror.sh \
@@ -1704,7 +1725,6 @@ jobs:
           find "$mirror_extract_dir/open-shorebird-artifact-mirror/shorebird" -path '*/linux-x64-release/artifacts.zip' -type f -print -quit | grep -q .
           find "$mirror_extract_dir/open-shorebird-artifact-mirror/shorebird" -path '*/linux-x64-release/linux-x64-flutter-gtk.zip' -type f -print -quit | grep -q .
           find "$mirror_extract_dir/open-shorebird-artifact-mirror/shorebird" -path '*/ios-release/artifacts.zip' -type f -print -quit | grep -q .
-          find "$mirror_extract_dir/open-shorebird-artifact-mirror/shorebird" -path '*/flutter-web-sdk.zip' -type f -print -quit | grep -q .
           find "$mirror_extract_dir/open-shorebird-artifact-mirror/shorebird" -path '*/darwin-arm64-release/FlutterMacOS.framework.zip' -type f -print -quit | grep -q .
           find "$mirror_extract_dir/open-shorebird-artifact-mirror/shorebird" -path '*/flutter_patched_sdk_product.zip' -type f -print -quit | grep -q .
           ./scripts/write_sha256.sh \
@@ -1731,7 +1751,6 @@ jobs:
             --require 'custom-dart-sdk-macos-arm64/*custom-dart-sdk-macos-arm64.tar.gz' \
             --require 'linux-engine-x64/*linux-engine-x64.tar.gz' \
             --require 'android-engine-arm64/*android-engine-arm64.tar.gz' \
-            --require 'flutter-web-sdk/*flutter-web-sdk.tar.gz' \
             --require 'ios-interpreter-engine/*ios-interpreter-engine.tar.gz' \
             --require 'macos-engine-arm64/*macos-engine-arm64.tar.gz' \
             --require 'mirror-patch-linux-x64.zip/*patch-linux-x64.zip' \
@@ -1765,6 +1784,87 @@ jobs:
             open-shorebird-release-manifest.json
             open-shorebird-release-manifest.json.sha256
           if-no-files-found: error
+
+  publish-sdk-release:
+    name: Publish tested Dart SDK release
+    needs: [source-checks, artifact-mirror]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: ${{ github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout workspace
+        uses: actions/checkout@v4
+
+      - name: Download Linux Dart SDK release asset
+        uses: actions/download-artifact@v4
+        with:
+          name: custom-dart-sdk-linux-x64
+          path: downloaded-artifacts/custom-dart-sdk-linux-x64
+
+      - name: Download macOS Dart SDK release asset
+        uses: actions/download-artifact@v4
+        with:
+          name: custom-dart-sdk-macos-arm64
+          path: downloaded-artifacts/custom-dart-sdk-macos-arm64
+
+      - name: Verify release assets
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          for asset in \
+            dart-sdk-linux-x64.zip \
+            dart-sdk-darwin-arm64.zip; do
+            source_path="$(find downloaded-artifacts -type f -name "$asset" -print -quit)"
+            sidecar_path="$(find downloaded-artifacts -type f -name "$asset.sha256" -print -quit)"
+            test -n "$source_path"
+            test -n "$sidecar_path"
+            expected_digest="$(cut -d ' ' -f 1 "$sidecar_path")"
+            actual_digest="$(sha256sum "$source_path" | cut -d ' ' -f 1)"
+            test "$actual_digest" = "$expected_digest"
+            unzip -tq "$source_path"
+            cp "$source_path" "release-assets/$asset"
+            cp "$sidecar_path" "release-assets/$asset.sha256"
+          done
+
+      - name: Publish GitHub Release
+        run: |
+          set -euo pipefail
+          release_tag="sdk-${GITHUB_SHA:0:12}"
+          release_title="Open Shorebird Dart SDK ${GITHUB_SHA:0:12}"
+          release_notes="Tested by Open Shorebird CI run ${GITHUB_RUN_ID} for commit ${GITHUB_SHA}."
+          if gh release view "$release_tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$release_tag" release-assets/* \
+              --repo "$GITHUB_REPOSITORY" \
+              --clobber
+            gh release edit "$release_tag" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "$release_title" \
+              --notes "$release_notes" \
+              --latest
+          else
+            gh release create "$release_tag" release-assets/* \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "$release_title" \
+              --notes "$release_notes" \
+              --latest
+          fi
+
+      - name: Verify latest release downloads
+        run: |
+          set -euo pipefail
+          for asset in \
+            dart-sdk-linux-x64.zip \
+            dart-sdk-darwin-arm64.zip; do
+            curl -fL --retry 5 --retry-all-errors \
+              "https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/$asset" \
+              -o "/tmp/$asset"
+            cmp "/tmp/$asset" "release-assets/$asset"
+          done
 
   linux-runtime-smoke:
     name: Linux runtime patch smoke

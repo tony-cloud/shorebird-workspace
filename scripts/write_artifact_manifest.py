@@ -24,7 +24,6 @@ DEFAULT_ARTIFACT_OVERRIDES = (
     "flutter_infra_release/flutter/$engine/linux-x64-release/linux-x64-flutter-gtk.zip",
     "flutter_infra_release/flutter/$engine/ios-release/artifacts.zip",
     "flutter_infra_release/flutter/$engine/flutter_patched_sdk_product.zip",
-    "flutter_infra_release/flutter/$engine/flutter-web-sdk.zip",
     "flutter_infra_release/flutter/$engine/darwin-arm64-release/FlutterMacOS.framework.zip",
 )
 
