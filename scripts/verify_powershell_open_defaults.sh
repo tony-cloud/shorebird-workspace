@@ -38,7 +38,9 @@ require_contains "$shorebird_launcher" 'FLUTTER_STORAGE_BASE_URL'
 
 require_contains "$flutter_dart_updater" '$Env:FLUTTER_STORAGE_BASE_URL'
 require_contains "$flutter_dart_updater" \
-  '$dartSdkBaseUrl = "http://localhost:8080/download.flutter.io"'
+  '$Env:SHOREBIRD_DART_SDK_RELEASE_BASE_URL'
+require_contains "$flutter_dart_updater" \
+  'https://github.com/tony-cloud/shorebird-workspace/releases/latest/download'
 
 for path in "$shorebird_launcher" "$flutter_dart_updater"; do
   reject_contains "$path" 'download.shorebird.dev'

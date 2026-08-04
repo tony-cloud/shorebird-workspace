@@ -242,12 +242,15 @@ If the mirror is a bucket-style host, `SHOREBIRD_STORAGE_BASE_URL` and
 `SHOREBIRD_ARTIFACT_BASE_URL`. `SHOREBIRD_FLUTTER_STORAGE_BASE_URL` controls the
 `FLUTTER_STORAGE_BASE_URL` passed to vended Flutter commands; when unset it
 defaults to `http://localhost:8080/download.flutter.io`.
+Direct Flutter Dart SDK refresh scripts download the matching archive from the
+workspace's latest GitHub Release when `FLUTTER_STORAGE_BASE_URL` is unset. Set
+`SHOREBIRD_DART_SDK_RELEASE_BASE_URL` to select a different release or mirror.
 `SHOREBIRD_FLUTTER_GIT_URL` controls where the CLI clones vended Flutter
 revisions during cache installation. When unset, the open CLI defaults to this
 workspace's open Flutter fork instead of `github.com/shorebirdtech/flutter.git`.
-The Flutter fork also defaults its own engine downloads, Dart SDK refresh
-scripts, doctor network check, Android Gradle Maven host, Android host-app
-integration fixtures, docs artifact scripts, and Shorebird integration tests to
+The Flutter fork also defaults its own engine downloads, doctor network check,
+Android Gradle Maven host, Android host-app integration fixtures, docs artifact
+scripts, and Shorebird integration tests to
 `http://localhost:8080/download.flutter.io` when `FLUTTER_STORAGE_BASE_URL` is
 unset, so direct Flutter use does not fall back to Shorebird's closed artifact
 host.

@@ -101,9 +101,13 @@ require_contains "$ROOT/flutter/DEPS" '"updater_git": "https://git.tonycloud.org
 require_contains "$ROOT/flutter/packages/flutter_tools/lib/src/cache.dart" \
   "kOpenFlutterStorageUrl = 'http://localhost:8080/download.flutter.io'"
 require_contains "$ROOT/flutter/bin/internal/update_dart_sdk.sh" \
-  "http://localhost:8080/download.flutter.io"
+  "SHOREBIRD_DART_SDK_RELEASE_BASE_URL"
+require_contains "$ROOT/flutter/bin/internal/update_dart_sdk.sh" \
+  "https://github.com/tony-cloud/shorebird-workspace/releases/latest/download"
 require_contains "$ROOT/flutter/bin/internal/update_dart_sdk.ps1" \
-  "http://localhost:8080/download.flutter.io"
+  'SHOREBIRD_DART_SDK_RELEASE_BASE_URL'
+require_contains "$ROOT/flutter/bin/internal/update_dart_sdk.ps1" \
+  'https://github.com/tony-cloud/shorebird-workspace/releases/latest/download'
 require_contains "$ROOT/flutter/packages/flutter_tools/gradle/src/main/kotlin/FlutterPluginConstants.kt" \
   'DEFAULT_MAVEN_HOST = "http://localhost:8080/download.flutter.io"'
 require_contains "$ROOT/flutter/dev/tools/create_api_docs.dart" \

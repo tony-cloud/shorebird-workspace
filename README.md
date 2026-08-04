@@ -115,7 +115,9 @@ Vended Flutter commands receive `FLUTTER_STORAGE_BASE_URL` from
 `http://localhost:8080/download.flutter.io` for local self-hosted artifacts.
 The Flutter fork itself uses that same open mirror as its default engine and
 Android Maven artifact host when `FLUTTER_STORAGE_BASE_URL` is unset, including
-its Dart SDK refresh scripts.
+its engine artifact refreshes. Direct Dart SDK refreshes use the latest
+workspace GitHub Release asset by default; set
+`SHOREBIRD_DART_SDK_RELEASE_BASE_URL` to select another release or mirror.
 
 The iOS App Store candidate route is the encrypted Dart bytecode interpreter
 path, not native AOT patch loading. Real-device testing on June 25, 2026 showed

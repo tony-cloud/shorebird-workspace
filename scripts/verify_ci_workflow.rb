@@ -41,6 +41,12 @@ def assert!(condition, message)
   fail!(message) unless condition
 end
 
+assert!(
+  workflow_text.include?('concurrency:') &&
+    workflow_text.include?('cancel-in-progress: true'),
+  'workflow must cancel stale runs before starting a replacement run'
+)
+
 def job_runs(job)
   job.fetch('steps', []).each_with_object([]) do |step, runs|
     runs << step['run'] if step.key?('run')
@@ -906,9 +912,10 @@ assert!(
 }.each do |path, text|
   assert!(
     text.include?('FLUTTER_STORAGE_BASE_URL') &&
-      text.include?('http://localhost:8080/download.flutter.io') &&
+      text.include?('SHOREBIRD_DART_SDK_RELEASE_BASE_URL') &&
+      text.include?('https://github.com/tony-cloud/shorebird-workspace/releases/latest/download') &&
       !text.include?('download.shorebird.dev'),
-    "#{path} must download Dart SDK archives from FLUTTER_STORAGE_BASE_URL with the open local Flutter mirror fallback"
+    "#{path} must download Dart SDK archives from the workspace GitHub Release unless FLUTTER_STORAGE_BASE_URL is configured"
   )
 end
 assert!(
@@ -1144,6 +1151,7 @@ assert!(
     verify_open_infrastructure_defaults.include?('https://github.com/tony-cloud/dart-sdk.git') &&
     verify_open_infrastructure_defaults.include?('https://git.tonycloud.org/flutter/shorebird-updater.git') &&
     verify_open_infrastructure_defaults.include?('http://localhost:8080/download.flutter.io') &&
+    verify_open_infrastructure_defaults.include?('releases/latest/download') &&
     verify_open_infrastructure_defaults.include?('http://localhost:8080/artifacts') &&
     verify_open_infrastructure_defaults.include?('defaultHostedUrl = ') &&
     verify_open_infrastructure_defaults.include?('download.shorebird.dev') &&
@@ -1160,6 +1168,7 @@ assert!(
     verify_powershell_open_defaults.include?('System.Management.Automation.Language.Parser') &&
     verify_powershell_open_defaults.include?('https://github.com/tony-cloud/flutter.git') &&
     verify_powershell_open_defaults.include?('http://localhost:8080/download.flutter.io') &&
+    verify_powershell_open_defaults.include?('releases/latest/download') &&
     verify_powershell_open_defaults.include?('download.shorebird.dev') &&
     verify_powershell_open_defaults.include?('github.com/shorebirdtech/flutter.git'),
   'PowerShell verifier must parse Windows scripts and enforce open Flutter/artifact defaults'

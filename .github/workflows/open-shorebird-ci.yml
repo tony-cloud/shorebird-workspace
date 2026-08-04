@@ -1,5 +1,9 @@
 name: Open Shorebird CI
 
+concurrency:
+  group: open-shorebird-ci-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches: ["**"]
