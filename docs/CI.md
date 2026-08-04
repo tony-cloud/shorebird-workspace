@@ -302,7 +302,7 @@ workflow defaults heavy jobs to managed GitHub-hosted runners:
 
 - `ubuntu-latest` for Linux SDK, Linux engine, Android engine, and web SDK
   builds
-- `macos-latest` for macOS Dart SDK, iOS engine, and macOS engine builds
+- `macos-14` for macOS Dart SDK, iOS engine, and macOS engine builds
 
 Override `linux_heavy_runner` / `macos_heavy_runner` when a repository wants
 larger or self-hosted runners. Every SDK/engine job also runs
@@ -321,7 +321,7 @@ Manual dispatch accepts these workflow inputs:
 | Input | Default | Used by |
 | --- | --- | --- |
 | `linux_heavy_runner` | `ubuntu-latest` | `custom-dart-sdk`, `linux-engine`, `android-engine`, `web-sdk` |
-| `macos_heavy_runner` | `macos-latest` | `custom-dart-sdk-macos`, `ios-engine` / Apple engine artifacts |
+| `macos_heavy_runner` | `macos-14` | `custom-dart-sdk-macos`, `ios-engine` / Apple engine artifacts |
 | `sdk_min_free_disk_gb` | `8` | Minimum free disk GiB for `custom-dart-sdk` and `custom-dart-sdk-macos` |
 | `engine_min_free_disk_gb` | `8` | Minimum free disk GiB for Linux, Android, web, iOS, and macOS engine builds |
 | `base_flutter_engine_revision` | empty | Optional upstream Flutter engine revision recorded in `artifacts_manifest.yaml` for non-overridden artifact proxy fallbacks |
