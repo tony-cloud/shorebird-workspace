@@ -12,13 +12,13 @@
 	branch = tonycloud/dev
 [submodule "shorebird"]
 	path = shorebird
-	url = https://git.tonycloud.org/flutter/shorebird.git
+	url = https://github.com/tony-cloud/shorebird.git
 	branch = main
 [submodule "shorebird-server"]
 	path = shorebird-server
-	url = https://git.tonycloud.org/flutter/shorebird-server.git
+	url = https://github.com/tony-cloud/shorebird-server.git
 	branch = main
 [submodule "updater"]
 	path = updater
-	url = https://git.tonycloud.org/flutter/shorebird-updater.git
+	url = https://github.com/tony-cloud/shorebird-updater.git
 	branch = main

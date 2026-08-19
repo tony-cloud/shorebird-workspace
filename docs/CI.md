@@ -75,7 +75,7 @@ binaries:
    CI extracts the archive and runs `shorebird --version`,
    `open_aot_patch_tools --help`, and `artifact_proxy --health-check` from the
    extracted layout. The `shorebird --version` smoke must report the open
-   `https://git.tonycloud.org/flutter/shorebird.git` fork and rejects the old
+   `https://github.com/tony-cloud/shorebird.git` fork and rejects the old
    official Shorebird SSH remote.
 4. `server-artifacts` runs `go test ./...` and cross-compiles
    `shorebird-server` for Linux x64/arm64, macOS x64/arm64, and Windows x64

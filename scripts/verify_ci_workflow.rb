@@ -590,9 +590,9 @@ expected_submodules = {
   'dart-sdk' => ['https://github.com/tony-cloud/dart-sdk.git', 'tonycloud/dev'],
   'depot_tools' => ['https://chromium.googlesource.com/chromium/tools/depot_tools.git', 'main'],
   'flutter' => ['https://github.com/tony-cloud/flutter.git', 'tonycloud/dev'],
-  'shorebird' => ['https://git.tonycloud.org/flutter/shorebird.git', 'main'],
-  'shorebird-server' => ['https://git.tonycloud.org/flutter/shorebird-server.git', 'main'],
-  'updater' => ['https://git.tonycloud.org/flutter/shorebird-updater.git', 'main'],
+  'shorebird' => ['https://github.com/tony-cloud/shorebird.git', 'main'],
+  'shorebird-server' => ['https://github.com/tony-cloud/shorebird-server.git', 'main'],
+  'updater' => ['https://github.com/tony-cloud/shorebird-updater.git', 'main'],
 }
 expected_submodules.each do |path, (url, branch)|
   assert!(
@@ -678,9 +678,9 @@ assert!(
   'docs/REPOSITORIES.md' => [
     'https://github.com/tony-cloud/dart-sdk.git',
     'https://github.com/tony-cloud/flutter.git',
-    'https://git.tonycloud.org/flutter/shorebird.git',
-    'https://git.tonycloud.org/flutter/shorebird-server.git',
-    'https://git.tonycloud.org/flutter/shorebird-updater.git',
+    'https://github.com/tony-cloud/shorebird.git',
+    'https://github.com/tony-cloud/shorebird-server.git',
+    'https://github.com/tony-cloud/shorebird-updater.git',
     'Only top-level project repositories are submodules',
   ],
   'shorebird/OPEN_SOURCE_REPLACEMENTS.md' => [
@@ -736,9 +736,9 @@ assert!(
 )
 assert!(
   shorebird_documentation.include?('openShorebirdRepositoryUrl') &&
-    shorebird_documentation.include?('https://git.tonycloud.org/flutter/shorebird') &&
+    shorebird_documentation.include?('https://github.com/tony-cloud/shorebird') &&
     shorebird_documentation.include?(%q{openShorebirdIssueUrl = '$openShorebirdRepositoryUrl/issues/new'}) &&
-    shorebird_documentation.include?(%q{docsUrl = '$openShorebirdRepositoryUrl/src/branch/main/docs'}) &&
+    shorebird_documentation.include?(%q{docsUrl = '$openShorebirdRepositoryUrl/blob/main/docs'}) &&
     !shorebird_documentation.include?('docs.shorebird.dev') &&
     !shorebird_documentation.include?('github.com/shorebirdtech/shorebird'),
   'shorebird documentation links must point to the open repository docs and issue tracker'
@@ -748,7 +748,7 @@ assert!(
   'doctor_command.dart' => doctor_command,
 }.each do |path, text|
   assert!(
-    text.include?('https://git.tonycloud.org/flutter/shorebird.git') &&
+    text.include?('https://github.com/tony-cloud/shorebird.git') &&
       !text.include?('git@github.com:shorebirdtech/shorebird.git'),
     "#{path} must print the open Shorebird fork in user-visible version banners"
   )
@@ -831,7 +831,7 @@ assert!(
   )
 end
 assert!(
-  shorebird_shell_launcher.include?('https://git.tonycloud.org/flutter/shorebird') &&
+  shorebird_shell_launcher.include?('https://github.com/tony-cloud/shorebird') &&
     !shorebird_shell_launcher.include?('github.com/shorebirdtech/shorebird'),
   'shell launcher missing-clone guidance must point at the open Shorebird repository'
 )
@@ -927,7 +927,7 @@ assert!(
 )
 assert!(
   flutter_deps.include?('"dart_sdk_git": "https://github.com/tony-cloud/dart-sdk.git"') &&
-    flutter_deps.include?('"updater_git": "https://git.tonycloud.org/flutter/shorebird-updater.git"') &&
+    flutter_deps.include?('"updater_git": "https://github.com/tony-cloud/shorebird-updater.git"') &&
     !flutter_deps.include?('git@github.com:shorebirdtech/dart-sdk.git') &&
     !flutter_deps.include?('github.com/shorebirdtech/updater.git') &&
     !flutter_deps.include?('shorebird-dart-sdk-prebuilt') &&
@@ -1009,7 +1009,7 @@ assert!(
   'web UI artifact downloads must use FLUTTER_STORAGE_BASE_URL with the open local Flutter mirror fallback'
 )
 assert!(
-  flutter_tools_pubspec.include?('https://git.tonycloud.org/flutter/shorebird.git') &&
+  flutter_tools_pubspec.include?('https://github.com/tony-cloud/shorebird.git') &&
     !flutter_tools_pubspec.include?('https://github.com/shorebirdtech/shorebird.git'),
   'Flutter tools pubspec must fetch Shorebird build-trace code from the open fork'
 )
@@ -1149,7 +1149,7 @@ assert!(
   verify_open_infrastructure_defaults.include?('BUILD_SENSITIVE_FILES') &&
     verify_open_infrastructure_defaults.include?('check_forbidden_in_tree "$ROOT/shorebird/packages/artifact_proxy/lib" dart') &&
     verify_open_infrastructure_defaults.include?('https://github.com/tony-cloud/dart-sdk.git') &&
-    verify_open_infrastructure_defaults.include?('https://git.tonycloud.org/flutter/shorebird-updater.git') &&
+    verify_open_infrastructure_defaults.include?('https://github.com/tony-cloud/shorebird-updater.git') &&
     verify_open_infrastructure_defaults.include?('http://localhost:8080/download.flutter.io') &&
     verify_open_infrastructure_defaults.include?('releases/latest/download') &&
     verify_open_infrastructure_defaults.include?('http://localhost:8080/artifacts') &&
@@ -1698,8 +1698,8 @@ assert!(
   'CLI artifact job must compile, package, and smoke-test the open artifact proxy binary'
 )
 assert!(
-  job_runs(jobs.fetch('cli-artifacts')).join("\n").include?("grep -q 'https://git.tonycloud.org/flutter/shorebird.git' <<<\"$version_output\"") &&
-    job_runs(jobs.fetch('cli-artifacts')).join("\n").include?("grep -q 'https://git.tonycloud.org/flutter/shorebird.git' <<<\"$extracted_version_output\"") &&
+  job_runs(jobs.fetch('cli-artifacts')).join("\n").include?("grep -q 'https://github.com/tony-cloud/shorebird.git' <<<\"$version_output\"") &&
+    job_runs(jobs.fetch('cli-artifacts')).join("\n").include?("grep -q 'https://github.com/tony-cloud/shorebird.git' <<<\"$extracted_version_output\"") &&
     job_runs(jobs.fetch('cli-artifacts')).join("\n").include?("git@github.com:shorebirdtech/shorebird.git") &&
     job_runs(jobs.fetch('cli-artifacts')).join("\n").include?('compiled CLI still reports the official Shorebird SSH remote') &&
     job_runs(jobs.fetch('cli-artifacts')).join("\n").include?('extracted CLI still reports the official Shorebird SSH remote'),

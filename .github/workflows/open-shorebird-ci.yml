@@ -267,7 +267,7 @@ jobs:
           HOME="$PWD/artifacts/cli-home" artifacts/cli/bin/open_aot_patch_tools${{ matrix.extension }} --help >/dev/null
           version_output="$(HOME="$PWD/artifacts/cli-home" artifacts/cli/bin/shorebird${{ matrix.extension }} --version)"
           printf '%s\n' "$version_output"
-          grep -q 'https://git.tonycloud.org/flutter/shorebird.git' <<<"$version_output"
+          grep -q 'https://github.com/tony-cloud/shorebird.git' <<<"$version_output"
           if grep -q 'git@github.com:shorebirdtech/shorebird.git' <<<"$version_output"; then
             echo "compiled CLI still reports the official Shorebird SSH remote" >&2
             exit 1
@@ -283,7 +283,7 @@ jobs:
           HOME="$PWD/artifacts/cli-extracted-home" "$cli_extract_dir/bin/open_aot_patch_tools${{ matrix.extension }}" --help >/dev/null
           extracted_version_output="$(HOME="$PWD/artifacts/cli-extracted-home" "$cli_extract_dir/bin/shorebird${{ matrix.extension }}" --version)"
           printf '%s\n' "$extracted_version_output"
-          grep -q 'https://git.tonycloud.org/flutter/shorebird.git' <<<"$extracted_version_output"
+          grep -q 'https://github.com/tony-cloud/shorebird.git' <<<"$extracted_version_output"
           if grep -q 'git@github.com:shorebirdtech/shorebird.git' <<<"$extracted_version_output"; then
             echo "extracted CLI still reports the official Shorebird SSH remote" >&2
             exit 1

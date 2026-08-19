@@ -91,12 +91,12 @@ check_forbidden_in_tree "$ROOT/shorebird/packages/shorebird_code_push_client/lib
 
 require_contains "$ROOT/.gitmodules" "https://github.com/tony-cloud/dart-sdk.git"
 require_contains "$ROOT/.gitmodules" "https://github.com/tony-cloud/flutter.git"
-require_contains "$ROOT/.gitmodules" "https://git.tonycloud.org/flutter/shorebird.git"
-require_contains "$ROOT/.gitmodules" "https://git.tonycloud.org/flutter/shorebird-server.git"
-require_contains "$ROOT/.gitmodules" "https://git.tonycloud.org/flutter/shorebird-updater.git"
+require_contains "$ROOT/.gitmodules" "https://github.com/tony-cloud/shorebird.git"
+require_contains "$ROOT/.gitmodules" "https://github.com/tony-cloud/shorebird-server.git"
+require_contains "$ROOT/.gitmodules" "https://github.com/tony-cloud/shorebird-updater.git"
 
 require_contains "$ROOT/flutter/DEPS" '"dart_sdk_git": "https://github.com/tony-cloud/dart-sdk.git"'
-require_contains "$ROOT/flutter/DEPS" '"updater_git": "https://git.tonycloud.org/flutter/shorebird-updater.git"'
+require_contains "$ROOT/flutter/DEPS" '"updater_git": "https://github.com/tony-cloud/shorebird-updater.git"'
 
 require_contains "$ROOT/flutter/packages/flutter_tools/lib/src/cache.dart" \
   "kOpenFlutterStorageUrl = 'http://localhost:8080/download.flutter.io'"
