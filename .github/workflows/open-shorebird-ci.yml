@@ -100,6 +100,15 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
+      - name: Verify upstream release version
+        run: |
+          set -euo pipefail
+          release_version="$(tr -d '[:space:]' < VERSION)"
+          cli_version="$(sed -n 's/^version: //p' shorebird/packages/shorebird_cli/pubspec.yaml)"
+          test -n "$release_version"
+          test "$cli_version" = "$release_version"
+          git -C shorebird merge-base --is-ancestor "v$release_version" HEAD
+
       - name: Set up Dart
         uses: dart-lang/setup-dart@v1
         with:
@@ -1833,9 +1842,11 @@ jobs:
       - name: Publish GitHub Release
         run: |
           set -euo pipefail
-          release_tag="sdk-${GITHUB_SHA:0:12}"
-          release_title="Open Shorebird Dart SDK ${GITHUB_SHA:0:12}"
-          release_notes="Tested by Open Shorebird CI run ${GITHUB_RUN_ID} for commit ${GITHUB_SHA}."
+          release_version="$(tr -d '[:space:]' < VERSION)"
+          test -n "$release_version"
+          release_tag="v$release_version"
+          release_title="Open Shorebird $release_version"
+          release_notes="Synchronized with upstream Shorebird v${release_version} and tested by Open Shorebird CI run ${GITHUB_RUN_ID} for commit ${GITHUB_SHA}."
           if gh release view "$release_tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release upload "$release_tag" release-assets/* \
               --repo "$GITHUB_REPOSITORY" \

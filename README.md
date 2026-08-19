@@ -68,8 +68,9 @@ requires `run_unsupported_web_build=true`.
 
 After the complete native matrix succeeds on the default branch, CI publishes
 updater-compatible `dart-sdk-linux-x64.zip` and
-`dart-sdk-darwin-arm64.zip` assets in a commit-versioned GitHub Release and
-marks it latest. Flutter's SDK updater downloads those tested files from this
+`dart-sdk-darwin-arm64.zip` assets in a GitHub Release whose version matches
+the synchronized upstream Shorebird release recorded in `VERSION`, and marks
+it latest. Flutter's SDK updater downloads those tested files from this
 repository's `releases/latest/download` endpoint.
 Use `scripts/validate_release_manifest.py` to audit a downloaded manifest
 against the downloaded workflow artifacts before publishing or mirroring them.

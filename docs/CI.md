@@ -382,8 +382,9 @@ Before writing the checksum, each SDK job extracts the archive, verifies
 The same jobs package updater-compatible `dart-sdk-linux-x64.zip` and
 `dart-sdk-darwin-arm64.zip` files with checksum sidecars. After
 `artifact-mirror` proves every supported native producer succeeded,
-`publish-sdk-release` creates a commit-versioned GitHub Release, marks it
-latest, and verifies both assets through `releases/latest/download`.
+`publish-sdk-release` creates a GitHub Release using the synchronized upstream
+Shorebird version from `VERSION`, marks it latest, and verifies both assets
+through `releases/latest/download`.
 
 `ios-engine` builds:
 

@@ -1,17 +1,17 @@
 # Repository Inventory
 
-Last verified: 2026-06-26.
+Last verified: 2026-08-20.
 
 ## Active Top-Level Repositories
 
 | Path | Remote URL | Branch | Pinned commit |
 | --- | --- | --- | --- |
-| `dart-sdk` | `https://github.com/tony-cloud/dart-sdk.git` | `tonycloud/dev` | `57b27a7b44a9112c7cb3a1cb3c73636fc149bd16` |
-| `depot_tools` | `https://chromium.googlesource.com/chromium/tools/depot_tools.git` | `main` | `226aa79e9947adc1e9e0c79f96b58562516535d9` |
-| `flutter` | `https://github.com/tony-cloud/flutter.git` | `tonycloud/dev` | `5b96fd59be2f00061cccaaa23a02e15e720c1161` |
-| `shorebird` | `https://git.tonycloud.org/flutter/shorebird.git` | `main` | `07a654e7717a20d685c3eadf4b55c2e6731e96fa` |
+| `dart-sdk` | `https://github.com/tony-cloud/dart-sdk.git` | `tonycloud/dev` | `89615fb4377fe0fbb2f2cee972566995fb5f51d8` |
+| `depot_tools` | `https://chromium.googlesource.com/chromium/tools/depot_tools.git` | `main` | `e154c8eda5e63cbe85a765ae9d06e2b7af05139e` |
+| `flutter` | `https://github.com/tony-cloud/flutter.git` | `tonycloud/dev` | `b834ef88ec9347796b46a5bcd3606cce258514f3` |
+| `shorebird` | `https://git.tonycloud.org/flutter/shorebird.git` | `main` | `5586ef560493342ecb00fc91cf8a8f664bfc6eb8` |
 | `shorebird-server` | `https://git.tonycloud.org/flutter/shorebird-server.git` | `main` | `d6e5a39546905b85e2345b8058c4350ed236184c` |
-| `updater` | `https://git.tonycloud.org/flutter/shorebird-updater.git` | `main` | `5d4e9c339636fc2f67cbe9892026d9e10b0888bc` |
+| `updater` | `https://git.tonycloud.org/flutter/shorebird-updater.git` | `main` | `479de106d77039328bdd30dafccefa6d78ea981b` |
 
 ## Submodule Policy
 
