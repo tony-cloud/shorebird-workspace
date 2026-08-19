@@ -629,9 +629,9 @@ assert!(
 )
 assert!(
   flutter_engine_pubspec.include?('frontend_server_client:') &&
-    flutter_engine_pubspec.include?('./third_party/dart/third_party/pkg/webdev/frontend_server_client') &&
-    !write_gclient.include?('"engine/src/flutter/third_party/dart/third_party/pkg/webdev": None'),
-  'Flutter engine pub get needs Dart third_party/pkg/webdev for frontend_server_client, so write_gclient must not suppress it'
+    flutter_engine_pubspec.include?('./third_party/dart/pkg/frontend_server_client') &&
+    !write_gclient.include?('"engine/src/flutter/third_party/dart/pkg/frontend_server_client": None'),
+  'Flutter engine pub get needs Dart pkg/frontend_server_client, so write_gclient must not suppress it'
 )
 {
   'README.md' => [
