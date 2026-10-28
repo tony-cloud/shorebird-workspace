@@ -2050,7 +2050,9 @@ assert!(
   assert!(run_text.include?('dart_enable_shorebird_interpreter=true'), "#{job_name} must enable the interpreter route")
   assert!(run_text.include?('DartAPI_AotPatchingConfiguration'), "#{job_name} must run AOT patching VM tests")
   assert!(run_text.include?('DartAPI_BytecodePatchReloadConfiguration'), "#{job_name} must run bytecode reload VM tests")
-  assert!(run_text.include?('DartAPI_SnapshotRegionSizes'), "#{job_name} must run snapshot region size VM tests")
+  assert!(run_text.include?('DartAPI_SnapshotRegionSizes') &&
+    run_text.include?('DartAPI_SnapshotRegionSizesRejectInvalidHeaders'),
+    "#{job_name} must run snapshot region size VM tests")
 end
 
 assert!(

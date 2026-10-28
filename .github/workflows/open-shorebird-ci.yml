@@ -590,6 +590,7 @@ jobs:
           ./run_vm_tests DartAPI_AotPatchingConfiguration
           ./run_vm_tests DartAPI_BytecodePatchReloadConfiguration
           ./run_vm_tests DartAPI_SnapshotRegionSizes
+          ./run_vm_tests DartAPI_SnapshotRegionSizesRejectInvalidHeaders
 
       - name: Package Dart SDK artifact
         run: |
@@ -712,6 +713,7 @@ jobs:
           ./run_vm_tests DartAPI_AotPatchingConfiguration
           ./run_vm_tests DartAPI_BytecodePatchReloadConfiguration
           ./run_vm_tests DartAPI_SnapshotRegionSizes
+          ./run_vm_tests DartAPI_SnapshotRegionSizesRejectInvalidHeaders
 
       - name: Package Dart SDK artifact
         run: |

@@ -14,7 +14,7 @@ Shorebird commit ancestry directly so unreleased upstream source can be built.
 | `dart-sdk` | `https://github.com/tony-cloud/dart-sdk.git` | `tonycloud/dev` | `9b8279462bac6d831926e239baa4a65e97edd74a` |
 | `depot_tools` | `https://chromium.googlesource.com/chromium/tools/depot_tools.git` | `main` | `e154c8eda5e63cbe85a765ae9d06e2b7af05139e` |
 | `flutter` | `https://github.com/tony-cloud/flutter.git` | `tonycloud/dev` | `863ab478e67c7f5b174520ccf5ea5e4e484dbb64` |
-| `shorebird` | `https://github.com/tony-cloud/shorebird.git` | `main` | `ce38adafeb8dbcfb1d5d504b79391d6df0bf8ad2` |
+| `shorebird` | `https://github.com/tony-cloud/shorebird.git` | `main` | `5937e04894cfe3d93518d40aa29d9220646a48e0` |
 | `shorebird-server` | `https://github.com/tony-cloud/shorebird-server.git` | `main` | `d6e5a39546905b85e2345b8058c4350ed236184c` |
 | `updater` | `https://github.com/tony-cloud/shorebird-updater.git` | `main` | `fe8af499ba6e84b92c3091e25a3a1ddd8068c013` |
 
