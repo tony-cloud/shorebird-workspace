@@ -62,25 +62,17 @@ for target in \
   shorebird-server-darwin-arm64/shorebird-server-darwin-arm64.tar.gz \
   shorebird-server-windows-amd64/shorebird-server-windows-amd64.tar.gz \
   custom-dart-sdk-linux-x64/custom-dart-sdk-linux-x64.tar.gz \
-  custom-dart-sdk-macos-arm64/custom-dart-sdk-macos-arm64.tar.gz; do
+  custom-dart-sdk-macos-arm64/custom-dart-sdk-macos-arm64.tar.gz \
+  custom-dart-sdk-macos-x64/custom-dart-sdk-macos-x64.tar.gz \
+  custom-dart-sdk-windows-x64/custom-dart-sdk-windows-x64.tar.gz; do
   write_artifact "$DOWNLOADED/$target" "$target"
 done
 
 mkdir -p "$DOWNLOADED/mirror-metadata/$ENGINE_REVISION"
-cat > "$DOWNLOADED/mirror-metadata/$ENGINE_REVISION/artifacts_manifest.yaml" <<EOF
-flutter_engine_revision: 'base-engine'
-storage_bucket: 'shorebird'
-artifact_overrides:
-  - 'flutter_infra_release/flutter/\$engine/dart-sdk-linux-x64.zip'
-  - 'flutter_infra_release/flutter/\$engine/dart-sdk-darwin-arm64.zip'
-  - 'flutter_infra_release/flutter/\$engine/android-arm64-release/artifacts.zip'
-  - 'flutter_infra_release/flutter/\$engine/android-arm64-release/symbols.zip'
-  - 'flutter_infra_release/flutter/\$engine/linux-x64-release/artifacts.zip'
-  - 'flutter_infra_release/flutter/\$engine/linux-x64-release/linux-x64-flutter-gtk.zip'
-  - 'flutter_infra_release/flutter/\$engine/ios-release/artifacts.zip'
-  - 'flutter_infra_release/flutter/\$engine/flutter_patched_sdk_product.zip'
-  - 'flutter_infra_release/flutter/\$engine/darwin-arm64-release/FlutterMacOS.framework.zip'
-EOF
+"$PYTHON_BIN" "$ROOT/scripts/write_artifact_manifest.py" \
+  --flutter-engine-revision base-engine \
+  --output "$DOWNLOADED/mirror-metadata/$ENGINE_REVISION/artifacts_manifest.yaml"
+
 "$ROOT/scripts/write_sha256.sh" \
   "$DOWNLOADED/mirror-metadata/$ENGINE_REVISION/artifacts_manifest.yaml"
 
@@ -135,13 +127,37 @@ write_tgz "$DOWNLOADED/linux-engine-x64/linux-engine-x64.tar.gz" \
 make_engine_archive \
   android-engine-arm64 android-engine-arm64.tar.gz android-engine android-arm64-release \
   artifacts.zip android-artifacts \
-  symbols.zip android-symbols
+  symbols.zip android-symbols \
+  linux-x64.zip android-linux-snapshotter
 make_engine_archive \
   ios-interpreter-engine ios-interpreter-engine.tar.gz ios-engine ios-release \
   artifacts.zip ios-artifacts
 make_engine_archive \
   macos-engine-arm64 macos-engine-arm64.tar.gz macos-engine darwin-arm64-release \
   FlutterMacOS.framework.zip macos-framework
+
+for arch in arm x64; do
+  make_engine_archive \
+    "android-engine-$arch" "android-engine-$arch.tar.gz" android-engine "android-$arch-release" \
+    artifacts.zip "android-$arch-artifacts" symbols.zip "android-$arch-symbols" \
+    linux-x64.zip "android-$arch-linux-snapshotter"
+done
+for host in darwin-x64 windows-x64; do
+  for arch in arm arm64 x64; do
+    make_engine_archive \
+      "android-host-tools-$host-$arch" "android-host-tools-$host-$arch.tar.gz" android-host-tools "android-$arch-release" \
+      "$host.zip" "android-$arch-$host-snapshotter"
+  done
+done
+make_engine_archive \
+  macos-engine-x64 macos-engine-x64.tar.gz macos-engine darwin-x64-release \
+  FlutterMacOS.framework.zip macos-x64-framework
+make_engine_archive \
+  macos-engine-universal macos-engine-universal.tar.gz macos-engine-universal darwin-x64-release \
+  framework.zip macos-universal-framework gen_snapshot.zip macos-snapshotters artifacts.zip macos-host-artifacts
+make_engine_archive \
+  windows-engine-x64 windows-engine-x64.tar.gz windows-engine windows-x64-release \
+  windows-x64-flutter.zip windows-engine
 
 mirror_input="$TMP_DIR/mirror-input"
 mkdir -p "$mirror_input"
@@ -150,10 +166,28 @@ cp -R "$DOWNLOADED/linux-engine-x64" "$mirror_input/"
 cp -R "$DOWNLOADED/android-engine-arm64" "$mirror_input/"
 cp -R "$DOWNLOADED/ios-interpreter-engine" "$mirror_input/"
 cp -R "$DOWNLOADED/macos-engine-arm64" "$mirror_input/"
+cp -R "$DOWNLOADED/macos-engine-x64" "$mirror_input/"
+cp -R "$DOWNLOADED/macos-engine-universal" "$mirror_input/"
+cp -R "$DOWNLOADED/windows-engine-x64" "$mirror_input/"
+cp -R "$DOWNLOADED/android-engine-arm" "$mirror_input/"
+cp -R "$DOWNLOADED/android-engine-x64" "$mirror_input/"
+cp -R "$DOWNLOADED"/android-host-tools-* "$mirror_input/"
 
 sdk_mirror="$mirror_input/shorebird/flutter_infra_release/flutter/$ENGINE_REVISION"
 write_zip "$sdk_mirror/dart-sdk-linux-x64.zip" dart-sdk/bin/dart linux-sdk
 write_zip "$sdk_mirror/dart-sdk-darwin-arm64.zip" dart-sdk/bin/dart macos-sdk
+write_zip "$sdk_mirror/dart-sdk-darwin-x64.zip" dart-sdk/bin/dart macos-x64-sdk
+write_zip "$sdk_mirror/dart-sdk-windows-x64.zip" dart-sdk/bin/dart.exe windows-sdk
+
+# The three ABI producers publish Maven paths alongside their engine trees;
+# arm64 is the sole producer of the shared embedding artifact.
+for artifact in flutter_embedding_release arm64_v8a_release armeabi_v7a_release x86_64_release; do
+  maven_dir="$mirror_input/shorebird/download.flutter.io/io/flutter/$artifact/1.0.0-$ENGINE_REVISION"
+  for extension in jar pom maven-metadata.xml; do
+    write_artifact "$maven_dir/$artifact-1.0.0-$ENGINE_REVISION.$extension" "$artifact-$extension"
+    write_artifact "$maven_dir/$artifact-1.0.0-$ENGINE_REVISION.$extension.sha1" "sha1-$artifact-$extension"
+  done
+done
 
 assembled="$TMP_DIR/artifacts/open-shorebird-artifact-mirror"
 mkdir -p "$TMP_DIR/artifacts"
@@ -191,6 +225,19 @@ cp "$TMP_DIR/open-shorebird-artifact-mirror.tar.gz.sha256" "$manifest_input/open
   --require 'custom-dart-sdk-macos-arm64/*custom-dart-sdk-macos-arm64.tar.gz' \
   --require 'linux-engine-x64/*linux-engine-x64.tar.gz' \
   --require 'android-engine-arm64/*android-engine-arm64.tar.gz' \
+  --require 'custom-dart-sdk-macos-x64/*custom-dart-sdk-macos-x64.tar.gz' \
+  --require 'custom-dart-sdk-windows-x64/*custom-dart-sdk-windows-x64.tar.gz' \
+  --require 'android-engine-arm/*android-engine-arm.tar.gz' \
+  --require 'android-engine-x64/*android-engine-x64.tar.gz' \
+  --require 'macos-engine-x64/*macos-engine-x64.tar.gz' \
+  --require 'macos-engine-universal/*macos-engine-universal.tar.gz' \
+  --require 'windows-engine-x64/*windows-engine-x64.tar.gz' \
+  --require 'android-host-tools-darwin-x64-arm/*android-host-tools-darwin-x64-arm.tar.gz' \
+  --require 'android-host-tools-darwin-x64-arm64/*android-host-tools-darwin-x64-arm64.tar.gz' \
+  --require 'android-host-tools-darwin-x64-x64/*android-host-tools-darwin-x64-x64.tar.gz' \
+  --require 'android-host-tools-windows-x64-arm/*android-host-tools-windows-x64-arm.tar.gz' \
+  --require 'android-host-tools-windows-x64-arm64/*android-host-tools-windows-x64-arm64.tar.gz' \
+  --require 'android-host-tools-windows-x64-x64/*android-host-tools-windows-x64-x64.tar.gz' \
   --require 'ios-interpreter-engine/*ios-interpreter-engine.tar.gz' \
   --require 'macos-engine-arm64/*macos-engine-arm64.tar.gz' \
   --require 'mirror-patch-linux-x64.zip/*patch-linux-x64.zip' \

@@ -18,15 +18,26 @@ import sys
 
 
 DEFAULT_ARTIFACT_OVERRIDES = (
-    "flutter_infra_release/flutter/$engine/dart-sdk-linux-x64.zip",
-    "flutter_infra_release/flutter/$engine/dart-sdk-darwin-arm64.zip",
-    "flutter_infra_release/flutter/$engine/android-arm64-release/artifacts.zip",
-    "flutter_infra_release/flutter/$engine/android-arm64-release/symbols.zip",
+    *(f"flutter_infra_release/flutter/$engine/dart-sdk-{host}.zip"
+      for host in ("linux-x64", "darwin-arm64", "darwin-x64", "windows-x64")),
+    *(f"flutter_infra_release/flutter/$engine/android-{arch}-release/{artifact}"
+      for arch in ("arm", "arm64", "x64")
+      for artifact in ("artifacts.zip", "symbols.zip", "linux-x64.zip",
+                       "darwin-x64.zip", "windows-x64.zip")),
     "flutter_infra_release/flutter/$engine/linux-x64-release/artifacts.zip",
     "flutter_infra_release/flutter/$engine/linux-x64-release/linux-x64-flutter-gtk.zip",
     "flutter_infra_release/flutter/$engine/ios-release/artifacts.zip",
     "flutter_infra_release/flutter/$engine/flutter_patched_sdk_product.zip",
-    "flutter_infra_release/flutter/$engine/darwin-arm64-release/FlutterMacOS.framework.zip",
+    *(f"flutter_infra_release/flutter/$engine/darwin-{arch}-release/FlutterMacOS.framework.zip"
+      for arch in ("arm64", "x64")),
+    *(f"flutter_infra_release/flutter/$engine/darwin-x64-release/{artifact}"
+      for artifact in ("framework.zip", "gen_snapshot.zip", "artifacts.zip")),
+    "flutter_infra_release/flutter/$engine/windows-x64-release/windows-x64-flutter.zip",
+    *(f"download.flutter.io/io/flutter/{artifact}/1.0.0-$engine/{artifact}-1.0.0-$engine.{extension}{checksum}"
+      for artifact in ("flutter_embedding_release", "arm64_v8a_release",
+                       "armeabi_v7a_release", "x86_64_release")
+      for extension in ("jar", "pom", "maven-metadata.xml")
+      for checksum in ("", ".sha1")),
 )
 
 

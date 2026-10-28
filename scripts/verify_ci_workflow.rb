@@ -53,9 +53,40 @@ assert!(
   'workflow must cancel stale runs before starting a replacement run'
 )
 
+# Resolve the same matrix substitutions GitHub applies, so contracts cover every
+# ABI/host member rather than looking only at literal arm64 shell fragments.
+def matrix_entries(job)
+  matrix = job.dig('strategy', 'matrix') || {}
+  axes = matrix.reject { |key, _value| %w[include exclude].include?(key) }
+  return matrix.fetch('include', [{}]) if axes.empty?
+
+  entries = axes.reduce([{}]) do |result, (key, values)|
+    result.flat_map { |entry| values.map { |value| entry.merge(key => value) } }
+  end
+  matrix.fetch('include', []).each do |extra|
+    matches = entries.select do |entry|
+      axes.keys.all? { |key| !extra.key?(key) || entry[key] == extra[key] }
+    end
+    if matches.empty?
+      entries << extra
+    else
+      matches.each { |entry| entry.merge!(extra) }
+    end
+  end
+  entries.reject do |entry|
+    matrix.fetch('exclude', []).any? { |excluded| excluded.all? { |key, value| entry[key] == value } }
+  end
+end
+
+def matrix_texts(text, job)
+  matrix_entries(job).map do |entry|
+    text.gsub(/\$\{\{\s*matrix\.(\w+)\s*\}\}/) { entry.fetch(Regexp.last_match(1)).to_s }
+  end
+end
+
 def job_runs(job)
   job.fetch('steps', []).each_with_object([]) do |step, runs|
-    runs << step['run'] if step.key?('run')
+    runs.concat([step['run']] + matrix_texts(step['run'], job)) if step.key?('run')
   end
 end
 
@@ -63,7 +94,7 @@ def upload_names(job)
   job.fetch('steps', []).each_with_object([]) do |step, names|
     next unless step['uses'].to_s.start_with?('actions/upload-artifact@')
 
-    names << step.fetch('with', {}).fetch('name')
+    names.concat([step.fetch('with', {}).fetch('name')] + matrix_texts(step.fetch('with', {}).fetch('name'), job))
   end
 end
 
@@ -116,7 +147,7 @@ end
 scripts = []
 jobs.each_value do |job|
   job.fetch('steps', []).each do |step|
-    scripts << step['run'] if step.key?('run')
+    scripts << step['run'] if step.key?('run') && step.fetch('shell', 'bash') == 'bash'
   end
 end
 
@@ -125,6 +156,31 @@ scripts.each_with_index do |script, index|
     file.write(script.gsub(/\$\{\{[^}]+\}\}/, 'x'))
     file.flush
     system('bash', '-n', file.path, exception: true)
+  end
+end
+
+# Parse native Windows run blocks without executing their mutations.
+if system('pwsh', '--version', out: File::NULL, err: File::NULL)
+  Tempfile.create(['open-shorebird-ci-parse', '.ps1']) do |parser|
+    parser.write(<<~POWERSHELL)
+      param([string]$Path)
+      $tokens = $null
+      $errors = $null
+      [System.Management.Automation.Language.Parser]::ParseFile($Path, [ref]$tokens, [ref]$errors) > $null
+      if ($errors.Count) { $errors | ForEach-Object { Write-Error $_ }; exit 1 }
+    POWERSHELL
+    parser.flush
+    jobs.each_value do |job|
+      job.fetch('steps', []).each do |step|
+        next unless step['shell'] == 'pwsh' && step.key?('run')
+
+        Tempfile.create(['open-shorebird-ci-run', '.ps1']) do |script|
+          script.write(step.fetch('run'))
+          script.flush
+          system('pwsh', '-NoLogo', '-NoProfile', '-NonInteractive', '-File', parser.path, script.path, exception: true)
+        end
+      end
+    end
   end
 end
 
@@ -160,6 +216,7 @@ required_files = %w[
   scripts/verify_ci_workflow.sh
   scripts/verify_ci_capacity.sh
   scripts/verify_dart_tool_sdk.sh
+  scripts/verify_dart_tool_sdk_validator.sh
   scripts/verify_dart_sdk_args.sh
   scripts/verify_engine_args.sh
   scripts/verify_hosted_full_sdk_build.sh
@@ -172,6 +229,10 @@ required_files = %w[
   scripts/verify_upload_readiness.sh
   scripts/verify_write_sha256.sh
   scripts/write_artifact_manifest.py
+  scripts/package_android_maven.py
+  scripts/verify_android_maven.py
+  scripts/run_server_client_smoke.sh
+  scripts/smoke_server_client.dart
   scripts/write_release_manifest.py
   scripts/write_gclient.sh
   scripts/write_sha256.py
@@ -222,7 +283,9 @@ required_files = %w[
 missing_files = required_files.reject { |path| File.file?(repo_path(repo_root, path)) }
 assert!(missing_files.empty?, "missing CI support files: #{missing_files.join(', ')}")
 
-required_executables = required_files.select { |path| path.start_with?('scripts/') }
+required_executables = required_files.select do |path|
+  path.start_with?('scripts/') && %w[.sh .rb .py].include?(File.extname(path))
+end
 missing_executable_bits = required_executables.reject do |path|
   File.executable?(repo_path(repo_root, path))
 end
@@ -495,16 +558,18 @@ assert!(
 )
 generated_manifest_yaml = YAML.safe_load(generated_artifact_manifest)
 generated_artifact_overrides = generated_manifest_yaml.fetch('artifact_overrides')
-sdk_overrides, engine_overrides = generated_artifact_overrides.partition { |path| path.include?('/dart-sdk-') }
+sdk_overrides, native_overrides = generated_artifact_overrides.partition { |path| path.include?('/dart-sdk-') }
+engine_overrides, maven_overrides = native_overrides.partition { |path| path.start_with?('flutter_infra_release/') }
+rendered_workflow_text = workflow_text + jobs.values.flat_map { |job| job_runs(job) }.join("\n")
 missing_mirror_paths = engine_overrides.map do |artifact_path|
   "mirror/shorebird/#{artifact_path.gsub('$engine', '${engine_revision}')}"
-end.reject { |mirror_path| workflow_text.include?(mirror_path) }
+end.reject { |mirror_path| rendered_workflow_text.include?(mirror_path) }
 assert!(
   missing_mirror_paths.empty?,
   "workflow engine artifacts must package every generated mirror override: #{missing_mirror_paths.join(', ')}"
 )
 assert!(
-  workflow_text.scan('test -f "$mirror_root').length >= engine_overrides.length,
+  rendered_workflow_text.scan('test -f "$mirror_root').length >= engine_overrides.length,
   'workflow engine artifact packaging must verify mirror-ready files exist before uploading'
 )
 sdk_overrides.each do |path|
@@ -897,13 +962,17 @@ assert!(
     artifact_proxy_config.include?('darwin-arm64-release\/FlutterMacOS\.framework\.zip'),
   'artifact proxy must recognize the generated artifact paths produced by open CI'
 )
+proxy_regexes = artifact_proxy_config.scan(/r'([^']+)'/).flatten.map do |pattern|
+  begin
+    Regexp.new("\\A(?:#{pattern})\\z")
+  rescue RegexpError
+    nil # Legacy unmatched patterns do not satisfy any generated route.
+  end
+end.compact
 generated_artifact_overrides.each do |artifact_path|
-  expected_proxy_pattern = artifact_path
-                           .gsub('/', '\\/')
-                           .gsub('.', '\\.')
-                           .gsub('$engine', '(.*)')
+  sample_path = artifact_path.gsub('$engine', '1234567890abcdef1234567890abcdef12345678')
   assert!(
-    artifact_proxy_config.include?(expected_proxy_pattern),
+    proxy_regexes.any? { |pattern| pattern.match?(sample_path) },
     "artifact proxy config must recognize generated override #{artifact_path}"
   )
   assert!(
@@ -1501,11 +1570,16 @@ required_jobs = %w[
   server-artifacts
   custom-dart-sdk
   custom-dart-sdk-macos
+  custom-dart-sdk-macos-x64
+  custom-dart-sdk-windows
   linux-engine
   android-engine
   web-sdk
   ios-engine
   macos-engine
+  macos-engine-universal
+  windows-engine
+  android-host-tools
   artifact-mirror
   publish-sdk-release
   linux-runtime-smoke
@@ -1566,7 +1640,7 @@ assert!(
   )
 end
 
-%w[custom-dart-sdk custom-dart-sdk-macos linux-engine android-engine ios-engine macos-engine].each do |job_name|
+%w[custom-dart-sdk custom-dart-sdk-macos custom-dart-sdk-macos-x64 custom-dart-sdk-windows linux-engine android-engine ios-engine macos-engine windows-engine android-host-tools].each do |job_name|
   condition = jobs.fetch(job_name).fetch('if', '').to_s
   assert!(
     condition.include?("github.event_name != 'workflow_dispatch'") &&
@@ -1599,10 +1673,14 @@ end
 {
   'custom-dart-sdk' => 'SDK_MIN_FREE_DISK_GB',
   'custom-dart-sdk-macos' => 'SDK_MIN_FREE_DISK_GB',
+  'custom-dart-sdk-macos-x64' => 'SDK_MIN_FREE_DISK_GB',
+  'custom-dart-sdk-windows' => 'SDK_MIN_FREE_DISK_GB',
   'linux-engine' => 'ENGINE_MIN_FREE_DISK_GB',
   'android-engine' => 'ENGINE_MIN_FREE_DISK_GB',
   'ios-engine' => 'ENGINE_MIN_FREE_DISK_GB',
   'macos-engine' => 'ENGINE_MIN_FREE_DISK_GB',
+  'windows-engine' => 'ENGINE_MIN_FREE_DISK_GB',
+  'android-host-tools' => 'ENGINE_MIN_FREE_DISK_GB',
 }.each do |job_name, disk_env_var|
   run_text = job_runs(jobs.fetch(job_name)).join("\n")
   assert!(
@@ -1617,7 +1695,7 @@ assert!(
     artifact_mirror_condition.include?('full_sdk_build'),
   'artifact-mirror must run on default push/PR CI and allow manual full_sdk_build opt-out'
 )
-%w[cli-artifacts linux-engine android-engine ios-engine macos-engine].each do |dependency|
+%w[cli-artifacts linux-engine android-engine ios-engine macos-engine macos-engine-universal windows-engine android-host-tools].each do |dependency|
   assert!(
     Array(jobs.fetch('artifact-mirror').fetch('needs', [])).include?(dependency),
     "artifact-mirror must depend on #{dependency}"
@@ -1633,7 +1711,7 @@ assert!(
   Array(jobs.fetch('artifact-mirror').fetch('needs', [])).none? { |dependency| dependency == 'web-sdk' },
   'artifact-mirror must not depend on the unsupported web SDK build'
 )
-%w[server-artifacts custom-dart-sdk custom-dart-sdk-macos].each do |dependency|
+%w[server-artifacts custom-dart-sdk custom-dart-sdk-macos custom-dart-sdk-macos-x64 custom-dart-sdk-windows].each do |dependency|
   assert!(
     Array(jobs.fetch('artifact-mirror').fetch('needs', [])).include?(dependency),
     "artifact-mirror must depend on #{dependency} so release manifest covers it"
@@ -2041,10 +2119,15 @@ end
   server-artifacts
   custom-dart-sdk
   custom-dart-sdk-macos
+  custom-dart-sdk-macos-x64
+  custom-dart-sdk-windows
   linux-engine
   android-engine
   ios-engine
   macos-engine
+  macos-engine-universal
+  windows-engine
+  android-host-tools
   artifact-mirror
 ].each do |job_name|
   assert!(
@@ -2229,11 +2312,11 @@ assert!(
   artifact_mirror_run_text.include?('./scripts/assemble_artifact_mirror.sh') &&
     artifact_mirror_run_text.include?('downloaded-artifacts') &&
     artifact_mirror_run_text.include?('mkdir -p mirror-input') &&
-    artifact_mirror_run_text.include?('cp -R downloaded-artifacts/mirror-* mirror-input/') &&
-    artifact_mirror_run_text.include?('cp -R downloaded-artifacts/linux-engine-x64 mirror-input/') &&
-    artifact_mirror_run_text.include?('cp -R downloaded-artifacts/android-engine-arm64 mirror-input/') &&
-    artifact_mirror_run_text.include?('cp -R downloaded-artifacts/ios-interpreter-engine mirror-input/') &&
-    artifact_mirror_run_text.include?('cp -R downloaded-artifacts/macos-engine-arm64 mirror-input/') &&
+    artifact_mirror_run_text.include?('cp -al downloaded-artifacts/mirror-* mirror-input/') &&
+    artifact_mirror_run_text.include?('cp -al downloaded-artifacts/linux-engine-x64 mirror-input/') &&
+    artifact_mirror_run_text.include?('cp -al downloaded-artifacts/android-engine-arm64 mirror-input/') &&
+    artifact_mirror_run_text.include?('cp -al downloaded-artifacts/ios-interpreter-engine mirror-input/') &&
+    artifact_mirror_run_text.include?('cp -al downloaded-artifacts/macos-engine-arm64 mirror-input/') &&
     artifact_mirror_run_text.match?(
       %r{\./scripts/assemble_artifact_mirror\.sh\s+\\\n\s+mirror-input\s+\\\n\s+artifacts/open-shorebird-artifact-mirror}
     ) &&
@@ -2297,6 +2380,47 @@ end
     "artifact-mirror archive smoke must verify #{required_path}"
   )
 end
+
+expected_maven_overrides = %w[flutter_embedding_release arm64_v8a_release armeabi_v7a_release x86_64_release].product(%w[jar pom maven-metadata.xml], ['', '.sha1']).map do |artifact, extension, checksum|
+  "download.flutter.io/io/flutter/#{artifact}/1.0.0-$engine/#{artifact}-1.0.0-$engine.#{extension}#{checksum}"
+end
+assert!(maven_overrides.sort == expected_maven_overrides.sort, 'Maven overrides must include every supported Android JAR/POM/metadata and SHA-1 route')
+assert!(run_text_by_job.fetch('android-engine').include?('flutter/shell/platform/android:android_jar') && run_text_by_job.fetch('android-engine').include?('scripts/package_android_maven.py') && run_text_by_job.fetch('android-engine').include?('--include-embedding'), 'Android jobs must package real built ABI/embedding JARs through the public Flutter POM generator')
+assert!(run_text_by_job.fetch('source-checks').include?('python3 scripts/verify_android_maven.py'), 'source checks must exercise Maven POM generation and hashes')
+assert!(run_text_by_job.fetch('server-artifacts').include?('./scripts/run_server_client_smoke.sh') && step_uses(jobs.fetch('server-artifacts'), 'dart-lang/setup-dart@v1'), 'Linux server CI must run the real Dart client smoke')
+assert!(artifact_mirror_run_text.include?('cp -al downloaded-artifacts/. "$manifest_input/"'), 'release assembly must hard-link downloaded assets rather than duplicate all platform archives')
+
+# New native coverage must be built, downloaded, and included in the release
+# manifest. Requiring the exact names prevents matrix drift from falling back.
+{
+  'custom-dart-sdk-macos-x64' => ['custom-dart-sdk-macos-x64'],
+  'custom-dart-sdk-windows' => ['custom-dart-sdk-windows-x64'],
+  'android-engine' => %w[android-engine-arm android-engine-arm64 android-engine-x64],
+  'macos-engine' => %w[macos-engine-arm64 macos-engine-x64],
+  'macos-engine-universal' => ['macos-engine-universal'],
+  'windows-engine' => ['windows-engine-x64'],
+  'android-host-tools' => %w[darwin-x64 windows-x64].product(%w[arm arm64 x64]).map { |host, arch| "android-host-tools-#{host}-#{arch}" },
+}.each do |job_name, artifacts|
+  artifacts.each do |artifact|
+    assert!(upload_names(jobs.fetch(job_name)).include?(artifact), "#{job_name} must upload #{artifact}")
+    assert!(artifact_mirror_run_text.include?("--require '#{artifact}/*#{artifact}.tar.gz'"), "release manifest must require #{artifact}")
+  end
+end
+%w[android-engine macos-engine android-host-tools].each do |name|
+  assert!(jobs.dig(name, 'strategy', 'fail-fast') == false, "#{name} must complete independent platform matrix members")
+end
+assert!(matrix_entries(jobs.fetch('android-engine')).map { |entry| entry.fetch('arch') }.sort == %w[arm arm64 x64], 'Android engine matrix must build all three supported ABIs')
+assert!(matrix_entries(jobs.fetch('android-host-tools')).length == 6, 'Android host snapshotters must cover both macOS/Windows hosts and all three ABIs')
+%w[custom-dart-sdk custom-dart-sdk-macos custom-dart-sdk-macos-x64].each do |name|
+  assert!(run_text_by_job.fetch(name).include?('dart_engine_aot_shared') && run_text_by_job.fetch(name).include?('tools/test_aot_bytecode_patch.py --build-dir'), "#{name} must exercise actual unannotated AOT bytecode replacement")
+end
+%w[custom-dart-sdk-windows windows-engine android-host-tools].each do |name|
+  assert!(jobs.dig(name, 'env', 'DEPOT_TOOLS_WIN_TOOLCHAIN') == '0' && jobs.dig(name, 'env', 'MSYS') == 'winsymlinks:nativestrict', "#{name} must use the installed public Windows toolchain and native directory links")
+end
+%w[linux-engine android-engine ios-engine macos-engine windows-engine android-host-tools].each do |name|
+  assert!(step_uses(jobs.fetch(name), 'dtolnay/rust-toolchain@stable'), "#{name} must select stable Rust before installing targets")
+end
+assert!(run_text_by_job.fetch('macos-engine-universal').include?('create_macos_framework.py') && run_text_by_job.fetch('macos-engine-universal').include?('lipo -verify_arch arm64 x86_64'), 'macOS assembly must compose and verify a universal framework')
 
 assert!(
   !workflow_text.match?(/\bdart_dynamic_modules\s*=\s*true\b/),

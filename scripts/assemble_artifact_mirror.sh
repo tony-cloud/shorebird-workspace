@@ -102,6 +102,7 @@ while IFS= read -r -d '' archive_path; do
   mkdir -p "$extract_dir"
   "$PYTHON_BIN" "$ROOT/scripts/safe_extract_tar.py" "$archive_path" "$extract_dir"
   scan_for_shorebird_trees "$extract_dir"
+  rm -rf "$extract_dir"
 done < <(find "$INPUT_DIR" -type f \( -name '*.tar.gz' -o -name '*.tgz' \) -print0)
 
 if [[ "$FOUND_TREES" -eq 0 ]]; then

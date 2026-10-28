@@ -361,7 +361,8 @@ URLs at the open mirrors and does not reference Shorebird's private
 `shorebird-dart-sdk-prebuilt` bucket; custom SDK jobs build and archive the
 open Dart SDK fork directly.
 
-`custom-dart-sdk` and `custom-dart-sdk-macos` build the Dart SDK fork with:
+The four host SDK jobs (`custom-dart-sdk`, `custom-dart-sdk-macos`,
+`custom-dart-sdk-macos-x64`, and `custom-dart-sdk-windows`) build the Dart SDK fork with:
 
 ```gn
 dart_dynamic_modules = false
@@ -370,8 +371,13 @@ dart_enable_shorebird_interpreter = true
 ```
 
 They run `scripts/verify_dart_sdk_args.sh`, then the focused VM patch API
-tests. The Linux job uploads `custom-dart-sdk-linux-x64`; the macOS job uploads
-`custom-dart-sdk-macos-arm64`. Each archive contains the Dart SDK,
+tests. The jobs upload `custom-dart-sdk-linux-x64`,
+`custom-dart-sdk-macos-arm64`, `custom-dart-sdk-macos-x64`, and
+`custom-dart-sdk-windows-x64`. The Unix jobs also build `dart_engine_aot_shared`
+and run `tools/test_aot_bytecode_patch.py`: an unannotated AOT caller must
+observe the replacement function, while rejected patches preserve prior bodies.
+That native harness currently requires Unix linker flags and does not run on Windows.
+Each archive contains the Dart SDK,
 `gen_snapshot`, `dartaotruntime`, `args.gn`, and a `manifest.json` that records
 the root workflow commit, Dart SDK source commit, and patch-related build
 flags. The workflow also uploads `.sha256` sidecars for the SDK archives.
@@ -379,11 +385,13 @@ Before writing the checksum, each SDK job extracts the archive, verifies
 `manifest.json`, `args.gn`, `gen_snapshot`, `dartaotruntime`, and
 `dart-sdk/bin/dart`, then runs the extracted `dart --version`.
 
-The same jobs package updater-compatible `dart-sdk-linux-x64.zip` and
-`dart-sdk-darwin-arm64.zip` files with checksum sidecars. After
+The same jobs package updater-compatible `dart-sdk-linux-x64.zip`,
+`dart-sdk-darwin-arm64.zip`, `dart-sdk-darwin-x64.zip`, and
+`dart-sdk-windows-x64.zip` files with checksum sidecars. Windows executable
+names include `.exe`; `verify_dart_tool_sdk.sh` accepts the native tool SDK name. After
 `artifact-mirror` proves every supported native producer succeeded,
 `publish-sdk-release` creates a GitHub Release using the synchronized upstream
-Shorebird version from `VERSION`, marks it latest, and verifies both assets
+Shorebird version from `VERSION`, marks it latest, and verifies all four assets
 through `releases/latest/download`.
 
 Apple engines run on separate runners so iOS outputs do not exhaust the disk before the macOS build.
@@ -473,3 +481,53 @@ its output is intentionally not published as a supported Shorebird artifact.
 
 Set `run_gclient_sync=false` only for debugging a runner image that already has
 all gclient-managed dependencies restored.
+
+
+### Native platform distribution coverage
+
+The Android engine matrix builds arm, arm64, and x64 with independent Linux
+runners and `fail-fast: false`. Each member publishes its engine, symbols, and
+Linux `gen_snapshot` archive. `android-host-tools` adds independent macOS and
+Windows snapshotter builds for each Android ABI using the public
+`flutter/shell/platform/android:gen_snapshot` and
+`flutter/build/archives:archive_win_gen_snapshot` targets. The historical
+`darwin-x64.zip` contains a universal arm64/x64 executable and serves both
+macOS host architectures. Dart does not support `analyze_snapshot` for ARM32;
+that optional tool is omitted while the ARM32 engine and snapshotter remain required.
+
+The macOS engine matrix builds arm64 and x64 on separate runners. Its
+`macos-engine-universal` successor uses the public framework and snapshotter
+assembly scripts to produce the exact Flutter cache URLs:
+`darwin-x64-release/framework.zip`, `gen_snapshot.zip`, and `artifacts.zip`.
+It checks both framework architectures with `lipo`; each target also publishes
+its universal `analyze-snapshot-macos-<arch>` tool. The Windows desktop job
+builds the public `windows_flutter` target and checks the DLL, import library,
+headers, and snapshotter in `windows-x64-release/windows-x64-flutter.zip`.
+
+Intel macOS jobs default to `macos-15-intel` and accept
+`macos_x64_heavy_runner`; Windows jobs default to `windows-2025` and accept
+`windows_heavy_runner`. Windows explicitly selects installed Visual Studio
+2022 and Windows SDK 10.0.26100.0 with `DEPOT_TOOLS_WIN_TOOLCHAIN=0`, and uses
+native links so gclient's Python process sees the workspace source checkouts.
+Engine jobs select stable Rust before installing target libraries.
+
+Every added producer is required by artifact assembly and the release
+manifest. The generated override list, matrix-aware workflow verifier, and
+assembly fixture cover all four host SDKs and every supported target/host
+snapshotter. Source checks validate Bash syntax and parse PowerShell blocks
+when PowerShell is available. Local fixture success proves packaging and
+manifest contracts; hosted job completion is required to establish platform
+build success, and device execution remains a separate runtime check.
+
+Android producers also publish the actual ABI and shared embedding JARs under
+`download.flutter.io/io/flutter/`, with POMs and metadata produced by Flutter's
+public generator and SHA-1 sidecars for Maven consumers. Only arm64 publishes
+the shared embedding artifact. `verify_android_maven.py` checks real POM
+generation, unchanged JAR bytes, checksums, and missing-payload rejection.
+The Linux server job provisions Dart and runs `run_server_client_smoke.sh`
+against the built Go server using the real Dart client.
+
+Mirror assembly frees hosted-runner disk, hard-links downloaded archives while
+creating its input and release-manifest views, and removes each temporary
+engine extraction after collecting its mirror files. This avoids duplicating
+the expanded platform distribution on the assembly runner.

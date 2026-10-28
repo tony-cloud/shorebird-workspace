@@ -15,12 +15,17 @@ required_major_minor="$(
     "$required_constraint"
 )"
 
-if [[ ! -x "$TOOL_SDK/bin/dart" ]]; then
-  echo "missing executable Dart tool SDK: $TOOL_SDK/bin/dart" >&2
+DART_BIN="$TOOL_SDK/bin/dart"
+if [[ ! -x "$DART_BIN" && -x "$DART_BIN.exe" ]]; then
+  DART_BIN="$DART_BIN.exe"
+fi
+
+if [[ ! -x "$DART_BIN" ]]; then
+  echo "missing executable Dart tool SDK: $DART_BIN" >&2
   exit 66
 fi
 
-version_output="$("$TOOL_SDK/bin/dart" --version 2>&1)"
+version_output="$("$DART_BIN" --version 2>&1)"
 actual_major_minor="$(
   ruby -e 'ARGV[0] =~ /Dart SDK version: ([0-9]+)\.([0-9]+)/ or abort "unable to parse Dart version"; puts "#{$1}.#{$2}"' \
     "$version_output"

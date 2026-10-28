@@ -24,8 +24,12 @@ case "$PLATFORM" in
       DART_DOWNLOAD_ANDROID_DEPS="False"
     fi
     ;;
+  windows)
+    TARGET_OS='["win"]'
+    DART_DOWNLOAD_ANDROID_DEPS="False"
+    ;;
   *)
-    echo "usage: $0 <linux|macos>" >&2
+    echo "usage: $0 <linux|macos|windows>" >&2
     exit 64
     ;;
 esac

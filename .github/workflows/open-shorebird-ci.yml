@@ -35,6 +35,16 @@ on:
         required: false
         default: macos-15
         type: string
+      macos_x64_heavy_runner:
+        description: Runner label for macOS x64 SDK and engine heavy jobs.
+        required: false
+        default: macos-15-intel
+        type: string
+      windows_heavy_runner:
+        description: Runner label for Windows x64 SDK and engine heavy jobs.
+        required: false
+        default: windows-2025
+        type: string
       sdk_min_free_disk_gb:
         description: Minimum free disk GiB required before SDK-only heavy jobs.
         required: false
@@ -148,6 +158,8 @@ jobs:
           python3 -m py_compile scripts/validate_release_manifest.py
           python3 -m py_compile scripts/safe_extract_tar.py
           python3 -m py_compile scripts/write_artifact_manifest.py
+          python3 -m py_compile scripts/package_android_maven.py
+          python3 scripts/verify_android_maven.py
           python3 -m py_compile scripts/write_release_manifest.py
           python3 -m py_compile scripts/write_sha256.py
           python3 - <<'PY'
@@ -156,6 +168,7 @@ jobs:
           compile(Path('flutter/DEPS').read_text(encoding='utf-8'), 'flutter/DEPS', 'exec')
           PY
           ./scripts/verify_ci_capacity.sh
+          ./scripts/verify_dart_tool_sdk_validator.sh
           ./scripts/verify_open_infrastructure_defaults.sh
           ./scripts/verify_sync_open_sources.sh
           ./scripts/verify_powershell_open_defaults.sh
@@ -427,6 +440,12 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
+      - name: Set up Dart for real client smoke
+        if: ${{ matrix.goos == 'linux' && matrix.goarch == 'amd64' }}
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: ${{ env.DART_SDK_CHANNEL }}
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
@@ -436,6 +455,12 @@ jobs:
       - name: Test server
         working-directory: shorebird-server
         run: go test ./...
+
+      - name: Smoke real Dart client against Go server
+        if: ${{ matrix.goos == 'linux' && matrix.goarch == 'amd64' }}
+        env:
+          DART_BIN: dart
+        run: ./scripts/run_server_client_smoke.sh
 
       - name: Build server binary
         working-directory: shorebird-server
@@ -582,7 +607,7 @@ jobs:
       - name: Build patched Dart SDK
         working-directory: dart-sdk
         run: |
-          ninja -C out/ReleaseX64 create_sdk runtime gen_snapshot dartaotruntime
+          ninja -C out/ReleaseX64 create_sdk runtime gen_snapshot dartaotruntime dart_engine_aot_shared
 
       - name: Run focused patch API tests
         working-directory: dart-sdk/out/ReleaseX64
@@ -591,6 +616,9 @@ jobs:
           ./run_vm_tests DartAPI_BytecodePatchReloadConfiguration
           ./run_vm_tests DartAPI_SnapshotRegionSizes
           ./run_vm_tests DartAPI_SnapshotRegionSizesRejectInvalidHeaders
+
+      - name: Run AOT bytecode replacement regression
+        run: python3 dart-sdk/tools/test_aot_bytecode_patch.py --build-dir dart-sdk/out/ReleaseX64
 
       - name: Package Dart SDK artifact
         run: |
@@ -705,7 +733,7 @@ jobs:
       - name: Build patched Dart SDK
         working-directory: dart-sdk
         run: |
-          ninja -C xcodebuild/ReleaseARM64 create_sdk runtime gen_snapshot dartaotruntime
+          ninja -C xcodebuild/ReleaseARM64 create_sdk runtime gen_snapshot dartaotruntime dart_engine_aot_shared
 
       - name: Run focused patch API tests
         working-directory: dart-sdk/xcodebuild/ReleaseARM64
@@ -714,6 +742,9 @@ jobs:
           ./run_vm_tests DartAPI_BytecodePatchReloadConfiguration
           ./run_vm_tests DartAPI_SnapshotRegionSizes
           ./run_vm_tests DartAPI_SnapshotRegionSizesRejectInvalidHeaders
+
+      - name: Run AOT bytecode replacement regression
+        run: python3 dart-sdk/tools/test_aot_bytecode_patch.py --build-dir dart-sdk/xcodebuild/ReleaseARM64
 
       - name: Package Dart SDK artifact
         run: |
@@ -773,6 +804,283 @@ jobs:
             dart-sdk-darwin-arm64.zip.sha256
           if-no-files-found: error
 
+  custom-dart-sdk-macos-x64:
+    name: Build custom Dart SDK (macOS x64)
+    needs: source-checks
+    runs-on: ${{ inputs.macos_x64_heavy_runner || 'macos-15-intel' }}
+    timeout-minutes: 180
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.full_sdk_build }}
+    steps:
+      - name: Checkout workspace
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install depot_tools
+        run: |
+          if [ ! -d depot_tools ]; then
+            git clone --depth 1 \
+              https://chromium.googlesource.com/chromium/tools/depot_tools.git \
+              depot_tools
+          fi
+          echo "$GITHUB_WORKSPACE/depot_tools" >> "$GITHUB_PATH"
+
+      - name: Verify depot_tools build tools
+        run: |
+          python3 --version
+          gclient help >/dev/null
+          ninja --version
+
+      - name: Check runner capacity
+        run: CI_MIN_FREE_DISK_GB="$SDK_MIN_FREE_DISK_GB" ./scripts/check_ci_capacity.sh
+
+      - name: Write gclient config
+        run: ./scripts/write_gclient.sh macos
+
+      - name: Sync open-source links
+        run: ./scripts/sync_open_sources.sh
+
+      - name: gclient sync
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_gclient_sync }}
+        run: gclient sync --no-history
+
+      - name: Generate patched Dart SDK build files
+        working-directory: dart-sdk
+        run: |
+          python3 tools/gn.py \
+            --mode release \
+            --arch x64 \
+            --gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=true'
+
+      - name: Verify patched Dart SDK args
+        run: ./scripts/verify_dart_sdk_args.sh dart-sdk/xcodebuild/ReleaseX64/args.gn
+
+      - name: Build patched Dart SDK
+        working-directory: dart-sdk
+        run: |
+          ninja -C xcodebuild/ReleaseX64 create_sdk runtime gen_snapshot dartaotruntime dart_engine_aot_shared
+
+      - name: Run focused patch API tests
+        working-directory: dart-sdk/xcodebuild/ReleaseX64
+        run: |
+          ./run_vm_tests DartAPI_AotPatchingConfiguration
+          ./run_vm_tests DartAPI_BytecodePatchReloadConfiguration
+          ./run_vm_tests DartAPI_SnapshotRegionSizes
+          ./run_vm_tests DartAPI_SnapshotRegionSizesRejectInvalidHeaders
+
+      - name: Run AOT bytecode replacement regression
+        run: python3 dart-sdk/tools/test_aot_bytecode_patch.py --build-dir dart-sdk/xcodebuild/ReleaseX64
+
+      - name: Package Dart SDK artifact
+        run: |
+          mkdir -p artifacts/custom-dart-sdk-macos-x64
+          cp -R dart-sdk/xcodebuild/ReleaseX64/dart-sdk artifacts/custom-dart-sdk-macos-x64/
+          cp dart-sdk/xcodebuild/ReleaseX64/gen_snapshot artifacts/custom-dart-sdk-macos-x64/
+          cp dart-sdk/xcodebuild/ReleaseX64/dartaotruntime artifacts/custom-dart-sdk-macos-x64/
+          cp dart-sdk/xcodebuild/ReleaseX64/args.gn artifacts/custom-dart-sdk-macos-x64/
+          dart_sdk_revision="$(git -C dart-sdk rev-parse HEAD)"
+          cat > artifacts/custom-dart-sdk-macos-x64/manifest.json <<EOF
+          {
+            "name": "custom-dart-sdk-macos-x64",
+            "git_sha": "${{ github.sha }}",
+            "dart_sdk_git_sha": "${dart_sdk_revision}",
+            "runner_os": "${{ runner.os }}",
+            "dart_arch": "x64",
+            "dart_build_dir": "dart-sdk/xcodebuild/ReleaseX64",
+            "dart_dynamic_modules": false,
+            "dart_enable_aot_patching": true,
+            "dart_enable_shorebird_interpreter": true,
+            "included": [
+              "dart-sdk/",
+              "gen_snapshot",
+              "dartaotruntime",
+              "args.gn"
+            ]
+          }
+          EOF
+          tar -C artifacts -czf custom-dart-sdk-macos-x64.tar.gz custom-dart-sdk-macos-x64
+          sdk_extract_dir="$(mktemp -d)"
+          tar -C "$sdk_extract_dir" -xzf custom-dart-sdk-macos-x64.tar.gz
+          test -f "$sdk_extract_dir/custom-dart-sdk-macos-x64/manifest.json"
+          test -f "$sdk_extract_dir/custom-dart-sdk-macos-x64/args.gn"
+          test -x "$sdk_extract_dir/custom-dart-sdk-macos-x64/dart-sdk/bin/dart"
+          test -x "$sdk_extract_dir/custom-dart-sdk-macos-x64/gen_snapshot"
+          test -x "$sdk_extract_dir/custom-dart-sdk-macos-x64/dartaotruntime"
+          "$sdk_extract_dir/custom-dart-sdk-macos-x64/dart-sdk/bin/dart" --version
+          (
+            cd dart-sdk/xcodebuild/ReleaseX64
+            zip -qr "$GITHUB_WORKSPACE/dart-sdk-darwin-x64.zip" dart-sdk
+          )
+          release_sdk_extract_dir="$(mktemp -d)"
+          unzip -q dart-sdk-darwin-x64.zip -d "$release_sdk_extract_dir"
+          test -x "$release_sdk_extract_dir/dart-sdk/bin/dart"
+          "$release_sdk_extract_dir/dart-sdk/bin/dart" --version
+          ./scripts/write_sha256.sh custom-dart-sdk-macos-x64.tar.gz custom-dart-sdk-macos-x64.tar.gz.sha256
+          ./scripts/write_sha256.sh dart-sdk-darwin-x64.zip dart-sdk-darwin-x64.zip.sha256
+
+      - name: Upload custom Dart SDK
+        uses: actions/upload-artifact@v4
+        with:
+          name: custom-dart-sdk-macos-x64
+          path: |
+            custom-dart-sdk-macos-x64.tar.gz
+            custom-dart-sdk-macos-x64.tar.gz.sha256
+            dart-sdk-darwin-x64.zip
+            dart-sdk-darwin-x64.zip.sha256
+          if-no-files-found: error
+
+
+  custom-dart-sdk-windows:
+    name: Build custom Dart SDK (Windows x64)
+    needs: source-checks
+    runs-on: ${{ inputs.windows_heavy_runner || 'windows-2025' }}
+    timeout-minutes: 180
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.full_sdk_build }}
+    env:
+      DEPOT_TOOLS_WIN_TOOLCHAIN: "0"
+      GYP_MSVS_VERSION: "2022"
+      MSYS: winsymlinks:nativestrict
+    steps:
+      - name: Checkout workspace
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Prepare native Windows build tools
+        shell: pwsh
+        run: |
+          git config --global core.longpaths true
+          git config --global core.symlinks true
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vs = & $vswhere -latest -version '[17.0,18.0)' -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (!$vs) { throw 'Visual Studio 2022 C++ toolchain is required' }
+          "GYP_MSVS_OVERRIDE_PATH=$vs" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+          cmd /c "`"$vs\Common7\Tools\VsDevCmd.bat`" -arch=x64 -host_arch=x64 >nul && set" | ForEach-Object {
+            if ($_ -match '^([^=]+)=(.*)$') {
+              $name, $value = $matches[1], $matches[2]
+              if ($name -notmatch '^(GITHUB_|RUNNER_|NODE_OPTIONS$)' -and [Environment]::GetEnvironmentVariable($name) -ne $value) {
+                "$name=$value" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+              }
+            }
+          }
+          if ($LASTEXITCODE) { throw 'VsDevCmd failed' }
+          if (!(Test-Path "${env:ProgramFiles(x86)}\Windows Kits\10\Include\10.0.26100.0\um\Windows.h")) {
+            throw 'Windows SDK 10.0.26100.0 is required by Dart/Chromium'
+          }
+
+      - name: Install depot_tools
+        run: |
+          if [ ! -d depot_tools ]; then
+            git clone --depth 1 \
+              https://chromium.googlesource.com/chromium/tools/depot_tools.git \
+              depot_tools
+          fi
+          echo "$GITHUB_WORKSPACE/depot_tools" >> "$GITHUB_PATH"
+
+      - name: Verify depot_tools build tools
+        run: |
+          python3 --version
+          gclient help >/dev/null
+          ninja --version
+
+      - name: Check runner capacity
+        run: CI_MIN_FREE_DISK_GB="$SDK_MIN_FREE_DISK_GB" ./scripts/check_ci_capacity.sh
+
+      - name: Write gclient config
+        run: ./scripts/write_gclient.sh windows
+
+      - name: Sync open-source links
+        run: ./scripts/sync_open_sources.sh
+
+      - name: gclient sync
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_gclient_sync }}
+        run: gclient sync --no-history
+
+      - name: Generate patched Dart SDK build files
+        working-directory: dart-sdk
+        run: |
+          python3 tools/gn.py \
+            --mode release \
+            --arch x64 \
+            --gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=true'
+
+      - name: Verify patched Dart SDK args
+        run: ./scripts/verify_dart_sdk_args.sh dart-sdk/out/ReleaseX64/args.gn
+
+      - name: Build patched Dart SDK
+        working-directory: dart-sdk
+        run: |
+          ninja -C out/ReleaseX64 create_sdk runtime gen_snapshot dartaotruntime
+
+      - name: Run focused patch API tests
+        working-directory: dart-sdk/out/ReleaseX64
+        run: |
+          ./run_vm_tests.exe DartAPI_AotPatchingConfiguration
+          ./run_vm_tests.exe DartAPI_BytecodePatchReloadConfiguration
+          ./run_vm_tests.exe DartAPI_SnapshotRegionSizes
+          ./run_vm_tests.exe DartAPI_SnapshotRegionSizesRejectInvalidHeaders
+
+      - name: Package Dart SDK artifact
+        run: |
+          mkdir -p artifacts/custom-dart-sdk-windows-x64
+          cp -R dart-sdk/out/ReleaseX64/dart-sdk artifacts/custom-dart-sdk-windows-x64/
+          cp dart-sdk/out/ReleaseX64/gen_snapshot.exe artifacts/custom-dart-sdk-windows-x64/
+          cp dart-sdk/out/ReleaseX64/dartaotruntime.exe artifacts/custom-dart-sdk-windows-x64/
+          cp dart-sdk/out/ReleaseX64/args.gn artifacts/custom-dart-sdk-windows-x64/
+          dart_sdk_revision="$(git -C dart-sdk rev-parse HEAD)"
+          cat > artifacts/custom-dart-sdk-windows-x64/manifest.json <<EOF
+          {
+            "name": "custom-dart-sdk-windows-x64",
+            "git_sha": "${{ github.sha }}",
+            "dart_sdk_git_sha": "${dart_sdk_revision}",
+            "runner_os": "${{ runner.os }}",
+            "dart_arch": "x64",
+            "dart_build_dir": "dart-sdk/out/ReleaseX64",
+            "dart_dynamic_modules": false,
+            "dart_enable_aot_patching": true,
+            "dart_enable_shorebird_interpreter": true,
+            "included": [
+              "dart-sdk/",
+              "gen_snapshot.exe",
+              "dartaotruntime.exe",
+              "args.gn"
+            ]
+          }
+          EOF
+          tar -C artifacts -czf custom-dart-sdk-windows-x64.tar.gz custom-dart-sdk-windows-x64
+          sdk_extract_dir="$(mktemp -d)"
+          tar -C "$sdk_extract_dir" -xzf custom-dart-sdk-windows-x64.tar.gz
+          test -f "$sdk_extract_dir/custom-dart-sdk-windows-x64/manifest.json"
+          test -f "$sdk_extract_dir/custom-dart-sdk-windows-x64/args.gn"
+          test -x "$sdk_extract_dir/custom-dart-sdk-windows-x64/dart-sdk/bin/dart.exe"
+          test -x "$sdk_extract_dir/custom-dart-sdk-windows-x64/gen_snapshot.exe"
+          test -x "$sdk_extract_dir/custom-dart-sdk-windows-x64/dartaotruntime.exe"
+          "$sdk_extract_dir/custom-dart-sdk-windows-x64/dart-sdk/bin/dart.exe" --version
+          (
+            cd dart-sdk/out/ReleaseX64
+            python3 -m zipfile -c "$GITHUB_WORKSPACE/dart-sdk-windows-x64.zip" dart-sdk
+          )
+          release_sdk_extract_dir="$(mktemp -d)"
+          unzip -q dart-sdk-windows-x64.zip -d "$release_sdk_extract_dir"
+          test -x "$release_sdk_extract_dir/dart-sdk/bin/dart.exe"
+          "$release_sdk_extract_dir/dart-sdk/bin/dart.exe" --version
+          ./scripts/write_sha256.sh custom-dart-sdk-windows-x64.tar.gz custom-dart-sdk-windows-x64.tar.gz.sha256
+          ./scripts/write_sha256.sh dart-sdk-windows-x64.zip dart-sdk-windows-x64.zip.sha256
+
+      - name: Upload custom Dart SDK
+        uses: actions/upload-artifact@v4
+        with:
+          name: custom-dart-sdk-windows-x64
+          path: |
+            custom-dart-sdk-windows-x64.tar.gz
+            custom-dart-sdk-windows-x64.tar.gz.sha256
+            dart-sdk-windows-x64.zip
+            dart-sdk-windows-x64.zip.sha256
+          if-no-files-found: error
+
+
   linux-engine:
     name: Build Linux engine artifacts
     needs: source-checks
@@ -785,6 +1093,9 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Install depot_tools
         run: |
@@ -960,12 +1271,31 @@ jobs:
     runs-on: ${{ inputs.linux_heavy_runner || 'ubuntu-latest' }}
     timeout-minutes: 240
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.full_sdk_build }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            rust_target: aarch64-linux-android
+            jar: arm64_v8a_release.jar
+            maven_artifact: arm64_v8a_release
+          - arch: arm
+            rust_target: armv7-linux-androideabi
+            jar: armeabi_v7a_release.jar
+            maven_artifact: armeabi_v7a_release
+          - arch: x64
+            rust_target: x86_64-linux-android
+            jar: x86_64_release.jar
+            maven_artifact: x86_64_release
     steps:
       - name: Checkout workspace
         uses: actions/checkout@v4
         with:
           submodules: recursive
           fetch-depth: 0
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Install depot_tools
         run: |
@@ -989,7 +1319,7 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
 
       - name: Install Android Rust target
-        run: rustup target add aarch64-linux-android
+        run: rustup target add ${{ matrix.rust_target }}
 
       - name: Free Ubuntu runner disk
         run: ./scripts/free_ci_disk_linux.sh
@@ -1023,24 +1353,27 @@ jobs:
           ./flutter/tools/gn \
             --android \
             --runtime-mode=release \
-            --android-cpu=arm64 \
-            --target-dir=android_release_arm64 \
+            --android-cpu=${{ matrix.arch }} \
+            --target-dir=android_release_${{ matrix.arch }} \
             --no-prebuilt-dart-sdk \
             --gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=false shorebird_enable_aot_patching=true shorebird_use_interpreter=false flutter_prebuilt_dart_sdk=false'
 
       - name: Build Android engine
         working-directory: flutter/engine/src
         run: |
-          ninja -C out/android_release_arm64 \
+          ninja -C out/android_release_${{ matrix.arch }} \
             flutter/shell/platform/android:flutter_jar_zip \
+            flutter/shell/platform/android:android_jar \
             flutter/shell/platform/android:android_symbols \
-            flutter/shell/platform/android:gen_snapshot \
-            flutter/shell/platform/android:analyze_snapshot
+            flutter/shell/platform/android:gen_snapshot
+          if [[ "${{ matrix.arch }}" != arm ]]; then
+            ninja -C out/android_release_${{ matrix.arch }} flutter/shell/platform/android:analyze_snapshot
+          fi
 
       - name: Verify Android engine args
         run: |
           ./scripts/verify_engine_args.sh \
-            flutter/engine/src/out/android_release_arm64/args.gn \
+            flutter/engine/src/out/android_release_${{ matrix.arch }}/args.gn \
             dart_dynamic_modules=false \
             dart_enable_aot_patching=true \
             dart_enable_shorebird_interpreter=false \
@@ -1051,20 +1384,20 @@ jobs:
       - name: Package Android engine artifacts
         run: |
           set -euo pipefail
-          out=flutter/engine/src/out/android_release_arm64
+          out=flutter/engine/src/out/android_release_${{ matrix.arch }}
           mkdir -p artifacts/android-engine
 
-          cp "$out/args.gn" artifacts/android-engine/android_release_arm64.args.gn
-          cp "$out/zip_archives/android-arm64-release/artifacts.zip" artifacts/android-engine/
-          cp "$out/zip_archives/android-arm64-release/symbols.zip" artifacts/android-engine/
+          cp "$out/args.gn" artifacts/android-engine/android_release_${{ matrix.arch }}.args.gn
+          cp "$out/zip_archives/android-${{ matrix.arch }}-release/artifacts.zip" artifacts/android-engine/
+          cp "$out/zip_archives/android-${{ matrix.arch }}-release/symbols.zip" artifacts/android-engine/
           cp "$out/flutter.jar" artifacts/android-engine/
           cp "$out/libflutter.so" artifacts/android-engine/
-          if [ -f "$out/arm64_v8a_release.jar" ]; then
-            cp "$out/arm64_v8a_release.jar" artifacts/android-engine/
+          if [ -f "$out/${{ matrix.jar }}" ]; then
+            cp "$out/${{ matrix.jar }}" artifacts/android-engine/
           fi
 
           gen_snapshot=""
-          for candidate in "$out/gen_snapshot_arm64" "$out/clang_x64/gen_snapshot" "$out/universal/gen_snapshot"; do
+          for candidate in "$out/gen_snapshot_${{ matrix.arch }}" "$out/clang_x64/gen_snapshot" "$out/universal/gen_snapshot"; do
             if [ -f "$candidate" ]; then
               gen_snapshot="$candidate"
               break
@@ -1076,39 +1409,55 @@ jobs:
             exit 66
           fi
 
-          analyze_snapshot=""
-          for candidate in "$out/analyze_snapshot_arm64" "$out/clang_x64/analyze_snapshot" "$out/universal/analyze_snapshot"; do
-            if [ -f "$candidate" ]; then
-              analyze_snapshot="$candidate"
-              break
+          cp "$gen_snapshot" artifacts/android-engine/gen_snapshot_${{ matrix.arch }}
+          analyze_snapshot_manifest=""
+          if [[ "${{ matrix.arch }}" != arm ]]; then
+            analyze_snapshot=""
+            for candidate in "$out/analyze_snapshot_${{ matrix.arch }}" "$out/clang_x64/analyze_snapshot" "$out/universal/analyze_snapshot"; do
+              if [ -f "$candidate" ]; then
+                analyze_snapshot="$candidate"
+                break
+              fi
+            done
+            if [ -z "$analyze_snapshot" ]; then
+              echo "missing Android analyze_snapshot tool under $out" >&2
+              find "$out" -maxdepth 3 -type f -name 'analyze_snapshot*' -print >&2
+              exit 66
             fi
-          done
-          if [ -z "$analyze_snapshot" ]; then
-            echo "missing Android analyze_snapshot tool under $out" >&2
-            find "$out" -maxdepth 3 -type f -name 'analyze_snapshot*' -print >&2
-            exit 66
+            cp "$analyze_snapshot" artifacts/android-engine/analyze_snapshot_${{ matrix.arch }}
+            analyze_snapshot_manifest='"analyze_snapshot_${{ matrix.arch }}",'
           fi
-          cp "$gen_snapshot" artifacts/android-engine/gen_snapshot_arm64
-          cp "$analyze_snapshot" artifacts/android-engine/analyze_snapshot_arm64
 
           engine_revision="$(cat flutter/bin/internal/engine.version)"
-          mirror_root="artifacts/android-engine/mirror/shorebird/flutter_infra_release/flutter/$engine_revision/android-arm64-release"
+          mirror_root="artifacts/android-engine/mirror/shorebird/flutter_infra_release/flutter/$engine_revision/android-${{ matrix.arch }}-release"
           mkdir -p "$mirror_root"
-          cp "$out/zip_archives/android-arm64-release/artifacts.zip" "$mirror_root/artifacts.zip"
-          cp "$out/zip_archives/android-arm64-release/symbols.zip" "$mirror_root/symbols.zip"
+          cp "$out/zip_archives/android-${{ matrix.arch }}-release/artifacts.zip" "$mirror_root/artifacts.zip"
+          cp "$out/zip_archives/android-${{ matrix.arch }}-release/symbols.zip" "$mirror_root/symbols.zip"
           test -f "$mirror_root/artifacts.zip"
           test -f "$mirror_root/symbols.zip"
+          cp "$out/zip_archives/android-${{ matrix.arch }}-release/linux-x64.zip" "$mirror_root/linux-x64.zip"
+          test -f "$mirror_root/linux-x64.zip"
+
+          maven_args=()
+          if [[ "${{ matrix.arch }}" == arm64 ]]; then
+            maven_args+=(--include-embedding)
+          fi
+          python3 scripts/package_android_maven.py \
+            --out-dir "$out" \
+            --mirror-root artifacts/android-engine/mirror/shorebird \
+            --engine-revision "$engine_revision" \
+            --artifact "${{ matrix.maven_artifact }}" "${maven_args[@]}"
 
           cat > artifacts/android-engine/manifest.json <<EOF
           {
-            "name": "android-engine-arm64",
+            "name": "android-engine-${{ matrix.arch }}",
             "git_sha": "${{ github.sha }}",
             "runner_os": "${{ runner.os }}",
             "engine_revision": "${engine_revision}",
-            "android_build_dir": "flutter/engine/src/out/android_release_arm64",
+            "android_build_dir": "flutter/engine/src/out/android_release_${{ matrix.arch }}",
             "runtime_mode": "release",
             "target_os": "android",
-            "target_arch": "arm64",
+            "target_arch": "${{ matrix.arch }}",
             "dart_dynamic_modules": false,
             "dart_enable_aot_patching": true,
             "dart_enable_shorebird_interpreter": false,
@@ -1119,36 +1468,40 @@ jobs:
               "symbols.zip",
               "flutter.jar",
               "libflutter.so",
-              "gen_snapshot_arm64",
-              "analyze_snapshot_arm64",
-              "android_release_arm64.args.gn",
-              "mirror/shorebird/flutter_infra_release/flutter/${engine_revision}/android-arm64-release/artifacts.zip",
-              "mirror/shorebird/flutter_infra_release/flutter/${engine_revision}/android-arm64-release/symbols.zip"
+              "gen_snapshot_${{ matrix.arch }}",
+              ${analyze_snapshot_manifest}
+              "android_release_${{ matrix.arch }}.args.gn",
+              "mirror/shorebird/flutter_infra_release/flutter/${engine_revision}/android-${{ matrix.arch }}-release/artifacts.zip",
+              "mirror/shorebird/flutter_infra_release/flutter/${engine_revision}/android-${{ matrix.arch }}-release/symbols.zip",
+              "mirror/shorebird/flutter_infra_release/flutter/${engine_revision}/android-${{ matrix.arch }}-release/linux-x64.zip"
             ]
           }
           EOF
-          tar -C artifacts -czf android-engine-arm64.tar.gz android-engine
+          tar -C artifacts -czf android-engine-${{ matrix.arch }}.tar.gz android-engine
           engine_extract_dir="$(mktemp -d)"
-          tar -C "$engine_extract_dir" -xzf android-engine-arm64.tar.gz
+          tar -C "$engine_extract_dir" -xzf android-engine-${{ matrix.arch }}.tar.gz
           test -f "$engine_extract_dir/android-engine/manifest.json"
-          test -f "$engine_extract_dir/android-engine/android_release_arm64.args.gn"
+          test -f "$engine_extract_dir/android-engine/android_release_${{ matrix.arch }}.args.gn"
           test -f "$engine_extract_dir/android-engine/artifacts.zip"
           test -f "$engine_extract_dir/android-engine/symbols.zip"
           test -f "$engine_extract_dir/android-engine/flutter.jar"
           test -f "$engine_extract_dir/android-engine/libflutter.so"
-          test -f "$engine_extract_dir/android-engine/gen_snapshot_arm64"
-          test -f "$engine_extract_dir/android-engine/analyze_snapshot_arm64"
-          test -f "$engine_extract_dir/android-engine/mirror/shorebird/flutter_infra_release/flutter/$engine_revision/android-arm64-release/artifacts.zip"
-          test -f "$engine_extract_dir/android-engine/mirror/shorebird/flutter_infra_release/flutter/$engine_revision/android-arm64-release/symbols.zip"
-          ./scripts/write_sha256.sh android-engine-arm64.tar.gz android-engine-arm64.tar.gz.sha256
+          test -f "$engine_extract_dir/android-engine/gen_snapshot_${{ matrix.arch }}"
+          "$engine_extract_dir/android-engine/gen_snapshot_${{ matrix.arch }}" --version
+          if [[ "${{ matrix.arch }}" != arm ]]; then
+            test -f "$engine_extract_dir/android-engine/analyze_snapshot_${{ matrix.arch }}"
+          fi
+          test -f "$engine_extract_dir/android-engine/mirror/shorebird/flutter_infra_release/flutter/$engine_revision/android-${{ matrix.arch }}-release/artifacts.zip"
+          test -f "$engine_extract_dir/android-engine/mirror/shorebird/flutter_infra_release/flutter/$engine_revision/android-${{ matrix.arch }}-release/symbols.zip"
+          ./scripts/write_sha256.sh android-engine-${{ matrix.arch }}.tar.gz android-engine-${{ matrix.arch }}.tar.gz.sha256
 
       - name: Upload Android engine artifact
         uses: actions/upload-artifact@v4
         with:
-          name: android-engine-arm64
+          name: android-engine-${{ matrix.arch }}
           path: |
-            android-engine-arm64.tar.gz
-            android-engine-arm64.tar.gz.sha256
+            android-engine-${{ matrix.arch }}.tar.gz
+            android-engine-${{ matrix.arch }}.tar.gz.sha256
           if-no-files-found: error
 
   web-sdk:
@@ -1307,6 +1660,9 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Install depot_tools
         run: |
@@ -1531,15 +1887,28 @@ jobs:
   macos-engine:
     name: Build macOS engine artifacts
     needs: source-checks
-    runs-on: ${{ inputs.macos_heavy_runner || 'macos-15' }}
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 300
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.full_sdk_build }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            runner: ${{ inputs.macos_heavy_runner || 'macos-15' }}
+            rust_target: aarch64-apple-darwin
+          - arch: x64
+            runner: ${{ inputs.macos_x64_heavy_runner || 'macos-15-intel' }}
+            rust_target: x86_64-apple-darwin
     steps:
       - name: Checkout workspace
         uses: actions/checkout@v4
         with:
           submodules: recursive
           fetch-depth: 0
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Install depot_tools
         run: |
@@ -1557,7 +1926,7 @@ jobs:
           ninja --version
 
       - name: Install Apple Rust targets
-        run: rustup target add aarch64-apple-ios aarch64-apple-darwin
+        run: rustup target add ${{ matrix.rust_target }}
 
       - name: Check runner capacity
         run: CI_MIN_FREE_DISK_GB="$ENGINE_MIN_FREE_DISK_GB" ./scripts/check_ci_capacity.sh
@@ -1588,23 +1957,23 @@ jobs:
           ./flutter/tools/gn \
             --mac \
             --runtime-mode=release \
-            --mac-cpu=arm64 \
-            --target-dir=macos_release_arm64 \
+            --mac-cpu=${{ matrix.arch }} \
+            --target-dir=macos_release_${{ matrix.arch }} \
             --no-prebuilt-dart-sdk \
             --gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=false shorebird_enable_aot_patching=true shorebird_use_interpreter=false flutter_prebuilt_dart_sdk=false'
 
       - name: Build macOS engine
         working-directory: flutter/engine/src
         run: |
-          ninja -C out/macos_release_arm64 \
+          ninja -C out/macos_release_${{ matrix.arch }} \
             flutter/shell/platform/darwin/macos:zip_macos_flutter_framework \
             flutter/build/archives:flutter_patched_sdk \
-            create_macos_gen_snapshots
+            create_macos_gen_snapshots create_macos_analyze_snapshots
 
       - name: Verify macOS engine args
         run: |
           ./scripts/verify_engine_args.sh \
-            flutter/engine/src/out/macos_release_arm64/args.gn \
+            flutter/engine/src/out/macos_release_${{ matrix.arch }}/args.gn \
             dart_dynamic_modules=false \
             dart_enable_aot_patching=true \
             dart_enable_shorebird_interpreter=false \
@@ -1615,7 +1984,7 @@ jobs:
       - name: Package macOS engine artifacts
         run: |
           set -euo pipefail
-          out=flutter/engine/src/out/macos_release_arm64
+          out=flutter/engine/src/out/macos_release_${{ matrix.arch }}
           mkdir -p artifacts/macos-engine
 
           framework_zip="$(find "$out/zip_archives" -name 'FlutterMacOS.framework.zip' -type f -print -quit)"
@@ -1625,23 +1994,34 @@ jobs:
 
           cp "$framework_zip" artifacts/macos-engine/
           cp "$patched_sdk_zip" artifacts/macos-engine/
-          cp "$out/args.gn" artifacts/macos-engine/macos_release_arm64.args.gn
+          cp "$out/args.gn" artifacts/macos-engine/macos_release_${{ matrix.arch }}.args.gn
+          cp "$out/universal/gen_snapshot_${{ matrix.arch }}" artifacts/macos-engine/
+          cp "$out/analyze_snapshot_${{ matrix.arch }}" artifacts/macos-engine/
+          for tool in gen_snapshot analyze_snapshot; do
+            codesign --force --sign - "artifacts/macos-engine/${tool}_${{ matrix.arch }}"
+            lipo -verify_arch arm64 x86_64 "artifacts/macos-engine/${tool}_${{ matrix.arch }}"
+          done
+          artifacts/macos-engine/gen_snapshot_${{ matrix.arch }} --version
+          artifacts/macos-engine/analyze_snapshot_${{ matrix.arch }} --sdk_version
+          tools_mirror="artifacts/macos-engine/mirror/shorebird/$(cat flutter/bin/internal/engine.version)"
+          mkdir -p "$tools_mirror"
+          cp "artifacts/macos-engine/analyze_snapshot_${{ matrix.arch }}" "$tools_mirror/analyze-snapshot-macos-${{ matrix.arch }}"
 
           engine_revision="$(cat flutter/bin/internal/engine.version)"
           mirror_root="artifacts/macos-engine/mirror/shorebird/flutter_infra_release/flutter/$engine_revision"
-          mkdir -p "$mirror_root/darwin-arm64-release"
-          cp "$framework_zip" "$mirror_root/darwin-arm64-release/FlutterMacOS.framework.zip"
-          test -f "$mirror_root/darwin-arm64-release/FlutterMacOS.framework.zip"
+          mkdir -p "$mirror_root/darwin-${{ matrix.arch }}-release"
+          cp "$framework_zip" "$mirror_root/darwin-${{ matrix.arch }}-release/FlutterMacOS.framework.zip"
+          test -f "$mirror_root/darwin-${{ matrix.arch }}-release/FlutterMacOS.framework.zip"
           cat > artifacts/macos-engine/manifest.json <<EOF
           {
-            "name": "macos-engine-arm64",
+            "name": "macos-engine-${{ matrix.arch }}",
             "git_sha": "${{ github.sha }}",
             "runner_os": "${{ runner.os }}",
             "engine_revision": "${engine_revision}",
-            "macos_build_dir": "flutter/engine/src/out/macos_release_arm64",
+            "macos_build_dir": "flutter/engine/src/out/macos_release_${{ matrix.arch }}",
             "runtime_mode": "release",
             "target_os": "macos",
-            "target_arch": "arm64",
+            "target_arch": "${{ matrix.arch }}",
             "dart_dynamic_modules": false,
             "dart_enable_aot_patching": true,
             "dart_enable_shorebird_interpreter": false,
@@ -1650,28 +2030,488 @@ jobs:
             "included": [
               "FlutterMacOS.framework.zip",
               "flutter_patched_sdk_product.zip",
-              "macos_release_arm64.args.gn",
-              "mirror/shorebird/flutter_infra_release/flutter/${engine_revision}/darwin-arm64-release/FlutterMacOS.framework.zip"
+              "macos_release_${{ matrix.arch }}.args.gn",
+              "gen_snapshot_${{ matrix.arch }}",
+              "analyze_snapshot_${{ matrix.arch }}",
+              "mirror/shorebird/${engine_revision}/analyze-snapshot-macos-${{ matrix.arch }}",
+              "mirror/shorebird/flutter_infra_release/flutter/${engine_revision}/darwin-${{ matrix.arch }}-release/FlutterMacOS.framework.zip"
             ]
           }
           EOF
-          tar -C artifacts -czf macos-engine-arm64.tar.gz macos-engine
+          tar -C artifacts -czf macos-engine-${{ matrix.arch }}.tar.gz macos-engine
           engine_extract_dir="$(mktemp -d)"
-          tar -C "$engine_extract_dir" -xzf macos-engine-arm64.tar.gz
+          tar -C "$engine_extract_dir" -xzf macos-engine-${{ matrix.arch }}.tar.gz
           test -f "$engine_extract_dir/macos-engine/manifest.json"
-          test -f "$engine_extract_dir/macos-engine/macos_release_arm64.args.gn"
+          test -f "$engine_extract_dir/macos-engine/macos_release_${{ matrix.arch }}.args.gn"
           test -f "$engine_extract_dir/macos-engine/FlutterMacOS.framework.zip"
           test -f "$engine_extract_dir/macos-engine/flutter_patched_sdk_product.zip"
-          test -f "$engine_extract_dir/macos-engine/mirror/shorebird/flutter_infra_release/flutter/$engine_revision/darwin-arm64-release/FlutterMacOS.framework.zip"
-          ./scripts/write_sha256.sh macos-engine-arm64.tar.gz macos-engine-arm64.tar.gz.sha256
+          test -f "$engine_extract_dir/macos-engine/mirror/shorebird/flutter_infra_release/flutter/$engine_revision/darwin-${{ matrix.arch }}-release/FlutterMacOS.framework.zip"
+          ./scripts/write_sha256.sh macos-engine-${{ matrix.arch }}.tar.gz macos-engine-${{ matrix.arch }}.tar.gz.sha256
 
       - name: Upload macOS engine artifact
         uses: actions/upload-artifact@v4
         with:
-          name: macos-engine-arm64
+          name: macos-engine-${{ matrix.arch }}
           path: |
-            macos-engine-arm64.tar.gz
-            macos-engine-arm64.tar.gz.sha256
+            macos-engine-${{ matrix.arch }}.tar.gz
+            macos-engine-${{ matrix.arch }}.tar.gz.sha256
+          if-no-files-found: error
+
+  macos-engine-universal:
+    name: Assemble universal macOS engine
+    needs: [source-checks, macos-engine]
+    runs-on: ${{ inputs.macos_heavy_runner || 'macos-15' }}
+    timeout-minutes: 30
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.full_sdk_build }}
+    steps:
+      - name: Checkout workspace
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Download macOS arm64 engine
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-engine-arm64
+          path: downloaded-artifacts/arm64
+
+      - name: Download macOS x64 engine
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-engine-x64
+          path: downloaded-artifacts/x64
+
+      - name: Assemble universal macOS artifacts
+        run: |
+          set -euo pipefail
+          for arch in arm64 x64; do
+            mkdir -p "macos-input/$arch"
+            python3 scripts/safe_extract_tar.py "downloaded-artifacts/$arch/macos-engine-$arch.tar.gz" "macos-input/$arch"
+            unzip -q "macos-input/$arch/macos-engine/FlutterMacOS.framework.zip" -d "macos-input/$arch/framework"
+          done
+          engine_revision="$(cat flutter/bin/internal/engine.version)"
+          mirror_root="artifacts/macos-engine-universal/mirror/shorebird/flutter_infra_release/flutter/$engine_revision/darwin-x64-release"
+          mkdir -p "$mirror_root"
+          python3 flutter/engine/src/flutter/sky/tools/create_macos_framework.py \
+            --dst "$PWD/macos-composed/framework" \
+            --arm64-out-dir "$PWD/macos-input/arm64/framework" \
+            --x64-out-dir "$PWD/macos-input/x64/framework" --zip
+          python3 flutter/engine/src/flutter/sky/tools/create_macos_gen_snapshots.py \
+            --dst "$PWD/macos-composed/snapshot" \
+            --arm64-path "$PWD/macos-input/arm64/macos-engine/gen_snapshot_arm64" \
+            --x64-path "$PWD/macos-input/x64/macos-engine/gen_snapshot_x64" --zip
+          lipo -verify_arch arm64 x86_64 macos-composed/framework/FlutterMacOS.framework/Versions/A/FlutterMacOS
+          cp macos-composed/framework/framework.zip "$mirror_root/framework.zip"
+          cp macos-composed/snapshot/gen_snapshot.zip "$mirror_root/gen_snapshot.zip"
+          python3 - "$mirror_root/artifacts.zip" <<'PYZIP'
+          from pathlib import Path
+          import sys
+          import zipfile
+
+          # Release artifacts.zip contains host tools; the two target snapshotters
+          # used by Flutter's universal macOS build live in gen_snapshot.zip.
+          with zipfile.ZipFile(sys.argv[1], "w", zipfile.ZIP_DEFLATED) as archive:
+              for source, name in [
+                  ("macos-input/x64/macos-engine/gen_snapshot_x64", "gen_snapshot"),
+                  ("macos-input/x64/macos-engine/analyze_snapshot_x64", "analyze_snapshot"),
+              ]:
+                  archive.write(source, name)
+              archive.writestr("entitlements.txt", "gen_snapshot\nanalyze_snapshot\n")
+              archive.writestr("without_entitlements.txt", "\n")
+          PYZIP
+          test -f "$mirror_root/framework.zip"
+          test -f "$mirror_root/gen_snapshot.zip"
+          test -f "$mirror_root/artifacts.zip"
+          cat > artifacts/macos-engine-universal/manifest.json <<EOF
+          {
+            "name": "macos-engine-universal",
+            "git_sha": "${{ github.sha }}",
+            "engine_revision": "${engine_revision}",
+            "target_os": "macos",
+            "target_archs": ["arm64", "x64"],
+            "included": [
+              "mirror/shorebird/flutter_infra_release/flutter/${engine_revision}/darwin-x64-release/framework.zip",
+              "mirror/shorebird/flutter_infra_release/flutter/${engine_revision}/darwin-x64-release/gen_snapshot.zip",
+              "mirror/shorebird/flutter_infra_release/flutter/${engine_revision}/darwin-x64-release/artifacts.zip"
+            ]
+          }
+          EOF
+          tar -C artifacts -czf macos-engine-universal.tar.gz macos-engine-universal
+          engine_extract_dir="$(mktemp -d)"
+          python3 scripts/safe_extract_tar.py macos-engine-universal.tar.gz "$engine_extract_dir"
+          python3 - "$mirror_root" <<'PYZIP'
+          from pathlib import Path
+          import sys
+          import zipfile
+
+          root = Path(sys.argv[1])
+          for archive_name, required in {
+              "framework.zip": {"FlutterMacOS.xcframework/Info.plist"},
+              "gen_snapshot.zip": {"gen_snapshot_arm64", "gen_snapshot_x64"},
+              "artifacts.zip": {"gen_snapshot", "analyze_snapshot"},
+          }.items():
+              with zipfile.ZipFile(root / archive_name) as archive:
+                  missing = required - set(archive.namelist())
+                  if missing:
+                      raise SystemExit(f"{archive_name} missing {sorted(missing)}")
+          PYZIP
+          ./scripts/write_sha256.sh macos-engine-universal.tar.gz macos-engine-universal.tar.gz.sha256
+
+      - name: Upload universal macOS engine artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-engine-universal
+          path: |
+            macos-engine-universal.tar.gz
+            macos-engine-universal.tar.gz.sha256
+          if-no-files-found: error
+
+  windows-engine:
+    name: Build Windows engine artifacts
+    needs: source-checks
+    runs-on: ${{ inputs.windows_heavy_runner || 'windows-2025' }}
+    timeout-minutes: 300
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.full_sdk_build }}
+    env:
+      DEPOT_TOOLS_WIN_TOOLCHAIN: "0"
+      GYP_MSVS_VERSION: "2022"
+      MSYS: winsymlinks:nativestrict
+    steps:
+      - name: Checkout workspace
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Prepare native Windows build tools
+        shell: pwsh
+        run: |
+          git config --global core.longpaths true
+          git config --global core.symlinks true
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vs = & $vswhere -latest -version '[17.0,18.0)' -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (!$vs) { throw 'Visual Studio 2022 C++ toolchain is required' }
+          "GYP_MSVS_OVERRIDE_PATH=$vs" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+          cmd /c "`"$vs\Common7\Tools\VsDevCmd.bat`" -arch=x64 -host_arch=x64 >nul && set" | ForEach-Object {
+            if ($_ -match '^([^=]+)=(.*)$') {
+              $name, $value = $matches[1], $matches[2]
+              if ($name -notmatch '^(GITHUB_|RUNNER_|NODE_OPTIONS$)' -and [Environment]::GetEnvironmentVariable($name) -ne $value) {
+                "$name=$value" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+              }
+            }
+          }
+          if ($LASTEXITCODE) { throw 'VsDevCmd failed' }
+          if (!(Test-Path "${env:ProgramFiles(x86)}\Windows Kits\10\Include\10.0.26100.0\um\Windows.h")) {
+            throw 'Windows SDK 10.0.26100.0 is required by Dart/Chromium'
+          }
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install depot_tools
+        run: |
+          if [ ! -d depot_tools ]; then
+            git clone --depth 1 \
+              https://chromium.googlesource.com/chromium/tools/depot_tools.git \
+              depot_tools
+          fi
+          echo "$GITHUB_WORKSPACE/depot_tools" >> "$GITHUB_PATH"
+
+      - name: Verify depot_tools build tools
+        run: |
+          python3 --version
+          gclient help >/dev/null
+          ninja --version
+
+      - name: Install Windows Rust target
+        run: rustup target add x86_64-pc-windows-msvc
+
+      - name: Check runner capacity
+        run: CI_MIN_FREE_DISK_GB="$ENGINE_MIN_FREE_DISK_GB" ./scripts/check_ci_capacity.sh
+
+      - name: Write gclient config
+        env:
+          INCLUDE_ENGINE_DEPS: "1"
+        run: ./scripts/write_gclient.sh windows
+
+      - name: Sync open-source links
+        run: ./scripts/sync_open_sources.sh
+
+      - name: gclient sync
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_gclient_sync }}
+        run: gclient sync --no-history
+
+      - name: gclient sync Flutter engine deps
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_gclient_sync }}
+        working-directory: flutter
+        run: gclient sync --no-history
+
+      - name: Verify Dart tool SDK
+        run: ./scripts/verify_dart_tool_sdk.sh
+
+      - name: Configure Windows engine
+        working-directory: flutter/engine/src
+        run: |
+          python3 flutter/tools/gn \
+            --windows --windows-cpu=x64 \
+            --runtime-mode=release --target-dir=windows_release_x64 \
+            --no-prebuilt-dart-sdk \
+            --gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=false shorebird_enable_aot_patching=true shorebird_use_interpreter=false flutter_prebuilt_dart_sdk=false'
+
+      - name: Build Windows engine
+        working-directory: flutter/engine/src
+        run: ninja -C out/windows_release_x64 flutter/build/archives:windows_flutter
+
+      - name: Verify Windows engine args
+        run: |
+          ./scripts/verify_engine_args.sh \
+            flutter/engine/src/out/windows_release_x64/args.gn \
+            dart_dynamic_modules=false dart_enable_aot_patching=true \
+            dart_enable_shorebird_interpreter=false shorebird_enable_aot_patching=true \
+            shorebird_use_interpreter=false flutter_prebuilt_dart_sdk=false
+
+      - name: Package Windows engine artifacts
+        run: |
+          set -euo pipefail
+          out=flutter/engine/src/out/windows_release_x64
+          mkdir -p artifacts/windows-engine
+          cp "$out/args.gn" artifacts/windows-engine/windows_release_x64.args.gn
+          cp "$out/zip_archives/windows-x64-release/windows-x64-flutter.zip" artifacts/windows-engine/
+          engine_revision="$(cat flutter/bin/internal/engine.version)"
+          mirror_root="artifacts/windows-engine/mirror/shorebird/flutter_infra_release/flutter/$engine_revision/windows-x64-release"
+          mkdir -p "$mirror_root"
+          cp artifacts/windows-engine/windows-x64-flutter.zip "$mirror_root/windows-x64-flutter.zip"
+          test -f "$mirror_root/windows-x64-flutter.zip"
+          cat > artifacts/windows-engine/manifest.json <<EOF
+          {
+            "name": "windows-engine-x64",
+            "git_sha": "${{ github.sha }}",
+            "runner_os": "${{ runner.os }}",
+            "engine_revision": "${engine_revision}",
+            "target_os": "windows",
+            "target_arch": "x64",
+            "dart_dynamic_modules": false,
+            "dart_enable_aot_patching": true,
+            "dart_enable_shorebird_interpreter": false,
+            "shorebird_enable_aot_patching": true,
+            "shorebird_use_interpreter": false,
+            "included": [
+              "windows_release_x64.args.gn",
+              "windows-x64-flutter.zip",
+              "mirror/shorebird/flutter_infra_release/flutter/${engine_revision}/windows-x64-release/windows-x64-flutter.zip"
+            ]
+          }
+          EOF
+          tar -C artifacts -czf windows-engine-x64.tar.gz windows-engine
+          engine_extract_dir="$(mktemp -d)"
+          tar -C "$engine_extract_dir" -xzf windows-engine-x64.tar.gz
+          test -f "$engine_extract_dir/windows-engine/manifest.json"
+          test -f "$engine_extract_dir/windows-engine/windows_release_x64.args.gn"
+          test -f "$engine_extract_dir/windows-engine/mirror/shorebird/flutter_infra_release/flutter/$engine_revision/windows-x64-release/windows-x64-flutter.zip"
+          python3 - "$engine_extract_dir/windows-engine/windows-x64-flutter.zip" <<'PYZIP'
+          import sys
+          import zipfile
+
+          with zipfile.ZipFile(sys.argv[1]) as archive:
+              required = {"flutter_windows.dll", "flutter_windows.dll.lib", "gen_snapshot.exe", "flutter_windows.h"}
+              missing = required - set(archive.namelist())
+              if missing:
+                  raise SystemExit(f"missing Windows engine files: {sorted(missing)}")
+          PYZIP
+          unzip -q "$engine_extract_dir/windows-engine/windows-x64-flutter.zip" -d "$engine_extract_dir/windows-tools"
+          "$engine_extract_dir/windows-tools/gen_snapshot.exe" --version
+          python3 - "$engine_extract_dir/windows-tools/flutter_windows.dll" <<'PYDLL'
+          import ctypes
+          import sys
+
+          ctypes.WinDLL(sys.argv[1])
+          PYDLL
+          ./scripts/write_sha256.sh windows-engine-x64.tar.gz windows-engine-x64.tar.gz.sha256
+
+      - name: Upload Windows engine artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-engine-x64
+          path: |
+            windows-engine-x64.tar.gz
+            windows-engine-x64.tar.gz.sha256
+          if-no-files-found: error
+
+  android-host-tools:
+    name: Build Android host snapshotters
+    needs: source-checks
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 300
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.full_sdk_build }}
+    env:
+      DEPOT_TOOLS_WIN_TOOLCHAIN: "0"
+      GYP_MSVS_VERSION: "2022"
+      MSYS: winsymlinks:nativestrict
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [arm, arm64, x64]
+        host: [darwin-x64, windows-x64]
+        include:
+          - host: darwin-x64
+            runner: ${{ inputs.macos_heavy_runner || 'macos-15' }}
+            gclient_platform: macos
+            snapshot_target: flutter/shell/platform/android:gen_snapshot
+          - host: windows-x64
+            runner: ${{ inputs.windows_heavy_runner || 'windows-2025' }}
+            gclient_platform: windows
+            snapshot_target: flutter/build/archives:archive_win_gen_snapshot
+    steps:
+      - name: Checkout workspace
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Prepare native Windows build tools
+        if: ${{ matrix.host == 'windows-x64' }}
+        shell: pwsh
+        run: |
+          git config --global core.longpaths true
+          git config --global core.symlinks true
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vs = & $vswhere -latest -version '[17.0,18.0)' -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (!$vs) { throw 'Visual Studio 2022 C++ toolchain is required' }
+          "GYP_MSVS_OVERRIDE_PATH=$vs" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+          cmd /c "`"$vs\Common7\Tools\VsDevCmd.bat`" -arch=x64 -host_arch=x64 >nul && set" | ForEach-Object {
+            if ($_ -match '^([^=]+)=(.*)$') {
+              $name, $value = $matches[1], $matches[2]
+              if ($name -notmatch '^(GITHUB_|RUNNER_|NODE_OPTIONS$)' -and [Environment]::GetEnvironmentVariable($name) -ne $value) {
+                "$name=$value" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+              }
+            }
+          }
+          if ($LASTEXITCODE) { throw 'VsDevCmd failed' }
+          if (!(Test-Path "${env:ProgramFiles(x86)}\Windows Kits\10\Include\10.0.26100.0\um\Windows.h")) {
+            throw 'Windows SDK 10.0.26100.0 is required by Dart/Chromium'
+          }
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install depot_tools
+        run: |
+          if [ ! -d depot_tools ]; then
+            git clone --depth 1 \
+              https://chromium.googlesource.com/chromium/tools/depot_tools.git \
+              depot_tools
+          fi
+          echo "$GITHUB_WORKSPACE/depot_tools" >> "$GITHUB_PATH"
+
+      - name: Verify depot_tools build tools
+        run: |
+          python3 --version
+          gclient help >/dev/null
+          ninja --version
+
+      - name: Check runner capacity
+        run: CI_MIN_FREE_DISK_GB="$ENGINE_MIN_FREE_DISK_GB" ./scripts/check_ci_capacity.sh
+
+      - name: Write gclient config
+        env:
+          INCLUDE_ENGINE_DEPS: "1"
+        run: ./scripts/write_gclient.sh ${{ matrix.gclient_platform }}
+
+      - name: Sync open-source links
+        run: ./scripts/sync_open_sources.sh
+
+      - name: gclient sync
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_gclient_sync }}
+        run: gclient sync --no-history
+
+      - name: gclient sync Flutter engine deps
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_gclient_sync }}
+        working-directory: flutter
+        run: gclient sync --no-history
+
+      - name: Verify Dart tool SDK
+        run: ./scripts/verify_dart_tool_sdk.sh
+
+      - name: Configure Android host snapshotters
+        working-directory: flutter/engine/src
+        run: |
+          python3 flutter/tools/gn --android --android-cpu=${{ matrix.arch }} \
+            --runtime-mode=release --target-dir=android_release_${{ matrix.arch }} \
+            --no-prebuilt-dart-sdk \
+            --gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=false shorebird_enable_aot_patching=true shorebird_use_interpreter=false flutter_prebuilt_dart_sdk=false'
+
+      - name: Build Android host snapshotters
+        working-directory: flutter/engine/src
+        run: ninja -C out/android_release_${{ matrix.arch }} ${{ matrix.snapshot_target }}
+
+      - name: Verify Android host snapshotter args
+        run: |
+          ./scripts/verify_engine_args.sh \
+            flutter/engine/src/out/android_release_${{ matrix.arch }}/args.gn \
+            dart_dynamic_modules=false dart_enable_aot_patching=true \
+            dart_enable_shorebird_interpreter=false shorebird_enable_aot_patching=true \
+            shorebird_use_interpreter=false flutter_prebuilt_dart_sdk=false
+
+      - name: Package Android host snapshotters
+        run: |
+          set -euo pipefail
+          engine_revision="$(cat flutter/bin/internal/engine.version)"
+          out=flutter/engine/src/out/android_release_${{ matrix.arch }}
+          mirror_root="artifacts/android-host-tools/mirror/shorebird/flutter_infra_release/flutter/$engine_revision/android-${{ matrix.arch }}-release"
+          mkdir -p "$mirror_root"
+          cp "$out/zip_archives/android-${{ matrix.arch }}-release/${{ matrix.host }}.zip" "$mirror_root/${{ matrix.host }}.zip"
+          test -f "$mirror_root/${{ matrix.host }}.zip"
+          cp "$out/args.gn" artifacts/android-host-tools/args.gn
+          python3 - "$mirror_root/${{ matrix.host }}.zip" "${{ matrix.host }}" <<'PYZIP'
+          import sys
+          import zipfile
+
+          name = "gen_snapshot.exe" if sys.argv[2] == "windows-x64" else "gen_snapshot"
+          with zipfile.ZipFile(sys.argv[1]) as archive:
+              if name not in archive.namelist() or archive.getinfo(name).file_size == 0:
+                  raise SystemExit(f"missing executable snapshotter: {name}")
+          PYZIP
+          snapshotter_smoke="$(mktemp -d)"
+          unzip -q "$mirror_root/${{ matrix.host }}.zip" -d "$snapshotter_smoke"
+          if [[ "${{ matrix.host }}" == darwin-x64 ]]; then
+            codesign --force --sign - "$snapshotter_smoke/gen_snapshot"
+            lipo -verify_arch arm64 x86_64 "$snapshotter_smoke/gen_snapshot"
+            "$snapshotter_smoke/gen_snapshot" --version
+            # Publish the same signed universal binary that passed the host smoke.
+            rm "$mirror_root/${{ matrix.host }}.zip"
+            snapshotter_archive="$PWD/$mirror_root/${{ matrix.host }}.zip"
+            (cd "$snapshotter_smoke" && zip -qr "$snapshotter_archive" .)
+          else
+            "$snapshotter_smoke/gen_snapshot.exe" --version
+          fi
+          cat > artifacts/android-host-tools/manifest.json <<EOF
+          {
+            "name": "android-host-tools-${{ matrix.host }}-${{ matrix.arch }}",
+            "git_sha": "${{ github.sha }}",
+            "engine_revision": "${engine_revision}",
+            "target_os": "android",
+            "target_arch": "${{ matrix.arch }}",
+            "host": "${{ matrix.host }}",
+            "included": [
+              "args.gn",
+              "mirror/shorebird/flutter_infra_release/flutter/${engine_revision}/android-${{ matrix.arch }}-release/${{ matrix.host }}.zip"
+            ]
+          }
+          EOF
+          tar -C artifacts -czf android-host-tools-${{ matrix.host }}-${{ matrix.arch }}.tar.gz android-host-tools
+          engine_extract_dir="$(mktemp -d)"
+          tar -C "$engine_extract_dir" -xzf android-host-tools-${{ matrix.host }}-${{ matrix.arch }}.tar.gz
+          test -f "$engine_extract_dir/android-host-tools/manifest.json"
+          test -f "$engine_extract_dir/android-host-tools/mirror/shorebird/flutter_infra_release/flutter/$engine_revision/android-${{ matrix.arch }}-release/${{ matrix.host }}.zip"
+          ./scripts/write_sha256.sh android-host-tools-${{ matrix.host }}-${{ matrix.arch }}.tar.gz android-host-tools-${{ matrix.host }}-${{ matrix.arch }}.tar.gz.sha256
+
+      - name: Upload Android host snapshotters
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-host-tools-${{ matrix.host }}-${{ matrix.arch }}
+          path: |
+            android-host-tools-${{ matrix.host }}-${{ matrix.arch }}.tar.gz
+            android-host-tools-${{ matrix.host }}-${{ matrix.arch }}.tar.gz.sha256
           if-no-files-found: error
 
   artifact-mirror:
@@ -1682,10 +2522,15 @@ jobs:
       - server-artifacts
       - custom-dart-sdk
       - custom-dart-sdk-macos
+      - custom-dart-sdk-macos-x64
       - linux-engine
       - android-engine
+      - android-host-tools
       - ios-engine
       - macos-engine
+      - macos-engine-universal
+      - windows-engine
+      - custom-dart-sdk-windows
     runs-on: ubuntu-latest
     timeout-minutes: 30
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.full_sdk_build }}
@@ -1695,6 +2540,9 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
+
+      - name: Free Ubuntu assembly runner disk
+        run: ./scripts/free_ci_disk_linux.sh
 
       - name: Download mirror patch and metadata artifacts
         uses: actions/download-artifact@v4
@@ -1729,6 +2577,12 @@ jobs:
           name: custom-dart-sdk-macos-arm64
           path: downloaded-artifacts/custom-dart-sdk-macos-arm64
 
+      - name: Download custom-dart-sdk-macos-x64
+        uses: actions/download-artifact@v4
+        with:
+          name: custom-dart-sdk-macos-x64
+          path: downloaded-artifacts/custom-dart-sdk-macos-x64
+
       - name: Download Linux engine mirror artifacts
         uses: actions/download-artifact@v4
         with:
@@ -1740,6 +2594,18 @@ jobs:
         with:
           name: android-engine-arm64
           path: downloaded-artifacts/android-engine-arm64
+
+      - name: Download android-engine-x64
+        uses: actions/download-artifact@v4
+        with:
+          name: android-engine-x64
+          path: downloaded-artifacts/android-engine-x64
+
+      - name: Download android-engine-arm
+        uses: actions/download-artifact@v4
+        with:
+          name: android-engine-arm
+          path: downloaded-artifacts/android-engine-arm
 
       - name: Download iOS engine mirror artifacts
         uses: actions/download-artifact@v4
@@ -1753,6 +2619,37 @@ jobs:
           name: macos-engine-arm64
           path: downloaded-artifacts/macos-engine-arm64
 
+      - name: Download macos-engine-x64
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-engine-x64
+          path: downloaded-artifacts/macos-engine-x64
+
+      - name: Download custom-dart-sdk-windows-x64
+        uses: actions/download-artifact@v4
+        with:
+          name: custom-dart-sdk-windows-x64
+          path: downloaded-artifacts/custom-dart-sdk-windows-x64
+
+      - name: Download windows-engine-x64
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-engine-x64
+          path: downloaded-artifacts/windows-engine-x64
+
+      - name: Download Android host snapshotters
+        uses: actions/download-artifact@v4
+        with:
+          pattern: android-host-tools-*
+          path: downloaded-artifacts
+          merge-multiple: false
+
+      - name: Download universal macOS engine
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-engine-universal
+          path: downloaded-artifacts/macos-engine-universal
+
       - name: Assemble mirror
         run: |
           set -euo pipefail
@@ -1760,18 +2657,28 @@ jobs:
           mkdir -p artifacts
           rm -rf mirror-input
           mkdir -p mirror-input
-          cp -R downloaded-artifacts/mirror-* mirror-input/
-          cp -R downloaded-artifacts/linux-engine-x64 mirror-input/
-          cp -R downloaded-artifacts/android-engine-arm64 mirror-input/
-          cp -R downloaded-artifacts/ios-interpreter-engine mirror-input/
-          cp -R downloaded-artifacts/macos-engine-arm64 mirror-input/
+          cp -al downloaded-artifacts/mirror-* mirror-input/
+          cp -al downloaded-artifacts/linux-engine-x64 mirror-input/
+          cp -al downloaded-artifacts/windows-engine-x64 mirror-input/
+          cp -al downloaded-artifacts/android-engine-arm64 mirror-input/
+          cp -al downloaded-artifacts/android-host-tools-* mirror-input/
+          cp -al downloaded-artifacts/android-engine-x64 mirror-input/
+          cp -al downloaded-artifacts/android-engine-arm mirror-input/
+          cp -al downloaded-artifacts/ios-interpreter-engine mirror-input/
+          cp -al downloaded-artifacts/macos-engine-arm64 mirror-input/
+          cp -al downloaded-artifacts/macos-engine-universal mirror-input/
+          cp -al downloaded-artifacts/macos-engine-x64 mirror-input/
           engine_revision="$(cat flutter/bin/internal/engine.version)"
           sdk_mirror="mirror-input/shorebird/flutter_infra_release/flutter/$engine_revision"
           mkdir -p "$sdk_mirror"
           cp downloaded-artifacts/custom-dart-sdk-linux-x64/dart-sdk-linux-x64.zip* "$sdk_mirror/"
           cp downloaded-artifacts/custom-dart-sdk-macos-arm64/dart-sdk-darwin-arm64.zip* "$sdk_mirror/"
+          cp downloaded-artifacts/custom-dart-sdk-macos-x64/dart-sdk-darwin-x64.zip* "$sdk_mirror/"
+          cp downloaded-artifacts/custom-dart-sdk-windows-x64/dart-sdk-windows-x64.zip* "$sdk_mirror/"
+          test -f "$sdk_mirror/dart-sdk-windows-x64.zip"
           test -f "$sdk_mirror/dart-sdk-linux-x64.zip"
           test -f "$sdk_mirror/dart-sdk-darwin-arm64.zip"
+          test -f "$sdk_mirror/dart-sdk-darwin-x64.zip"
           ./scripts/assemble_artifact_mirror.sh \
             mirror-input \
             artifacts/open-shorebird-artifact-mirror
@@ -1793,11 +2700,16 @@ jobs:
           find "$mirror_extract_dir/open-shorebird-artifact-mirror/shorebird" -path '*/ios-release/artifacts.zip' -type f -print -quit | grep -q .
           find "$mirror_extract_dir/open-shorebird-artifact-mirror/shorebird" -path '*/darwin-arm64-release/FlutterMacOS.framework.zip' -type f -print -quit | grep -q .
           find "$mirror_extract_dir/open-shorebird-artifact-mirror/shorebird" -path '*/flutter_patched_sdk_product.zip' -type f -print -quit | grep -q .
+          find "$mirror_extract_dir/open-shorebird-artifact-mirror/shorebird" -path '*/android-arm-release/artifacts.zip' -type f -print -quit | grep -q .
+          find "$mirror_extract_dir/open-shorebird-artifact-mirror/shorebird" -path '*/android-arm-release/symbols.zip' -type f -print -quit | grep -q .
+          find "$mirror_extract_dir/open-shorebird-artifact-mirror/shorebird" -path '*/android-x64-release/artifacts.zip' -type f -print -quit | grep -q .
+          find "$mirror_extract_dir/open-shorebird-artifact-mirror/shorebird" -path '*/android-x64-release/symbols.zip' -type f -print -quit | grep -q .
+          find "$mirror_extract_dir/open-shorebird-artifact-mirror/shorebird" -path '*/darwin-x64-release/FlutterMacOS.framework.zip' -type f -print -quit | grep -q .
           ./scripts/write_sha256.sh \
             open-shorebird-artifact-mirror.tar.gz \
             open-shorebird-artifact-mirror.tar.gz.sha256
           manifest_input="$(mktemp -d)"
-          cp -R downloaded-artifacts/. "$manifest_input/"
+          cp -al downloaded-artifacts/. "$manifest_input/"
           mkdir -p "$manifest_input/open-shorebird-artifact-mirror"
           cp open-shorebird-artifact-mirror.tar.gz "$manifest_input/open-shorebird-artifact-mirror/"
           cp open-shorebird-artifact-mirror.tar.gz.sha256 "$manifest_input/open-shorebird-artifact-mirror/"
@@ -1815,10 +2727,23 @@ jobs:
             --require 'shorebird-server-windows-amd64/*shorebird-server-windows-amd64.tar.gz' \
             --require 'custom-dart-sdk-linux-x64/*custom-dart-sdk-linux-x64.tar.gz' \
             --require 'custom-dart-sdk-macos-arm64/*custom-dart-sdk-macos-arm64.tar.gz' \
+            --require 'custom-dart-sdk-macos-x64/*custom-dart-sdk-macos-x64.tar.gz' \
+            --require 'custom-dart-sdk-windows-x64/*custom-dart-sdk-windows-x64.tar.gz' \
+            --require 'windows-engine-x64/*windows-engine-x64.tar.gz' \
             --require 'linux-engine-x64/*linux-engine-x64.tar.gz' \
             --require 'android-engine-arm64/*android-engine-arm64.tar.gz' \
+            --require 'android-engine-x64/*android-engine-x64.tar.gz' \
+            --require 'android-engine-arm/*android-engine-arm.tar.gz' \
+            --require 'android-host-tools-darwin-x64-arm/*android-host-tools-darwin-x64-arm.tar.gz' \
+            --require 'android-host-tools-darwin-x64-arm64/*android-host-tools-darwin-x64-arm64.tar.gz' \
+            --require 'android-host-tools-darwin-x64-x64/*android-host-tools-darwin-x64-x64.tar.gz' \
+            --require 'android-host-tools-windows-x64-arm/*android-host-tools-windows-x64-arm.tar.gz' \
+            --require 'android-host-tools-windows-x64-arm64/*android-host-tools-windows-x64-arm64.tar.gz' \
+            --require 'android-host-tools-windows-x64-x64/*android-host-tools-windows-x64-x64.tar.gz' \
             --require 'ios-interpreter-engine/*ios-interpreter-engine.tar.gz' \
             --require 'macos-engine-arm64/*macos-engine-arm64.tar.gz' \
+            --require 'macos-engine-x64/*macos-engine-x64.tar.gz' \
+            --require 'macos-engine-universal/*macos-engine-universal.tar.gz' \
             --require 'mirror-patch-linux-x64.zip/*patch-linux-x64.zip' \
             --require 'mirror-patch-darwin-x64.zip/*patch-darwin-x64.zip' \
             --require 'mirror-patch-darwin-arm64.zip/*patch-darwin-arm64.zip' \
@@ -1877,13 +2802,27 @@ jobs:
           name: custom-dart-sdk-macos-arm64
           path: downloaded-artifacts/custom-dart-sdk-macos-arm64
 
+      - name: Download custom-dart-sdk-macos-x64
+        uses: actions/download-artifact@v4
+        with:
+          name: custom-dart-sdk-macos-x64
+          path: downloaded-artifacts/custom-dart-sdk-macos-x64
+
+      - name: Download Windows Dart SDK release asset
+        uses: actions/download-artifact@v4
+        with:
+          name: custom-dart-sdk-windows-x64
+          path: downloaded-artifacts/custom-dart-sdk-windows-x64
+
       - name: Verify release assets
         run: |
           set -euo pipefail
           mkdir -p release-assets
           for asset in \
             dart-sdk-linux-x64.zip \
-            dart-sdk-darwin-arm64.zip; do
+            dart-sdk-darwin-arm64.zip \
+            dart-sdk-darwin-x64.zip \
+            dart-sdk-windows-x64.zip; do
             source_path="$(find downloaded-artifacts -type f -name "$asset" -print -quit)"
             sidecar_path="$(find downloaded-artifacts -type f -name "$asset.sha256" -print -quit)"
             test -n "$source_path"
@@ -1927,7 +2866,9 @@ jobs:
           set -euo pipefail
           for asset in \
             dart-sdk-linux-x64.zip \
-            dart-sdk-darwin-arm64.zip; do
+            dart-sdk-darwin-arm64.zip \
+            dart-sdk-darwin-x64.zip \
+            dart-sdk-windows-x64.zip; do
             curl -fL --retry 5 --retry-all-errors \
               "https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/$asset" \
               -o "/tmp/$asset"
