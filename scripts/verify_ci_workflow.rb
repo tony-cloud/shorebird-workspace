@@ -275,6 +275,7 @@ required_files = %w[
   flutter/engine/src/flutter/build/zip_bundle.gni
   flutter/engine/src/flutter/pubspec.yaml
   flutter/engine/src/flutter/runtime/dart_isolate.cc
+  flutter/engine/src/flutter/shell/common/shorebird/shorebird_patch_encryption.h
   flutter/engine/src/flutter/runtime/shorebird/BUILD.gn
   flutter/engine/src/flutter/shell/platform/embedder/BUILD.gn
   flutter/engine/src/flutter/lib/web_ui/dev/steps/copy_artifacts_step.dart
@@ -2430,6 +2431,12 @@ assert!(run_text_by_job.fetch('custom-dart-sdk').include?('dart-sdk/bin/dart pub
   assert!(build && tooling && package && build < tooling && tooling < package, "#{name} must check developer tools after building and before packaging")
   assert!(steps.fetch(tooling).fetch('run').include?("scripts/verify_dart_sdk_tooling.py --dart \"$PWD/dart-sdk/#{sdk_path}\""), "#{name} must exercise its own production SDK for offline pub, dart run, and default-TFA exe compilation")
 end
+assert!(
+  run_text_by_job.fetch('android-engine').include?('cp flutter/engine/src/flutter/shell/common/shorebird/shorebird_patch_encryption.h artifacts/android-engine/') &&
+    run_text_by_job.fetch('android-engine').include?('archive.read("shorebird_patch_encryption.h") != expected') &&
+    run_text_by_job.fetch('android-engine').include?('cp artifacts/android-engine/artifacts.zip "$mirror_root/artifacts.zip"'),
+  'every Android ABI must publish and verify the canonical encryption registration header in its archive and mirrored artifacts.zip'
+)
 assert!(inputs.dig('windows_heavy_runner', 'default') == 'windows-2022', 'Windows heavy jobs must select the VS2022 image supported by the Dart/Chromium toolchain')
 %w[custom-dart-sdk-windows windows-engine android-host-tools].each do |name|
   assert!(jobs.dig(name, 'env', 'DEPOT_TOOLS_WIN_TOOLCHAIN') == '0' && jobs.dig(name, 'env', 'MSYS') == 'winsymlinks:nativestrict', "#{name} must use the installed public Windows toolchain and native directory links")
@@ -2437,7 +2444,7 @@ end
 %w[linux-engine android-engine ios-engine macos-engine windows-engine android-host-tools].each do |name|
   assert!(step_uses(jobs.fetch(name), 'dtolnay/rust-toolchain@stable'), "#{name} must select stable Rust before installing targets")
 end
-assert!(run_text_by_job.fetch('macos-engine-universal').include?('create_macos_framework.py') && run_text_by_job.fetch('macos-engine-universal').include?('lipo -verify_arch arm64 x86_64'), 'macOS assembly must compose and verify a universal framework')
+assert!(run_text_by_job.fetch('macos-engine-universal').include?('create_macos_framework.py') && run_text_by_job.fetch('macos-engine-universal').include?('lipo macos-composed/framework/FlutterMacOS.framework/Versions/A/FlutterMacOS -verify_arch arm64') && run_text_by_job.fetch('macos-engine-universal').include?('lipo macos-composed/framework/FlutterMacOS.framework/Versions/A/FlutterMacOS -verify_arch x86_64'), 'macOS assembly must compose and verify a universal framework')
 
 assert!(
   !workflow_text.match?(/\bdart_dynamic_modules\s*=\s*true\b/),

@@ -1409,6 +1409,25 @@ jobs:
 
           cp "$out/args.gn" artifacts/android-engine/android_release_${{ matrix.arch }}.args.gn
           cp "$out/zip_archives/android-${{ matrix.arch }}-release/artifacts.zip" artifacts/android-engine/
+          cp flutter/engine/src/flutter/shell/common/shorebird/shorebird_patch_encryption.h artifacts/android-engine/
+          python3 - artifacts/android-engine/artifacts.zip artifacts/android-engine/shorebird_patch_encryption.h <<'PYHEADER'
+          from pathlib import Path
+          import sys
+          import zipfile
+
+          archive_path, header_path = map(Path, sys.argv[1:])
+          header_name = "shorebird_patch_encryption.h"
+          expected = header_path.read_bytes()
+          if not expected:
+              raise SystemExit("canonical patch encryption header is empty")
+          with zipfile.ZipFile(archive_path, "a", zipfile.ZIP_DEFLATED) as archive:
+              matches = [info for info in archive.infolist() if info.filename == header_name]
+              if matches:
+                  if len(matches) != 1 or archive.read(header_name) != expected:
+                      raise SystemExit("conflicting patch encryption header in Android artifacts.zip")
+              else:
+                  archive.write(header_path, header_name)
+          PYHEADER
           cp "$out/zip_archives/android-${{ matrix.arch }}-release/symbols.zip" artifacts/android-engine/
           cp "$out/flutter.jar" artifacts/android-engine/
           cp "$out/libflutter.so" artifacts/android-engine/
@@ -1451,7 +1470,7 @@ jobs:
           engine_revision="$(cat flutter/bin/internal/engine.version)"
           mirror_root="artifacts/android-engine/mirror/shorebird/flutter_infra_release/flutter/$engine_revision/android-${{ matrix.arch }}-release"
           mkdir -p "$mirror_root"
-          cp "$out/zip_archives/android-${{ matrix.arch }}-release/artifacts.zip" "$mirror_root/artifacts.zip"
+          cp artifacts/android-engine/artifacts.zip "$mirror_root/artifacts.zip"
           cp "$out/zip_archives/android-${{ matrix.arch }}-release/symbols.zip" "$mirror_root/symbols.zip"
           test -f "$mirror_root/artifacts.zip"
           test -f "$mirror_root/symbols.zip"
@@ -1488,6 +1507,7 @@ jobs:
               "symbols.zip",
               "flutter.jar",
               "libflutter.so",
+              "shorebird_patch_encryption.h",
               "gen_snapshot_${{ matrix.arch }}",
               ${analyze_snapshot_manifest}
               "android_release_${{ matrix.arch }}.args.gn",
@@ -1505,6 +1525,7 @@ jobs:
           test -f "$engine_extract_dir/android-engine/artifacts.zip"
           test -f "$engine_extract_dir/android-engine/symbols.zip"
           test -f "$engine_extract_dir/android-engine/flutter.jar"
+          test -f "$engine_extract_dir/android-engine/shorebird_patch_encryption.h"
           test -f "$engine_extract_dir/android-engine/libflutter.so"
           test -f "$engine_extract_dir/android-engine/gen_snapshot_${{ matrix.arch }}"
           "$engine_extract_dir/android-engine/gen_snapshot_${{ matrix.arch }}" --version
@@ -1513,6 +1534,17 @@ jobs:
           fi
           test -f "$engine_extract_dir/android-engine/mirror/shorebird/flutter_infra_release/flutter/$engine_revision/android-${{ matrix.arch }}-release/artifacts.zip"
           test -f "$engine_extract_dir/android-engine/mirror/shorebird/flutter_infra_release/flutter/$engine_revision/android-${{ matrix.arch }}-release/symbols.zip"
+          python3 - "$engine_extract_dir/android-engine" <<'PYHEADER'
+          from pathlib import Path
+          import sys
+          import zipfile
+
+          root = Path(sys.argv[1])
+          expected = (root / "shorebird_patch_encryption.h").read_bytes()
+          with zipfile.ZipFile(root / "artifacts.zip") as archive:
+              if archive.read("shorebird_patch_encryption.h") != expected:
+                  raise SystemExit("Android archive lost the canonical patch encryption header")
+          PYHEADER
           ./scripts/write_sha256.sh android-engine-${{ matrix.arch }}.tar.gz android-engine-${{ matrix.arch }}.tar.gz.sha256
 
       - name: Upload Android engine artifact
@@ -2019,7 +2051,8 @@ jobs:
           cp "$out/analyze_snapshot_${{ matrix.arch }}" artifacts/macos-engine/
           for tool in gen_snapshot analyze_snapshot; do
             codesign --force --sign - "artifacts/macos-engine/${tool}_${{ matrix.arch }}"
-            lipo -verify_arch arm64 x86_64 "artifacts/macos-engine/${tool}_${{ matrix.arch }}"
+            lipo "artifacts/macos-engine/${tool}_${{ matrix.arch }}" -verify_arch arm64
+            lipo "artifacts/macos-engine/${tool}_${{ matrix.arch }}" -verify_arch x86_64
           done
           artifacts/macos-engine/gen_snapshot_${{ matrix.arch }} --version
           artifacts/macos-engine/analyze_snapshot_${{ matrix.arch }} --sdk_version
@@ -2120,7 +2153,8 @@ jobs:
             --dst "$PWD/macos-composed/snapshot" \
             --arm64-path "$PWD/macos-input/arm64/macos-engine/gen_snapshot_arm64" \
             --x64-path "$PWD/macos-input/x64/macos-engine/gen_snapshot_x64" --zip
-          lipo -verify_arch arm64 x86_64 macos-composed/framework/FlutterMacOS.framework/Versions/A/FlutterMacOS
+          lipo macos-composed/framework/FlutterMacOS.framework/Versions/A/FlutterMacOS -verify_arch arm64
+          lipo macos-composed/framework/FlutterMacOS.framework/Versions/A/FlutterMacOS -verify_arch x86_64
           cp macos-composed/framework/framework.zip "$mirror_root/framework.zip"
           cp macos-composed/snapshot/gen_snapshot.zip "$mirror_root/gen_snapshot.zip"
           python3 - "$mirror_root/artifacts.zip" <<'PYZIP'
@@ -2495,7 +2529,8 @@ jobs:
           unzip -q "$mirror_root/${{ matrix.host }}.zip" -d "$snapshotter_smoke"
           if [[ "${{ matrix.host }}" == darwin-x64 ]]; then
             codesign --force --sign - "$snapshotter_smoke/gen_snapshot"
-            lipo -verify_arch arm64 x86_64 "$snapshotter_smoke/gen_snapshot"
+            lipo "$snapshotter_smoke/gen_snapshot" -verify_arch arm64
+            lipo "$snapshotter_smoke/gen_snapshot" -verify_arch x86_64
             "$snapshotter_smoke/gen_snapshot" --version
             # Publish the same signed universal binary that passed the host smoke.
             rm "$mirror_root/${{ matrix.host }}.zip"
