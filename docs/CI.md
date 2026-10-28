@@ -323,7 +323,7 @@ Manual dispatch accepts these workflow inputs:
 | Input | Default | Used by |
 | --- | --- | --- |
 | `linux_heavy_runner` | `ubuntu-latest` | `custom-dart-sdk`, `linux-engine`, `android-engine`; also the manual unsupported web recipe |
-| `macos_heavy_runner` | `macos-15` | `custom-dart-sdk-macos`, `ios-engine` / Apple engine artifacts |
+| `macos_heavy_runner` | `macos-15` | `custom-dart-sdk-macos`, `ios-engine`, `macos-engine` / Apple engine artifacts |
 | `sdk_min_free_disk_gb` | `8` | Minimum free disk GiB for `custom-dart-sdk` and `custom-dart-sdk-macos` |
 | `engine_min_free_disk_gb` | `8` | Minimum free disk GiB for Linux, Android, iOS, and macOS engine builds |
 | `run_unsupported_web_build` | `false` | Explicitly opt into the experimental web recipe; web is not part of supported-platform CI or the artifact mirror |
@@ -386,13 +386,16 @@ The same jobs package updater-compatible `dart-sdk-linux-x64.zip` and
 Shorebird version from `VERSION`, marks it latest, and verifies both assets
 through `releases/latest/download`.
 
+Apple engines run on separate runners so iOS outputs do not exhaust the disk before the macOS build.
+
 `ios-engine` builds:
 
 - `host_release_arm64` with `--shorebird-interpreter`,
   `dart_dynamic_modules=false`, `dart_enable_aot_patching=true`, and
   `dart_enable_shorebird_interpreter=true`
 - `ios_release` with `--shorebird-interpreter`
-- `macos_release_arm64` with `dart_dynamic_modules=false`,
+
+`macos-engine` builds `macos_release_arm64` with `dart_dynamic_modules=false`,
   `dart_enable_aot_patching=true`, `shorebird_enable_aot_patching=true`, and
   `shorebird_use_interpreter=false`
 
@@ -418,7 +421,7 @@ When an app or IPA is supplied to the gate, strict mode also rejects bundled
 patch payloads, executable-memory entitlements, and raw `aot_patch_key_hex`
 material in `shorebird.yaml`.
 
-The same Apple job uploads a separate `macos-engine-arm64` artifact containing
+The separate macOS job uploads a `macos-engine-arm64` artifact containing
 `FlutterMacOS.framework.zip`, `flutter_patched_sdk_product.zip`, the macOS
 `args.gn`, a mirror-ready copy of the macOS framework override, a manifest with
 the Flutter engine revision, and a `.sha256` sidecar. The shared

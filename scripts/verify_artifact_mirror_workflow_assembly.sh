@@ -71,6 +71,8 @@ cat > "$DOWNLOADED/mirror-metadata/$ENGINE_REVISION/artifacts_manifest.yaml" <<E
 flutter_engine_revision: 'base-engine'
 storage_bucket: 'shorebird'
 artifact_overrides:
+  - 'flutter_infra_release/flutter/\$engine/dart-sdk-linux-x64.zip'
+  - 'flutter_infra_release/flutter/\$engine/dart-sdk-darwin-arm64.zip'
   - 'flutter_infra_release/flutter/\$engine/android-arm64-release/artifacts.zip'
   - 'flutter_infra_release/flutter/\$engine/android-arm64-release/symbols.zip'
   - 'flutter_infra_release/flutter/\$engine/linux-x64-release/artifacts.zip'
@@ -148,6 +150,10 @@ cp -R "$DOWNLOADED/linux-engine-x64" "$mirror_input/"
 cp -R "$DOWNLOADED/android-engine-arm64" "$mirror_input/"
 cp -R "$DOWNLOADED/ios-interpreter-engine" "$mirror_input/"
 cp -R "$DOWNLOADED/macos-engine-arm64" "$mirror_input/"
+
+sdk_mirror="$mirror_input/shorebird/flutter_infra_release/flutter/$ENGINE_REVISION"
+write_zip "$sdk_mirror/dart-sdk-linux-x64.zip" dart-sdk/bin/dart linux-sdk
+write_zip "$sdk_mirror/dart-sdk-darwin-arm64.zip" dart-sdk/bin/dart macos-sdk
 
 assembled="$TMP_DIR/artifacts/open-shorebird-artifact-mirror"
 mkdir -p "$TMP_DIR/artifacts"

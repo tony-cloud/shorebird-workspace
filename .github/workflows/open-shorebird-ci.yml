@@ -1296,7 +1296,7 @@ jobs:
           if-no-files-found: error
 
   ios-engine:
-    name: Build Apple engine artifacts
+    name: Build iOS engine artifacts
     needs: source-checks
     runs-on: ${{ inputs.macos_heavy_runner || 'macos-15' }}
     timeout-minutes: 300
@@ -1383,49 +1383,6 @@ jobs:
 
       - name: Verify iOS interpreter route
         run: ./scripts/verify_ios_interpreter_route.sh
-
-      - name: Reclaim Apple build disk
-        run: |
-          set -euo pipefail
-          # The iOS build has already been verified and packaged inputs are
-          # still present. Remove only intermediate GN/Ninja trees before the
-          # second Apple engine build needs the same runner disk.
-          rm -rf \
-            flutter/engine/src/out/ios_release/obj \
-            flutter/engine/src/out/ios_release/gen \
-            flutter/engine/src/out/host_release_arm64/obj \
-            flutter/engine/src/out/host_release_arm64/gen
-          df -h .
-
-      - name: Configure macOS engine
-        working-directory: flutter/engine/src
-        run: |
-          ./flutter/tools/gn \
-            --mac \
-            --runtime-mode=release \
-            --mac-cpu=arm64 \
-            --target-dir=macos_release_arm64 \
-            --no-prebuilt-dart-sdk \
-            --gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=false shorebird_enable_aot_patching=true shorebird_use_interpreter=false flutter_prebuilt_dart_sdk=false'
-
-      - name: Build macOS engine
-        working-directory: flutter/engine/src
-        run: |
-          ninja -C out/macos_release_arm64 \
-            flutter/shell/platform/darwin/macos:zip_macos_flutter_framework \
-            flutter/build/archives:flutter_patched_sdk \
-            create_macos_gen_snapshots
-
-      - name: Verify macOS engine args
-        run: |
-          ./scripts/verify_engine_args.sh \
-            flutter/engine/src/out/macos_release_arm64/args.gn \
-            dart_dynamic_modules=false \
-            dart_enable_aot_patching=true \
-            dart_enable_shorebird_interpreter=false \
-            shorebird_enable_aot_patching=true \
-            shorebird_use_interpreter=false \
-            flutter_prebuilt_dart_sdk=false
 
       - name: Package iOS engine artifacts
         run: |
@@ -1571,6 +1528,90 @@ jobs:
             ios-interpreter-engine.tar.gz.sha256
           if-no-files-found: error
 
+  macos-engine:
+    name: Build macOS engine artifacts
+    needs: source-checks
+    runs-on: ${{ inputs.macos_heavy_runner || 'macos-15' }}
+    timeout-minutes: 300
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.full_sdk_build }}
+    steps:
+      - name: Checkout workspace
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install depot_tools
+        run: |
+          if [ ! -d depot_tools ]; then
+            git clone --depth 1 \
+              https://chromium.googlesource.com/chromium/tools/depot_tools.git \
+              depot_tools
+          fi
+          echo "$GITHUB_WORKSPACE/depot_tools" >> "$GITHUB_PATH"
+
+      - name: Verify depot_tools build tools
+        run: |
+          python3 --version
+          gclient help >/dev/null
+          ninja --version
+
+      - name: Install Apple Rust targets
+        run: rustup target add aarch64-apple-ios aarch64-apple-darwin
+
+      - name: Check runner capacity
+        run: CI_MIN_FREE_DISK_GB="$ENGINE_MIN_FREE_DISK_GB" ./scripts/check_ci_capacity.sh
+
+      - name: Write gclient config
+        env:
+          INCLUDE_ENGINE_DEPS: "1"
+        run: ./scripts/write_gclient.sh macos
+
+      - name: Sync open-source links
+        run: ./scripts/sync_open_sources.sh
+
+      - name: gclient sync
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_gclient_sync }}
+        run: gclient sync --no-history
+
+      - name: gclient sync Flutter engine deps
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_gclient_sync }}
+        working-directory: flutter
+        run: gclient sync --no-history
+
+      - name: Verify Dart tool SDK
+        run: ./scripts/verify_dart_tool_sdk.sh
+
+      - name: Configure macOS engine
+        working-directory: flutter/engine/src
+        run: |
+          ./flutter/tools/gn \
+            --mac \
+            --runtime-mode=release \
+            --mac-cpu=arm64 \
+            --target-dir=macos_release_arm64 \
+            --no-prebuilt-dart-sdk \
+            --gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=false shorebird_enable_aot_patching=true shorebird_use_interpreter=false flutter_prebuilt_dart_sdk=false'
+
+      - name: Build macOS engine
+        working-directory: flutter/engine/src
+        run: |
+          ninja -C out/macos_release_arm64 \
+            flutter/shell/platform/darwin/macos:zip_macos_flutter_framework \
+            flutter/build/archives:flutter_patched_sdk \
+            create_macos_gen_snapshots
+
+      - name: Verify macOS engine args
+        run: |
+          ./scripts/verify_engine_args.sh \
+            flutter/engine/src/out/macos_release_arm64/args.gn \
+            dart_dynamic_modules=false \
+            dart_enable_aot_patching=true \
+            dart_enable_shorebird_interpreter=false \
+            shorebird_enable_aot_patching=true \
+            shorebird_use_interpreter=false \
+            flutter_prebuilt_dart_sdk=false
+
       - name: Package macOS engine artifacts
         run: |
           set -euo pipefail
@@ -1644,6 +1685,7 @@ jobs:
       - linux-engine
       - android-engine
       - ios-engine
+      - macos-engine
     runs-on: ubuntu-latest
     timeout-minutes: 30
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.full_sdk_build }}
@@ -1723,6 +1765,13 @@ jobs:
           cp -R downloaded-artifacts/android-engine-arm64 mirror-input/
           cp -R downloaded-artifacts/ios-interpreter-engine mirror-input/
           cp -R downloaded-artifacts/macos-engine-arm64 mirror-input/
+          engine_revision="$(cat flutter/bin/internal/engine.version)"
+          sdk_mirror="mirror-input/shorebird/flutter_infra_release/flutter/$engine_revision"
+          mkdir -p "$sdk_mirror"
+          cp downloaded-artifacts/custom-dart-sdk-linux-x64/dart-sdk-linux-x64.zip* "$sdk_mirror/"
+          cp downloaded-artifacts/custom-dart-sdk-macos-arm64/dart-sdk-darwin-arm64.zip* "$sdk_mirror/"
+          test -f "$sdk_mirror/dart-sdk-linux-x64.zip"
+          test -f "$sdk_mirror/dart-sdk-darwin-arm64.zip"
           ./scripts/assemble_artifact_mirror.sh \
             mirror-input \
             artifacts/open-shorebird-artifact-mirror

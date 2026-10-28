@@ -18,6 +18,8 @@ import sys
 
 
 DEFAULT_ARTIFACT_OVERRIDES = (
+    "flutter_infra_release/flutter/$engine/dart-sdk-linux-x64.zip",
+    "flutter_infra_release/flutter/$engine/dart-sdk-darwin-arm64.zip",
     "flutter_infra_release/flutter/$engine/android-arm64-release/artifacts.zip",
     "flutter_infra_release/flutter/$engine/android-arm64-release/symbols.zip",
     "flutter_infra_release/flutter/$engine/linux-x64-release/artifacts.zip",

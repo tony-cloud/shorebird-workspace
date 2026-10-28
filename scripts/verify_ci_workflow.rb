@@ -495,7 +495,8 @@ assert!(
 )
 generated_manifest_yaml = YAML.safe_load(generated_artifact_manifest)
 generated_artifact_overrides = generated_manifest_yaml.fetch('artifact_overrides')
-missing_mirror_paths = generated_artifact_overrides.map do |artifact_path|
+sdk_overrides, engine_overrides = generated_artifact_overrides.partition { |path| path.include?('/dart-sdk-') }
+missing_mirror_paths = engine_overrides.map do |artifact_path|
   "mirror/shorebird/#{artifact_path.gsub('$engine', '${engine_revision}')}"
 end.reject { |mirror_path| workflow_text.include?(mirror_path) }
 assert!(
@@ -503,9 +504,17 @@ assert!(
   "workflow engine artifacts must package every generated mirror override: #{missing_mirror_paths.join(', ')}"
 )
 assert!(
-  workflow_text.scan('test -f "$mirror_root').length >= generated_artifact_overrides.length,
+  workflow_text.scan('test -f "$mirror_root').length >= engine_overrides.length,
   'workflow engine artifact packaging must verify mirror-ready files exist before uploading'
 )
+sdk_overrides.each do |path|
+  name = File.basename(path)
+  assert!(
+    workflow_text.include?("/#{name}* \"$sdk_mirror/\"") &&
+      workflow_text.include?("test -f \"$sdk_mirror/#{name}\""),
+    "artifact mirror must include and verify custom bootstrap SDK #{name}"
+  )
+end
 closed_runtime_endpoint_patterns = %w[
   download.shorebird.dev
   api.shorebird.dev
@@ -1496,6 +1505,7 @@ required_jobs = %w[
   android-engine
   web-sdk
   ios-engine
+  macos-engine
   artifact-mirror
   publish-sdk-release
   linux-runtime-smoke
@@ -1556,7 +1566,7 @@ assert!(
   )
 end
 
-%w[custom-dart-sdk custom-dart-sdk-macos linux-engine android-engine ios-engine].each do |job_name|
+%w[custom-dart-sdk custom-dart-sdk-macos linux-engine android-engine ios-engine macos-engine].each do |job_name|
   condition = jobs.fetch(job_name).fetch('if', '').to_s
   assert!(
     condition.include?("github.event_name != 'workflow_dispatch'") &&
@@ -1592,6 +1602,7 @@ end
   'linux-engine' => 'ENGINE_MIN_FREE_DISK_GB',
   'android-engine' => 'ENGINE_MIN_FREE_DISK_GB',
   'ios-engine' => 'ENGINE_MIN_FREE_DISK_GB',
+  'macos-engine' => 'ENGINE_MIN_FREE_DISK_GB',
 }.each do |job_name, disk_env_var|
   run_text = job_runs(jobs.fetch(job_name)).join("\n")
   assert!(
@@ -1606,7 +1617,7 @@ assert!(
     artifact_mirror_condition.include?('full_sdk_build'),
   'artifact-mirror must run on default push/PR CI and allow manual full_sdk_build opt-out'
 )
-%w[cli-artifacts linux-engine android-engine ios-engine].each do |dependency|
+%w[cli-artifacts linux-engine android-engine ios-engine macos-engine].each do |dependency|
   assert!(
     Array(jobs.fetch('artifact-mirror').fetch('needs', [])).include?(dependency),
     "artifact-mirror must depend on #{dependency}"
@@ -1817,7 +1828,8 @@ required_uploads = {
   'custom-dart-sdk-macos' => ['custom-dart-sdk-macos-arm64'],
   'linux-engine' => ['linux-engine-x64'],
   'android-engine' => ['android-engine-arm64'],
-  'ios-engine' => ['ios-interpreter-engine', 'macos-engine-arm64'],
+  'ios-engine' => ['ios-interpreter-engine'],
+  'macos-engine' => ['macos-engine-arm64'],
   'artifact-mirror' => ['open-shorebird-artifact-mirror', 'open-shorebird-release-manifest'],
 }
 required_uploads.each do |job_name, expected_names|
@@ -1912,7 +1924,7 @@ assert!(
     publish_release_runs.include?('releases/latest/download/$asset'),
   'SDK release job must publish updater-compatible assets only after native artifact assembly and verify latest release downloads'
 )
-%w[linux-engine android-engine ios-engine].each do |job_name|
+%w[linux-engine android-engine ios-engine macos-engine].each do |job_name|
   assert!(
     run_text_by_job.fetch(job_name).include?('engine_revision="$(cat flutter/bin/internal/engine.version)"') &&
       run_text_by_job.fetch(job_name).include?('"engine_revision": "${engine_revision}"'),
@@ -1964,6 +1976,8 @@ engine_archive_checks = {
     '"entitlements.txt"',
     '"without_entitlements.txt"',
     '"unsigned_binaries.txt"',
+  ],
+  'macos-engine' => [
     'tar -C "$engine_extract_dir" -xzf macos-engine-arm64.tar.gz',
     'test -f "$engine_extract_dir/macos-engine/manifest.json"',
     'test -f "$engine_extract_dir/macos-engine/macos_release_arm64.args.gn"',
@@ -2003,6 +2017,8 @@ expected_outputs = {
   ],
   'ios-engine' => [
     'ios-interpreter-engine.tar.gz',
+  ],
+  'macos-engine' => [
     'macos-engine-arm64.tar.gz',
   ],
   'artifact-mirror' => [
@@ -2028,6 +2044,7 @@ end
   linux-engine
   android-engine
   ios-engine
+  macos-engine
   artifact-mirror
 ].each do |job_name|
   assert!(
@@ -2062,8 +2079,6 @@ assert!(
     run_text_by_job.fetch('ios-engine').include?('create_macos_gen_snapshots') &&
     run_text_by_job.fetch('ios-engine').include?('create_macos_analyze_snapshots') &&
     run_text_by_job.fetch('ios-engine').include?('verify_ios_interpreter_route.sh') &&
-    run_text_by_job.fetch('ios-engine').include?('out/ios_release/obj') &&
-    run_text_by_job.fetch('ios-engine').include?('out/host_release_arm64/obj') &&
     run_text_by_job.fetch('ios-engine').include?('require_executable flutter/engine/src/out/host_release_arm64/gen_snapshot') &&
     run_text_by_job.fetch('ios-engine').include?('require_directory flutter/engine/src/out/ios_release/Flutter.xcframework') &&
     run_text_by_job.fetch('ios-engine').include?('require_executable flutter/engine/src/out/ios_release/analyze_snapshot_arm64') &&
@@ -2160,18 +2175,18 @@ assert!(
   'unsupported web SDK recipe must remain disabled while retaining explicit DDM safeguards'
 )
 assert!(
-  run_text_by_job.fetch('ios-engine').include?('verify_engine_args.sh') &&
-    run_text_by_job.fetch('ios-engine').include?('verify_dart_tool_sdk.sh') &&
-    run_text_by_job.fetch('ios-engine').include?('--no-prebuilt-dart-sdk') &&
-    run_text_by_job.fetch('ios-engine').include?('flutter/engine/src/out/macos_release_arm64/args.gn') &&
-    run_text_by_job.fetch('ios-engine').include?('dart_enable_aot_patching=true') &&
-    run_text_by_job.fetch('ios-engine').include?('dart_enable_shorebird_interpreter=false') &&
-    run_text_by_job.fetch('ios-engine').include?('shorebird_enable_aot_patching=true') &&
-    run_text_by_job.fetch('ios-engine').include?('shorebird_use_interpreter=false') &&
-    run_text_by_job.fetch('ios-engine').include?('flutter_prebuilt_dart_sdk=false') &&
-    run_text_by_job.fetch('ios-engine').include?('FlutterMacOS.framework.zip') &&
-    run_text_by_job.fetch('ios-engine').include?('flutter_patched_sdk_product.zip') &&
-    run_text_by_job.fetch('ios-engine').include?('mirror/shorebird/flutter_infra_release/flutter/${engine_revision}/darwin-arm64-release/FlutterMacOS.framework.zip'),
+  run_text_by_job.fetch('macos-engine').include?('verify_engine_args.sh') &&
+    run_text_by_job.fetch('macos-engine').include?('verify_dart_tool_sdk.sh') &&
+    run_text_by_job.fetch('macos-engine').include?('--no-prebuilt-dart-sdk') &&
+    run_text_by_job.fetch('macos-engine').include?('flutter/engine/src/out/macos_release_arm64/args.gn') &&
+    run_text_by_job.fetch('macos-engine').include?('dart_enable_aot_patching=true') &&
+    run_text_by_job.fetch('macos-engine').include?('dart_enable_shorebird_interpreter=false') &&
+    run_text_by_job.fetch('macos-engine').include?('shorebird_enable_aot_patching=true') &&
+    run_text_by_job.fetch('macos-engine').include?('shorebird_use_interpreter=false') &&
+    run_text_by_job.fetch('macos-engine').include?('flutter_prebuilt_dart_sdk=false') &&
+    run_text_by_job.fetch('macos-engine').include?('FlutterMacOS.framework.zip') &&
+    run_text_by_job.fetch('macos-engine').include?('flutter_patched_sdk_product.zip') &&
+    run_text_by_job.fetch('macos-engine').include?('mirror/shorebird/flutter_infra_release/flutter/${engine_revision}/darwin-arm64-release/FlutterMacOS.framework.zip'),
   'macOS engine artifact must build and verify the native AOT patch runtime without DDM or interpreter mode, while leaving the shared patched SDK mirror path to linux-engine'
 )
 assert!(
