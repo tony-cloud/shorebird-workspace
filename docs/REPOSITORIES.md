@@ -6,6 +6,8 @@ The October update includes Shorebird upstream main `5f04c3ac` (version
 `1.6.134`, ahead of the latest upstream `v1.6.133` tag), Shorebird Flutter
 `88353151`, and official Flutter stable `737ba8f8`. CI verifies upstream
 Shorebird commit ancestry directly so unreleased upstream source can be built.
+The artifact mirror uses official Flutter engine `cf636b1d` for unchanged
+artifacts; the custom engine artifacts retain their Shorebird revision keys.
 
 ## Active Top-Level Repositories
 

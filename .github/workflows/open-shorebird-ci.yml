@@ -86,7 +86,7 @@ env:
   JAVA_VERSION: "17"
   DEPOT_TOOLS_UPDATE: "0"
   PUB_CACHE: ${{ github.workspace }}/.pub-cache
-  BASE_FLUTTER_ENGINE_REVISION: ${{ inputs.base_flutter_engine_revision || '' }}
+  BASE_FLUTTER_ENGINE_REVISION: ${{ inputs.base_flutter_engine_revision || 'cf636b1dfb818dd6a3ff16e390e93b1a036969c8' }}
   SDK_MIN_FREE_DISK_GB: ${{ inputs.sdk_min_free_disk_gb || 8 }}
   ENGINE_MIN_FREE_DISK_GB: ${{ inputs.engine_min_free_disk_gb || 8 }}
 
