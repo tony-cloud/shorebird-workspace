@@ -1,24 +1,25 @@
 # Repository Inventory
 
-Last verified: 2026-10-28.
+Last verified: 2026-10-29.
 
 The October update includes Shorebird upstream main `5f04c3ac` (version
 `1.6.134`, ahead of the latest upstream `v1.6.133` tag), Shorebird Flutter
 `88353151`, and official Flutter stable `737ba8f8`. CI verifies upstream
 Shorebird commit ancestry directly so unreleased upstream source can be built.
 The artifact mirror uses official Flutter engine `cf636b1d` for unchanged
-artifacts; the custom engine artifacts retain their Shorebird revision keys.
+artifacts; the custom engine artifacts use a unique toolchain identity to prevent stale
+compiler/runtime cache reuse.
 
 ## Active Top-Level Repositories
 
 | Path | Remote URL | Branch | Pinned commit |
 | --- | --- | --- | --- |
-| `dart-sdk` | `https://github.com/tony-cloud/dart-sdk.git` | `tonycloud/dev` | `9b8279462bac6d831926e239baa4a65e97edd74a` |
+| `dart-sdk` | `https://github.com/tony-cloud/dart-sdk.git` | `tonycloud/dev` | `ec40d2600232f15a3ae36ae564616848ebace31a` |
 | `depot_tools` | `https://chromium.googlesource.com/chromium/tools/depot_tools.git` | `main` | `e154c8eda5e63cbe85a765ae9d06e2b7af05139e` |
-| `flutter` | `https://github.com/tony-cloud/flutter.git` | `tonycloud/dev` | `863ab478e67c7f5b174520ccf5ea5e4e484dbb64` |
-| `shorebird` | `https://github.com/tony-cloud/shorebird.git` | `main` | `5937e04894cfe3d93518d40aa29d9220646a48e0` |
-| `shorebird-server` | `https://github.com/tony-cloud/shorebird-server.git` | `main` | `d6e5a39546905b85e2345b8058c4350ed236184c` |
-| `updater` | `https://github.com/tony-cloud/shorebird-updater.git` | `main` | `fe8af499ba6e84b92c3091e25a3a1ddd8068c013` |
+| `flutter` | `https://github.com/tony-cloud/flutter.git` | `tonycloud/dev` | `6b704b6a3a3a618f02e52b8577b7c0f7b5a78a12` |
+| `shorebird` | `https://github.com/tony-cloud/shorebird.git` | `main` | `0614fb09efdf00b61ee4c0fd10a4549ac7929a40` |
+| `shorebird-server` | `https://github.com/tony-cloud/shorebird-server.git` | `main` | `3b7995cfcdf82572529039d8c1a3df5738ae3a0d` |
+| `updater` | `https://github.com/tony-cloud/shorebird-updater.git` | `main` | `1b576651c74751f1e76c28e9f4efcba6b6089a85` |
 
 ## Submodule Policy
 
@@ -81,3 +82,18 @@ file.
 | `dart-sdk/third_party/ply` | `https://chromium.googlesource.com/chromium/src/third_party/ply.git` |
 | `dart-sdk/third_party/WebCore` | `https://dart.googlesource.com/webcore.git` |
 | `dart-sdk/third_party/zlib` | `https://chromium.googlesource.com/chromium/src/third_party/zlib.git` |
+
+## Public interpreter toolchain identity
+
+The engine artifact key is `3d6be042cc12a84c464b7e93c32540a667ef7c27`.
+It is SHA-1 of UTF-8 lines (including the final newline):
+
+```text
+open-shorebird-toolchain-v1
+ec40d2600232f15a3ae36ae564616848ebace31a
+2c10d93b11b67bccd8abbd455ae950e8c0934afe
+1b576651c74751f1e76c28e9f4efcba6b6089a85
+```
+
+Inputs are Dart, Flutter immediately before its engine-identity commit, and
+updater. This key identifies the build inputs; it is not a security signature.

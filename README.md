@@ -128,20 +128,19 @@ its engine artifact refreshes. Direct Dart SDK refreshes use the latest
 workspace GitHub Release asset by default; set
 `SHOREBIRD_DART_SDK_RELEASE_BASE_URL` to select another release or mirror.
 
-The iOS App Store candidate route is the encrypted Dart bytecode interpreter
-path, not native AOT patch loading. Real-device testing on June 25, 2026 showed
-the patched iPad app displaying `license:pro` without enabling
-`DART_DYNAMIC_MODULES`. The macOS native-AOT desktop route was also verified
-locally the same day by launching a saved free app with a pro Flutter snapshot
-seeded as patch `1`; the patched app reported `license:pro`.
-CI builds Linux, Android, and macOS engine artifacts with the native AOT patch
-runtime enabled and the interpreter route disabled; iOS is the only App
-Store-safe interpreter patch artifact path.
-Android release APK builds pass locally with the custom Android engine; use
-`scripts/android_runtime_patch_smoke.sh` on a machine with an attached Android
-device or emulator to run the seeded runtime patch proof. Use
-`scripts/linux_runtime_patch_smoke.sh` on a Linux desktop runner to exercise the
-same saved-free-app/pro-patch flow for the Linux embedder.
+The iOS candidate route uses encrypted Dart bytecode interpreted inside a
+precompiled runtime with `DART_DYNAMIC_MODULES=false`. Current host tests prove
+body replacement and encrypted-envelope rejection in the same AOT process.
+Physical-device results from June 2026 describe an earlier snapshot; they do not
+validate the current release/download/install lifecycle. See
+[the current validation boundary](docs/PLATFORM_TESTING.md#october-2026-validation-boundary)
+for evidence and limitations. App Store acceptance is not established by these
+tests.
+
+CI builds Linux, Android, macOS, and Windows native engines plus the iOS
+interpreter engine. Use `scripts/android_runtime_patch_smoke.sh` on an attached
+Android device or emulator and `scripts/linux_runtime_patch_smoke.sh` on a Linux
+desktop runner for their seeded native patch tests.
 
 ## Local Test Fixture
 

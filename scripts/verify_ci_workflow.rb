@@ -2412,8 +2412,10 @@ end
 assert!(matrix_entries(jobs.fetch('android-engine')).map { |entry| entry.fetch('arch') }.sort == %w[arm arm64 x64], 'Android engine matrix must build all three supported ABIs')
 assert!(matrix_entries(jobs.fetch('android-host-tools')).length == 6, 'Android host snapshotters must cover both macOS/Windows hosts and all three ABIs')
 %w[custom-dart-sdk custom-dart-sdk-macos custom-dart-sdk-macos-x64].each do |name|
-  assert!(run_text_by_job.fetch(name).include?('dart_engine_aot_shared') && run_text_by_job.fetch(name).include?('tools/test_aot_bytecode_patch.py --build-dir'), "#{name} must exercise actual unannotated AOT bytecode replacement")
+  regression = name == 'custom-dart-sdk' ? 'scripts/verify_encrypted_aot_runtime.py' : 'tools/test_aot_bytecode_patch.py --build-dir'
+  assert!(run_text_by_job.fetch(name).include?('dart_engine_aot_shared') && run_text_by_job.fetch(name).include?(regression), "#{name} must exercise actual unannotated AOT bytecode replacement")
 end
+assert!(run_text_by_job.fetch('custom-dart-sdk').include?('dart-sdk/bin/dart pub get'), 'encrypted runtime gate requires the real public envelope producer')
 %w[custom-dart-sdk-windows windows-engine android-host-tools].each do |name|
   assert!(jobs.dig(name, 'env', 'DEPOT_TOOLS_WIN_TOOLCHAIN') == '0' && jobs.dig(name, 'env', 'MSYS') == 'winsymlinks:nativestrict', "#{name} must use the installed public Windows toolchain and native directory links")
 end

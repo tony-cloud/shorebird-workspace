@@ -5,6 +5,36 @@ should verify the same source layout on Linux and macOS, then use macOS to
 prepare iOS testing without introducing JIT or writable-executable-memory
 requirements.
 
+## October 2026 validation boundary
+
+The June results below describe earlier snapshots and seeded patch tests. They
+are not acceptance evidence for the current upstream merge or the complete
+release/download/install lifecycle.
+
+The current public SDK passes a macOS ARM64 precompiled-runtime regression with
+ordinary unannotated functions, positional/named/default arguments, closures,
+polymorphic calls, SDK-interface overrides, cached tear-offs, and a license enum
+changing from free to pro. `scripts/verify_encrypted_aot_runtime.py` runs the real
+Dart AES envelope producer and VM install/reload/free APIs in the same process.
+Wrong-key, tampered, and expired envelopes preserve the previous function bodies.
+This is host runtime evidence; physical iOS validation remains separate.
+
+Interpreter patches currently replace existing function bodies. New declarations,
+layout/signature changes, static initializer changes, or references to declarations
+absent from the baseline require a new app release. Baselines must use the matching
+interpreter-enabled compiler, `--no-tfa`, stable identities, and no obfuscation.
+Size and performance impact have not been benchmarked.
+
+The real Dart client/Go server smoke covers managed signing, release-scoped
+patches, signed update responses, rollback/forward, refresh rotation, and restart
+persistence. Rust tests cover response verification and persisted boot identity.
+These do not establish protection against complete device-storage rollback.
+Managed signing is required for interpreter releases. Native customer signing
+requires explicit optional response authentication until the publisher supplies
+a response-signing service. Optional server transport encryption still needs an
+external device-key provisioning integration; it is distinct from the encrypted
+iOS interpreter artifact.
+
 ## Prerequisites
 
 Linux:
