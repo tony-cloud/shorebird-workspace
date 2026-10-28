@@ -16,8 +16,8 @@ compiler/runtime cache reuse.
 | --- | --- | --- | --- |
 | `dart-sdk` | `https://github.com/tony-cloud/dart-sdk.git` | `tonycloud/dev` | `ec40d2600232f15a3ae36ae564616848ebace31a` |
 | `depot_tools` | `https://chromium.googlesource.com/chromium/tools/depot_tools.git` | `main` | `e154c8eda5e63cbe85a765ae9d06e2b7af05139e` |
-| `flutter` | `https://github.com/tony-cloud/flutter.git` | `tonycloud/dev` | `6b704b6a3a3a618f02e52b8577b7c0f7b5a78a12` |
-| `shorebird` | `https://github.com/tony-cloud/shorebird.git` | `main` | `0614fb09efdf00b61ee4c0fd10a4549ac7929a40` |
+| `flutter` | `https://github.com/tony-cloud/flutter.git` | `tonycloud/dev` | `48b7c104da40a42559fa4be40b6a709d5fe2e9af` |
+| `shorebird` | `https://github.com/tony-cloud/shorebird.git` | `main` | `c28bae1e010a0ec09da8db1e8ec1ff9b42432876` |
 | `shorebird-server` | `https://github.com/tony-cloud/shorebird-server.git` | `main` | `3b7995cfcdf82572529039d8c1a3df5738ae3a0d` |
 | `updater` | `https://github.com/tony-cloud/shorebird-updater.git` | `main` | `1b576651c74751f1e76c28e9f4efcba6b6089a85` |
 
