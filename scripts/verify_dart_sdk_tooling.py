@@ -31,11 +31,64 @@ class GetterProbe {
 @pragma('vm:never-inline')
 int readLength(Object value) => (value as dynamic).length as int;
 
+// More than the polymorphic inline-cache threshold forces an SDK-interface
+// dispatch table call. Its unboxed return ABI must match app implementations.
+abstract class ComparableProbe implements Comparable<ComparableProbe> {
+  ComparableProbe(this.value);
+  final int value;
+}
+class ComparableProbe0 extends ComparableProbe {
+  ComparableProbe0(super.value);
+  @override
+  int compareTo(ComparableProbe other) => value + other.value;
+}
+class ComparableProbe1 extends ComparableProbe {
+  ComparableProbe1(super.value);
+  @override
+  int compareTo(ComparableProbe other) => value + other.value;
+}
+class ComparableProbe2 extends ComparableProbe {
+  ComparableProbe2(super.value);
+  @override
+  int compareTo(ComparableProbe other) => value + other.value;
+}
+class ComparableProbe3 extends ComparableProbe {
+  ComparableProbe3(super.value);
+  @override
+  int compareTo(ComparableProbe other) => value + other.value;
+}
+class ComparableProbe4 extends ComparableProbe {
+  ComparableProbe4(super.value);
+  @override
+  int compareTo(ComparableProbe other) => value + other.value;
+}
+class ComparableProbe5 extends ComparableProbe {
+  ComparableProbe5(super.value);
+  @override
+  int compareTo(ComparableProbe other) => value + other.value;
+}
+@pragma('vm:never-inline')
+int compareThroughSdkInterface(Comparable<ComparableProbe> left,
+    ComparableProbe right) => left.compareTo(right);
+
+void checkSdkInterfaceAbi() {
+  final value = DateTime.now().microsecondsSinceEpoch % 1000 + 100;
+  final implementations = <ComparableProbe>[
+    ComparableProbe0(value), ComparableProbe1(value), ComparableProbe2(value),
+    ComparableProbe3(value), ComparableProbe4(value), ComparableProbe5(value),
+  ];
+  for (final implementation in implementations) {
+    check(compareThroughSdkInterface(implementation, ComparableProbe0(7)) ==
+        value + 7, 'SDK interface native return ABI');
+  }
+}
+
 int Function(int) makeClosure(int base) =>
     (int delta) => base + delta + readLength(<int>[1, 2]);
 
 void main(List<String> args) {
   check(args.length == 1, 'fixture directory argument');
+  checkSdkInterfaceAbi();
   check(readLength(<int>[1, 2, 3]) == 3, 'growable List getter dispatch');
   check(readLength(List<int>.filled(4, 7)) == 4, 'fixed List getter dispatch');
   check(readLength(List<int>.unmodifiable(<int>[8, 9])) == 2,
