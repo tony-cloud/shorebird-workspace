@@ -33,7 +33,6 @@ ROOT = Path(__file__).resolve().parents[3]
 FIXTURE = ROOT / 'testapps/license_flavor_patch_test'
 DEVICE = '00008132-000C396801D9001C'
 TEAM = '43FN6K7B4C'
-ENGINE_ID = '3d6be042cc12a84c464b7e93c32540a667ef7c27'
 BUNDLETOOL_SHA = 'a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29'
 
 
@@ -154,10 +153,13 @@ def prepare(args, work):
     work.mkdir(parents=True, mode=0o700)
     cli_ref = run(['git', '-C', ROOT / 'shorebird', 'rev-parse', args.cli_ref]).decode().strip()
     flutter_ref = run(['git', '-C', ROOT / 'flutter', 'rev-parse', args.flutter_ref]).decode().strip()
+    engine_id = args.engine_id or run([
+        'git', '-C', ROOT / 'flutter', 'show',
+        f'{flutter_ref}:bin/internal/engine.version']).decode().strip()
     session = secrets.token_hex(5)
     state = {
         'version': 1, 'cli_ref': cli_ref, 'flutter_ref': flutter_ref,
-        'engine_id': args.engine_id, 'device': args.device, 'team': args.team,
+        'engine_id': engine_id, 'device': args.device, 'team': args.team,
         'bundle_id': f'org.tonycloud.shorebird-license-e2e.{session}',
         'key_id': f'device-e2e-{session}', 'release_version': '1.0.0+1',
         'api_url': f'http://{args.host_address}:{free_port()}',
@@ -461,9 +463,9 @@ def main():
     parser.add_argument('--work-dir', required=True, type=Path)
     parser.add_argument('--execute', action='store_true')
     parser.add_argument('--host-address', default='192.168.93.205')
-    parser.add_argument('--cli-ref', default='c28bae1e')
-    parser.add_argument('--flutter-ref', default='48b7c104da40a42559fa4be40b6a709d5fe2e9af')
-    parser.add_argument('--engine-id', default=ENGINE_ID)
+    parser.add_argument('--cli-ref', default='HEAD')
+    parser.add_argument('--flutter-ref', default='HEAD')
+    parser.add_argument('--engine-id', help='Defaults to the selected Flutter revision engine identity')
     parser.add_argument('--engine-src', type=Path, default=ROOT / 'flutter/engine/src')
     parser.add_argument('--tooling-dart', type=Path, default=ROOT / 'dart-sdk/tools/sdks/dart-sdk/bin/dart')
     parser.add_argument('--device', default=DEVICE)

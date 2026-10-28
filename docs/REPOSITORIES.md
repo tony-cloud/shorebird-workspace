@@ -14,12 +14,12 @@ compiler/runtime cache reuse.
 
 | Path | Remote URL | Branch | Pinned commit |
 | --- | --- | --- | --- |
-| `dart-sdk` | `https://github.com/tony-cloud/dart-sdk.git` | `tonycloud/dev` | `ec40d2600232f15a3ae36ae564616848ebace31a` |
+| `dart-sdk` | `https://github.com/tony-cloud/dart-sdk.git` | `tonycloud/dev` | `07f2a352d8a5839e84860668c0464537b1c778cc` |
 | `depot_tools` | `https://chromium.googlesource.com/chromium/tools/depot_tools.git` | `main` | `e154c8eda5e63cbe85a765ae9d06e2b7af05139e` |
-| `flutter` | `https://github.com/tony-cloud/flutter.git` | `tonycloud/dev` | `48b7c104da40a42559fa4be40b6a709d5fe2e9af` |
-| `shorebird` | `https://github.com/tony-cloud/shorebird.git` | `main` | `c28bae1e010a0ec09da8db1e8ec1ff9b42432876` |
-| `shorebird-server` | `https://github.com/tony-cloud/shorebird-server.git` | `main` | `a90e424e9ea2c71723846785b0df6dc8415bb877` |
-| `updater` | `https://github.com/tony-cloud/shorebird-updater.git` | `main` | `1b576651c74751f1e76c28e9f4efcba6b6089a85` |
+| `flutter` | `https://github.com/tony-cloud/flutter.git` | `tonycloud/dev` | `8a1cd7947881708803c2b8a02725b7dba762ef2d` |
+| `shorebird` | `https://github.com/tony-cloud/shorebird.git` | `main` | `8f0fcf8f83114e9a3c651d8410223d048bafac65` |
+| `shorebird-server` | `https://github.com/tony-cloud/shorebird-server.git` | `main` | `9f34acd642c4524611f64014d72130a55fe46202` |
+| `updater` | `https://github.com/tony-cloud/shorebird-updater.git` | `main` | `7894c9d26f29e6f07f8a4d0796f6e87ccb4a8d36` |
 
 ## Submodule Policy
 
@@ -85,14 +85,14 @@ file.
 
 ## Public interpreter toolchain identity
 
-The engine artifact key is `3d6be042cc12a84c464b7e93c32540a667ef7c27`.
+The engine artifact key is `a3da89e36087de9791d19cc78fe287567cf6e204`.
 It is SHA-1 of UTF-8 lines (including the final newline):
 
 ```text
 open-shorebird-toolchain-v1
-ec40d2600232f15a3ae36ae564616848ebace31a
-2c10d93b11b67bccd8abbd455ae950e8c0934afe
-1b576651c74751f1e76c28e9f4efcba6b6089a85
+07f2a352d8a5839e84860668c0464537b1c778cc
+ac5575e560564f8d68ab8d5f64a14e9454bb8b0e
+7894c9d26f29e6f07f8a4d0796f6e87ccb4a8d36
 ```
 
 Inputs are Dart, Flutter immediately before its engine-identity commit, and

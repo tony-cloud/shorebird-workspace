@@ -1223,6 +1223,15 @@ jobs:
           test -n "$patched_sdk_zip"
           test -n "$artifacts_zip"
 
+          engine_symbol_dir="$(mktemp -d)"
+          unzip -q "$gtk_zip" -d "$engine_symbol_dir"
+          engine_library="$(find "$engine_symbol_dir" -type f -name libflutter_linux_gtk.so -print -quit)"
+          test -n "$engine_library"
+          readelf --wide --dyn-syms "$engine_library" | awk '
+            $5 == "GLOBAL" && $6 == "DEFAULT" && $7 != "UND" &&
+                $8 == "shorebird_set_patch_decryption_key_provider" { found = 1 }
+            END { if (!found) { print "missing exported patch decryption key provider" > "/dev/stderr"; exit 1 } }
+          '
           cp "$gtk_zip" artifacts/linux-engine/
           cp "$patched_sdk_zip" artifacts/linux-engine/
           cp "$artifacts_zip" artifacts/linux-engine/artifacts.zip
@@ -1527,6 +1536,12 @@ jobs:
           test -f "$engine_extract_dir/android-engine/flutter.jar"
           test -f "$engine_extract_dir/android-engine/shorebird_patch_encryption.h"
           test -f "$engine_extract_dir/android-engine/libflutter.so"
+          engine_library="$engine_extract_dir/android-engine/libflutter.so"
+          readelf --wide --dyn-syms "$engine_library" | awk '
+            $5 == "GLOBAL" && $6 == "DEFAULT" && $7 != "UND" &&
+                $8 == "shorebird_set_patch_decryption_key_provider" { found = 1 }
+            END { if (!found) { print "missing exported patch decryption key provider" > "/dev/stderr"; exit 1 } }
+          '
           test -f "$engine_extract_dir/android-engine/gen_snapshot_${{ matrix.arch }}"
           "$engine_extract_dir/android-engine/gen_snapshot_${{ matrix.arch }}" --version
           if [[ "${{ matrix.arch }}" != arm ]]; then
@@ -1901,6 +1916,11 @@ jobs:
           test -f "$engine_extract_dir/ios-engine/manifest.json"
           test -d "$engine_extract_dir/ios-engine/Flutter.framework"
           test -d "$engine_extract_dir/ios-engine/Flutter.xcframework"
+          engine_library="$engine_extract_dir/ios-engine/Flutter.xcframework/ios-arm64/Flutter.framework/Flutter"
+          nm -gU "$engine_library" | awk '
+            $NF == "_shorebird_set_patch_decryption_key_provider" { found = 1 }
+            END { if (!found) { print "missing exported patch decryption key provider" > "/dev/stderr"; exit 1 } }
+          '
           test -f "$engine_extract_dir/ios-engine/ios-release/artifacts.zip"
           test -f "$engine_extract_dir/ios-engine/ios_release.args.gn"
           test -f "$engine_extract_dir/ios-engine/host_release_arm64.args.gn"
@@ -2097,6 +2117,12 @@ jobs:
           test -f "$engine_extract_dir/macos-engine/manifest.json"
           test -f "$engine_extract_dir/macos-engine/macos_release_${{ matrix.arch }}.args.gn"
           test -f "$engine_extract_dir/macos-engine/FlutterMacOS.framework.zip"
+          unzip -q "$engine_extract_dir/macos-engine/FlutterMacOS.framework.zip" -d "$engine_extract_dir/framework"
+          engine_library="$engine_extract_dir/framework/FlutterMacOS.framework/Versions/A/FlutterMacOS"
+          nm -gU "$engine_library" | awk '
+            $NF == "_shorebird_set_patch_decryption_key_provider" { found = 1 }
+            END { if (!found) { print "missing exported patch decryption key provider" > "/dev/stderr"; exit 1 } }
+          '
           test -f "$engine_extract_dir/macos-engine/flutter_patched_sdk_product.zip"
           test -f "$engine_extract_dir/macos-engine/mirror/shorebird/flutter_infra_release/flutter/$engine_revision/darwin-${{ matrix.arch }}-release/FlutterMacOS.framework.zip"
           ./scripts/write_sha256.sh macos-engine-${{ matrix.arch }}.tar.gz macos-engine-${{ matrix.arch }}.tar.gz.sha256
@@ -2155,6 +2181,12 @@ jobs:
             --x64-path "$PWD/macos-input/x64/macos-engine/gen_snapshot_x64" --zip
           lipo macos-composed/framework/FlutterMacOS.framework/Versions/A/FlutterMacOS -verify_arch arm64
           lipo macos-composed/framework/FlutterMacOS.framework/Versions/A/FlutterMacOS -verify_arch x86_64
+          for engine_arch in arm64 x86_64; do
+            nm -arch "$engine_arch" -gU macos-composed/framework/FlutterMacOS.framework/Versions/A/FlutterMacOS | awk '
+              $NF == "_shorebird_set_patch_decryption_key_provider" { found = 1 }
+              END { if (!found) { print "missing universal framework patch decryption key provider export" > "/dev/stderr"; exit 1 } }
+            '
+          done
           cp macos-composed/framework/framework.zip "$mirror_root/framework.zip"
           cp macos-composed/snapshot/gen_snapshot.zip "$mirror_root/gen_snapshot.zip"
           python3 - "$mirror_root/artifacts.zip" <<'PYZIP'
@@ -2378,7 +2410,8 @@ jobs:
           import ctypes
           import sys
 
-          ctypes.WinDLL(sys.argv[1])
+          library = ctypes.WinDLL(sys.argv[1])
+          getattr(library, "shorebird_set_patch_decryption_key_provider")
           PYDLL
           ./scripts/write_sha256.sh windows-engine-x64.tar.gz windows-engine-x64.tar.gz.sha256
 

@@ -31,9 +31,13 @@ persistence. Rust tests cover response verification and persisted boot identity.
 These do not establish protection against complete device-storage rollback.
 Managed signing is required for interpreter releases. Native customer signing
 requires explicit optional response authentication until the publisher supplies
-a response-signing service. Optional server transport encryption still needs an
-external device-key provisioning integration; it is distinct from the encrypted
-iOS interpreter artifact.
+a response-signing service. Native encrypted delivery uses an app-owned native key callback and authenticated
+server response metadata. A real Go-produced encrypted native patch reconstructs
+the exact target binary in Rust; wrong-key rejection, retry, and strict boot
+identity are tested. Applications must provision derived device keys through
+their authenticated service. No secret is derived from a public device ID.
+The installed native executable cache remains plaintext; this delivery layer is
+distinct from the encrypted iOS interpreter artifact.
 
 ## Prerequisites
 

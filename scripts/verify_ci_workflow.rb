@@ -2437,6 +2437,17 @@ assert!(
     run_text_by_job.fetch('android-engine').include?('cp artifacts/android-engine/artifacts.zip "$mirror_root/artifacts.zip"'),
   'every Android ABI must publish and verify the canonical encryption registration header in its archive and mirrored artifacts.zip'
 )
+%w[linux-engine android-engine ios-engine macos-engine macos-engine-universal windows-engine].each do |name|
+  assert!(run_text_by_job.fetch(name).include?('shorebird_set_patch_decryption_key_provider'), "#{name} must verify the actual linked engine exports the patch decryption key registration API")
+end
+%w[linux-engine android-engine].each do |name|
+  assert!(run_text_by_job.fetch(name).include?('readelf --wide --dyn-syms "$engine_library"') && run_text_by_job.fetch(name).include?('$7 != "UND"'), "#{name} must require a defined ELF dynamic export")
+end
+%w[ios-engine macos-engine].each do |name|
+  assert!(run_text_by_job.fetch(name).include?('nm -gU "$engine_library"'), "#{name} must require a defined external Mach-O export")
+end
+assert!(run_text_by_job.fetch('macos-engine-universal').include?('nm -arch "$engine_arch" -gU') && run_text_by_job.fetch('macos-engine-universal').include?('for engine_arch in arm64 x86_64'), 'both universal macOS slices must retain the provider export')
+assert!(run_text_by_job.fetch('windows-engine').include?('getattr(library, "shorebird_set_patch_decryption_key_provider")'), 'Windows must resolve the public provider API from the packaged loaded DLL')
 assert!(inputs.dig('windows_heavy_runner', 'default') == 'windows-2022', 'Windows heavy jobs must select the VS2022 image supported by the Dart/Chromium toolchain')
 %w[custom-dart-sdk-windows windows-engine android-host-tools].each do |name|
   assert!(jobs.dig(name, 'env', 'DEPOT_TOOLS_WIN_TOOLCHAIN') == '0' && jobs.dig(name, 'env', 'MSYS') == 'winsymlinks:nativestrict', "#{name} must use the installed public Windows toolchain and native directory links")
