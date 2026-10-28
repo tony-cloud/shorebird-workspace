@@ -18,7 +18,7 @@ compiler/runtime cache reuse.
 | `depot_tools` | `https://chromium.googlesource.com/chromium/tools/depot_tools.git` | `main` | `e154c8eda5e63cbe85a765ae9d06e2b7af05139e` |
 | `flutter` | `https://github.com/tony-cloud/flutter.git` | `tonycloud/dev` | `48b7c104da40a42559fa4be40b6a709d5fe2e9af` |
 | `shorebird` | `https://github.com/tony-cloud/shorebird.git` | `main` | `c28bae1e010a0ec09da8db1e8ec1ff9b42432876` |
-| `shorebird-server` | `https://github.com/tony-cloud/shorebird-server.git` | `main` | `3b7995cfcdf82572529039d8c1a3df5738ae3a0d` |
+| `shorebird-server` | `https://github.com/tony-cloud/shorebird-server.git` | `main` | `a90e424e9ea2c71723846785b0df6dc8415bb877` |
 | `updater` | `https://github.com/tony-cloud/shorebird-updater.git` | `main` | `1b576651c74751f1e76c28e9f4efcba6b6089a85` |
 
 ## Submodule Policy

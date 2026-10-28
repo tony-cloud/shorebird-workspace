@@ -155,3 +155,9 @@ Generated build output under that app is ignored by this meta-repository.
 - `docs/REPOSITORIES.md` records the remote URL inventory and cleanup policy.
 - `docs/PLATFORM_TESTING.md` documents the Linux, macOS, and later iOS test
   flow.
+
+## License
+
+Root-owned workspace scripts, documentation, and fixtures are dual-licensed
+under [MIT](LICENSE-MIT) or [Apache 2.0](LICENSE-APACHE), at your option. Each
+submodule and third-party dependency retains its own license and notices.
