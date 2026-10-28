@@ -215,6 +215,47 @@ class _Smoke {
     _require(await client.getCurrentUser() != null, 'refreshed token unusable');
     stdout.writeln('PASS: bootstrap password change and OAuth refresh');
 
+    stage = 'real self-hosted doctor network diagnostics';
+    final uploadDiagnostic = await client.getGCPUploadSpeedTestUrl();
+    final downloadDiagnostic = await client.getGCPDownloadSpeedTestUrl();
+    _require(
+      uploadDiagnostic.origin == origin.origin &&
+          downloadDiagnostic.origin == origin.origin,
+      'diagnostics must use the self-hosted origin',
+    );
+    final diagnosticUpload = http.MultipartRequest('POST', uploadDiagnostic)
+      ..files.add(
+        http.MultipartFile.fromBytes(
+          'file',
+          List<int>.filled(5000000, 0),
+          filename: 'speed_test_file',
+        ),
+      );
+    final diagnosticUploaded = await transport
+        .send(diagnosticUpload)
+        .timeout(const Duration(seconds: 30));
+    await diagnosticUploaded.stream.drain<void>();
+    _require(
+      diagnosticUploaded.statusCode == HttpStatus.noContent,
+      'doctor multipart upload must return 204',
+    );
+    final diagnosticDownload = await transport
+        .get(downloadDiagnostic)
+        .timeout(const Duration(seconds: 30));
+    _require(
+      diagnosticDownload.statusCode == HttpStatus.ok &&
+          diagnosticDownload.bodyBytes.length == 16000000,
+      'doctor download must contain exactly 16000000 bytes',
+    );
+    final unsignedDiagnostic = await transport.get(
+      downloadDiagnostic.replace(query: ''),
+    );
+    _require(
+      unsignedDiagnostic.statusCode == HttpStatus.forbidden,
+      'diagnostic download requires a transfer grant',
+    );
+    stdout.writeln('PASS: real Dart client doctor upload and download');
+
     stage = 'organization and app DTOs';
     final organization = await client.createOrganization(name: 'Smoke test');
     final app = await client.createApp(
