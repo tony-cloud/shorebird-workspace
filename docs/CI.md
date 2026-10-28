@@ -505,8 +505,8 @@ builds the public `windows_flutter` target and checks the DLL, import library,
 headers, and snapshotter in `windows-x64-release/windows-x64-flutter.zip`.
 
 Intel macOS jobs default to `macos-15-intel` and accept
-`macos_x64_heavy_runner`; Windows jobs default to `windows-2025` and accept
-`windows_heavy_runner`. Windows explicitly selects installed Visual Studio
+`macos_x64_heavy_runner`; Windows jobs default to `windows-2022` (Visual Studio
+2022) and accept `windows_heavy_runner`. Windows explicitly selects installed Visual Studio
 2022 and Windows SDK 10.0.26100.0 with `DEPOT_TOOLS_WIN_TOOLCHAIN=0`, and uses
 native links so gclient's Python process sees the workspace source checkouts.
 Engine jobs select stable Rust before installing target libraries.
@@ -531,3 +531,9 @@ Mirror assembly frees hosted-runner disk, hard-links downloaded archives while
 creating its input and release-manifest views, and removes each temporary
 engine extraction after collecting its mirror files. This avoids duplicating
 the expanded platform distribution on the assembly runner.
+
+All four packaged SDKs run `scripts/verify_dart_sdk_tooling.py` before packaging.
+It exercises offline package resolution, ordinary Dart execution, and default
+TFA native executable compilation/execution. The separate no-TFA body-patch
+regression remains required: passing one compiler mode does not establish the
+other mode's correctness.

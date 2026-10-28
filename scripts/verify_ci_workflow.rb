@@ -217,6 +217,7 @@ required_files = %w[
   scripts/verify_ci_capacity.sh
   scripts/verify_dart_tool_sdk.sh
   scripts/verify_dart_tool_sdk_validator.sh
+  scripts/verify_dart_sdk_tooling.py
   scripts/verify_dart_sdk_args.sh
   scripts/verify_engine_args.sh
   scripts/verify_hosted_full_sdk_build.sh
@@ -2416,6 +2417,20 @@ assert!(matrix_entries(jobs.fetch('android-host-tools')).length == 6, 'Android h
   assert!(run_text_by_job.fetch(name).include?('dart_engine_aot_shared') && run_text_by_job.fetch(name).include?(regression), "#{name} must exercise actual unannotated AOT bytecode replacement")
 end
 assert!(run_text_by_job.fetch('custom-dart-sdk').include?('dart-sdk/bin/dart pub get'), 'encrypted runtime gate requires the real public envelope producer')
+{
+  'custom-dart-sdk' => 'out/ReleaseX64/dart-sdk/bin/dart',
+  'custom-dart-sdk-macos' => 'xcodebuild/ReleaseARM64/dart-sdk/bin/dart',
+  'custom-dart-sdk-macos-x64' => 'xcodebuild/ReleaseX64/dart-sdk/bin/dart',
+  'custom-dart-sdk-windows' => 'out/ReleaseX64/dart-sdk/bin/dart.exe',
+}.each do |name, sdk_path|
+  steps = jobs.fetch(name).fetch('steps')
+  build = steps.index { |step| step['name'] == 'Build patched Dart SDK' }
+  tooling = steps.index { |step| step['name'] == 'Verify built SDK developer tools' }
+  package = steps.index { |step| step['name'] == 'Package Dart SDK artifact' }
+  assert!(build && tooling && package && build < tooling && tooling < package, "#{name} must check developer tools after building and before packaging")
+  assert!(steps.fetch(tooling).fetch('run').include?("scripts/verify_dart_sdk_tooling.py --dart \"$PWD/dart-sdk/#{sdk_path}\""), "#{name} must exercise its own production SDK for offline pub, dart run, and default-TFA exe compilation")
+end
+assert!(inputs.dig('windows_heavy_runner', 'default') == 'windows-2022', 'Windows heavy jobs must select the VS2022 image supported by the Dart/Chromium toolchain')
 %w[custom-dart-sdk-windows windows-engine android-host-tools].each do |name|
   assert!(jobs.dig(name, 'env', 'DEPOT_TOOLS_WIN_TOOLCHAIN') == '0' && jobs.dig(name, 'env', 'MSYS') == 'winsymlinks:nativestrict', "#{name} must use the installed public Windows toolchain and native directory links")
 end

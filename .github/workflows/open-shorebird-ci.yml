@@ -43,7 +43,7 @@ on:
       windows_heavy_runner:
         description: Runner label for Windows x64 SDK and engine heavy jobs.
         required: false
-        default: windows-2025
+        default: windows-2022
         type: string
       sdk_min_free_disk_gb:
         description: Minimum free disk GiB required before SDK-only heavy jobs.
@@ -158,6 +158,7 @@ jobs:
           python3 -m py_compile scripts/validate_release_manifest.py
           python3 -m py_compile scripts/safe_extract_tar.py
           python3 -m py_compile scripts/write_artifact_manifest.py
+          python3 -m py_compile scripts/verify_dart_sdk_tooling.py
           python3 -m py_compile scripts/package_android_maven.py
           python3 scripts/verify_android_maven.py
           python3 -m py_compile scripts/write_release_manifest.py
@@ -609,6 +610,9 @@ jobs:
         run: |
           ninja -C out/ReleaseX64 create_sdk runtime gen_snapshot dartaotruntime dart_engine_aot_shared
 
+      - name: Verify built SDK developer tools
+        run: python3 scripts/verify_dart_sdk_tooling.py --dart "$PWD/dart-sdk/out/ReleaseX64/dart-sdk/bin/dart"
+
       - name: Run focused patch API tests
         working-directory: dart-sdk/out/ReleaseX64
         run: |
@@ -742,6 +746,9 @@ jobs:
         run: |
           ninja -C xcodebuild/ReleaseARM64 create_sdk runtime gen_snapshot dartaotruntime dart_engine_aot_shared
 
+      - name: Verify built SDK developer tools
+        run: python3 scripts/verify_dart_sdk_tooling.py --dart "$PWD/dart-sdk/xcodebuild/ReleaseARM64/dart-sdk/bin/dart"
+
       - name: Run focused patch API tests
         working-directory: dart-sdk/xcodebuild/ReleaseARM64
         run: |
@@ -868,6 +875,9 @@ jobs:
         run: |
           ninja -C xcodebuild/ReleaseX64 create_sdk runtime gen_snapshot dartaotruntime dart_engine_aot_shared
 
+      - name: Verify built SDK developer tools
+        run: python3 scripts/verify_dart_sdk_tooling.py --dart "$PWD/dart-sdk/xcodebuild/ReleaseX64/dart-sdk/bin/dart"
+
       - name: Run focused patch API tests
         working-directory: dart-sdk/xcodebuild/ReleaseX64
         run: |
@@ -941,7 +951,7 @@ jobs:
   custom-dart-sdk-windows:
     name: Build custom Dart SDK (Windows x64)
     needs: source-checks
-    runs-on: ${{ inputs.windows_heavy_runner || 'windows-2025' }}
+    runs-on: ${{ inputs.windows_heavy_runner || 'windows-2022' }}
     timeout-minutes: 180
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.full_sdk_build }}
     env:
@@ -1020,6 +1030,9 @@ jobs:
         working-directory: dart-sdk
         run: |
           ninja -C out/ReleaseX64 create_sdk runtime gen_snapshot dartaotruntime
+
+      - name: Verify built SDK developer tools
+        run: python3 scripts/verify_dart_sdk_tooling.py --dart "$PWD/dart-sdk/out/ReleaseX64/dart-sdk/bin/dart.exe"
 
       - name: Run focused patch API tests
         working-directory: dart-sdk/out/ReleaseX64
@@ -2176,7 +2189,7 @@ jobs:
   windows-engine:
     name: Build Windows engine artifacts
     needs: source-checks
-    runs-on: ${{ inputs.windows_heavy_runner || 'windows-2025' }}
+    runs-on: ${{ inputs.windows_heavy_runner || 'windows-2022' }}
     timeout-minutes: 300
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.full_sdk_build }}
     env:
@@ -2365,7 +2378,7 @@ jobs:
             gclient_platform: macos
             snapshot_target: flutter/shell/platform/android:gen_snapshot
           - host: windows-x64
-            runner: ${{ inputs.windows_heavy_runner || 'windows-2025' }}
+            runner: ${{ inputs.windows_heavy_runner || 'windows-2022' }}
             gclient_platform: windows
             snapshot_target: flutter/build/archives:archive_win_gen_snapshot
     steps:
