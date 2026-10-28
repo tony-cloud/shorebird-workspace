@@ -2448,6 +2448,15 @@ end
 end
 assert!(run_text_by_job.fetch('macos-engine-universal').include?('nm -arch "$engine_arch" -gU') && run_text_by_job.fetch('macos-engine-universal').include?('for engine_arch in arm64 x86_64'), 'both universal macOS slices must retain the provider export')
 assert!(run_text_by_job.fetch('windows-engine').include?('getattr(library, "shorebird_set_patch_decryption_key_provider")'), 'Windows must resolve the public provider API from the packaged loaded DLL')
+%w[custom-dart-sdk-windows windows-engine android-host-tools].each do |name|
+  steps = jobs.fetch(name).fetch('steps')
+  install = steps.index { |step| step['name'] == 'Install depot_tools' }
+  bootstrap = steps.index { |step| step['name'] == 'Bootstrap Windows depot_tools' }
+  sync = steps.index { |step| step['name'] == 'gclient sync' }
+  assert!(install && bootstrap && sync && install < bootstrap && bootstrap < sync, "#{name} must bootstrap the public Windows Git/Python wrappers before gclient sync")
+  run = steps.fetch(bootstrap).fetch('run')
+  assert!(run.include?('depot_tools\\bootstrap\\win_tools.bat') && run.include?("subprocess.check_call(['git.bat', '--version'])"), "#{name} must generate and exercise the real depot_tools git.bat wrapper")
+end
 assert!(inputs.dig('windows_heavy_runner', 'default') == 'windows-2022', 'Windows heavy jobs must select the VS2022 image supported by the Dart/Chromium toolchain')
 %w[custom-dart-sdk-windows windows-engine android-host-tools].each do |name|
   assert!(jobs.dig(name, 'env', 'DEPOT_TOOLS_WIN_TOOLCHAIN') == '0' && jobs.dig(name, 'env', 'MSYS') == 'winsymlinks:nativestrict', "#{name} must use the installed public Windows toolchain and native directory links")

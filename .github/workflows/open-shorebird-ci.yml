@@ -996,6 +996,17 @@ jobs:
           fi
           echo "$GITHUB_WORKSPACE/depot_tools" >> "$GITHUB_PATH"
 
+      - name: Bootstrap Windows depot_tools
+        shell: pwsh
+        run: |
+          & "$env:GITHUB_WORKSPACE\depot_tools\bootstrap\win_tools.bat"
+          if ($LASTEXITCODE) { throw 'depot_tools Windows bootstrap failed' }
+          if (!(Test-Path "$env:GITHUB_WORKSPACE\depot_tools\git.bat")) {
+            throw 'depot_tools bootstrap did not generate the required git.bat wrapper'
+          }
+          python3 -c "import subprocess; subprocess.check_call(['git.bat', '--version'])"
+          if ($LASTEXITCODE) { throw 'native Python cannot invoke the depot_tools Git wrapper' }
+
       - name: Verify depot_tools build tools
         run: |
           python3 --version
@@ -2303,6 +2314,17 @@ jobs:
           fi
           echo "$GITHUB_WORKSPACE/depot_tools" >> "$GITHUB_PATH"
 
+      - name: Bootstrap Windows depot_tools
+        shell: pwsh
+        run: |
+          & "$env:GITHUB_WORKSPACE\depot_tools\bootstrap\win_tools.bat"
+          if ($LASTEXITCODE) { throw 'depot_tools Windows bootstrap failed' }
+          if (!(Test-Path "$env:GITHUB_WORKSPACE\depot_tools\git.bat")) {
+            throw 'depot_tools bootstrap did not generate the required git.bat wrapper'
+          }
+          python3 -c "import subprocess; subprocess.check_call(['git.bat', '--version'])"
+          if ($LASTEXITCODE) { throw 'native Python cannot invoke the depot_tools Git wrapper' }
+
       - name: Verify depot_tools build tools
         run: |
           python3 --version
@@ -2489,6 +2511,18 @@ jobs:
               depot_tools
           fi
           echo "$GITHUB_WORKSPACE/depot_tools" >> "$GITHUB_PATH"
+
+      - name: Bootstrap Windows depot_tools
+        if: ${{ matrix.host == 'windows-x64' }}
+        shell: pwsh
+        run: |
+          & "$env:GITHUB_WORKSPACE\depot_tools\bootstrap\win_tools.bat"
+          if ($LASTEXITCODE) { throw 'depot_tools Windows bootstrap failed' }
+          if (!(Test-Path "$env:GITHUB_WORKSPACE\depot_tools\git.bat")) {
+            throw 'depot_tools bootstrap did not generate the required git.bat wrapper'
+          }
+          python3 -c "import subprocess; subprocess.check_call(['git.bat', '--version'])"
+          if ($LASTEXITCODE) { throw 'native Python cannot invoke the depot_tools Git wrapper' }
 
       - name: Verify depot_tools build tools
         run: |
