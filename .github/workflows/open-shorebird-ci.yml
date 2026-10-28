@@ -79,6 +79,8 @@ defaults:
     shell: bash
 
 env:
+  COPYFILE_DISABLE: "1"
+  SHOREBIRD_UPSTREAM_REVISION: 5f04c3ace43b02d0fec7c19b99c88a85989c704f
   DART_SDK_CHANNEL: stable
   GO_VERSION: "1.23.x"
   JAVA_VERSION: "17"
@@ -100,14 +102,16 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Verify upstream release version
+      - name: Verify upstream source and version
         run: |
           set -euo pipefail
           release_version="$(tr -d '[:space:]' < VERSION)"
           cli_version="$(sed -n 's/^version: //p' shorebird/packages/shorebird_cli/pubspec.yaml)"
           test -n "$release_version"
           test "$cli_version" = "$release_version"
-          git -C shorebird merge-base --is-ancestor "v$release_version" HEAD
+          # Upstream main can advance its version before creating a release tag.
+          # Verify the exact merged source instead of requiring that future tag.
+          git -C shorebird merge-base --is-ancestor "$SHOREBIRD_UPSTREAM_REVISION" HEAD
 
       - name: Set up Dart
         uses: dart-lang/setup-dart@v1
@@ -585,6 +589,7 @@ jobs:
         run: |
           ./run_vm_tests DartAPI_AotPatchingConfiguration
           ./run_vm_tests DartAPI_BytecodePatchReloadConfiguration
+          ./run_vm_tests DartAPI_SnapshotRegionSizes
 
       - name: Package Dart SDK artifact
         run: |
@@ -706,6 +711,7 @@ jobs:
         run: |
           ./run_vm_tests DartAPI_AotPatchingConfiguration
           ./run_vm_tests DartAPI_BytecodePatchReloadConfiguration
+          ./run_vm_tests DartAPI_SnapshotRegionSizes
 
       - name: Package Dart SDK artifact
         run: |

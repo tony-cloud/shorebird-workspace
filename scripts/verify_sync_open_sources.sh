@@ -62,6 +62,17 @@ assert_links_to_workspace_sources "$clean_checkout_workspace"
 run_sync "$clean_checkout_workspace"
 assert_links_to_workspace_sources "$clean_checkout_workspace"
 
+git -C "$clean_checkout_workspace/dart-sdk" remote add origin \
+  https://github.com/tony-cloud/dart-sdk.git
+git -C "$clean_checkout_workspace/dart-sdk" remote add upstream \
+  https://github.com/dart-lang/sdk.git
+git -C "$clean_checkout_workspace/updater" remote add origin \
+  https://github.com/tony-cloud/shorebird-updater.git
+git -C "$clean_checkout_workspace/updater" remote add upstream \
+  https://github.com/shorebirdtech/updater.git
+run_sync "$clean_checkout_workspace"
+assert_links_to_workspace_sources "$clean_checkout_workspace"
+
 stale_link_workspace="$TMP_DIR/stale-link"
 make_workspace "$stale_link_workspace"
 mkdir -p "$stale_link_workspace/other-dart"

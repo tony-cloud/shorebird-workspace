@@ -1,17 +1,22 @@
 # Repository Inventory
 
-Last verified: 2026-08-20.
+Last verified: 2026-10-28.
+
+The October update includes Shorebird upstream main `5f04c3ac` (version
+`1.6.134`, ahead of the latest upstream `v1.6.133` tag), Shorebird Flutter
+`88353151`, and official Flutter stable `737ba8f8`. CI verifies upstream
+Shorebird commit ancestry directly so unreleased upstream source can be built.
 
 ## Active Top-Level Repositories
 
 | Path | Remote URL | Branch | Pinned commit |
 | --- | --- | --- | --- |
-| `dart-sdk` | `https://github.com/tony-cloud/dart-sdk.git` | `tonycloud/dev` | `89615fb4377fe0fbb2f2cee972566995fb5f51d8` |
+| `dart-sdk` | `https://github.com/tony-cloud/dart-sdk.git` | `tonycloud/dev` | `9b8279462bac6d831926e239baa4a65e97edd74a` |
 | `depot_tools` | `https://chromium.googlesource.com/chromium/tools/depot_tools.git` | `main` | `e154c8eda5e63cbe85a765ae9d06e2b7af05139e` |
-| `flutter` | `https://github.com/tony-cloud/flutter.git` | `tonycloud/dev` | `c36416c8dc299d9dfcc26843f66d33609f0e25cc` |
-| `shorebird` | `https://github.com/tony-cloud/shorebird.git` | `main` | `598fe786242eecb7dfd83883db497c7bb1be384d` |
+| `flutter` | `https://github.com/tony-cloud/flutter.git` | `tonycloud/dev` | `863ab478e67c7f5b174520ccf5ea5e4e484dbb64` |
+| `shorebird` | `https://github.com/tony-cloud/shorebird.git` | `main` | `ce38adafeb8dbcfb1d5d504b79391d6df0bf8ad2` |
 | `shorebird-server` | `https://github.com/tony-cloud/shorebird-server.git` | `main` | `d6e5a39546905b85e2345b8058c4350ed236184c` |
-| `updater` | `https://github.com/tony-cloud/shorebird-updater.git` | `main` | `479de106d77039328bdd30dafccefa6d78ea981b` |
+| `updater` | `https://github.com/tony-cloud/shorebird-updater.git` | `main` | `fe8af499ba6e84b92c3091e25a3a1ddd8068c013` |
 
 ## Submodule Policy
 

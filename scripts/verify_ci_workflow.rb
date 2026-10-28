@@ -42,6 +42,12 @@ def assert!(condition, message)
 end
 
 assert!(
+  workflow.fetch('env').fetch('SHOREBIRD_UPSTREAM_REVISION', '').to_s.match?(/\A[0-9a-f]{40}\z/) &&
+    workflow_text.include?('git -C shorebird merge-base --is-ancestor "$SHOREBIRD_UPSTREAM_REVISION" HEAD'),
+  'source checks must verify the exact merged upstream Shorebird revision'
+)
+
+assert!(
   workflow_text.include?('concurrency:') &&
     workflow_text.include?('cancel-in-progress: true'),
   'workflow must cancel stale runs before starting a replacement run'
@@ -177,6 +183,7 @@ required_files = %w[
   shorebird/packages/shorebird_cli/lib/src/network_checker.dart
   shorebird/packages/shorebird_cli/lib/src/shorebird_cli_command_runner.dart
   shorebird/packages/shorebird_cli/lib/src/shorebird_documentation.dart
+  shorebird/packages/shorebird_cli/lib/src/version_info.dart
   shorebird/packages/shorebird_cli/lib/src/shorebird_env.dart
   shorebird/packages/shorebird_cli/lib/src/shorebird_flutter.dart
   shorebird/packages/shorebird_cli/lib/src/shorebird_process.dart
@@ -729,9 +736,10 @@ assert!(
 end
 
 assert!(
-  shorebird_flutter.include?('SHOREBIRD_FLUTTER_GIT_URL') &&
-    shorebird_flutter.include?('defaultFlutterGitUrl') &&
-    shorebird_flutter.include?('https://github.com/tony-cloud/flutter.git'),
+  shorebird_env.include?('SHOREBIRD_FLUTTER_GIT_URL') &&
+    shorebird_env.include?('defaultFlutterGitUrl') &&
+    shorebird_env.include?('https://github.com/tony-cloud/flutter.git') &&
+    shorebird_flutter.include?('url: shorebirdEnv.flutterGitUrl'),
   'shorebird Flutter installer must default to the open fork and allow SHOREBIRD_FLUTTER_GIT_URL override'
 )
 assert!(
@@ -748,11 +756,16 @@ assert!(
   'doctor_command.dart' => doctor_command,
 }.each do |path, text|
   assert!(
-    text.include?('https://github.com/tony-cloud/shorebird.git') &&
-      !text.include?('git@github.com:shorebirdtech/shorebird.git'),
+    text.include?('versionBanner(flutterVersion: flutterVersion)'),
     "#{path} must print the open Shorebird fork in user-visible version banners"
   )
 end
+version_info = read_repo_file(repo_root, 'shorebird/packages/shorebird_cli/lib/src/version_info.dart')
+assert!(
+  version_info.include?('https://github.com/tony-cloud/shorebird.git') &&
+    !version_info.include?('git@github.com:shorebirdtech/shorebird.git'),
+  'the shared version banner must print the open Shorebird fork'
+)
 assert!(
   !shorebird_flutter.include?('github.com/shorebirdtech/flutter.git'),
   'shorebird Flutter installer must not clone the closed official Shorebird Flutter fork'
@@ -959,7 +972,7 @@ assert!(
   'Flutter Android host-app integration fixtures must default to the open local Flutter mirror'
 )
 assert!(
-  flutter_create_api_docs.include?("Platform.environment['FLUTTER_STORAGE_BASE_URL']") &&
+  flutter_create_api_docs.include?("LocalPlatform().environment['FLUTTER_STORAGE_BASE_URL']") &&
     flutter_create_api_docs.include?('http://localhost:8080/download.flutter.io') &&
     !flutter_create_api_docs.include?('download.shorebird.dev') &&
     flutter_post_process_docs.include?("Platform.environment['FLUTTER_STORAGE_BASE_URL']") &&
@@ -1099,6 +1112,7 @@ assert!(
   platform_test_common.include?("cd '$ROOT/shorebird' && '$DART_BIN' pub get") &&
     platform_test_common.include?('test/src/shorebird_env_test.dart') &&
     platform_test_common.include?('test/src/commands/doctor_command_test.dart') &&
+    platform_test_common.include?('test/src/auth test/src/commands/auth') &&
     platform_test_common.include?('packages/shorebird_code_push_client/test/src/code_push_client_test.dart') &&
     platform_test_common.include?('packages/artifact_proxy/test/artifact_proxy_test.dart') &&
     platform_test_common.include?('packages/artifact_proxy/test/server_bin_test.dart') &&
@@ -1869,11 +1883,11 @@ release_sdk_assets = {
 }
 release_sdk_assets.each do |job_name, asset_name|
   run_text = run_text_by_job.fetch(job_name)
-  upload_text = jobs.fetch(job_name).fetch('steps', []).filter_map do |step|
+  upload_text = jobs.fetch(job_name).fetch('steps', []).map do |step|
     next unless step['uses'].to_s == 'actions/upload-artifact@v4'
 
     step.dig('with', 'path').to_s
-  end.join("\n")
+  end.compact.join("\n")
   assert!(
     run_text.include?(asset_name) &&
       run_text.include?("#{asset_name}.sha256") &&
@@ -2036,6 +2050,7 @@ assert!(
   assert!(run_text.include?('dart_enable_shorebird_interpreter=true'), "#{job_name} must enable the interpreter route")
   assert!(run_text.include?('DartAPI_AotPatchingConfiguration'), "#{job_name} must run AOT patching VM tests")
   assert!(run_text.include?('DartAPI_BytecodePatchReloadConfiguration'), "#{job_name} must run bytecode reload VM tests")
+  assert!(run_text.include?('DartAPI_SnapshotRegionSizes'), "#{job_name} must run snapshot region size VM tests")
 end
 
 assert!(

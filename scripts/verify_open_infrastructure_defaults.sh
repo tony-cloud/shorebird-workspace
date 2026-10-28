@@ -111,7 +111,7 @@ require_contains "$ROOT/flutter/bin/internal/update_dart_sdk.ps1" \
 require_contains "$ROOT/flutter/packages/flutter_tools/gradle/src/main/kotlin/FlutterPluginConstants.kt" \
   'DEFAULT_MAVEN_HOST = "http://localhost:8080/download.flutter.io"'
 require_contains "$ROOT/flutter/dev/tools/create_api_docs.dart" \
-  "Platform.environment['FLUTTER_STORAGE_BASE_URL']"
+  "LocalPlatform().environment['FLUTTER_STORAGE_BASE_URL']"
 require_contains "$ROOT/flutter/packages/shorebird_tests/test/shorebird_tests.dart" \
   "'FLUTTER_STORAGE_BASE_URL': 'http://localhost:8080/download.flutter.io'"
 

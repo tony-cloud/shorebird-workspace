@@ -48,7 +48,9 @@ reject_forbidden_remotes() {
   shift 2
 
   local remotes
-  remotes="$(git -C "$source" remote -v 2>/dev/null || true)"
+  # The checkout comes from origin. Additional upstream remotes are useful for
+  # merging updates and do not change which fork supplies the patched source.
+  remotes="$(git -C "$source" remote get-url --all origin 2>/dev/null || true)"
   if [[ -z "$remotes" ]]; then
     return
   fi

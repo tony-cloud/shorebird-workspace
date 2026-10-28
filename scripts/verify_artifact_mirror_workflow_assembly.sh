@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# macOS tar otherwise emits AppleDouble files alongside checksum sidecars.
+export COPYFILE_DISABLE=1
+
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/open-shorebird-artifact-job.XXXXXX")"
 trap 'rm -rf "$TMP_DIR"' EXIT
