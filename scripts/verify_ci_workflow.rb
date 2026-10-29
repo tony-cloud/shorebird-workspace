@@ -2457,6 +2457,14 @@ assert!(run_text_by_job.fetch('windows-engine').include?('getattr(library, "shor
   run = steps.fetch(bootstrap).fetch('run')
   assert!(run.include?('depot_tools\\bootstrap\\win_tools.bat') && run.include?("subprocess.check_call(['git.bat', '--version'])"), "#{name} must generate and exercise the real depot_tools git.bat wrapper")
 end
+%w[linux-engine macos-engine windows-engine].each do |name|
+  run = run_text_by_job.fetch(name)
+  assert!(run.include?('flutter/tools/font_subset:font_subset') && run.include?('const_finder.dart.snapshot') && run.include?('Roboto-Regular.ttf') && run.include?('font subset did not produce a smaller non-empty font') && run.include?('test -n "$font_dart"'), "#{name} must build, package, and exercise the matching font subsetter and kernel const finder")
+end
+%w[linux-x64 darwin-arm64 darwin-x64 windows-x64].each do |host|
+  path = "flutter_infra_release/flutter/$engine/#{host}/font-subset.zip"
+  assert!(generated_artifact_overrides.include?(path), "#{host} font tools must use the matching custom SDK mirror")
+end
 assert!(inputs.dig('windows_heavy_runner', 'default') == 'windows-2022', 'Windows heavy jobs must select the VS2022 image supported by the Dart/Chromium toolchain')
 %w[custom-dart-sdk-windows windows-engine android-host-tools].each do |name|
   assert!(jobs.dig(name, 'env', 'DEPOT_TOOLS_WIN_TOOLCHAIN') == '0' && jobs.dig(name, 'env', 'MSYS') == 'winsymlinks:nativestrict', "#{name} must use the installed public Windows toolchain and native directory links")

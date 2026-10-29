@@ -42,6 +42,23 @@ PY
   "$ROOT/scripts/write_sha256.sh" "$zip_path"
 }
 
+write_font_zip() {
+  local zip_path="$1"
+  local executable="$2"
+  local content="$3"
+  mkdir -p "$(dirname "$zip_path")"
+  "$PYTHON_BIN" - "$zip_path" "$executable" "$content" <<'PYFONT'
+import sys
+import zipfile
+
+path, executable, content = sys.argv[1:]
+with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as archive:
+    archive.writestr(executable, content + "\n")
+    archive.writestr("const_finder.dart.snapshot", content + "-matching-kernel\n")
+PYFONT
+  "$ROOT/scripts/write_sha256.sh" "$zip_path"
+}
+
 write_tgz() {
   local archive_path="$1"
   local staging_dir="$2"
@@ -120,6 +137,9 @@ mkdir -p "$engine_stage/linux-engine/linux-engine/mirror/shorebird/flutter_infra
 write_artifact \
   "$engine_stage/linux-engine/linux-engine/mirror/shorebird/flutter_infra_release/flutter/$ENGINE_REVISION/flutter_patched_sdk_product.zip" \
   linux-patched-sdk
+write_font_zip \
+  "$engine_stage/linux-engine/linux-engine/mirror/shorebird/flutter_infra_release/flutter/$ENGINE_REVISION/linux-x64/font-subset.zip" \
+  font-subset linux-font-subset
 write_tgz "$DOWNLOADED/linux-engine-x64/linux-engine-x64.tar.gz" \
   "$engine_stage/linux-engine" \
   linux-engine
@@ -158,6 +178,23 @@ make_engine_archive \
 make_engine_archive \
   windows-engine-x64 windows-engine-x64.tar.gz windows-engine windows-x64-release \
   windows-x64-flutter.zip windows-engine
+
+for arch in arm64 x64; do
+  font_stage="$TMP_DIR/font-stage-$arch"
+  mkdir -p "$font_stage"
+  tar -C "$font_stage" -xzf "$DOWNLOADED/macos-engine-$arch/macos-engine-$arch.tar.gz"
+  write_font_zip \
+    "$font_stage/macos-engine/mirror/shorebird/flutter_infra_release/flutter/$ENGINE_REVISION/darwin-$arch/font-subset.zip" \
+    font-subset "darwin-$arch-font-subset"
+  write_tgz "$DOWNLOADED/macos-engine-$arch/macos-engine-$arch.tar.gz" "$font_stage" macos-engine
+done
+windows_font_stage="$TMP_DIR/font-stage-windows"
+mkdir -p "$windows_font_stage"
+tar -C "$windows_font_stage" -xzf "$DOWNLOADED/windows-engine-x64/windows-engine-x64.tar.gz"
+write_font_zip \
+  "$windows_font_stage/windows-engine/mirror/shorebird/flutter_infra_release/flutter/$ENGINE_REVISION/windows-x64/font-subset.zip" \
+  font-subset.exe windows-font-subset
+write_tgz "$DOWNLOADED/windows-engine-x64/windows-engine-x64.tar.gz" "$windows_font_stage" windows-engine
 
 mirror_input="$TMP_DIR/mirror-input"
 mkdir -p "$mirror_input"

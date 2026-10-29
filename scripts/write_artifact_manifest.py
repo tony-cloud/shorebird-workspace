@@ -20,6 +20,8 @@ import sys
 DEFAULT_ARTIFACT_OVERRIDES = (
     *(f"flutter_infra_release/flutter/$engine/dart-sdk-{host}.zip"
       for host in ("linux-x64", "darwin-arm64", "darwin-x64", "windows-x64")),
+    *(f"flutter_infra_release/flutter/$engine/{host}/font-subset.zip"
+      for host in ("linux-x64", "darwin-arm64", "darwin-x64", "windows-x64")),
     *(f"flutter_infra_release/flutter/$engine/android-{arch}-release/{artifact}"
       for arch in ("arm", "arm64", "x64")
       for artifact in ("artifacts.zip", "symbols.zip", "linux-x64.zip",

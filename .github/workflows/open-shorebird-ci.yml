@@ -1191,7 +1191,8 @@ jobs:
         run: |
           ninja -C out/linux_release_x64 \
             flutter/shell/platform/linux:flutter_gtk \
-            flutter/build/archives:flutter_patched_sdk
+            flutter/build/archives:flutter_patched_sdk \
+            flutter/tools/font_subset:font_subset
 
       - name: Verify Linux engine args
         run: |
@@ -1257,6 +1258,40 @@ jobs:
           test -f "$mirror_root/linux-x64-release/linux-x64-flutter-gtk.zip"
           test -f "$mirror_root/linux-x64-release/artifacts.zip"
           test -f "$mirror_root/flutter_patched_sdk_product.zip"
+          font_zip="$out/zip_archives/linux-x64/font-subset.zip"
+          cp "$font_zip" artifacts/linux-engine/font-subset.zip
+          mkdir -p "$mirror_root/linux-x64"
+          cp "$font_zip" "$mirror_root/linux-x64/font-subset.zip"
+          test -f "$mirror_root/linux-x64/font-subset.zip"
+          font_smoke_dir="$(mktemp -d)"
+          font_dart="$(find "$out" -maxdepth 3 -type f -name dartvm -print -quit)"
+          test -n "$font_dart"
+          python3 - artifacts/linux-engine/font-subset.zip "$font_smoke_dir" "$font_dart" <<'PYFONT'
+          from pathlib import Path
+          import os
+          import subprocess
+          import sys
+          import zipfile
+
+          archive_path, work, dart = map(Path, sys.argv[1:])
+          executable = "font-subset.exe" if os.name == "nt" else "font-subset"
+          with zipfile.ZipFile(archive_path) as archive:
+              for name in (executable, "const_finder.dart.snapshot"):
+                  if archive.getinfo(name).file_size == 0:
+                      raise SystemExit(f"empty font tool: {name}")
+              archive.extractall(work)
+          binary = work / executable
+          binary.chmod(0o755)
+          source_font = Path("flutter/engine/src/flutter/txt/third_party/fonts/Roboto-Regular.ttf").resolve()
+          output_font = (work / "subset.ttf").resolve()
+          subprocess.run([str(binary.resolve()), str(output_font), str(source_font)],
+                         input="65 66\n", text=True, check=True)
+          if not 0 < output_font.stat().st_size < source_font.stat().st_size:
+              raise SystemExit("font subset did not produce a smaller non-empty font")
+          subprocess.run([str(dart.resolve()), str((work / "const_finder.dart.snapshot").resolve()),
+                          "--kernel-file=unused.dill", "--class-library-uri=package:unused", "--class-name=Unused", "--help"],
+                         check=True, stdout=subprocess.DEVNULL)
+          PYFONT
           cat > artifacts/linux-engine/manifest.json <<EOF
           {
             "name": "linux-engine-x64",
@@ -1273,6 +1308,8 @@ jobs:
             "shorebird_enable_aot_patching": true,
             "shorebird_interpreter": false,
             "included": [
+              "font-subset.zip",
+              "mirror/shorebird/flutter_infra_release/flutter/${engine_revision}/linux-x64/font-subset.zip",
               "linux-x64-flutter-gtk.zip",
               "flutter_patched_sdk_product.zip",
               "artifacts.zip",
@@ -1287,6 +1324,7 @@ jobs:
           engine_extract_dir="$(mktemp -d)"
           tar -C "$engine_extract_dir" -xzf linux-engine-x64.tar.gz
           test -f "$engine_extract_dir/linux-engine/manifest.json"
+          test -f "$engine_extract_dir/linux-engine/font-subset.zip"
           test -f "$engine_extract_dir/linux-engine/linux_release_x64.args.gn"
           test -f "$engine_extract_dir/linux-engine/linux-x64-flutter-gtk.zip"
           test -f "$engine_extract_dir/linux-engine/flutter_patched_sdk_product.zip"
@@ -2051,7 +2089,8 @@ jobs:
           ninja -C out/macos_release_${{ matrix.arch }} \
             flutter/shell/platform/darwin/macos:zip_macos_flutter_framework \
             flutter/build/archives:flutter_patched_sdk \
-            create_macos_gen_snapshots create_macos_analyze_snapshots
+            create_macos_gen_snapshots create_macos_analyze_snapshots \
+            flutter/tools/font_subset:font_subset
 
       - name: Verify macOS engine args
         run: |
@@ -2096,6 +2135,40 @@ jobs:
           mkdir -p "$mirror_root/darwin-${{ matrix.arch }}-release"
           cp "$framework_zip" "$mirror_root/darwin-${{ matrix.arch }}-release/FlutterMacOS.framework.zip"
           test -f "$mirror_root/darwin-${{ matrix.arch }}-release/FlutterMacOS.framework.zip"
+          font_zip="$out/zip_archives/darwin-${{ matrix.arch }}/font-subset.zip"
+          cp "$font_zip" artifacts/macos-engine/font-subset.zip
+          mkdir -p "$mirror_root/darwin-${{ matrix.arch }}"
+          cp "$font_zip" "$mirror_root/darwin-${{ matrix.arch }}/font-subset.zip"
+          test -f "$mirror_root/darwin-${{ matrix.arch }}/font-subset.zip"
+          font_smoke_dir="$(mktemp -d)"
+          font_dart="$(find "$out" -maxdepth 3 -type f -name dartvm -print -quit)"
+          test -n "$font_dart"
+          python3 - artifacts/macos-engine/font-subset.zip "$font_smoke_dir" "$font_dart" <<'PYFONT'
+          from pathlib import Path
+          import os
+          import subprocess
+          import sys
+          import zipfile
+
+          archive_path, work, dart = map(Path, sys.argv[1:])
+          executable = "font-subset.exe" if os.name == "nt" else "font-subset"
+          with zipfile.ZipFile(archive_path) as archive:
+              for name in (executable, "const_finder.dart.snapshot"):
+                  if archive.getinfo(name).file_size == 0:
+                      raise SystemExit(f"empty font tool: {name}")
+              archive.extractall(work)
+          binary = work / executable
+          binary.chmod(0o755)
+          source_font = Path("flutter/engine/src/flutter/txt/third_party/fonts/Roboto-Regular.ttf").resolve()
+          output_font = (work / "subset.ttf").resolve()
+          subprocess.run([str(binary.resolve()), str(output_font), str(source_font)],
+                         input="65 66\n", text=True, check=True)
+          if not 0 < output_font.stat().st_size < source_font.stat().st_size:
+              raise SystemExit("font subset did not produce a smaller non-empty font")
+          subprocess.run([str(dart.resolve()), str((work / "const_finder.dart.snapshot").resolve()),
+                          "--kernel-file=unused.dill", "--class-library-uri=package:unused", "--class-name=Unused", "--help"],
+                         check=True, stdout=subprocess.DEVNULL)
+          PYFONT
           cat > artifacts/macos-engine/manifest.json <<EOF
           {
             "name": "macos-engine-${{ matrix.arch }}",
@@ -2112,6 +2185,8 @@ jobs:
             "shorebird_enable_aot_patching": true,
             "shorebird_interpreter": false,
             "included": [
+              "font-subset.zip",
+              "mirror/shorebird/flutter_infra_release/flutter/${engine_revision}/darwin-${{ matrix.arch }}/font-subset.zip",
               "FlutterMacOS.framework.zip",
               "flutter_patched_sdk_product.zip",
               "macos_release_${{ matrix.arch }}.args.gn",
@@ -2126,6 +2201,7 @@ jobs:
           engine_extract_dir="$(mktemp -d)"
           tar -C "$engine_extract_dir" -xzf macos-engine-${{ matrix.arch }}.tar.gz
           test -f "$engine_extract_dir/macos-engine/manifest.json"
+          test -f "$engine_extract_dir/macos-engine/font-subset.zip"
           test -f "$engine_extract_dir/macos-engine/macos_release_${{ matrix.arch }}.args.gn"
           test -f "$engine_extract_dir/macos-engine/FlutterMacOS.framework.zip"
           unzip -q "$engine_extract_dir/macos-engine/FlutterMacOS.framework.zip" -d "$engine_extract_dir/framework"
@@ -2368,7 +2444,7 @@ jobs:
 
       - name: Build Windows engine
         working-directory: flutter/engine/src
-        run: ninja -C out/windows_release_x64 flutter/build/archives:windows_flutter
+        run: ninja -C out/windows_release_x64 flutter/build/archives:windows_flutter flutter/tools/font_subset:font_subset
 
       - name: Verify Windows engine args
         run: |
@@ -2390,6 +2466,41 @@ jobs:
           mkdir -p "$mirror_root"
           cp artifacts/windows-engine/windows-x64-flutter.zip "$mirror_root/windows-x64-flutter.zip"
           test -f "$mirror_root/windows-x64-flutter.zip"
+          font_zip="$out/zip_archives/windows-x64/font-subset.zip"
+          cp "$font_zip" artifacts/windows-engine/font-subset.zip
+          font_mirror="artifacts/windows-engine/mirror/shorebird/flutter_infra_release/flutter/$engine_revision/windows-x64"
+          mkdir -p "$font_mirror"
+          cp "$font_zip" "$font_mirror/font-subset.zip"
+          test -f "$font_mirror/font-subset.zip"
+          font_smoke_dir="$(mktemp -d)"
+          font_dart="$(find "$out" -maxdepth 3 -type f -name dartvm.exe -print -quit)"
+          test -n "$font_dart"
+          python3 - artifacts/windows-engine/font-subset.zip "$font_smoke_dir" "$font_dart" <<'PYFONT'
+          from pathlib import Path
+          import os
+          import subprocess
+          import sys
+          import zipfile
+
+          archive_path, work, dart = map(Path, sys.argv[1:])
+          executable = "font-subset.exe" if os.name == "nt" else "font-subset"
+          with zipfile.ZipFile(archive_path) as archive:
+              for name in (executable, "const_finder.dart.snapshot"):
+                  if archive.getinfo(name).file_size == 0:
+                      raise SystemExit(f"empty font tool: {name}")
+              archive.extractall(work)
+          binary = work / executable
+          binary.chmod(0o755)
+          source_font = Path("flutter/engine/src/flutter/txt/third_party/fonts/Roboto-Regular.ttf").resolve()
+          output_font = (work / "subset.ttf").resolve()
+          subprocess.run([str(binary.resolve()), str(output_font), str(source_font)],
+                         input="65 66\n", text=True, check=True)
+          if not 0 < output_font.stat().st_size < source_font.stat().st_size:
+              raise SystemExit("font subset did not produce a smaller non-empty font")
+          subprocess.run([str(dart.resolve()), str((work / "const_finder.dart.snapshot").resolve()),
+                          "--kernel-file=unused.dill", "--class-library-uri=package:unused", "--class-name=Unused", "--help"],
+                         check=True, stdout=subprocess.DEVNULL)
+          PYFONT
           cat > artifacts/windows-engine/manifest.json <<EOF
           {
             "name": "windows-engine-x64",
@@ -2404,6 +2515,8 @@ jobs:
             "shorebird_enable_aot_patching": true,
             "shorebird_use_interpreter": false,
             "included": [
+              "font-subset.zip",
+              "mirror/shorebird/flutter_infra_release/flutter/${engine_revision}/windows-x64/font-subset.zip",
               "windows_release_x64.args.gn",
               "windows-x64-flutter.zip",
               "mirror/shorebird/flutter_infra_release/flutter/${engine_revision}/windows-x64-release/windows-x64-flutter.zip"
@@ -2414,6 +2527,7 @@ jobs:
           engine_extract_dir="$(mktemp -d)"
           tar -C "$engine_extract_dir" -xzf windows-engine-x64.tar.gz
           test -f "$engine_extract_dir/windows-engine/manifest.json"
+          test -f "$engine_extract_dir/windows-engine/font-subset.zip"
           test -f "$engine_extract_dir/windows-engine/windows_release_x64.args.gn"
           test -f "$engine_extract_dir/windows-engine/mirror/shorebird/flutter_infra_release/flutter/$engine_revision/windows-x64-release/windows-x64-flutter.zip"
           python3 - "$engine_extract_dir/windows-engine/windows-x64-flutter.zip" <<'PYZIP'
