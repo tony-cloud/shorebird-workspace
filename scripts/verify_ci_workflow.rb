@@ -192,6 +192,7 @@ required_files = %w[
   docs/REPOSITORIES.md
   dart-sdk/DEPS
   dart-sdk/tools/test_aot_structural_patch.py
+  dart-sdk/tools/test_aot_no_tfa_startup.py
   shorebird/README.md
   shorebird/OPEN_SOURCE_REPLACEMENTS.md
   shorebird/docs/account/api-keys/README.md
@@ -2476,13 +2477,26 @@ assert!(flutter_engine_archives_build.include?('if (build_analyze_snapshot) {') 
   'custom-dart-sdk-macos-x64' => 'xcodebuild/ReleaseX64',
 }.each do |name, build_dir|
   steps = jobs.fetch(name).fetch('steps')
+  startup = steps.index { |step| step['name'] == 'Run PRODUCT no-TFA startup regression' }
   structural = steps.index { |step| step['name'] == 'Run boot-time structural patch regression' }
+  product_structural = steps.index { |step| step['name'] == 'Run PRODUCT structural patch regression' }
   package = steps.index { |step| step['name'] == 'Package Dart SDK artifact' }
   assert!(structural && package && structural < package && steps.fetch(structural).fetch('run').include?("test_aot_structural_patch.py --build-dir dart-sdk/#{build_dir}"), "#{name} must run the actual structural no-JIT harness before publishing its SDK")
   assert!(run_text_by_job.fetch(name).include?('dart_engine_aot_shared'), "#{name} structural harness requires the native AOT embedding library")
+  assert!(product_structural && package && product_structural < package && steps.fetch(product_structural).fetch('run').include?("test_aot_structural_patch.py --build-dir dart-sdk/#{build_dir} --product"), "#{name} must prove structural replacement through the production AOT embedding library")
+  assert!(startup && package && startup < package && steps.fetch(startup).fetch('run').include?("test_aot_no_tfa_startup.py --build-dir dart-sdk/#{build_dir}"), "#{name} must exercise PRODUCT standalone no-TFA bootstrap before publishing its SDK")
+  %w[dart gen_snapshot_product dartaotruntime_product vm_platform_product dart_engine_aot_shared_product].each do |target|
+    assert!(steps.find { |step| step['name'] == 'Build patched Dart SDK' }.fetch('run').split.include?(target), "#{name} standalone startup harness requires explicit #{target} build output")
+  end
 end
 assert!(run_text_by_job.fetch('source-checks').include?('python3 -m py_compile dart-sdk/tools/test_aot_structural_patch.py'), 'source checks must syntax-check the structural runtime harness')
+assert!(run_text_by_job.fetch('source-checks').include?('python3 -m py_compile dart-sdk/tools/test_aot_no_tfa_startup.py'), 'source checks must syntax-check the PRODUCT standalone startup harness')
+assert!(!run_text_by_job.fetch('custom-dart-sdk-windows').include?('test_aot_no_tfa_startup.py'), 'Windows compile/tooling evidence must remain distinct from the unsupported PRODUCT startup harness')
 assert!(run_text_by_job.fetch('custom-dart-sdk').include?('scripts/verify_encrypted_aot_runtime.py --structural') && run_text_by_job.fetch('custom-dart-sdk').include?('--tooling-dart dart-sdk/out/ReleaseX64/dart-sdk/bin/dart'), 'Linux SDK must prove encrypted structural replacement through the real producer and native runtime')
+linux_sdk_steps = jobs.fetch('custom-dart-sdk').fetch('steps')
+product_encrypted = linux_sdk_steps.index { |step| step['name'] == 'Run PRODUCT encrypted structural patch regression' }
+linux_sdk_package = linux_sdk_steps.index { |step| step['name'] == 'Package Dart SDK artifact' }
+assert!(product_encrypted && linux_sdk_package && product_encrypted < linux_sdk_package && linux_sdk_steps.fetch(product_encrypted).fetch('run').include?('scripts/verify_encrypted_aot_runtime.py --structural --product'), 'Linux SDK must prove encrypted structural replacement with the PRODUCT runtime and snapshotter before publishing')
 assert!(!run_text_by_job.fetch('custom-dart-sdk-windows').include?('test_aot_structural_patch.py'), 'Windows compilation/tooling evidence must remain distinct from the unsupported PE structural harness')
 assert!(inputs.dig('windows_heavy_runner', 'default') == 'windows-2022', 'Windows heavy jobs must select the VS2022 image supported by the Dart/Chromium toolchain')
 %w[custom-dart-sdk-windows windows-engine android-host-tools].each do |name|

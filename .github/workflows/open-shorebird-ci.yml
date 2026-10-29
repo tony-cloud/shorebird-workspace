@@ -160,6 +160,7 @@ jobs:
           python3 -m py_compile scripts/write_artifact_manifest.py
           python3 -m py_compile scripts/verify_dart_sdk_tooling.py
           python3 -m py_compile dart-sdk/tools/test_aot_structural_patch.py
+          python3 -m py_compile dart-sdk/tools/test_aot_no_tfa_startup.py
           python3 -m py_compile scripts/package_android_maven.py
           python3 scripts/verify_android_maven.py
           python3 -m py_compile scripts/write_release_manifest.py
@@ -609,7 +610,7 @@ jobs:
       - name: Build patched Dart SDK
         working-directory: dart-sdk
         run: |
-          ninja -C out/ReleaseX64 create_sdk runtime gen_snapshot dartaotruntime dart_engine_aot_shared
+          ninja -C out/ReleaseX64 create_sdk runtime gen_snapshot dartaotruntime dart_engine_aot_shared dart gen_snapshot_product dartaotruntime_product vm_platform_product dart_engine_aot_shared_product
 
       - name: Verify built SDK developer tools
         run: python3 scripts/verify_dart_sdk_tooling.py --dart "$PWD/dart-sdk/out/ReleaseX64/dart-sdk/bin/dart"
@@ -632,12 +633,24 @@ jobs:
           --build-dir dart-sdk/out/ReleaseX64
           --tooling-dart dart-sdk/out/ReleaseX64/dart-sdk/bin/dart
 
+      - name: Run PRODUCT no-TFA startup regression
+        run: python3 dart-sdk/tools/test_aot_no_tfa_startup.py --build-dir dart-sdk/out/ReleaseX64
+
       - name: Run boot-time structural patch regression
         run: python3 dart-sdk/tools/test_aot_structural_patch.py --build-dir dart-sdk/out/ReleaseX64
+
+      - name: Run PRODUCT structural patch regression
+        run: python3 dart-sdk/tools/test_aot_structural_patch.py --build-dir dart-sdk/out/ReleaseX64 --product
 
       - name: Run encrypted structural patch regression
         run: >-
           python3 scripts/verify_encrypted_aot_runtime.py --structural
+          --build-dir dart-sdk/out/ReleaseX64
+          --tooling-dart dart-sdk/out/ReleaseX64/dart-sdk/bin/dart
+
+      - name: Run PRODUCT encrypted structural patch regression
+        run: >-
+          python3 scripts/verify_encrypted_aot_runtime.py --structural --product
           --build-dir dart-sdk/out/ReleaseX64
           --tooling-dart dart-sdk/out/ReleaseX64/dart-sdk/bin/dart
 
@@ -754,7 +767,7 @@ jobs:
       - name: Build patched Dart SDK
         working-directory: dart-sdk
         run: |
-          ninja -C xcodebuild/ReleaseARM64 create_sdk runtime gen_snapshot dartaotruntime dart_engine_aot_shared
+          ninja -C xcodebuild/ReleaseARM64 create_sdk runtime gen_snapshot dartaotruntime dart_engine_aot_shared dart gen_snapshot_product dartaotruntime_product vm_platform_product dart_engine_aot_shared_product
 
       - name: Verify built SDK developer tools
         run: python3 scripts/verify_dart_sdk_tooling.py --dart "$PWD/dart-sdk/xcodebuild/ReleaseARM64/dart-sdk/bin/dart"
@@ -770,8 +783,14 @@ jobs:
       - name: Run AOT bytecode replacement regression
         run: python3 dart-sdk/tools/test_aot_bytecode_patch.py --build-dir dart-sdk/xcodebuild/ReleaseARM64
 
+      - name: Run PRODUCT no-TFA startup regression
+        run: python3 dart-sdk/tools/test_aot_no_tfa_startup.py --build-dir dart-sdk/xcodebuild/ReleaseARM64
+
       - name: Run boot-time structural patch regression
         run: python3 dart-sdk/tools/test_aot_structural_patch.py --build-dir dart-sdk/xcodebuild/ReleaseARM64
+
+      - name: Run PRODUCT structural patch regression
+        run: python3 dart-sdk/tools/test_aot_structural_patch.py --build-dir dart-sdk/xcodebuild/ReleaseARM64 --product
 
       - name: Package Dart SDK artifact
         run: |
@@ -886,7 +905,7 @@ jobs:
       - name: Build patched Dart SDK
         working-directory: dart-sdk
         run: |
-          ninja -C xcodebuild/ReleaseX64 create_sdk runtime gen_snapshot dartaotruntime dart_engine_aot_shared
+          ninja -C xcodebuild/ReleaseX64 create_sdk runtime gen_snapshot dartaotruntime dart_engine_aot_shared dart gen_snapshot_product dartaotruntime_product vm_platform_product dart_engine_aot_shared_product
 
       - name: Verify built SDK developer tools
         run: python3 scripts/verify_dart_sdk_tooling.py --dart "$PWD/dart-sdk/xcodebuild/ReleaseX64/dart-sdk/bin/dart"
@@ -902,8 +921,14 @@ jobs:
       - name: Run AOT bytecode replacement regression
         run: python3 dart-sdk/tools/test_aot_bytecode_patch.py --build-dir dart-sdk/xcodebuild/ReleaseX64
 
+      - name: Run PRODUCT no-TFA startup regression
+        run: python3 dart-sdk/tools/test_aot_no_tfa_startup.py --build-dir dart-sdk/xcodebuild/ReleaseX64
+
       - name: Run boot-time structural patch regression
         run: python3 dart-sdk/tools/test_aot_structural_patch.py --build-dir dart-sdk/xcodebuild/ReleaseX64
+
+      - name: Run PRODUCT structural patch regression
+        run: python3 dart-sdk/tools/test_aot_structural_patch.py --build-dir dart-sdk/xcodebuild/ReleaseX64 --product
 
       - name: Package Dart SDK artifact
         run: |
