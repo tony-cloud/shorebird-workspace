@@ -147,6 +147,14 @@ def environment(work, state, *, patch=False):
     return env
 
 
+def apply_structural_fixture(work, phase):
+    sources = sorted((work / 'app/tool/structural' / phase).glob('*.dart.template'))
+    if not sources:
+        raise RuntimeError(f'Missing structural {phase} fixture')
+    for source in sources:
+        shutil.copy2(source, work / 'app/lib' / source.name.removesuffix('.template'))
+
+
 def prepare(args, work):
     if work.exists():
         raise RuntimeError('Use a new work directory; existing sessions are never overwritten')
@@ -160,6 +168,7 @@ def prepare(args, work):
     state = {
         'version': 1, 'cli_ref': cli_ref, 'flutter_ref': flutter_ref,
         'engine_id': engine_id, 'device': args.device, 'team': args.team,
+        'structural_updates': args.structural_updates,
         'bundle_id': f'org.tonycloud.shorebird-license-e2e.{session}',
         'key_id': f'device-e2e-{session}', 'release_version': '1.0.0+1',
         'api_url': f'http://{args.host_address}:{free_port()}',
@@ -168,8 +177,11 @@ def prepare(args, work):
         'engine_src': str(args.engine_src.resolve()),
         'fixture_hashes': {str(path.relative_to(FIXTURE)): hashlib.sha256(path.read_bytes()).hexdigest()
                            for path in [FIXTURE / 'ios/Runner/AppDelegate.swift',
+                                        FIXTURE / 'ios/Runner/SceneDelegate.swift',
                                         FIXTURE / 'ios/Runner/Info.plist',
-                                        FIXTURE / 'lib/launch_status_io.dart']},
+                                        FIXTURE / 'lib/launch_status_io.dart'] +
+                           (sorted((FIXTURE / 'tool/structural').rglob('*.template'))
+                            if args.structural_updates else [])},
     }
     write_json(work / 'state.json', state)
     write_json(work / 'secrets.json', {
@@ -187,6 +199,8 @@ def prepare(args, work):
             log=work / f'checkout-{name}.log')
     shutil.copytree(FIXTURE, work / 'app', ignore=shutil.ignore_patterns(
         '.dart_tool', 'build', 'Pods', '.symlinks', '.gradle', '.git'))
+    if state['structural_updates']:
+        apply_structural_fixture(work, 'base')
     project = work / 'app/ios/Runner.xcodeproj/project.pbxproj'
     source = project.read_text().replace(
         'com.example.licenseflavorpatchtest.licenseFlavorPatchTest', state['bundle_id'])
@@ -383,6 +397,8 @@ def serve(work):
                     "aot_patch_base_flavor_id: free\naot_patch_base_license_type: free\n"
                     f"aot_patch_key_id: {state['key_id']}\n"
                     "patch_verification: strict\npatch_response_verification: required\n")
+            if state.get('structural_updates', False):
+                yaml += 'aot_patch_structural_updates: true\n'
             private_write(work / 'app/shorebird.yaml', yaml)
             for license_type in ('free', 'pro'):
                 write_json(work / f'{license_type}-defines.json', {
@@ -411,6 +427,8 @@ def build_phase(args, work):
     patch = args.phase == 'patch'
     if patch and 'release_codesign' not in state:
         raise RuntimeError('Complete the free release before patching')
+    if patch and state.get('structural_updates', False):
+        apply_structural_fixture(work, 'patch')
     signed = state['release_codesign'] if patch else args.signed
     command = [work / 'cli/bin/shorebird-e2e', '--json',
                f"--local-engine-src-path={state['engine_src']}",
@@ -473,6 +491,8 @@ def main():
     parser.add_argument('--team', default=TEAM)
     parser.add_argument('--host-engine-ready', action='store_true')
     parser.add_argument('--signed', action='store_true')
+    parser.add_argument('--structural-updates', action='store_true',
+                        help='Prepare a structural release and patch adding a Flutter widget and fields')
     parser.add_argument('--app', type=Path)
     parser.add_argument('--provision', action='store_true')
     args = parser.parse_args()
@@ -481,6 +501,8 @@ def main():
         print('No action performed. Sequence (each mutation requires --execute):')
         for phase in ['prepare', 'toolchain', 'serve', 'release', 'patch']:
             extra = ['--host-engine-ready'] if phase == 'toolchain' else []
+            if phase == 'prepare' and args.structural_updates:
+                extra.append('--structural-updates')
             print(shlex.join(['python3', str(Path(__file__)), phase, '--work-dir', str(work), '--execute', *extra]))
         print('serve stays in its own terminal. release defaults to --no-codesign; add --signed only after provisioning is ready.')
         print('For device validation: inspect-app/install --app <exported distribution .app>, then launch --provision once; later launch without --provision.')

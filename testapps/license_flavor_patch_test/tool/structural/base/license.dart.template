@@ -1,0 +1,10 @@
+bool widgetValidated = false;
+
+class LicenseState {
+  final int retained;
+  LicenseState(this.retained);
+
+  String get name => 'free';
+  bool get isPro => false;
+  int get value => retained;
+}

@@ -1,0 +1,17 @@
+bool widgetValidated = false;
+
+class LicenseState {
+  final int retained;
+  LicenseState(this.retained);
+
+  // These fields are absent from the released native object's layout.
+  int multiplier = 3;
+  late final String addedLabel = formatAddedLabel(retained);
+
+  String get name => addedLabel == 'pro:7' ? 'pro' : 'invalid';
+  bool get isPro => name == 'pro';
+  int get value => retained * multiplier;
+}
+
+// This helper is also absent from the release.
+String formatAddedLabel(int retained) => 'pro:$retained';

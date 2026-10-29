@@ -1,0 +1,21 @@
+import 'package:flutter/material.dart';
+import 'license.dart';
+
+// A new library, generic class, fields and framework override in one patch.
+class StructuralFeature<T extends num> extends StatelessWidget {
+  final LicenseState state;
+  final T expected;
+
+  const StructuralFeature({super.key, required this.state, required this.expected});
+
+  @override
+  Widget build(BuildContext context) {
+    final Object erased = this;
+    if (erased is! StructuralFeature<int> || state.value != expected ||
+        state.addedLabel != 'pro:7' || state.retained != 7) {
+      throw StateError('Structural AOT/interface/field validation failed');
+    }
+    widgetValidated = true;
+    return Center(child: Text('license:${state.name} structural:verified'));
+  }
+}
