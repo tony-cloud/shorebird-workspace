@@ -316,6 +316,38 @@ def toolchain(args, work):
     print('Private CLI/Flutter/cache/SDK, real Go server, and public patch tool ready.')
 
 
+def read_report_body(stream, headers):
+    """Read the small status message, including Dart HttpClient's chunked POST."""
+    transfer = headers.get('Transfer-Encoding')
+    if transfer:
+        if transfer.lower().strip() != 'chunked' or 'Content-Length' in headers:
+            raise ValueError('Unsupported or ambiguous body framing')
+        content = bytearray()
+        while True:
+            line = stream.readline(128)
+            if not line.endswith(b'\r\n'):
+                raise ValueError('Invalid chunk header')
+            size = int(line.split(b';', 1)[0].strip(), 16)
+            if size < 0 or size > 1024 - len(content):
+                raise ValueError('Status body is too large')
+            if size == 0:
+                if stream.readline(128) != b'\r\n':
+                    raise ValueError('Unexpected chunk trailers')
+                break
+            chunk = stream.read(size)
+            if len(chunk) != size or stream.read(2) != b'\r\n':
+                raise ValueError('Truncated chunk')
+            content.extend(chunk)
+    else:
+        size = int(headers.get('Content-Length', '0'))
+        if not 1 <= size <= 1024:
+            raise ValueError('Invalid status length')
+        content = stream.read(size)
+        if len(content) != size:
+            raise ValueError('Truncated status')
+    return content.decode('utf-8')
+
+
 def serve(work):
     state = load(work)
     credentials = json.loads((work / 'secrets.json').read_text())
@@ -330,17 +362,20 @@ def serve(work):
             if self.path != report.path:
                 self.send_error(404)
                 return
-            length = int(self.headers.get('Content-Length', '0'))
-            if length < 1 or length > 1024:
+            self.connection.settimeout(5)
+            try:
+                content = read_report_body(self.rfile, self.headers)
+            except (ValueError, OSError, UnicodeError):
                 self.send_error(400)
                 return
-            content = self.rfile.read(length).decode('utf-8')
             if content not in ('license:free\npro-feature:off\n',
                                'license:pro\npro-feature:enabled\n'):
                 self.send_error(400)
                 return
             with (work / 'launch-status.jsonl').open('a') as output:
-                output.write(json.dumps({'time': time.time(), 'status': content}) + '\n')
+                output.write(json.dumps({'time': time.time(),
+                                         'peer': self.client_address[0],
+                                         'status': content}) + '\n')
             self.send_response(204)
             self.end_headers()
 
