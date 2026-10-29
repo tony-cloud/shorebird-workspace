@@ -1077,10 +1077,23 @@ jobs:
       - name: Generate patched Dart SDK build files
         working-directory: dart-sdk
         run: |
-          python3 tools/gn.py \
-            --mode release \
-            --arch x64 \
-            --gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=true'
+          # tools/gn.py Main passes an empty environment to GN. Match the public
+          # tools/build.py caller so GN inherits native Python and Visual Studio.
+          python3 - <<'PYGN'
+          import os
+          import sys
+
+          sys.path.insert(0, 'tools')
+          import gn
+
+          options = gn.parse_args([
+              'tools/gn.py', '--mode', 'release', '--arch', 'x64',
+              '--gn-args=dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=true',
+          ])
+          if options is None:
+              raise SystemExit('invalid Dart GN options')
+          raise SystemExit(gn.RunGnOnConfiguredConfigurations(options, dict(os.environ)))
+          PYGN
 
       - name: Verify patched Dart SDK args
         run: ./scripts/verify_dart_sdk_args.sh dart-sdk/out/ReleaseX64/args.gn
@@ -2498,8 +2511,16 @@ jobs:
             --gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=false shorebird_enable_aot_patching=true shorebird_use_interpreter=false flutter_prebuilt_dart_sdk=false'
 
       - name: Build Windows engine
+        shell: pwsh
         working-directory: flutter/engine/src
-        run: ninja -C out/windows_release_x64 flutter/build/archives:windows_flutter flutter/tools/font_subset:font_subset
+        run: |
+          # Git Bash prepends its GNU link.exe ahead of the MSVC linker.
+          $linker = (Get-Command link.exe -CommandType Application).Source
+          if (!$linker.StartsWith($env:GYP_MSVS_OVERRIDE_PATH, [StringComparison]::OrdinalIgnoreCase)) {
+            throw "Expected the Visual Studio linker, found $linker"
+          }
+          Write-Host "Using native Microsoft linker: $linker"
+          ninja -C out/windows_release_x64 flutter/build/archives:windows_flutter flutter/tools/font_subset:font_subset
 
       - name: Verify Windows engine args
         run: |

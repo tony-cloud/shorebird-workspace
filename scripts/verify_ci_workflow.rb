@@ -2468,6 +2468,10 @@ end
   path = "flutter_infra_release/flutter/$engine/#{host}/font-subset.zip"
   assert!(generated_artifact_overrides.include?(path), "#{host} font tools must use the matching custom SDK mirror")
 end
+windows_sdk_generate = jobs.fetch('custom-dart-sdk-windows').fetch('steps').find { |step| step['name'] == 'Generate patched Dart SDK build files' }.fetch('run')
+assert!(windows_sdk_generate.include?('gn.RunGnOnConfiguredConfigurations(options, dict(os.environ))'), 'Windows SDK GN must inherit native Python PATH and Visual Studio environment through the public build helper')
+windows_engine_build = jobs.fetch('windows-engine').fetch('steps').find { |step| step['name'] == 'Build Windows engine' }
+assert!(windows_engine_build.fetch('shell') == 'pwsh' && windows_engine_build.fetch('run').include?('Get-Command link.exe -CommandType Application') && windows_engine_build.fetch('run').include?('$linker.StartsWith($env:GYP_MSVS_OVERRIDE_PATH'), 'Windows engine updater must use the native Visual Studio linker rather than Git Bash GNU link.exe')
 windows_configure = jobs.fetch('windows-engine').fetch('steps').find { |step| step['name'] == 'Configure Windows engine' }.fetch('run')
 assert!(windows_configure.include?('--windows-cpu=x64') && !windows_configure.match?(/--windows(?:\s|$)/), 'native Windows engine must use the host recipe so Flutter applies its ANGLE Vulkan dependency mappings')
 assert!(flutter_engine_archives_build.include?('if (build_analyze_snapshot) {') && read_repo_file(repo_root, 'flutter/engine/src/flutter/BUILD.gn').include?('if (build_analyze_snapshot) {'), 'global host artifact groups must exclude Dart analyzers unsupported on 32-bit Windows Android toolchains')
