@@ -1004,7 +1004,14 @@ jobs:
           if (!(Test-Path "$env:GITHUB_WORKSPACE\depot_tools\git.bat")) {
             throw 'depot_tools bootstrap did not generate the required git.bat wrapper'
           }
-          python3 -c "import subprocess; subprocess.check_call(['git.bat', '--version'])"
+          $pythonRelative = (Get-Content "$env:GITHUB_WORKSPACE\depot_tools\python3_bin_reldir.txt" -Raw).Trim()
+          $pythonBin = Join-Path "$env:GITHUB_WORKSPACE\depot_tools" $pythonRelative
+          if (!(Test-Path "$pythonBin\python3.exe")) {
+            throw 'depot_tools bootstrap did not install native python3.exe for GN'
+          }
+          $pythonBin | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+          $env:PATH = "$pythonBin;$env:PATH"
+          & "$pythonBin\python3.exe" -c "import shutil, subprocess; assert shutil.which('python3.exe'); subprocess.check_call(['git.bat', '--version'])"
           if ($LASTEXITCODE) { throw 'native Python cannot invoke the depot_tools Git wrapper' }
 
       - name: Verify depot_tools build tools
@@ -2398,7 +2405,14 @@ jobs:
           if (!(Test-Path "$env:GITHUB_WORKSPACE\depot_tools\git.bat")) {
             throw 'depot_tools bootstrap did not generate the required git.bat wrapper'
           }
-          python3 -c "import subprocess; subprocess.check_call(['git.bat', '--version'])"
+          $pythonRelative = (Get-Content "$env:GITHUB_WORKSPACE\depot_tools\python3_bin_reldir.txt" -Raw).Trim()
+          $pythonBin = Join-Path "$env:GITHUB_WORKSPACE\depot_tools" $pythonRelative
+          if (!(Test-Path "$pythonBin\python3.exe")) {
+            throw 'depot_tools bootstrap did not install native python3.exe for GN'
+          }
+          $pythonBin | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+          $env:PATH = "$pythonBin;$env:PATH"
+          & "$pythonBin\python3.exe" -c "import shutil, subprocess; assert shutil.which('python3.exe'); subprocess.check_call(['git.bat', '--version'])"
           if ($LASTEXITCODE) { throw 'native Python cannot invoke the depot_tools Git wrapper' }
 
       - name: Verify depot_tools build tools
@@ -2437,7 +2451,7 @@ jobs:
         working-directory: flutter/engine/src
         run: |
           python3 flutter/tools/gn \
-            --windows --windows-cpu=x64 \
+            --windows-cpu=x64 \
             --runtime-mode=release --target-dir=windows_release_x64 \
             --no-prebuilt-dart-sdk \
             --gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=false shorebird_enable_aot_patching=true shorebird_use_interpreter=false flutter_prebuilt_dart_sdk=false'
@@ -2635,7 +2649,14 @@ jobs:
           if (!(Test-Path "$env:GITHUB_WORKSPACE\depot_tools\git.bat")) {
             throw 'depot_tools bootstrap did not generate the required git.bat wrapper'
           }
-          python3 -c "import subprocess; subprocess.check_call(['git.bat', '--version'])"
+          $pythonRelative = (Get-Content "$env:GITHUB_WORKSPACE\depot_tools\python3_bin_reldir.txt" -Raw).Trim()
+          $pythonBin = Join-Path "$env:GITHUB_WORKSPACE\depot_tools" $pythonRelative
+          if (!(Test-Path "$pythonBin\python3.exe")) {
+            throw 'depot_tools bootstrap did not install native python3.exe for GN'
+          }
+          $pythonBin | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+          $env:PATH = "$pythonBin;$env:PATH"
+          & "$pythonBin\python3.exe" -c "import shutil, subprocess; assert shutil.which('python3.exe'); subprocess.check_call(['git.bat', '--version'])"
           if ($LASTEXITCODE) { throw 'native Python cannot invoke the depot_tools Git wrapper' }
 
       - name: Verify depot_tools build tools

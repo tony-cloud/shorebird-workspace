@@ -2456,6 +2456,7 @@ assert!(run_text_by_job.fetch('windows-engine').include?('getattr(library, "shor
   assert!(install && bootstrap && sync && install < bootstrap && bootstrap < sync, "#{name} must bootstrap the public Windows Git/Python wrappers before gclient sync")
   run = steps.fetch(bootstrap).fetch('run')
   assert!(run.include?('depot_tools\\bootstrap\\win_tools.bat') && run.include?("subprocess.check_call(['git.bat', '--version'])"), "#{name} must generate and exercise the real depot_tools git.bat wrapper")
+  assert!(run.include?('python3_bin_reldir.txt') && run.include?('native python3.exe for GN') && run.include?('$pythonBin | Out-File -Append -Encoding utf8 $env:GITHUB_PATH'), "#{name} must expose the bootstrapped native Python executable to GN")
 end
 %w[linux-engine macos-engine windows-engine].each do |name|
   run = run_text_by_job.fetch(name)
@@ -2465,6 +2466,9 @@ end
   path = "flutter_infra_release/flutter/$engine/#{host}/font-subset.zip"
   assert!(generated_artifact_overrides.include?(path), "#{host} font tools must use the matching custom SDK mirror")
 end
+windows_configure = jobs.fetch('windows-engine').fetch('steps').find { |step| step['name'] == 'Configure Windows engine' }.fetch('run')
+assert!(windows_configure.include?('--windows-cpu=x64') && !windows_configure.match?(/--windows(?:\s|$)/), 'native Windows engine must use the host recipe so Flutter applies its ANGLE Vulkan dependency mappings')
+assert!(flutter_engine_archives_build.include?('if (build_analyze_snapshot) {') && read_repo_file(repo_root, 'flutter/engine/src/flutter/BUILD.gn').include?('if (build_analyze_snapshot) {'), 'global host artifact groups must exclude Dart analyzers unsupported on 32-bit Windows Android toolchains')
 assert!(inputs.dig('windows_heavy_runner', 'default') == 'windows-2022', 'Windows heavy jobs must select the VS2022 image supported by the Dart/Chromium toolchain')
 %w[custom-dart-sdk-windows windows-engine android-host-tools].each do |name|
   assert!(jobs.dig(name, 'env', 'DEPOT_TOOLS_WIN_TOOLCHAIN') == '0' && jobs.dig(name, 'env', 'MSYS') == 'winsymlinks:nativestrict', "#{name} must use the installed public Windows toolchain and native directory links")
