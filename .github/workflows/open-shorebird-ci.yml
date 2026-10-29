@@ -159,6 +159,7 @@ jobs:
           python3 -m py_compile scripts/safe_extract_tar.py
           python3 -m py_compile scripts/write_artifact_manifest.py
           python3 -m py_compile scripts/verify_dart_sdk_tooling.py
+          python3 -m py_compile dart-sdk/tools/test_aot_structural_patch.py
           python3 -m py_compile scripts/package_android_maven.py
           python3 scripts/verify_android_maven.py
           python3 -m py_compile scripts/write_release_manifest.py
@@ -631,6 +632,15 @@ jobs:
           --build-dir dart-sdk/out/ReleaseX64
           --tooling-dart dart-sdk/out/ReleaseX64/dart-sdk/bin/dart
 
+      - name: Run boot-time structural patch regression
+        run: python3 dart-sdk/tools/test_aot_structural_patch.py --build-dir dart-sdk/out/ReleaseX64
+
+      - name: Run encrypted structural patch regression
+        run: >-
+          python3 scripts/verify_encrypted_aot_runtime.py --structural
+          --build-dir dart-sdk/out/ReleaseX64
+          --tooling-dart dart-sdk/out/ReleaseX64/dart-sdk/bin/dart
+
       - name: Package Dart SDK artifact
         run: |
           mkdir -p artifacts/custom-dart-sdk-linux-x64
@@ -760,6 +770,9 @@ jobs:
       - name: Run AOT bytecode replacement regression
         run: python3 dart-sdk/tools/test_aot_bytecode_patch.py --build-dir dart-sdk/xcodebuild/ReleaseARM64
 
+      - name: Run boot-time structural patch regression
+        run: python3 dart-sdk/tools/test_aot_structural_patch.py --build-dir dart-sdk/xcodebuild/ReleaseARM64
+
       - name: Package Dart SDK artifact
         run: |
           mkdir -p artifacts/custom-dart-sdk-macos-arm64
@@ -888,6 +901,9 @@ jobs:
 
       - name: Run AOT bytecode replacement regression
         run: python3 dart-sdk/tools/test_aot_bytecode_patch.py --build-dir dart-sdk/xcodebuild/ReleaseX64
+
+      - name: Run boot-time structural patch regression
+        run: python3 dart-sdk/tools/test_aot_structural_patch.py --build-dir dart-sdk/xcodebuild/ReleaseX64
 
       - name: Package Dart SDK artifact
         run: |

@@ -191,6 +191,7 @@ required_files = %w[
   docs/PLATFORM_TESTING.md
   docs/REPOSITORIES.md
   dart-sdk/DEPS
+  dart-sdk/tools/test_aot_structural_patch.py
   shorebird/README.md
   shorebird/OPEN_SOURCE_REPLACEMENTS.md
   shorebird/docs/account/api-keys/README.md
@@ -2469,6 +2470,20 @@ end
 windows_configure = jobs.fetch('windows-engine').fetch('steps').find { |step| step['name'] == 'Configure Windows engine' }.fetch('run')
 assert!(windows_configure.include?('--windows-cpu=x64') && !windows_configure.match?(/--windows(?:\s|$)/), 'native Windows engine must use the host recipe so Flutter applies its ANGLE Vulkan dependency mappings')
 assert!(flutter_engine_archives_build.include?('if (build_analyze_snapshot) {') && read_repo_file(repo_root, 'flutter/engine/src/flutter/BUILD.gn').include?('if (build_analyze_snapshot) {'), 'global host artifact groups must exclude Dart analyzers unsupported on 32-bit Windows Android toolchains')
+{
+  'custom-dart-sdk' => 'out/ReleaseX64',
+  'custom-dart-sdk-macos' => 'xcodebuild/ReleaseARM64',
+  'custom-dart-sdk-macos-x64' => 'xcodebuild/ReleaseX64',
+}.each do |name, build_dir|
+  steps = jobs.fetch(name).fetch('steps')
+  structural = steps.index { |step| step['name'] == 'Run boot-time structural patch regression' }
+  package = steps.index { |step| step['name'] == 'Package Dart SDK artifact' }
+  assert!(structural && package && structural < package && steps.fetch(structural).fetch('run').include?("test_aot_structural_patch.py --build-dir dart-sdk/#{build_dir}"), "#{name} must run the actual structural no-JIT harness before publishing its SDK")
+  assert!(run_text_by_job.fetch(name).include?('dart_engine_aot_shared'), "#{name} structural harness requires the native AOT embedding library")
+end
+assert!(run_text_by_job.fetch('source-checks').include?('python3 -m py_compile dart-sdk/tools/test_aot_structural_patch.py'), 'source checks must syntax-check the structural runtime harness')
+assert!(run_text_by_job.fetch('custom-dart-sdk').include?('scripts/verify_encrypted_aot_runtime.py --structural') && run_text_by_job.fetch('custom-dart-sdk').include?('--tooling-dart dart-sdk/out/ReleaseX64/dart-sdk/bin/dart'), 'Linux SDK must prove encrypted structural replacement through the real producer and native runtime')
+assert!(!run_text_by_job.fetch('custom-dart-sdk-windows').include?('test_aot_structural_patch.py'), 'Windows compilation/tooling evidence must remain distinct from the unsupported PE structural harness')
 assert!(inputs.dig('windows_heavy_runner', 'default') == 'windows-2022', 'Windows heavy jobs must select the VS2022 image supported by the Dart/Chromium toolchain')
 %w[custom-dart-sdk-windows windows-engine android-host-tools].each do |name|
   assert!(jobs.dig(name, 'env', 'DEPOT_TOOLS_WIN_TOOLCHAIN') == '0' && jobs.dig(name, 'env', 'MSYS') == 'winsymlinks:nativestrict', "#{name} must use the installed public Windows toolchain and native directory links")
