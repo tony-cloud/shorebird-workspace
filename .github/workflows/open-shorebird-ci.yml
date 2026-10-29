@@ -1083,6 +1083,8 @@ jobs:
           import os
           import sys
 
+          # gn.py locates DART_ROOT from argv[0] when imported by build.py.
+          sys.argv[0] = 'tools/gn.py'
           sys.path.insert(0, 'tools')
           import gn
 

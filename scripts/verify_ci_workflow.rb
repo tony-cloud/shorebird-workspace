@@ -2469,7 +2469,7 @@ end
   assert!(generated_artifact_overrides.include?(path), "#{host} font tools must use the matching custom SDK mirror")
 end
 windows_sdk_generate = jobs.fetch('custom-dart-sdk-windows').fetch('steps').find { |step| step['name'] == 'Generate patched Dart SDK build files' }.fetch('run')
-assert!(windows_sdk_generate.include?('gn.RunGnOnConfiguredConfigurations(options, dict(os.environ))'), 'Windows SDK GN must inherit native Python PATH and Visual Studio environment through the public build helper')
+assert!(windows_sdk_generate.include?('gn.RunGnOnConfiguredConfigurations(options, dict(os.environ))') && windows_sdk_generate.include?("sys.argv[0] = 'tools/gn.py'"), 'Windows SDK GN must preserve its source root and inherit native Python PATH and Visual Studio environment through the public build helper')
 windows_engine_build = jobs.fetch('windows-engine').fetch('steps').find { |step| step['name'] == 'Build Windows engine' }
 assert!(windows_engine_build.fetch('shell') == 'pwsh' && windows_engine_build.fetch('run').include?('Get-Command link.exe -CommandType Application') && windows_engine_build.fetch('run').include?('$linker.StartsWith($env:GYP_MSVS_OVERRIDE_PATH'), 'Windows engine updater must use the native Visual Studio linker rather than Git Bash GNU link.exe')
 windows_configure = jobs.fetch('windows-engine').fetch('steps').find { |step| step['name'] == 'Configure Windows engine' }.fetch('run')
