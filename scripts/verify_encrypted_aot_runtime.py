@@ -6,6 +6,7 @@ dart_enable_shorebird_interpreter=true, and dart_dynamic_modules=false. Reuses
 the SDK's body-patch fixture and compiler, then bridges the actual Dart crypto
 producer to Dart_InstallAotPatch -> Dart_ReloadBytecodePatch -> payload free.
 This is host runtime evidence, not an iOS device or FlutterEngine test.
+Use --structural for the opted-in boot-only structural baseline and delta.
 """
 
 import argparse
@@ -222,6 +223,8 @@ def main():
     parser.add_argument('--tooling-dart', type=Path,
                         help='Dart SDK used to run the real envelope producer')
     parser.add_argument('--cxx', default='c++')
+    parser.add_argument('--structural', action='store_true',
+                        help='Verify encrypted boot-only structural additions')
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     sdk = root / 'dart-sdk'
@@ -259,6 +262,20 @@ def main():
                 sys.stderr.write(result.stdout + result.stderr)
                 raise RuntimeError(f'{label} failed with exit {result.returncode}')
             return result.stdout
+
+        if args.structural:
+            producer = work / 'encrypt_fixture.dart'
+            producer.write_text(DART_PRODUCER)
+            output = run('encrypted-structural-runtime', [
+                sys.executable, sdk / 'tools/test_aot_structural_patch.py',
+                '--build-dir', build, '--work-dir', work / 'sdk-fixture',
+                '--cxx', args.cxx,
+                '--envelope-producer', producer,
+                '--envelope-packages', packages,
+                '--envelope-dart', tooling_dart,
+            ])
+            print(output, end='')
+            return
 
         fixture = work / 'sdk-fixture'
         run('sdk-fixture', [sys.executable, sdk / 'tools/test_aot_bytecode_patch.py',
