@@ -19,10 +19,27 @@ Dart AES envelope producer and VM install/reload/free APIs in the same process.
 Wrong-key, tampered, and expired envelopes preserve the previous function bodies.
 This is host runtime evidence; physical iOS validation remains separate.
 
-Interpreter patches currently replace existing function bodies. New declarations,
-layout/signature changes, static initializer changes, or references to declarations
-absent from the baseline require a new app release. Baselines must use the matching
-interpreter-enabled compiler, `--no-tfa`, stable identities, and no obfuscation.
+The default interpreter profile replaces existing function bodies. Releases that
+opt into `aot_patch_structural_updates: true` additionally support new libraries,
+classes, functions, methods, static fields, and instance fields on existing
+ordinary classes. The CLI binds this capability to the released baseline;
+a patch cannot enable it for an older body-only release. Baselines must use the
+matching interpreter-enabled compiler, stable identities, and no obfuscation.
+Flutter forwards the explicit structural compiler flag along with `--no-tfa`.
+
+Structural host acceptance passes with both development and PRODUCT runtimes,
+including the real encrypted C API, native interface dispatch, generic classes,
+added fields, compacting GC, weak cycles, and cross-isolate copies. Separate
+PRODUCT standalone startup tests exercise full bootstrap, core APIs and
+`Function.apply`, rather than relying only on an embedder that skips bootstrap.
+Physical Flutter/iOS acceptance is a separate required gate.
+
+Existing signatures, inheritance and field definitions cannot change, and
+removed declarations are rejected. Added fields on existing const, deeply
+immutable or native-wrapper classes are unsupported. Constructor-only nonnullable
+fields require an initializer or `late` for preexisting objects. These limits
+mean unrestricted structural replacement is still incomplete. See the
+[SDK protocol and limitations](../dart-sdk/docs/shorebird-structural-patching.md).
 Size and performance impact have not been benchmarked.
 
 The real Dart client/Go server smoke covers managed signing, release-scoped

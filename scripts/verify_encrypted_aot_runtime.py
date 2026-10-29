@@ -7,6 +7,7 @@ the SDK's body-patch fixture and compiler, then bridges the actual Dart crypto
 producer to Dart_InstallAotPatch -> Dart_ReloadBytecodePatch -> payload free.
 This is host runtime evidence, not an iOS device or FlutterEngine test.
 Use --structural for the opted-in boot-only structural baseline and delta.
+Add --product to exercise matching PRODUCT compiler, platform and shared runtime.
 """
 
 import argparse
@@ -225,14 +226,20 @@ def main():
     parser.add_argument('--cxx', default='c++')
     parser.add_argument('--structural', action='store_true',
                         help='Verify encrypted boot-only structural additions')
+    parser.add_argument('--product', action='store_true',
+                        help='Use PRODUCT compiler/runtime (requires --structural)')
     args = parser.parse_args()
+    if args.product and not args.structural:
+        parser.error('--product currently requires --structural')
     root = Path(__file__).resolve().parents[1]
     sdk = root / 'dart-sdk'
     build = args.build_dir.resolve()
     tooling_dart = (args.tooling_dart or
                     sdk / 'tools/sdks/dart-sdk/bin/dart').resolve()
     packages = root / 'shorebird/.dart_tool/package_config.json'
-    for required in (build / 'dart', build / 'gen_snapshot', tooling_dart, packages):
+    snapshot_compiler = build / ('gen_snapshot_product' if args.product
+                                  else 'gen_snapshot')
+    for required in (build / 'dart', snapshot_compiler, tooling_dart, packages):
         if not required.is_file():
             parser.error(f'Required artifact is missing: {required}')
     config = build / 'args.gn'
@@ -270,6 +277,7 @@ def main():
                 sys.executable, sdk / 'tools/test_aot_structural_patch.py',
                 '--build-dir', build, '--work-dir', work / 'sdk-fixture',
                 '--cxx', args.cxx,
+                *(['--product'] if args.product else []),
                 '--envelope-producer', producer,
                 '--envelope-packages', packages,
                 '--envelope-dart', tooling_dart,
