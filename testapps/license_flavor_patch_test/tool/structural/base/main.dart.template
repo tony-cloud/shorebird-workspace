@@ -1,17 +1,19 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'launch_status.dart';
 import 'license.dart';
 
 final state = LicenseState(7);
 
-void main() {
+Future<void> main() async {
+  final firstFrame = Completer<void>();
   runApp(const LicenseFlavorPatchApp());
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    if (!widgetValidated || state.retained != 7) {
-      throw StateError('Structural widget or retained field validation failed');
-    }
-    writeLaunchStatus(license: state.name, proFeatureEnabled: state.isPro);
-  });
+  WidgetsBinding.instance.addPostFrameCallback((_) => firstFrame.complete());
+  await firstFrame.future;
+  if (!widgetValidated || state.retained != 7) {
+    throw StateError('Structural widget or retained field validation failed');
+  }
+  writeLaunchStatus(license: state.name, proFeatureEnabled: state.isPro);
 }
 
 class LicenseFlavorPatchApp extends StatelessWidget {
