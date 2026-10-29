@@ -208,7 +208,8 @@ def toolchain(args, work):
     host = Path(state['host_engine'])
     for path in [host / 'dart-sdk/bin/dart', host / 'dartaotruntime',
                  host / 'dart-sdk/bin/snapshots/frontend_server_aot.dart.snapshot',
-                 host / 'dart-sdk/bin/snapshots/dart2bytecode.dart.snapshot']:
+                 host / 'dart-sdk/bin/snapshots/dart2bytecode.dart.snapshot',
+                 host / 'gen/const_finder.dart.snapshot', host / 'font-subset']:
         if not path.is_file():
             raise RuntimeError(f'Required final engine artifact missing: {path}')
     if not (work / 'pub-cache').exists():
