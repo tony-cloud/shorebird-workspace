@@ -171,6 +171,12 @@ versioned-framework archives; Windows skips the Unix permission/symlink writer
 fixture. These gates do not substitute for native runtime or device tests. The combined
 local gate passed 573 tests, including the native-mapping and no-publication
 regressions; see the [mapping validation record](validation/native-assets-manifest-guard-20261101.json).
+The subsequent compiler-derived legacy mapping descriptor passes 27 compiler
+checks, 88 Flutter build checks and the expanded 607-test CLI gate. Actual
+compiler output also passed through Flutter asset bundling and real CLI archive
+comparison. This is tooling validation with synthetic binding fixtures, not a
+native app runtime test; see the
+[provenance record](validation/native-mapping-provenance-20261101.json).
 
 The new Windows lifecycle fixture uses real CLI release/patch commands, the Go
 server's signed encrypted delivery, a test-only DPAPI key provider, and the

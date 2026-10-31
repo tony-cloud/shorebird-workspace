@@ -1,0 +1,44 @@
+{
+  "date": "2026-11-01",
+  "sdk_commit": "ddddb0a1df760bddc61f767e2e05d784555f03b6",
+  "flutter_source_commit": "e6cb6e0eccc6bd9645f69eee7fb872655c2d1296",
+  "flutter_commit": "e4c34cafe62438df6090a1de0b39a3add8478113",
+  "cli_commit": "e9d20ad1b6d74b62aa9126ca81e9dd7f54ca5528",
+  "engine_key": "67f7904d572a99c6db3fc3813b6065b1ee99772c",
+  "schema": {
+    "asset": "shorebird_native_assets.json",
+    "version": 1,
+    "target": "ios_arm64",
+    "meaning": "Compiler-derived effective legacy mapping; absent carrier differs from present empty map; missing provenance is unknown."
+  },
+  "local_validation": {
+    "sdk_tests": 27,
+    "flutter_build_tests": 88,
+    "cli_archive_gate_tests": 607,
+    "producer_to_flutter_to_cli_checks": 3,
+    "counts_overlap": true,
+    "analysis_format_diff": "All modified Dart source and test files clean",
+    "workflow_run_blocks": 210,
+    "independent_review": "SDK/Flutter/CLI interface and final CI source reviews reported no remaining blockers"
+  },
+  "roundtrip": {
+    "actual_compiler_descriptor_sha256": "dcb95fd9b1f8faaf5aaa10a87d01338b7c7fb619542e73db11b5bc45416b3473",
+    "bundled_descriptor_sha256": "dcb95fd9b1f8faaf5aaa10a87d01338b7c7fb619542e73db11b5bc45416b3473",
+    "method": "Actual AOT frontend output verified against serialized Kernel, then production Flutter CopyAssets with memory filesystem/fake process manager, then real CLI archive/checker controls.",
+    "fixture_limit": "Compiler fixture binding wrapper uses synthetic non-executable bytecode; no native app or replacement runtime was built or executed."
+  },
+  "checks": [
+    "Map canonicalization preserves runtime paths and ignores YAML location/comment/order.",
+    "Descriptor write failure is reported before completion and leaves no stale sidecar.",
+    "Native YAML participates in kernel dependencies; descriptor participates in output invalidation and assets input.",
+    "Full profile rejects trusted output/depfile overrides and verifies reported kernel path.",
+    "Unknown old provenance requires native confirmation; asset override cannot bypass.",
+    "Unchanged descriptor permits generated App/base structural differences."
+  ],
+  "ci": "New compiler and Flutter mapping gates are configured for all supported SDK/CLI hosts; this checkpoint has not yet completed hosted CI.",
+  "limitations": [
+    "This is compile/tooling validation, not physical iOS FFI acceptance.",
+    "Older releases lacking descriptors retain explicit native uncertainty, not reconstructed equivalence.",
+    "No frozen iPad engine/SDK outputs were rebuilt."
+  ]
+}

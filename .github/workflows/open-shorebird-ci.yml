@@ -259,6 +259,31 @@ jobs:
           restore-keys: |
             pub-${{ runner.os }}-
 
+      - name: Test native mapping build integration
+        env:
+          FLUTTER_ROOT: ${{ github.workspace }}/flutter
+        run: |
+          set -euo pipefail
+          results="$PWD/artifacts/native-mapping-build-tests"
+          mkdir -p "$results"
+          cd flutter/packages/flutter_tools
+          {
+            dart pub get
+            dart test --reporter expanded \
+              test/general.shard/shorebird/shorebird_native_assets_test.dart \
+              test/general.shard/build_system/targets/assets_test.dart \
+              test/general.shard/build_system/targets/common_test.dart \
+              test/general.shard/compile_batch_test.dart
+          } 2>&1 | tee "$results/tests.log"
+
+      - name: Upload native mapping build test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-mapping-build-tests-${{ matrix.artifact_os }}-${{ matrix.artifact_arch }}
+          path: artifacts/native-mapping-build-tests/tests.log
+          if-no-files-found: error
+
       - name: Test native archive guards
         shell: bash
         run: ./scripts/run_native_archive_tests.sh
@@ -690,6 +715,7 @@ jobs:
           pkg/dart2bytecode/test/patch_test.dart
           pkg/dart2bytecode/test/full_replacement_test.dart
           pkg/dart2bytecode/test/native_assets_profile_test.dart
+          pkg/frontend_server/test/shorebird_native_assets_descriptor_test.dart
           pkg/vm/test/native_assets/synthesizer_test.dart --concurrency=1
 
       - name: Run encrypted no-JIT replacement regression
@@ -855,6 +881,14 @@ jobs:
 
       - name: Verify built SDK developer tools
         run: python3 scripts/verify_dart_sdk_tooling.py --dart "$PWD/dart-sdk/xcodebuild/ReleaseARM64/dart-sdk/bin/dart"
+
+      - name: Test native mapping compiler provenance
+        working-directory: dart-sdk
+        run: >-
+          xcodebuild/ReleaseARM64/dart-sdk/bin/dart --packages=.dart_tool/package_config.json
+          third_party/pkg/test/pkgs/test/bin/test.dart
+          pkg/frontend_server/test/shorebird_native_assets_descriptor_test.dart
+          --concurrency=1
 
       - name: Run focused patch API tests
         working-directory: dart-sdk/xcodebuild/ReleaseARM64
@@ -1026,6 +1060,14 @@ jobs:
 
       - name: Verify built SDK developer tools
         run: python3 scripts/verify_dart_sdk_tooling.py --dart "$PWD/dart-sdk/xcodebuild/ReleaseX64/dart-sdk/bin/dart"
+
+      - name: Test native mapping compiler provenance
+        working-directory: dart-sdk
+        run: >-
+          xcodebuild/ReleaseX64/dart-sdk/bin/dart --packages=.dart_tool/package_config.json
+          third_party/pkg/test/pkgs/test/bin/test.dart
+          pkg/frontend_server/test/shorebird_native_assets_descriptor_test.dart
+          --concurrency=1
 
       - name: Run focused patch API tests
         working-directory: dart-sdk/xcodebuild/ReleaseX64
@@ -1266,6 +1308,14 @@ jobs:
 
       - name: Verify built SDK developer tools
         run: python3 scripts/verify_dart_sdk_tooling.py --dart "$PWD/dart-sdk/out/ReleaseX64/dart-sdk/bin/dart.exe"
+
+      - name: Test native mapping compiler provenance
+        working-directory: dart-sdk
+        run: >-
+          out/ReleaseX64/dart-sdk/bin/dart.exe --packages=.dart_tool/package_config.json
+          third_party/pkg/test/pkgs/test/bin/test.dart
+          pkg/frontend_server/test/shorebird_native_assets_descriptor_test.dart
+          --concurrency=1
 
       - name: Run focused patch API tests
         working-directory: dart-sdk/out/ReleaseX64

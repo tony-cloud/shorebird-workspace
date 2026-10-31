@@ -222,6 +222,10 @@ required_files = %w[
   scripts/verify_dart_sdk_tooling.py
   scripts/verify_native_cache_engine_tests.py
   scripts/run_native_archive_tests.sh
+  dart-sdk/pkg/frontend_server/test/shorebird_native_assets_descriptor_test.dart
+  dart-sdk/pkg/vm/lib/native_assets/shorebird_descriptor.dart
+  flutter/packages/flutter_tools/lib/src/shorebird/shorebird_native_assets.dart
+  flutter/packages/flutter_tools/test/general.shard/shorebird/shorebird_native_assets_test.dart
   testapps/license_flavor_patch_test/tool/windows_native_cache_e2e.py
   testapps/license_flavor_patch_test/tool/test_windows_native_cache_e2e.py
   testapps/license_flavor_patch_test/tool/windows_native/runner_patch_key_provider.h
@@ -1783,6 +1787,17 @@ assert!(
     archive_upload.dig('with', 'path') == 'artifacts/cli-native-archive-tests/tests.log',
   'CLI archive evidence must retain the exact test log on success or failure'
 )
+mapping_test_index = cli_steps.index { |step| step['name'] == 'Test native mapping build integration' }
+mapping_evidence_index = cli_steps.index { |step| step['name'] == 'Upload native mapping build test evidence' }
+assert!([mapping_test_index, mapping_evidence_index].all? && mapping_test_index < mapping_evidence_index && mapping_evidence_index < cli_compile_index, 'Native mapping build tests and evidence must precede CLI packaging')
+mapping_test = cli_steps.fetch(mapping_test_index)
+assert!(!mapping_test.key?('if') && !mapping_test['continue-on-error'] && mapping_test.dig('env', 'FLUTTER_ROOT') == '${{ github.workspace }}/flutter', 'Native mapping tests must run on every CLI host with an explicit Flutter root')
+%w[shorebird_native_assets_test.dart assets_test.dart common_test.dart compile_batch_test.dart].each do |suite|
+  assert!(mapping_test.fetch('run').include?(suite), "Native mapping build gate must run #{suite}")
+end
+assert!(mapping_test.fetch('run').include?('set -euo pipefail') && mapping_test.fetch('run').include?('dart test --reporter expanded'), 'Native mapping build gate must execute tests and propagate failure')
+mapping_upload = cli_steps.fetch(mapping_evidence_index)
+assert!(mapping_upload['if'] == 'always()' && mapping_upload['uses'] == 'actions/upload-artifact@v4' && mapping_upload.dig('with', 'name') == 'native-mapping-build-tests-${{ matrix.artifact_os }}-${{ matrix.artifact_arch }}' && mapping_upload.dig('with', 'path') == 'artifacts/native-mapping-build-tests/tests.log', 'Native mapping build evidence must retain only the designated test log on all outcomes')
 assert!(
   !cli_steps.fetch(cli_compile_index).key?('if') &&
     !cli_steps.fetch(cli_compile_index)['continue-on-error'],
@@ -1794,8 +1809,10 @@ jobs.fetch('artifact-mirror').fetch('steps').each do |step|
   pattern = step.dig('with', 'pattern')
   next unless pattern
 
-  matrix_texts(archive_upload.dig('with', 'name'), jobs.fetch('cli-artifacts')).each do |name|
-    assert!(!File.fnmatch(pattern, name), 'CLI diagnostic evidence must not match release artifact download patterns')
+  [archive_upload, mapping_upload].each do |upload|
+    matrix_texts(upload.dig('with', 'name'), jobs.fetch('cli-artifacts')).each do |name|
+      assert!(!File.fnmatch(pattern, name), 'CLI diagnostic evidence must not match release artifact download patterns')
+    end
   end
 end
 expected_cli_targets = [
@@ -1985,7 +2002,7 @@ required_uploads.each do |job_name, expected_names|
 end
 
 native_test_evidence_uploads = {
-  'cli-artifacts' => ['native-archive-tests-${{ matrix.artifact_os }}-${{ matrix.artifact_arch }}'],
+  'cli-artifacts' => ['native-archive-tests-${{ matrix.artifact_os }}-${{ matrix.artifact_arch }}', 'native-mapping-build-tests-${{ matrix.artifact_os }}-${{ matrix.artifact_arch }}'],
   'linux-engine' => ['linux-native-cache-engine-tests'],
   'windows-engine' => %w[windows-native-cache-engine-tests windows-native-provider-tests windows-native-cache-e2e],
   'custom-dart-sdk' => ['linux-elf-memory-loader-tests'],
@@ -2011,6 +2028,12 @@ jobs.each do |job_name, job|
 end
 
 run_text_by_job = jobs.transform_values { |job| job_runs(job).join("\n") }
+%w[custom-dart-sdk custom-dart-sdk-macos custom-dart-sdk-macos-x64 custom-dart-sdk-windows].each do |job_name|
+  steps = jobs.fetch(job_name).fetch('steps')
+  test_index = steps.index { |step| step['run'].to_s.include?('pkg/frontend_server/test/shorebird_native_assets_descriptor_test.dart') }
+  package_index = steps.index { |step| step['name'] == 'Package Dart SDK artifact' }
+  assert!([test_index, package_index].all? && test_index < package_index && !steps.fetch(test_index).key?('if') && !steps.fetch(test_index)['continue-on-error'], "#{job_name} must require native mapping compiler provenance tests before SDK packaging")
+end
 assert!(run_text_by_job.fetch('custom-dart-sdk').include?('pkg/dart2bytecode/test/native_assets_profile_test.dart'), 'Linux SDK must test native-assets carrier profile and imported-component contracts')
 {
   'custom-dart-sdk' => 'x64',

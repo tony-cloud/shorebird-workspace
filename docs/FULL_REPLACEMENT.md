@@ -82,10 +82,17 @@ The standard bundled `flutter_assets/NativeAssetsManifest.json` is a frozen
 native input. Adding, removing or changing it requires native-change
 confirmation even when ordinary asset differences are allowed. Its exact bytes
 are compared; a same-named nested user asset remains an ordinary asset. This
-does not yet establish equivalence for legacy mappings embedded only in Kernel
-through a custom `--native-assets` frontend option. Recording the effective
-embedded mapping remains a separate compatibility gap; the generated App image
-cannot simply be frozen because structural Dart updates legitimately change it.
+also preserves legacy mappings embedded in Kernel through a custom
+`--native-assets` frontend option. The compiler emits the effective iOS mapping
+in `shorebird_native_assets.json`; Flutter bundles those exact validated bytes.
+The descriptor is a native input, with absent and present-empty carriers kept
+distinct. Missing provenance in an older release is reported as unverified and
+requires native confirmation; an asset override cannot establish equivalence.
+Kernel dependencies include the mapping source, and full-profile output/depfile
+overrides cannot pair the descriptor with a stale kernel. The generated App
+image remains a Dart payload so structural updates still work. See the
+[provenance validation record](validation/native-mapping-provenance-20261101.json)
+for the compiler, bundler and CLI checks and their runtime limits.
 
 ## Runtime and fallback
 
