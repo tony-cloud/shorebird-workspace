@@ -71,7 +71,7 @@ binaries:
    `bin/internal` version metadata, `manifest.json`, and a `.sha256` sidecar.
    The manifest records the Flutter revision and engine revision used by the
    bundled CLI cache metadata. The macOS CLI split is intentional: macOS x64
-   runs on `macos-15-intel`, and macOS arm64 runs on `macos-14`. Before upload,
+   runs on `macos-15-intel`, and macOS arm64 runs on `macos-15`. Before upload,
    CI extracts the archive and runs `shorebird --version`,
    `open_aot_patch_tools --help`, and `artifact_proxy --health-check` from the
    extracted layout. The `shorebird --version` smoke must report the open

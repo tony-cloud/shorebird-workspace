@@ -211,7 +211,7 @@ jobs:
             extension: ""
             patch_zip: patch-darwin-x64.zip
             patch_entry: patch
-          - os: macos-14
+          - os: macos-15
             artifact_os: macos
             artifact_arch: arm64
             extension: ""

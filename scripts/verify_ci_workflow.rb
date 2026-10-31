@@ -1738,7 +1738,7 @@ cli_matrix = matrix_include(jobs.fetch('cli-artifacts'))
 expected_cli_targets = [
   ['ubuntu-latest', 'linux', 'x64', 'patch-linux-x64.zip', 'patch'],
   ['macos-15-intel', 'macos', 'x64', 'patch-darwin-x64.zip', 'patch'],
-  ['macos-14', 'macos', 'arm64', 'patch-darwin-arm64.zip', 'patch'],
+  ['macos-15', 'macos', 'arm64', 'patch-darwin-arm64.zip', 'patch'],
   ['windows-latest', 'windows', 'x64', 'patch-windows-x64.zip', 'patch.exe'],
 ]
 expected_cli_targets.each do |runner_os, artifact_os, artifact_arch, patch_zip, patch_entry|
