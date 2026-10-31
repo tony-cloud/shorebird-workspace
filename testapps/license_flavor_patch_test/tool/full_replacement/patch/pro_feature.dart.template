@@ -1,0 +1,29 @@
+import 'package:flutter/material.dart';
+import 'license.dart';
+import 'unchanged_caller.dart';
+
+String describeReplacement(LicenseState value) =>
+    'license:${value.name} full-replacement:verified value:${value.score(bonus: 3)}';
+
+// Both this generic Flutter widget and its library/helper are new in the patch.
+class ReplacementFeature<T extends num> extends StatelessWidget {
+  final T expected;
+  final GlobalKey statusKey;
+
+  const ReplacementFeature({super.key, required this.expected, required this.statusKey});
+
+  @override
+  Widget build(BuildContext context) {
+    final Object erased = this;
+    if (erased is! ReplacementFeature<int> || state.name != 'pro' || !state.isPro ||
+        state.retained != 11 || state.label != 'pro-default' || !state.enabled ||
+        retainedByUnchangedCaller() != 11 || !canonicalNestedConstant() ||
+        nestedState.value.single.label != 'pro-default' ||
+        state.score(bonus: 3) != expected || state.score(bonus: 3, scale: 3) != 42 ||
+        LicenseState.factor != 3 || LicenseState.staticLabel != 'pro-static' ||
+        LicenseState.describe(prefix: 'replacement') != 'replacement:3') {
+      throw StateError('Full replacement const/layout/signature/static assertion failed');
+    }
+    return Center(child: Text(describeReplacement(state), key: statusKey));
+  }
+}

@@ -1,0 +1,14 @@
+import 'license.dart';
+
+// Keep this source byte-for-byte identical across the release and patch. Its
+// embedded constants must acquire the new layout and constructor defaults.
+const state = LicenseState();
+const nestedState = ConstEnvelope<List<LicenseState>>(<LicenseState>[LicenseState()]);
+
+class ConstEnvelope<T> {
+  final T value;
+  const ConstEnvelope(this.value);
+}
+
+int retainedByUnchangedCaller() => state.retained;
+bool canonicalNestedConstant() => identical(state, nestedState.value.single);

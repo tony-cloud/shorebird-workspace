@@ -1,0 +1,205 @@
+{
+  "release_version": "1.0.0+3",
+  "profile": "full-replacement",
+  "distribution_signed": true,
+  "get_task_allow": false,
+  "debugger_attached": false,
+  "dynamic_modules_enabled": false,
+  "statuses": [
+    "license:free\npro-feature:off\n",
+    "license:pro\npro-feature:enabled\n",
+    "license:pro\npro-feature:enabled\n",
+    "license:free\npro-feature:off\n",
+    "license:free\npro-feature:off\n",
+    "license:free\npro-feature:off\n",
+    "license:pro\npro-feature:enabled\n",
+    "license:pro\npro-feature:enabled\n",
+    "license:pro\npro-feature:enabled\n",
+    "license:pro\npro-feature:enabled\n"
+  ],
+  "events": [
+    {
+      "release_version": "1.0.0+3",
+      "patch_number": 0,
+      "event_type": "PatchCheck",
+      "failure_category": null
+    },
+    {
+      "release_version": "1.0.0+3",
+      "patch_number": 1,
+      "event_type": "__patch_download__",
+      "failure_category": null
+    },
+    {
+      "release_version": "1.0.0+3",
+      "patch_number": 1,
+      "event_type": "__patch_install__",
+      "failure_category": null
+    },
+    {
+      "release_version": "1.0.0+3",
+      "patch_number": 1,
+      "event_type": "PatchCheck",
+      "failure_category": null
+    },
+    {
+      "release_version": "1.0.0+3",
+      "patch_number": 1,
+      "event_type": "PatchCheck",
+      "failure_category": null
+    },
+    {
+      "release_version": "1.0.0+3",
+      "patch_number": 1,
+      "event_type": "__patch_install_failure__",
+      "failure_category": null
+    },
+    {
+      "release_version": "1.0.0+3",
+      "patch_number": 0,
+      "event_type": "PatchCheck",
+      "failure_category": null
+    },
+    {
+      "release_version": "1.0.0+3",
+      "patch_number": 0,
+      "event_type": "PatchCheck",
+      "failure_category": null
+    },
+    {
+      "release_version": "1.0.0+3",
+      "patch_number": 0,
+      "event_type": "PatchCheck",
+      "failure_category": null
+    },
+    {
+      "release_version": "1.0.0+3",
+      "patch_number": 2,
+      "event_type": "__patch_download__",
+      "failure_category": null
+    },
+    {
+      "release_version": "1.0.0+3",
+      "patch_number": 2,
+      "event_type": "__patch_install__",
+      "failure_category": null
+    },
+    {
+      "release_version": "1.0.0+3",
+      "patch_number": 2,
+      "event_type": "PatchCheck",
+      "failure_category": null
+    },
+    {
+      "release_version": "1.0.0+3",
+      "patch_number": 2,
+      "event_type": "PatchCheck",
+      "failure_category": null
+    },
+    {
+      "release_version": "1.0.0+3",
+      "patch_number": 2,
+      "event_type": "PatchCheck",
+      "failure_category": null
+    },
+    {
+      "release_version": "1.0.0+3",
+      "patch_number": 2,
+      "event_type": "PatchCheck",
+      "failure_category": null
+    }
+  ],
+  "recovery_label": "recovery:2",
+  "latency_scope": "process relaunch command through validated HTTP report; includes device control and network; not pure VM/frame timing",
+  "recovery_latency": {
+    "relaunch_to_report_seconds": 1.507,
+    "includes_device_control_and_network": true
+  },
+  "cold_recovery_latency": {
+    "relaunch_to_report_seconds": [
+      1.463,
+      1.11,
+      1.114
+    ],
+    "includes_device_control_and_network": true
+  },
+  "source_heads": {
+    "dart-sdk": "9056b707c4a448dfa4a083be31f2cd3ed7340170",
+    "flutter": "501d83b1a09974550d4918f5de7693656530e119",
+    "shorebird": "187159e36aea65eadc6848e5b5355d119e62d469",
+    "shorebird-server": "8cc3148fdcb489b20faa0a544d7a6690b6536da9",
+    "updater": "7894c9d26f29e6f07f8a4d0796f6e87ccb4a8d36"
+  },
+  "tracked_diff_sha256": {
+    "dart-sdk": "f711c4e63c5187eff8e5604c03fca67b75ad376324e220537f0a4cf4aea4162f",
+    "flutter": "cbce5793baebe1abe4fd1ee0b08044607454e3ed7a4920a5472b578a0751fa61",
+    "shorebird": "dd965238abf40ff978564f69f4699bdbd9ccedf921be3a83f1bc44413a4f27a4",
+    "shorebird-server": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "updater": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "artifact_sha256": {
+    "base_wrapper": "0a4a219f765c8f0b7d1c82129d559a77a7ac1e3342f6039f86df25a28c6495a4",
+    "native_app": "b5846182d7fd690c191ebc354bae40614406d40e4b28ee75e26f44bcde3f2b7b",
+    "runtime": "69fbf9ec6f63e3eb03b6d9adbd374840589c5c5c91f1beb3165536711ebcc450",
+    "recovery_wrapper": "17eec4e666483d90f38c030866e99b0b4d4fae5f81fc19a139a7bc8b125340fd",
+    "recovery_envelope": "eb22d05044cd1f0575d4869d1a28448cfd72449c8ddb75321474ee939171e186"
+  },
+  "untracked_source_sha256": {
+    "dart-sdk": {
+      "pkg/dart2bytecode/test/shorebird_ios_full_replacement_target_test.dart": "e2ac1b90a925be0697cfb083e8d53525ba1fe5f10c8603dd8e06e88aea0f7d6b",
+      "pkg/frontend_server/test/shorebird_ios_full_replacement_target_test.dart": "bbb299ee53caa85455d5c8d37f4dfa38332df19fba1c3f974762452f8069c12a",
+      "pkg/vm/test/shorebird_ios_full_replacement_target_test.dart": "0b8aa4901c543916aa4069dbb70ec7260536fb4aa4cb6f1ec2c0fb3c6bef3f29"
+    },
+    "flutter": {
+      "engine/src/flutter/shell/common/shorebird/shorebird_config.cc": "a834562f6df4d654fda4f58e3e177e9051bffd3e3e5d75e3b91b6a875abed4ec",
+      "engine/src/flutter/shell/common/shorebird/shorebird_config_unittests.cc": "75ae5698d0694d44e525091a6cb6ca46a92953be488433db6d16eb2a9a68266c",
+      "packages/flutter/lib/src/shorebird/window_mobile.dart": "f4ba7e784d595d663ae444ae62e053b50a2db92960c7b91adb1fdcf6c6681fd4",
+      "packages/flutter_tools/lib/src/shorebird/shorebird_replacement.dart": "024c2a4f7d1c1ddccc44b95e972dbac3f5a5f61f81a706a1d7ce09c1f0e1f2a5",
+      "packages/flutter_tools/lib/src/shorebird/shorebird_replacement_host.dart": "01c4ee008fb04f271e8b152a2cd16a763fbd436c81eb4f3d7953421b816b90ad",
+      "packages/flutter_tools/test/general.shard/shorebird/shorebird_replacement_host_test.dart": "f9e4383c4c2f86fbd7c135004abb3250188bcf0686e6e1383e67111c15cf5e4b",
+      "packages/flutter_tools/test/general.shard/shorebird/shorebird_replacement_test.dart": "dc4296fdf737c4c2446307485f75e0de2957940ee0a13e56c8aa2e59a345d870",
+      "packages/flutter_tools/test/src/shorebird_replacement.dart": "6d62e1ba4d9f5fbb764a5a6757c942fece9403de62de6e665ac0c1689b51e05d"
+    },
+    "shorebird": {
+      "packages/open_aot_patch_tools/lib/src/full_replacement.dart": "5444ab1c11f0387ce55edcabe1a6b220c83c01ccdc6c7752dae2a2a1a0a90955",
+      "packages/open_aot_patch_tools/test/full_replacement_test.dart": "e9792f60b32214db3db0f0a49bd010e5dc25cb2c88dfd4aca7d90ae37ecad854",
+      "packages/shorebird_cli/lib/src/archive_analysis/full_replacement_archive_differ.dart": "ea00e2ab68ad4b6c3e809926a5180c2dfe140b7b96532bf1935ccf2058b1f7b8",
+      "packages/shorebird_cli/lib/src/artifact_builder/ios_replacement_host.dart": "9c845e578a62c0f708c91209ad6d234a403d08fd1474c311966311f44078df7d",
+      "packages/shorebird_cli/test/src/archive_analysis/full_replacement_archive_differ_test.dart": "056a7e03e71484fee0c251e3b3a4dcd4ff8b94bf23a31d5e9d665196cfa8f6ea",
+      "packages/shorebird_cli/test/src/artifact_builder/ios_replacement_host_test.dart": "3e404aabd004310759cdf8a107a365bdd50a533884fd2146d84898f1edd37ed6",
+      "packages/shorebird_cli/test/src/commands/full_replacement_pipeline_test.dart": "d637079ade365c873c7c63e4be79eab89992b23f0e64f233730b0232837eaa74"
+    }
+  },
+  "cleanup": {
+    "dedicated_app_uninstalled": true,
+    "disposable_key_replaced_with_zeros": true,
+    "server_shutdown_requested": true,
+    "console_stream_paused": true,
+    "server_stopped_and_ports_released": true,
+    "private_fixture_removed": true
+  },
+  "working_tree_validation": true,
+  "fixture_template_sha256": {
+    "testapps/license_flavor_patch_test/tool/full_replacement/patch/license.dart.template": "d0259b8ff97b54b1ba36f4f0b0f1373cf327d399fcf2c4d51ae00d8770548abb",
+    "testapps/license_flavor_patch_test/tool/full_replacement/patch/main.dart.template": "06fa793b28f20f9f19d93ade00a31ef5abc85cb82929d20702ebecb22ffb23a2",
+    "testapps/license_flavor_patch_test/tool/full_replacement/patch/unchanged_caller.dart.template": "ed24405d8277116c9a4f277ecf31dbbc6df9b1d12ce4420e8d2a5a81a28b1dd8",
+    "testapps/license_flavor_patch_test/tool/full_replacement/patch/pro_feature.dart.template": "120916ea3db2cb86c9e3829a5bf5d03dc71f54c9764cd5897ca7abb9c5e0cb2a",
+    "testapps/license_flavor_patch_test/tool/full_replacement/base/removed_library.dart.template": "75b103048dbb9ccec1a3b023d5e6bcb34d94bf592cfa787ac284a3b6d4712136",
+    "testapps/license_flavor_patch_test/tool/full_replacement/base/license.dart.template": "6f091ad44d49784081743da99c5470f4dde91b15e931bc3ce0c97defe53a69d4",
+    "testapps/license_flavor_patch_test/tool/full_replacement/base/main.dart.template": "7a63b48a9999d058e2d2befd777a491fb3d0e99a707e776ce2de45bd939f0368",
+    "testapps/license_flavor_patch_test/tool/full_replacement/base/unchanged_caller.dart.template": "ed24405d8277116c9a4f277ecf31dbbc6df9b1d12ce4420e8d2a5a81a28b1dd8"
+  },
+  "recovery_fixture_sha256": {
+    "main.dart": "5ae6cc284b35573b77baae644db8d42e81d3e9a13005fa42fbc3782b40b0e18b",
+    "pro_feature.dart": "51d1ebb645eec2ac8cb207bd367871d5a9e13e477bfcac45746811855bf09ba6"
+  },
+  "integration_revisions": {
+    "dart-sdk": "9c62b1a2040ec3cd824998a45eac7980ff6c3fc0",
+    "flutter": "ba8173de24116305c2dd2ef3b7bfe18b1ec537a3",
+    "shorebird": "e1eda751b9e63c0662dfe81086f7dc4d45a033ec",
+    "shorebird-server": "8cc3148fdcb489b20faa0a544d7a6690b6536da9",
+    "updater": "7894c9d26f29e6f07f8a4d0796f6e87ccb4a8d36"
+  },
+  "integration_engine_artifact_identity": "e323fa1d40008806a2fae7dea34df2ed54e35364",
+  "source_provenance_note": "Device binaries used the recorded working tree before commits; integration revisions additionally update source pins and toolchain identity. Hosted artifact validation is separate."
+}

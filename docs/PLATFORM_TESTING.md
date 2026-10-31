@@ -80,8 +80,16 @@ The separate experimental full-replacement SDK profile has passed local macOS
 ARM64 PRODUCT/development host acceptance for const layout and constructor-default
 changes, statics, removals, inheritance, GC and child isolates. The real AES
 producer, decryption, replacement and payload-free lifecycle also passes, with
-wrong-key, altered-ciphertext and expiry rejection. These are host proofs;
-Flutter/CLI integration and full-profile iPad validation remain outstanding.
+wrong-key, altered-ciphertext and expiry rejection. The subsequent local
+Flutter/CLI integration also passed signed physical-iPad baseline/update
+acceptance. The full-profile fixture validates changed const layouts/defaults,
+signatures and statics, removed declarations/library and a new generic widget
+before reporting its rendered frame. Wrong-key fresh-base fallback, rejection
+persistence after key restoration, fresh-patch recovery and three cold recovery
+launches passed. The real CLI native-archive comparison and encrypted publication
+paths were used, and the server persisted download/install/failure events.
+This working-tree device proof still requires final pinned-source CI, ordinary
+plugin FFI support and broader compatibility/performance coverage.
 See [the full-replacement contract and limits](FULL_REPLACEMENT.md).
 
 The real Dart client/Go server smoke covers managed signing, release-scoped

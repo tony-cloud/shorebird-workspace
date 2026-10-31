@@ -147,12 +147,63 @@ def environment(work, state, *, patch=False):
     return env
 
 
-def apply_structural_fixture(work, phase):
-    sources = sorted((work / 'app/tool/structural' / phase).glob('*.dart.template'))
+def apply_fixture(work, phase, profile):
+    fixture = work / 'app/tool' / profile
+    sources = sorted((fixture / phase).glob('*.dart.template'))
     if not sources:
-        raise RuntimeError(f'Missing structural {phase} fixture')
+        raise RuntimeError(f'Missing {profile} {phase} fixture')
+    # Full replacement deliberately removes an imported baseline library. Only
+    # remove files owned by this profile, preserving launch-status support.
+    selected = {source.name.removesuffix('.template') for source in sources}
+    for source in fixture.glob('*/*.dart.template'):
+        name = source.name.removesuffix('.template')
+        if name not in selected:
+            (work / 'app/lib' / name).unlink(missing_ok=True)
     for source in sources:
         shutil.copy2(source, work / 'app/lib' / source.name.removesuffix('.template'))
+
+
+def copy_working_tree(source, target, revision, patch_path):
+    """Overlay a source HEAD's local edits into its independent clone only."""
+    head = run(['git', '-C', source, 'rev-parse', 'HEAD']).decode().strip()
+    if revision != head:
+        raise RuntimeError('--include-working-tree requires refs resolving to each source HEAD')
+    diff = run(['git', '-C', source, 'diff', '--binary', '--no-ext-diff',
+                '--no-textconv', 'HEAD', '--'])
+    untracked = run(['git', '-C', source, 'ls-files', '--others',
+                     '--exclude-standard', '-z']).decode().split('\0')
+    files = []
+    for name in filter(None, untracked):
+        relative = Path(name)
+        if relative.is_absolute() or '..' in relative.parts:
+            raise RuntimeError('Unsafe untracked source path')
+        original = source / relative
+        destination = target / relative
+        # Refuse aliases and special files rather than risk writing through a
+        # tracked symlink or reading outside the selected checkout.
+        if (original.is_symlink() or not original.is_file() or
+                not original.resolve().is_relative_to(source.resolve()) or
+                any(parent.is_symlink() for parent in destination.parents
+                    if parent.is_relative_to(target))):
+            raise RuntimeError(f'Unsupported untracked source path: {name}')
+        files.append((relative, original, destination))
+    private_write(patch_path, diff)
+    if diff:
+        run(['git', '-C', target, 'apply', '--check', patch_path],
+            log=patch_path.with_suffix('.check.log'))
+        run(['git', '-C', target, 'apply', patch_path],
+            log=patch_path.with_suffix('.apply.log'))
+    hashes = {}
+    for relative, original, destination in files:
+        # git apply can create/change a parent symlink: check again afterward.
+        if any(parent.is_symlink() for parent in destination.parents
+               if parent.is_relative_to(target)) or destination.is_symlink():
+            raise RuntimeError(f'Refusing untracked destination alias: {relative}')
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(original, destination)
+        hashes[str(relative)] = hashlib.sha256(destination.read_bytes()).hexdigest()
+    return {'tracked_diff_sha256': hashlib.sha256(diff).hexdigest(),
+            'untracked_file_sha256': hashes}
 
 
 def prepare(args, work):
@@ -169,6 +220,8 @@ def prepare(args, work):
         'version': 1, 'cli_ref': cli_ref, 'flutter_ref': flutter_ref,
         'engine_id': engine_id, 'device': args.device, 'team': args.team,
         'structural_updates': args.structural_updates,
+        'full_replacement': args.full_replacement,
+        'include_working_tree': args.include_working_tree,
         'bundle_id': f'org.tonycloud.shorebird-license-e2e.{session}',
         'key_id': f'device-e2e-{session}', 'release_version': '1.0.0+1',
         'api_url': f'http://{args.host_address}:{free_port()}',
@@ -181,7 +234,9 @@ def prepare(args, work):
                                         FIXTURE / 'ios/Runner/Info.plist',
                                         FIXTURE / 'lib/launch_status_io.dart'] +
                            (sorted((FIXTURE / 'tool/structural').rglob('*.template'))
-                            if args.structural_updates else [])},
+                            if args.structural_updates else
+                            sorted((FIXTURE / 'tool/full_replacement').rglob('*.template'))
+                            if args.full_replacement else [])},
     }
     write_json(work / 'state.json', state)
     write_json(work / 'secrets.json', {
@@ -197,10 +252,16 @@ def prepare(args, work):
             log=work / f'clone-{name}.log')
         run(['git', '-C', target, 'checkout', '--detach', revision],
             log=work / f'checkout-{name}.log')
+        if args.include_working_tree:
+            state.setdefault('source_overlays', {})[name] = copy_working_tree(
+                ROOT / name, target, revision, work / f'{name}-working-tree.patch')
+    write_json(work / 'state.json', state)
     shutil.copytree(FIXTURE, work / 'app', ignore=shutil.ignore_patterns(
         '.dart_tool', 'build', 'Pods', '.symlinks', '.gradle', '.git'))
     if state['structural_updates']:
-        apply_structural_fixture(work, 'base')
+        apply_fixture(work, 'base', 'structural')
+    elif state['full_replacement']:
+        apply_fixture(work, 'base', 'full_replacement')
     project = work / 'app/ios/Runner.xcodeproj/project.pbxproj'
     source = project.read_text().replace(
         'com.example.licenseflavorpatchtest.licenseFlavorPatchTest', state['bundle_id'])
@@ -434,6 +495,8 @@ def serve(work):
                     "patch_verification: strict\npatch_response_verification: required\n")
             if state.get('structural_updates', False):
                 yaml += 'aot_patch_structural_updates: true\n'
+            if state.get('full_replacement', False):
+                yaml += 'aot_patch_full_replacement: true\n'
             private_write(work / 'app/shorebird.yaml', yaml)
             for license_type in ('free', 'pro'):
                 write_json(work / f'{license_type}-defines.json', {
@@ -463,7 +526,9 @@ def build_phase(args, work):
     if patch and 'release_codesign' not in state:
         raise RuntimeError('Complete the free release before patching')
     if patch and state.get('structural_updates', False):
-        apply_structural_fixture(work, 'patch')
+        apply_fixture(work, 'patch', 'structural')
+    elif patch and state.get('full_replacement', False):
+        apply_fixture(work, 'patch', 'full_replacement')
     signed = state['release_codesign'] if patch else args.signed
     command = [work / 'cli/bin/shorebird-e2e', '--json',
                f"--local-engine-src-path={state['engine_src']}",
@@ -519,6 +584,8 @@ def main():
     parser.add_argument('--host-address', default='192.168.93.205')
     parser.add_argument('--cli-ref', default='HEAD')
     parser.add_argument('--flutter-ref', default='HEAD')
+    parser.add_argument('--include-working-tree', action='store_true',
+                        help='Prepare isolated clones with tracked edits and nonignored untracked files; refs must be HEAD')
     parser.add_argument('--engine-id', help='Defaults to the selected Flutter revision engine identity')
     parser.add_argument('--engine-src', type=Path, default=ROOT / 'flutter/engine/src')
     parser.add_argument('--tooling-dart', type=Path, default=ROOT / 'dart-sdk/tools/sdks/dart-sdk/bin/dart')
@@ -526,8 +593,11 @@ def main():
     parser.add_argument('--team', default=TEAM)
     parser.add_argument('--host-engine-ready', action='store_true')
     parser.add_argument('--signed', action='store_true')
-    parser.add_argument('--structural-updates', action='store_true',
+    profiles = parser.add_mutually_exclusive_group()
+    profiles.add_argument('--structural-updates', action='store_true',
                         help='Prepare a structural release and patch adding a Flutter widget and fields')
+    profiles.add_argument('--full-replacement', action='store_true',
+                        help='Prepare a full replacement release and patch with changed layouts and removals')
     parser.add_argument('--app', type=Path)
     parser.add_argument('--provision', action='store_true')
     args = parser.parse_args()
@@ -538,6 +608,10 @@ def main():
             extra = ['--host-engine-ready'] if phase == 'toolchain' else []
             if phase == 'prepare' and args.structural_updates:
                 extra.append('--structural-updates')
+            if phase == 'prepare' and args.full_replacement:
+                extra.append('--full-replacement')
+            if phase == 'prepare' and args.include_working_tree:
+                extra.append('--include-working-tree')
             print(shlex.join(['python3', str(Path(__file__)), phase, '--work-dir', str(work), '--execute', *extra]))
         print('serve stays in its own terminal. release defaults to --no-codesign; add --signed only after provisioning is ready.')
         print('For device validation: inspect-app/install --app <exported distribution .app>, then launch --provision once; later launch without --provision.')

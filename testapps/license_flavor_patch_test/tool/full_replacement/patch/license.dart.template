@@ -1,0 +1,17 @@
+class LicenseState {
+  // Changed existing const layout: a field is removed, new fields surround the
+  // retained field, and an unchanged caller now receives different defaults.
+  final String label;
+  final int retained;
+  final bool enabled;
+
+  const LicenseState({this.retained = 11, this.label = 'pro-default', this.enabled = true});
+
+  static int factor = 3;
+  static final String staticLabel = 'pro-static';
+  static String describe({required String prefix}) => '$prefix:$factor';
+
+  String get name => enabled ? 'pro' : 'invalid';
+  bool get isPro => enabled;
+  int score({required int bonus, int scale = 2}) => (retained + bonus) * scale;
+}
