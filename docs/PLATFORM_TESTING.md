@@ -88,8 +88,8 @@ before reporting its rendered frame. Wrong-key fresh-base fallback, rejection
 persistence after key restoration, fresh-patch recovery and three cold recovery
 launches passed. The real CLI native-archive comparison and encrypted publication
 paths were used, and the server persisted download/install/failure events.
-This working-tree device proof still requires final pinned-source CI, ordinary
-plugin FFI support and broader compatibility/performance coverage.
+This working-tree device proof still requires final pinned-source CI, physical
+plugin FFI acceptance and broader compatibility/performance coverage.
 See [the full-replacement contract and limits](FULL_REPLACEMENT.md).
 
 The real Dart client/Go server smoke covers managed signing, release-scoped
@@ -130,9 +130,18 @@ checkpoint includes the descriptor-loading control. See the
 
 Runtime-created listener and group-bound callbacks also pass the native ARM64
 PRODUCT host suite, including nested transitions, static-field isolation,
-shared-field access, GC and cleanup. Full-profile FFI admission remains closed;
-standalone callback coverage is not full-app or device acceptance. See the
+shared-field access, GC and cleanup. Standalone callback coverage is not
+full-app or device acceptance. See the
 [callback validation record](validation/product-interpreter-callback-listeners-20261101.json).
+
+The full-profile FFI host suite now also passes on native macOS ARM64 PRODUCT:
+encrypted base/update installation against source and from-dill baselines,
+mutable plugin layouts and new bindings, callbacks and cleanup, a cleared-FFI-bit
+positive, and 60 precise malformed-payload rejection/recovery controls. The
+released native binary stays unchanged. Signed physical iOS FFI, broad real-plugin
+coverage and latest-source CI remain pending; this host result does not extend
+the earlier iPad proof. See the
+[full-profile FFI validation record](validation/full-replacement-ffi-host-20261101.json).
 
 ## Prerequisites
 

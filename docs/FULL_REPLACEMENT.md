@@ -2,10 +2,11 @@
 
 The SDK has an opt-in full replacement profile intended to cover changes beyond
 body replacement and additive structural patches. Flutter/CLI integration has
-passed one distribution-signed physical iPad update and recovery lifecycle;
-broader compatibility and release validation remain incomplete. Existing releases
-continue to use their existing profile. A new native release is required to
-enable the full profile.
+passed one distribution-signed physical iPad update and recovery lifecycle.
+Native macOS ARM64 PRODUCT full-profile FFI host acceptance also passes;
+physical iOS FFI, broader compatibility and release validation remain incomplete.
+Existing releases continue to use their existing profile. A new native release
+is required to enable the full profile.
 
 ## Model and binding
 
@@ -99,20 +100,33 @@ group, and install bundled base bytecode. Running the inactive native applicatio
 is not a fallback for this profile. Never install base and update sequentially
 into one group. A broken bundled base must fail startup.
 
-Version 1 rejects FFI, mirrors, native/external declarations, native-wrapper
-layouts and unsupported native bytecodes. Supporting ordinary plugin FFI requires
-additional design and validation; silently excluding those libraries from the
-mutable domain is not supported.
+Full replacement admits ordinary `dart:ffi` declarations and calls on the
+released native ARM64 AOT interpreter capability, excluding Windows and
+simulator execution. The current full-profile execution
+proof is macOS ARM64; the capability does not establish Linux or iOS device
+execution. Non-FFI full replacement keeps its existing architecture support.
+Every application and plugin Dart library remains mutable. Native plugin
+binaries, symbols, asset mappings and signed callback trampolines remain part
+of the frozen released host.
+
+Library flags must contain the full-profile bit and may additionally contain
+only the FFI bit. Actual SDK references, declarations, pools and opcodes are
+checked even when the advertised FFI bit is cleared. FFI-native declarations
+require paired native/external flags, no old native name, the released SDK's
+pragma and Native annotation identities, and valid native function-type
+metadata. Call bodies and nested closures must have valid FFI owners and native
+cache operands; caches start at zero and resolve at runtime. Mirrors, ordinary
+unresolved external declarations, old VM natives/`ExternalCall`, native-wrapper
+inheritance/layouts, unknown flags and unsupported bytecodes remain rejected.
+This admission does not update native plugin binaries or relax the release
+binding and authenticated encryption contract.
 
 The native ARM64 PRODUCT call-out path uses the shared ABI classifier and a
-statically linked trampoline. Full-profile FFI admission remains disabled while
-runtime and callback integration is completed; other architectures retain their
-previous execution restrictions. Completing plugin FFI requires validation of
-replacement Struct/Union layout metadata and callback trampolines that enter
-interpreted closures without generating executable code. Native symbols and
-assets must remain bound to the released host. Scalar/pointer calls, aggregates,
-ABI-specific integers, native annotations and callback GC/isolate lifetimes each
-need runtime coverage.
+statically linked trampoline. Callbacks enter interpreted closures through
+released signed aliases and the common entry without generating executable
+instructions. The full-plugin host fixture below exercises replacement compound
+layouts, new native signatures and callback kinds. Physical-device FFI and
+broader plugin/application acceptance remain separate gates.
 
 The shared native ABI classifier and a data-only interpreter call plan now
 compile and link in PRODUCT without compiler backend dependencies. The ABI
@@ -124,8 +138,8 @@ Nullable local and persistent Handle identity, native Handle results, 24
 nonleaf garbage collections, and leaf typed-data/struct pointer borrowing pass
 in both the interpreter and JIT control. Pointer checks include views, nonzero
 struct backing offsets, boundary sentinels and native-backed structs.
-This fixture runs the non-AOT interpreter; it does not establish PRODUCT FFI
-execution or change the full-profile rejection policy.
+This fixture runs the non-AOT interpreter. PRODUCT and full-profile execution
+are covered separately below.
 
 ```sh
 python3 dart-sdk/tools/test_interpreter_ffi_calls.py \
@@ -172,8 +186,9 @@ base/update installation from source and prelinked kernels. The released map
 retains its identity and contents, the metadata carrier stays outside the
 replacement domain, and package plugin libraries/classes receive fresh
 identities. A forged carrier is rejected by the native snapshot compiler.
-These checks establish host call-outs and asset ownership, not callback support,
-full-profile FFI execution or physical-device FFI validation.
+These earlier checks establish host call-outs and asset ownership. Separate
+callback and full-profile fixtures below cover those execution paths; none of
+these host checks establishes physical-device FFI validation.
 
 The separate macOS ARM64 PRODUCT callback harness now passes static
 `Pointer.fromFunction` and capturing `NativeCallable.isolateLocal` callbacks
@@ -213,11 +228,19 @@ callback termination. Recoverable OOM injection was not exercised.
 The [aggregate callback record](validation/product-interpreter-callback-aggregates-20261101.json)
 identifies this later tested tree and the corrected Windows ABI-test source list.
 
-Listener/group-bound callbacks, full-profile FFI admission and physical-device
-FFI execution remain outstanding. The host checks do not audit transient memory
-permissions or instruction writes.
-The [callback validation record](validation/product-interpreter-callbacks-20261031.json)
-identifies the tested SDK tree and the remaining gates.
+The later native macOS ARM64 PRODUCT milestone passes interpreted and compiled
+listener and isolate-group-bound callbacks, including foreign-thread delivery,
+copied aggregate/Handle arguments, closure immutability, GC, close/shutdown and
+same/cross-group transitions. It also verifies nested caller restoration and
+non-shared/shared static-field access rules. The
+[listener/group validation record](validation/product-interpreter-callback-listeners-20261101.json)
+identifies SDK commits `1a3b24b` and `a2095cb` and its precise evidence limits.
+That milestone preceded full-profile FFI admission; the separate full-plugin
+acceptance below now covers installation plus real interpreted calls/callbacks.
+Physical-device FFI remains outstanding. Host checks do not audit transient
+memory permissions or instruction writes. The earlier
+[callback validation record](validation/product-interpreter-callbacks-20261031.json)
+remains historical evidence for its tested tree.
 
 The earlier call-out SDK (`e8f281db2fca`) also passed local host
 SDK/snapshot-tool builds and an iOS framework build. That build does not cover
@@ -228,6 +251,38 @@ records this workaround, source revisions, artifact hashes and the limited scope
 of the engine-argument route check; it is not an iOS FFI execution result.
 
 ## Validation and remaining work
+
+The native macOS ARM64 PRODUCT full-plugin acceptance uses the real Dart
+envelope producer and the unchanged released native library. Run it with matching
+SDK artifacts and a Dart SDK capable of running that producer:
+
+```sh
+python3 scripts/verify_encrypted_aot_runtime.py --full-replacement-ffi \
+  --build-dir dart-sdk/xcodebuild/ReleaseARM64 \
+  --tooling-dart dart-sdk/xcodebuild/ReleaseARM64/dart-sdk/bin/dart
+```
+
+The [full-profile FFI host record](validation/full-replacement-ffi-host-20261101.json)
+records passing source and from-dill native baselines. For each baseline, bundled
+base, original-bound update and a valid update with its advertised FFI bit cleared
+execute through encrypted installation in two fresh groups. The update changes
+plugin Dart fields, constructor defaults, signatures and Struct layout, removes
+and adds declarations/libraries, and introduces new FFI signatures and local,
+listener and group-bound callbacks. Native exports stay unchanged. The fixture
+checks fresh mutable identities, resolver transfer and registration rules,
+released native-assets map identity, initially zero native caches, successful
+resolution/caching, native return values and callback cleanup/lifetimes.
+
+Thirty digest-correct malformed wrappers are rejected against each native
+baseline (60 loader checks), with specific diagnostic, publication, poisoning and
+fresh-group bundled-base recovery assertions. These direct-loader mutation
+checks are distinct from encrypted positive installation and envelope rejection
+checks. They cover library flags, external/old-native definitions, malformed SDK
+metadata, FFI owner/cache operands, normal/wide/truncated opcodes, ExternalCall
+pools and the exact reserved assets URI. Thirteen focused compiler/native-assets
+tests also pass, including direct bytecode API and from-dill validation. This host
+fixture does not exercise physical iOS FFI, CLI native archive comparison or
+server signature verification. It does not establish a new CI result.
 
 Run the host acceptance with matching SDK artifacts:
 
@@ -282,10 +337,12 @@ Recovery took 1.507 seconds from the process-relaunch command to the validated
 HTTP report. Three subsequent launches took 1.463, 1.110 and 1.114 seconds. These
 include device-control and network overhead; they are not VM startup, frame-time
 or RSS benchmarks. The [physical test record](validation/full-replacement-ios-20261031.json)
-identifies the tested integration sources. Later FFI changes require separate
-hosted and physical validation.
+identifies the tested integration sources. That device result predates FFI
+admission; the later host acceptance above does not extend its physical-device
+proof.
 
-Remaining acceptance includes plugin FFI, broader plugin/application coverage,
-and launch/RSS/frame benchmarks. This work does not establish complete
-Shorebird replacement or change the documented plaintext native executable cache
-limitation.
+Remaining acceptance includes signed physical iOS full-profile FFI/callback
+execution, broader plugin/application coverage, and launch/RSS/frame benchmarks.
+This work does not establish complete Shorebird replacement. Native executable
+cache behavior and its platform validation remain separate; see
+[platform testing](PLATFORM_TESTING.md).

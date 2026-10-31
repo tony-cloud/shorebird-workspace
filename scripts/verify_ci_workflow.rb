@@ -2563,6 +2563,12 @@ assert!(flutter_engine_archives_build.include?('if (build_analyze_snapshot) {') 
     prerequisite_tests['Run PRODUCT interpreter callback regression'] = 'test_aot_product_ffi_callbacks.py'
     assert!(steps.find { |step| step['name'] == 'Build patched Dart SDK' }.fetch('run').split.include?('product_ffi_test'), 'macOS ARM64 must build the PRODUCT interpreter native-call harness')
     assert!(steps.find { |step| step['name'] == 'Build patched Dart SDK' }.fetch('run').split.include?('product_ffi_callback_test'), 'macOS ARM64 must build the PRODUCT interpreter callback harness')
+    assert!(steps.find { |step| step['name'] == 'Build patched Dart SDK' }.fetch('run').split.include?('product_full_ffi_test'), 'macOS ARM64 must build the PRODUCT full replacement FFI harness')
+    encrypted_ffi = steps.index { |step| step['name'] == 'Run PRODUCT encrypted full replacement FFI regression' }
+    encryption_tools = steps.index { |step| step['name'] == 'Resolve public encryption tooling' }
+    assert!(encryption_tools && encrypted_ffi && package && encryption_tools < encrypted_ffi && encrypted_ffi < package, 'macOS ARM64 must resolve the real producer and prove encrypted full replacement FFI before publishing')
+    ffi_run = steps.fetch(encrypted_ffi).fetch('run')
+    assert!(ffi_run.include?('scripts/verify_encrypted_aot_runtime.py --full-replacement-ffi') && ffi_run.include?("--build-dir dart-sdk/#{build_dir}") && ffi_run.include?("--tooling-dart dart-sdk/#{build_dir}/dart-sdk/bin/dart"), 'macOS ARM64 full FFI must use the real encryption producer and matching PRODUCT artifacts')
   end
   prerequisite_tests.each do |step_name, harness|
     regression = steps.index { |step| step['name'] == step_name }
@@ -2575,7 +2581,7 @@ end
 assert!(run_text_by_job.fetch('source-checks').include?('python3 -m py_compile dart-sdk/tools/test_aot_structural_patch.py'), 'source checks must syntax-check the structural runtime harness')
 assert!(run_text_by_job.fetch('source-checks').include?('python3 -m py_compile dart-sdk/tools/test_aot_full_replacement.py'), 'source checks must syntax-check the full replacement runtime harness')
 assert!(run_text_by_job.fetch('source-checks').include?('python3 -m py_compile dart-sdk/tools/test_aot_no_tfa_startup.py'), 'source checks must syntax-check the PRODUCT standalone startup harness')
-%w[test_aot_product_metadata.py test_aot_host_resolvers.py test_interpreter_ffi_calls.py test_aot_product_ffi.py test_aot_product_ffi_callbacks.py].each do |harness|
+%w[test_aot_product_metadata.py test_aot_host_resolvers.py test_interpreter_ffi_calls.py test_aot_product_ffi.py test_aot_product_ffi_callbacks.py test_aot_full_replacement_ffi.py].each do |harness|
   assert!(run_text_by_job.fetch('source-checks').include?("python3 -m py_compile dart-sdk/tools/#{harness}"), "source checks must syntax-check #{harness}")
 end
 assert!(!run_text_by_job.fetch('custom-dart-sdk-windows').include?('test_aot_no_tfa_startup.py'), 'Windows compile/tooling evidence must remain distinct from the unsupported PRODUCT startup harness')

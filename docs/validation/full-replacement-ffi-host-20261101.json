@@ -1,0 +1,115 @@
+{
+  "date": "2026-11-01",
+  "scope": "Native macOS ARM64 PRODUCT full-domain encrypted FFI replacement host acceptance",
+  "tested_sdk_base": "a2095cb46492fe96c2bdee4ccdd9488c29ebe74c",
+  "provenance": "Matching SDK rebuild with verify_sdk_hash=true and runtime/kernel hash a2095cb464. Host binary signed with only the existing isolated-test disable-library-validation entitlement; strict signature verification passed. No JIT, unsigned-executable-memory or debugger entitlement. Tests preceded these commits on the exact subsequently committed SDK sources; 24 source fingerprints match. This record does not claim a post-commit rebuild or an engine/device build at the new pins.",
+  "command": "python3 scripts/verify_encrypted_aot_runtime.py --full-replacement-ffi --build-dir dart-sdk/xcodebuild/ReleaseARM64 --tooling-dart dart-sdk/xcodebuild/ReleaseARM64/dart-sdk/bin/dart --work-dir /tmp/full-ffi-encrypted-acceptance-20261101-final",
+  "passed": {
+    "focused_compiler_tests": 13,
+    "focused_dart_analysis": "No issues; fatal infos enabled",
+    "sdk_build_and_offline_tooling": true,
+    "native_loader_rejections": 60,
+    "encrypted_payload_variants": [
+      "base",
+      "update",
+      "update with cleared advisory FFI flag"
+    ],
+    "native_baseline_routes": [
+      "source",
+      "from-dill"
+    ],
+    "fresh_groups_per_positive_variant_and_route": 2,
+    "encrypted_positive_groups": 12,
+    "negative_envelopes_each_positive_group": [
+      "wrong AES key",
+      "tampered ciphertext",
+      "expired license"
+    ],
+    "full_host_suite": {
+      "profile": "PRODUCT full replacement",
+      "host_abi": "5529f84190b1d4395f189c0f29ef530b152d4d3152b7663bca958cf78c8d3bdd",
+      "released_native_sha256": "1db85fb91c602d72e4852e49d4187f5c613984cf3826431cc5c99188ab8308ec",
+      "base_sha256": "d51ad62c33c9a0bee8e4a1e48c1de1886d56153253c789a0445e4a434bd778ad",
+      "update_sha256": "d230bce6777e504aa4f0cdc95b67cfd168638aaa5790a17bf06be8a54acc3f86",
+      "native_baselines": [
+        "source",
+        "from-dill"
+      ],
+      "direct_loader_rejection_cases": [
+        "missing-full",
+        "ffi-only",
+        "mirrors-flag",
+        "structural-flag",
+        "unknown-flag",
+        "plain-external",
+        "old-native-flags",
+        "old-native-name",
+        "missing-ffi-annotation",
+        "nonarray-metadata",
+        "fullFfiBadOption",
+        "fullFfiBadSignature",
+        "fullFfiBadIdentity",
+        "invalid-ffi-owner",
+        "ffi-cache-out-of-range",
+        "ffi-cache-wrong-kind",
+        "wide-ffi-cache-out-of-range",
+        "resolve-cache-out-of-range",
+        "resolve-missing-annotation-push",
+        "resolve-wrong-annotation",
+        "external-pool",
+        "external-opcode",
+        "external-wide-opcode",
+        "unknown-opcode",
+        "truncated-ffi",
+        "truncated-wide-ffi",
+        "truncated-resolve",
+        "truncated-wide-resolve",
+        "closure-missing-pragma",
+        "reserved-assets-carrier"
+      ],
+      "encrypted_additional_positive_cases": [
+        "cleared-ffi-flag"
+      ],
+      "status": "host_execution_passed",
+      "physical_ios": "not_exercised",
+      "cli_archive_differ": "not_exercised",
+      "server_signature_verification": "not_exercised_by_this_host_harness"
+    }
+  },
+  "behavior": [
+    "Only the full-profile bit plus optional FFI-use bit are admitted; real SDK metadata identity and supported native ARM64 runtime capability remain mandatory even with the advisory bit cleared.",
+    "ExternalCall, ordinary native/external definitions, native wrappers, mirrors, unknown flags/opcodes and malformed metadata or cache operands remain rejected.",
+    "Valid-inner-digest malformed payloads prove exact diagnostic, preflight or poisoned-state boundary, preserved published identities, no native side effects, denied poisoned retry and fresh-group valid-base recovery.",
+    "Mutable plugin Dart classes, layouts, defaults, constants, removed and added libraries, FFI bindings and signatures change while the released native binary remains byte-identical.",
+    "Native resolver transfer, retained released asset mapping, active library ownership, zero-to-populated native caches, scalar/aggregate/VarArgs/Handle and borrowed-memory call-outs execute.",
+    "Update-only static, local, aggregate, listener and group-bound callbacks execute with GC, threads, signed alias-page growth, self-close and exact cleanup checks."
+  ],
+  "regressions": {
+    "status": "passed",
+    "commands": 14,
+    "suites": [
+      "PRODUCT callbacks including eight compiled/interpreted transition controls, listeners, group-bound, static isolation, Handle/aggregate and lifecycle checks",
+      "PRODUCT raw-library native call-outs and native-assets ownership",
+      "PRODUCT evaluated metadata",
+      "PRODUCT host resolver preservation",
+      "PRODUCT complete-domain replacement matrix",
+      "PRODUCT structural replacement",
+      "Actual interpreter/JIT native call-outs",
+      "Six compiled callback metadata unit tests",
+      "Strict undefined-symbol PRODUCT link retaining seven ABI/callback entry points"
+    ]
+  },
+  "limits": [
+    "Physical signed iOS FFI/callback execution has not been performed for these sources; the earlier structural iPad milestone is separate.",
+    "This native ARM64 host run does not establish Linux, Android, Windows, x64, simulator or ARM64e FFI execution.",
+    "The real local producer proves encryption and license-envelope checks; this harness does not prove upstream server signature verification or CLI release-archive comparison.",
+    "Native plugin binary updates remain outside Dart replacement; broad real-plugin/application coverage remains pending.",
+    "Deterministic allocation-failure injection and transient instruction/permission-write audits were not performed.",
+    "Latest-source full hosted CI and Linux/Android encrypted native-cache execution remain separate pending gates."
+  ],
+  "dart_sdk_commit": "bdc30207c93e422dfd56d4260fa84c522cbf95b1",
+  "dart_sdk_tree": "0c0be8592c4a70055bd0cb7ce02bc056acb5672d",
+  "flutter_source_commit": "c22367f64e674d59203818f2df586ea1669965b1",
+  "flutter_identity_commit": "41865d0ebfc6bb3814f2e796ceafb141993d4e6e",
+  "engine_artifact_identity": "0b65b0bea03ad4421928f0c0b7b8bebf97632a6b"
+}
