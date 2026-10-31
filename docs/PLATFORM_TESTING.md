@@ -154,6 +154,15 @@ Its 179 focused tests passed locally, including Dart-only changes and rejection
 before artifact creation/upload. Reproducible Windows native builds still need
 execution on the Windows runner.
 
+The subsequent Windows guard validates every release ZIP record and its full
+namespace before comparison and before release-version or patch-artifact
+extraction. Reserved names, ambiguous aliases, file ancestors and special file
+types are rejected even when they are not native payloads. The focused Windows
+suites passed 121 tests; the expanded combined archive gate passed 686 tests.
+These are macOS-hosted CLI checks, including mocked pre-extraction boundaries,
+not Windows filesystem execution or exact NTFS normalization. See the
+[namespace validation record](validation/windows-namespace-guard-20261101.json).
+
 Linux and Android archive guards now classify native payloads from their actual
 contents and canonical paths, compare decompressed SHA-256 hashes, and reject
 ambiguous ZIP entries. Their focused suites passed 228 and 87 tests respectively.

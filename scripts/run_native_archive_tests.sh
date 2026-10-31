@@ -16,6 +16,7 @@ tests=(
   test/src/patch_diff_checker_test.dart
   test/src/android_native_patch_diff_test.dart
   test/src/commands/patch/patch_command_test.dart
+  test/src/commands/patch/windows_patcher_test.dart
   test/src/commands/patch/apple_patcher_mixin_test.dart
 )
 if [[ "$(uname -s)" == Darwin ]]; then

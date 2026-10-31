@@ -1767,7 +1767,7 @@ archive_runner = read_repo_file(repo_root, 'scripts/run_native_archive_tests.sh'
   windows_archive_differ_test.dart apple_archive_security_test.dart
   full_replacement_archive_differ_test.dart macho_test.dart
   patch_diff_checker_test.dart android_native_patch_diff_test.dart
-  patch_command_test.dart apple_patcher_mixin_test.dart
+  patch_command_test.dart windows_patcher_test.dart apple_patcher_mixin_test.dart
   apple_archive_differ_test.dart ios_patcher_test.dart macos_patcher_test.dart
 ].each do |suite|
   assert!(archive_runner.include?(suite), "CLI archive gate must include #{suite}")

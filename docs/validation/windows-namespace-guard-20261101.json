@@ -1,0 +1,40 @@
+{
+  "date": "2026-11-01",
+  "cli_commit": "bda7e25627f5c3f66817581a02f80f6b163d7fa2",
+  "change": "Validate all Windows release ZIP records and namespace before native classification and before both patcher extraction entry points.",
+  "rejection_coverage": [
+    "unsafe Windows paths and reserved device stems",
+    "case and separator aliases, including conservative Unicode uppercase aliases",
+    "file/directory collisions and file ancestors",
+    "local/central filename disagreements",
+    "symlinks, special and reparse attributes, inconsistent directory records"
+  ],
+  "compatibility": [
+    "native decompressed SHA-256 and Dart/assets CRC policies retained",
+    "original hash path keys retained",
+    "ordinary ZIP directory records, implicit parents, Windows separators and Unicode asset names accepted",
+    "native mapping classification uses the same conservative case identity"
+  ],
+  "validation": {
+    "focused_windows_tests": 121,
+    "combined_archive_gate_tests": 686,
+    "fatal_info_analysis": "passed for four changed Dart files",
+    "format": "passed",
+    "workflow": "210 shell blocks and artifact contract passed",
+    "independent_review": "no remaining blockers",
+    "pre_extraction_tests": "Mock extractor must not run for a rejected asset path; a valid archive reaches it in both version discovery and patch creation."
+  },
+  "limitations": [
+    "Tests ran on macOS, not a Windows filesystem.",
+    "Unicode uppercase matching is conservative, not exact NTFS normalization.",
+    "Nonnative payload bytes retain declared CRC policy; this is namespace and record validation.",
+    "Generic supplementary-archive extraction is outside this scoped change.",
+    "No extraction security demonstration or native device runtime test was performed.",
+    "Hosted CI at the new source revision remains pending."
+  ],
+  "logs_sha256": {
+    "workflow.log": "2ced7fa3331563ace81d4e3d51fdff15676baaf55477f23ffeefffebb82d0ea7",
+    "focused-tests.log": "77ce804a38cfcc426b0bf9c3c8e70f65bb8063d32ba00ce11378b11432c6d1f8",
+    "archive-gate.log": "49d2b7fda7463e0c1cc8f928be6ec9bbba2359ca3774898152f4ee37f48a8814"
+  }
+}
