@@ -172,6 +172,8 @@ jobs:
           python3 -m py_compile dart-sdk/tools/test_aot_full_replacement_ffi.py
           python3 -m py_compile testapps/license_flavor_patch_test/tool/ios_device_e2e.py
           python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p test_ios_device_e2e.py -v
+          python3 -m py_compile testapps/license_flavor_patch_test/tool/windows_native_cache_e2e.py
+          python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p test_windows_native_cache_e2e.py -v
           python3 -m py_compile scripts/package_android_maven.py
           python3 scripts/verify_android_maven.py
           python3 -m py_compile scripts/write_release_manifest.py
@@ -2716,7 +2718,7 @@ jobs:
           $results = Join-Path $env:GITHUB_WORKSPACE 'artifacts/windows-native-cache-tests'
           New-Item -ItemType Directory -Force $results | Out-Null
           Remove-Item -Force -ErrorAction SilentlyContinue "$results/*.log", "$results/*.xml", "$results/shorebird-list.txt"
-          ninja -C out/windows_release_x64 flutter/build/archives:windows_flutter flutter/tools/font_subset:font_subset flutter/shell/common/shorebird:shorebird_unittests flutter/shell/platform/embedder:embedder_unittests flutter/shell/platform/windows:flutter_windows_unittests 2>&1 | Tee-Object -FilePath "$results/build.log"
+          ninja -C out/windows_release_x64 flutter/build/archives:windows_flutter flutter/tools/font_subset:font_subset flutter/shell/common/shorebird:shorebird_unittests flutter/shell/platform/embedder:embedder_unittests flutter/shell/platform/windows:flutter_windows_unittests flutter/build/dart:dart_sdk flutter/flutter_frontend_server:frontend_server flutter/tools/const_finder:const_finder flutter/sky/packages/sky_engine:sky_engine flutter/shell/platform/windows:windows flutter/build/archives:flutter_patched_sdk flutter/impeller/compiler:impellerc 2>&1 | Tee-Object -FilePath "$results/build.log"
           if ($LASTEXITCODE) { throw 'Windows engine and native cache test build failed' }
 
       - name: Verify Windows engine args
@@ -2792,6 +2794,89 @@ jobs:
         with:
           name: windows-native-cache-engine-tests
           path: artifacts/windows-native-cache-tests/
+          if-no-files-found: error
+
+      - name: Set up Go for Windows lifecycle
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: shorebird-server/go.sum
+
+      - name: Prepare Windows encrypted lifecycle tools
+        shell: pwsh
+        run: |
+          $out = Join-Path $env:GITHUB_WORKSPACE 'flutter/engine/src/out/windows_release_x64'
+          Expand-Archive -LiteralPath "$out/zip_archives/flutter_patched_sdk_product.zip" -DestinationPath $out -Force
+          # Flutter's local snapshotter lookup searches the output root.
+          Copy-Item "$out/gen_snapshot/gen_snapshot.exe" "$out/gen_snapshot.exe" -Force
+          $cache = Join-Path $env:GITHUB_WORKSPACE 'flutter/bin/cache'
+          New-Item -ItemType Directory -Force $cache | Out-Null
+          if (Test-Path "$cache/dart-sdk") { Remove-Item -Recurse -Force "$cache/dart-sdk" }
+          Copy-Item "$out/dart-sdk" "$cache/dart-sdk" -Recurse
+          $env:PUB_CACHE = Join-Path $env:RUNNER_TEMP 'shorebird-lifecycle-pub'
+          "PUB_CACHE=$env:PUB_CACHE" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+          foreach ($project in @('shorebird', 'flutter/packages/flutter_tools')) {
+            Push-Location (Join-Path $env:GITHUB_WORKSPACE $project)
+            try {
+              & "$out/dart-sdk/bin/dart.exe" pub get
+              if ($LASTEXITCODE) { throw "Lifecycle dependency resolution failed: $project" }
+            } finally { Pop-Location }
+          }
+          Push-Location updater
+          try {
+            cargo build --release --locked -p patch --bin patch
+            if ($LASTEXITCODE) { throw 'Windows public patch tool build failed' }
+          } finally { Pop-Location }
+
+      - name: Run Windows DPAPI provider contract
+        shell: pwsh
+        run: |
+          $fixture = (Resolve-Path testapps/license_flavor_patch_test/tool/windows_native).Path
+          $public = (Resolve-Path flutter/engine/src/out/windows_release_x64).Path
+          $build = Join-Path $env:RUNNER_TEMP ("shorebird-native-probe-" + [guid]::NewGuid())
+          $results = Join-Path $env:GITHUB_WORKSPACE 'artifacts/windows-native-provider-tests'
+          New-Item -ItemType Directory $build | Out-Null
+          New-Item -ItemType Directory -Force $results | Out-Null
+          Push-Location $build
+          try {
+            cl /nologo /std:c++17 /EHsc /W4 /WX /utf-8 /I"$public" "$fixture/native_cache_contract_test.cpp" /Fe:native_cache_contract_test.exe /link winhttp.lib crypt32.lib bcrypt.lib 2>&1 | Tee-Object "$results/build.log"
+            if ($LASTEXITCODE) { throw 'Native provider probe compilation failed' }
+            & ./native_cache_contract_test.exe 2>&1 | Tee-Object "$results/test.log"
+            if ($LASTEXITCODE) { throw 'Native provider probe failed' }
+          } finally {
+            Pop-Location
+            Remove-Item -Recurse -Force $build
+          }
+
+      - name: Run Windows encrypted native lifecycle
+        shell: pwsh
+        timeout-minutes: 75
+        run: |
+          $engine = Join-Path $env:GITHUB_WORKSPACE 'flutter/engine/src'
+          $out = Join-Path $engine 'out/windows_release_x64'
+          $work = Join-Path $env:RUNNER_TEMP ("shorebird-native-e2e-" + [guid]::NewGuid())
+          $results = Join-Path $env:GITHUB_WORKSPACE 'artifacts/windows-native-cache-e2e'
+          python3 testapps/license_flavor_patch_test/tool/windows_native_cache_e2e.py run --execute --engine-src $engine --host-engine windows_release_x64 --target-engine windows_release_x64 --tooling-dart "$out/dart-sdk/bin/dart.exe" --patch-tool "$env:GITHUB_WORKSPACE/updater/target/release/patch.exe" --pub-cache $env:PUB_CACHE --work $work --results $results
+          if ($LASTEXITCODE) { throw 'Windows encrypted native lifecycle failed' }
+          $report = Get-Content "$results/results.json" -Raw | ConvertFrom-Json
+          if ($report.schema -ne 'windows-native-cache-e2e-v1' -or $report.result -ne 'passed' -or $report.cleanup -ne 'owned processes, ports, disposable app cache, private session removed') {
+            throw 'Windows lifecycle did not produce a passing cleaned execution report'
+          }
+
+      - name: Upload Windows native provider test evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-native-provider-tests
+          path: artifacts/windows-native-provider-tests/
+          if-no-files-found: error
+
+      - name: Upload Windows encrypted lifecycle evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-native-cache-e2e
+          path: artifacts/windows-native-cache-e2e/results.json
           if-no-files-found: error
 
       - name: Package Windows engine artifacts

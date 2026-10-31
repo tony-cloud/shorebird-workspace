@@ -221,6 +221,11 @@ required_files = %w[
   scripts/verify_dart_tool_sdk_validator.sh
   scripts/verify_dart_sdk_tooling.py
   scripts/verify_native_cache_engine_tests.py
+  testapps/license_flavor_patch_test/tool/windows_native_cache_e2e.py
+  testapps/license_flavor_patch_test/tool/test_windows_native_cache_e2e.py
+  testapps/license_flavor_patch_test/tool/windows_native/runner_patch_key_provider.h
+  testapps/license_flavor_patch_test/tool/windows_native/runner_patch_key_provider.cpp
+  testapps/license_flavor_patch_test/tool/windows_native/native_cache_contract_test.cpp
   scripts/verify_dart_sdk_args.sh
   scripts/verify_engine_args.sh
   scripts/verify_hosted_full_sdk_build.sh
@@ -1923,10 +1928,10 @@ required_uploads.each do |job_name, expected_names|
 end
 
 native_test_evidence_uploads = {
-  'linux-engine' => 'linux-native-cache-engine-tests',
-  'windows-engine' => 'windows-native-cache-engine-tests',
-  'custom-dart-sdk' => 'linux-elf-memory-loader-tests',
-  'custom-dart-sdk-windows' => 'windows-elf-memory-loader-tests',
+  'linux-engine' => ['linux-native-cache-engine-tests'],
+  'windows-engine' => %w[windows-native-cache-engine-tests windows-native-provider-tests windows-native-cache-e2e],
+  'custom-dart-sdk' => ['linux-elf-memory-loader-tests'],
+  'custom-dart-sdk-windows' => ['windows-elf-memory-loader-tests'],
 }
 jobs.each do |job_name, job|
   job.fetch('steps', []).each do |step|
@@ -1938,7 +1943,7 @@ jobs.each do |job_name, job|
     )
     # Raw native-test logs/XML are retained on failures; this narrowly named
     # diagnostic artifact is not one of the checksummed release packages.
-    next if native_test_evidence_uploads.key?(job_name) && native_test_evidence_uploads[job_name] == step.dig('with', 'name')
+    next if native_test_evidence_uploads.fetch(job_name, []).include?(step.dig('with', 'name'))
 
     assert!(
       step.dig('with', 'path').to_s.include?('.sha256'),
@@ -2330,6 +2335,46 @@ assert!(native_cache_validator.include?('choices=("linux", "windows"), default="
   assert!(build_run.include?('Remove-Item -Force -ErrorAction SilentlyContinue "$results/*.log", "$results/*.xml", "$results/shorebird-list.txt"'), 'Windows native build must discard previous-run execution evidence')
 end
 assert!(run_text_by_job.fetch('source-checks').include?('python3 -m py_compile scripts/verify_native_cache_engine_tests.py') && run_text_by_job.fetch('source-checks').include?('python3 scripts/verify_native_cache_engine_tests.py --self-test'), 'Source checks must syntax-check and exercise platform-specific XML acceptance and rejection fixtures')
+
+# The real Windows application must exercise delivery, offline boot and recovery;
+# component tests alone do not establish the encrypted lifecycle contract.
+windows_steps = jobs.fetch('windows-engine').fetch('steps')
+windows_gate_names = [
+  'Build Windows engine',
+  'Run Windows prepared native cache engine tests',
+  'Run Windows updater tests',
+  'Prepare Windows encrypted lifecycle tools',
+  'Run Windows DPAPI provider contract',
+  'Run Windows encrypted native lifecycle',
+  'Upload Windows native provider test evidence',
+  'Upload Windows encrypted lifecycle evidence',
+  'Package Windows engine artifacts',
+]
+windows_gate_indices = windows_gate_names.map { |name| windows_steps.index { |step| step['name'] == name } }
+assert!(windows_gate_indices.none?(&:nil?) && windows_gate_indices == windows_gate_indices.sort, 'Windows full lifecycle and evidence must precede packaging after component validation')
+windows_gate_names.reject { |name| name.start_with?('Upload ') }.each do |name|
+  step = windows_steps.find { |item| item['name'] == name }
+  assert!(step['if'].nil? && !step['continue-on-error'], "Required Windows lifecycle gate cannot skip or tolerate failure: #{name}")
+end
+windows_lifecycle_build = windows_steps.find { |step| step['name'] == 'Build Windows engine' }.fetch('run')
+%w[flutter/build/dart:dart_sdk flutter/flutter_frontend_server:frontend_server flutter/tools/const_finder:const_finder flutter/sky/packages/sky_engine:sky_engine flutter/shell/platform/windows:windows flutter/build/archives:flutter_patched_sdk flutter/impeller/compiler:impellerc].each do |target|
+  assert!(windows_lifecycle_build.include?(target), "Windows lifecycle must build complete local tooling: #{target}")
+end
+windows_prepare = windows_steps.find { |step| step['name'] == 'Prepare Windows encrypted lifecycle tools' }.fetch('run')
+assert!(windows_prepare.include?('flutter_patched_sdk_product.zip') && windows_prepare.include?('Copy-Item "$out/gen_snapshot/gen_snapshot.exe" "$out/gen_snapshot.exe"') && windows_prepare.include?('Copy-Item "$out/dart-sdk" "$cache/dart-sdk" -Recurse') && windows_prepare.include?('& "$out/dart-sdk/bin/dart.exe" pub get') && windows_prepare.include?('cargo build --release --locked -p patch --bin patch'), 'Windows lifecycle must stage actual built SDK/snapshotter/platforms and resolve the real CLI dependencies')
+windows_probe = windows_steps.find { |step| step['name'] == 'Run Windows DPAPI provider contract' }.fetch('run')
+assert!(windows_probe.include?('(Resolve-Path flutter/engine/src/out/windows_release_x64).Path') && windows_probe.include?('native_cache_contract_test.cpp') && windows_probe.include?('/W4 /WX /utf-8') && windows_probe.include?('/link winhttp.lib crypt32.lib bcrypt.lib') && windows_probe.include?('& ./native_cache_contract_test.exe') && windows_probe.include?("if ($LASTEXITCODE) { throw 'Native provider probe failed' }"), 'Windows must compile and execute the real DPAPI provider probe')
+windows_lifecycle = windows_steps.find { |step| step['name'] == 'Run Windows encrypted native lifecycle' }
+windows_lifecycle_run = windows_lifecycle.fetch('run')
+assert!(windows_lifecycle['shell'] == 'pwsh' && windows_lifecycle['timeout-minutes'] == 75 && windows_lifecycle_run.include?('windows_native_cache_e2e.py run --execute') && windows_lifecycle_run.include?('--host-engine windows_release_x64 --target-engine windows_release_x64') && windows_lifecycle_run.include?('--pub-cache $env:PUB_CACHE --work $work --results $results') && windows_lifecycle_run.include?("if ($LASTEXITCODE) { throw 'Windows encrypted native lifecycle failed' }") && windows_lifecycle_run.include?("$report.result -ne 'passed'") && windows_lifecycle_run.include?("$report.cleanup -ne 'owned processes, ports, disposable app cache, private session removed'"), 'Windows full lifecycle must use the real built engine and require successful execution and cleanup')
+{
+  'Upload Windows native provider test evidence' => ['windows-native-provider-tests', 'artifacts/windows-native-provider-tests/'],
+  'Upload Windows encrypted lifecycle evidence' => ['windows-native-cache-e2e', 'artifacts/windows-native-cache-e2e/results.json'],
+}.each do |name, (artifact, path)|
+  step = windows_steps.find { |item| item['name'] == name }
+  assert!(step['if'].to_s.include?('always()') && step['uses'] == 'actions/upload-artifact@v4' && step.dig('with', 'name') == artifact && step.dig('with', 'path') == path && step.dig('with', 'if-no-files-found') == 'error', "#{name} must retain only its designated evidence even on failure")
+end
+assert!(run_text_by_job.fetch('source-checks').include?('python3 -m py_compile testapps/license_flavor_patch_test/tool/windows_native_cache_e2e.py') && run_text_by_job.fetch('source-checks').include?('-p test_windows_native_cache_e2e.py -v'), 'Source checks must execute Windows lifecycle protocol and ownership controls')
 
 # These standalone SDK tests exercise the actual loader, native page protection,
 # resource cleanup, and (on Windows) an isolated no-opt-out ACG refusal process.

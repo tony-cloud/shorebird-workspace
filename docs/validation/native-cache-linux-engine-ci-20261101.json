@@ -1,0 +1,25 @@
+{
+  "run_id": 41237899850,
+  "run_url": "https://github.com/tony-cloud/shorebird-workspace/actions/runs/41237899850",
+  "job_id": 124646485198,
+  "job_url": "https://github.com/tony-cloud/shorebird-workspace/actions/runs/41237899850/job/124646485198",
+  "job_conclusion": "success",
+  "root_commit": "e0ef8e04a71cbfce87c21bd36809c8f0b8917a27",
+  "flutter_commit": "41865d0ebfc6bb3814f2e796ceafb141993d4e6e",
+  "sdk_commit": "bdc30207c93e422dfd56d4260fa84c522cbf95b1",
+  "updater_commit": "ea85ce31bd9ce57ac7518d0a8035a0e78518cd87",
+  "shorebird_tests": 87,
+  "aot_embedder_controls": 4,
+  "failures": 0,
+  "skips": 0,
+  "revalidated_with_run_commit_validator": true,
+  "proof": "Linux release engine build, complete Shorebird unit inventory, actual ELF descriptor ownership and two-engine execution, existing AOT path controls",
+  "limitation": "The FD fixture in this checkpoint uses a regular file descriptor. It does not execute a sealed memfd or prove the entire encrypted updater-to-engine offline lifecycle. Windows memory source changes are not in this run.",
+  "evidence_sha256": {
+    "shorebird.xml": "2caa78cd0a30a585b72eb515c0b52f19953809c061d86b044ae0574a31f5de6e",
+    "embedder.xml": "27a0a7ee7f48bf62cfd3c0a16e1fbadc61b1626eab9f718167c86d20de672aa6",
+    "shorebird-list.txt": "e0697bf7340053e761ead31ce196a7c24b659f546c852c3ad9a333ea65293a9c",
+    "validation.log": "95868ce7f8bca33fc4c5a16f3e8baaf01fd7c27520e152d4104392e6ff182434",
+    "local-revalidation.log": "95868ce7f8bca33fc4c5a16f3e8baaf01fd7c27520e152d4104392e6ff182434"
+  }
+}

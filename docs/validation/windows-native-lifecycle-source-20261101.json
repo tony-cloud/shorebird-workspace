@@ -1,0 +1,38 @@
+{
+  "scope": "Source-level Windows native encrypted lifecycle fixture and CI integration; not Windows runtime acceptance",
+  "source_commits": {
+    "dart-sdk": "fdc857ef4018ceddc9155a01036fcb3960062d95",
+    "flutter": "b7ec2aa0b2dbb2792292d1a215a2b96ee9f13f3e",
+    "updater": "bb4224303d18baaacd1c2316e24336813517142d",
+    "shorebird": "a3c49b869e070480824a105399e3c05dbd4e64ef",
+    "shorebird-server": "8cc3148fdcb489b20faa0a544d7a6690b6536da9"
+  },
+  "local_validation": {
+    "python_helper_tests": 27,
+    "workflow_bash_blocks": 205,
+    "workflow_artifact_contract": "passed",
+    "powershell_syntax": "passed",
+    "independent_reviews": "Provider and Python reviewed; ownership cleanup race and CI header path fixed"
+  },
+  "runtime_validation": {
+    "windows_provider_probe": "unrun",
+    "windows_cli_server_runner_lifecycle": "unrun",
+    "new_linux_sealed_descriptor_fixture": "unrun",
+    "ios_full_ffi_device": "pending unlocked device"
+  },
+  "limitations": [
+    "Final-files cache scan is not a transient plaintext-write audit.",
+    "Test-only loopback key provisioning is not a production key service.",
+    "Current Actions run 41237899850 uses earlier source and does not validate these new changes."
+  ],
+  "sha256": {
+    ".github/workflows/open-shorebird-ci.yml": "6da016094d0674ec71637bd1fca58a082204d019f9b88fc20c1b349351a1e097",
+    "scripts/verify_ci_workflow.rb": "b3d908c657fe5aac90e499426d8a383ea6d3645829455e5efd8ebd5bf2a60e6c",
+    "testapps/license_flavor_patch_test/tool/windows_native_cache_e2e.py": "6cb509a2d365d74925f4a33d9e3d439c05405df113548ce87c3483154b6193cb",
+    "testapps/license_flavor_patch_test/tool/test_windows_native_cache_e2e.py": "83648865e4aba22ea4160d97db8ae8b63dd00f711be0017ea3a1c2a8c4a26073",
+    "testapps/license_flavor_patch_test/tool/windows_native/README.md": "2ae3966e4840c3c87d5ac314a8f223cd7015d8969d739d39ab6abf2e62f4e422",
+    "testapps/license_flavor_patch_test/tool/windows_native/native_cache_contract_test.cpp": "a5f2d3a829b8041b2a7450edcab0c43405bfa860266df00054b2c00f9de75018",
+    "testapps/license_flavor_patch_test/tool/windows_native/runner_patch_key_provider.cpp": "f5df78dd16c927508b7864ee4f39884cdfea867525b9c24069011fb711a7984e",
+    "testapps/license_flavor_patch_test/tool/windows_native/runner_patch_key_provider.h": "356017f0598c60de2c2cd8c36736f4a96940ad42073b4d57364fd2d99ffaec71"
+  }
+}

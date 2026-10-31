@@ -127,9 +127,13 @@ memory or compressed download size.
 November 1 local validation passed 333 updater workspace tests, 15 Flutter
 configuration tests, 59 CLI configuration tests, 87 Shorebird engine tests and
 three AOT embedder controls. The iOS framework and snapshot build also passed.
-Actual Linux descriptor loading and Android linker/device execution remain
-required; the macOS host tests do not establish those paths. The next Linux CI
-checkpoint includes the descriptor-loading control. See the
+Linux CI subsequently passed all 87 Shorebird tests and four AOT embedder
+controls, including descriptor ownership and execution across two engines.
+That fixture used a regular file descriptor; it does not establish sealed
+anonymous descriptor execution or the complete encrypted offline lifecycle.
+A strengthened sealed-descriptor fixture and Android linker/device execution
+remain required. See the [Linux CI evidence](validation/native-cache-linux-engine-ci-20261101.json)
+and the earlier
 [native cache validation record](validation/encrypted-native-cache-host-20261101.json).
 
 The subsequent Windows memory-source changes pass 341 updater tests and strict
@@ -143,6 +147,23 @@ after engine recreation, exact executed test inventories, and a separate
 process with executable-memory protection enabled. Those CI results and a
 complete encrypted offline Windows app lifecycle remain pending. See the
 [memory-source validation record](validation/verified-native-memory-host-20261101.json).
+
+The Windows CLI now compares decompressed EXE/DLL bytes with SHA-256 and
+rejects ambiguous or malformed native ZIP entries before patch creation.
+Its 179 focused tests passed locally, including Dart-only changes and rejection
+before artifact creation/upload. Reproducible Windows native builds still need
+execution on the Windows runner.
+
+The new Windows lifecycle fixture uses real CLI release/patch commands, the Go
+server's signed encrypted delivery, a test-only DPAPI key provider, and the
+released Runner. It checks post-frame rendering and the running patch number,
+offline cold boot, missing/wrong-key recovery and signed rollback. Its 27 Python
+helper tests pass locally; the native provider probe and full Windows lifecycle
+are required CI gates and have not yet executed. Only sanitized results are
+uploaded. The cache scan covers final files, not transient writes; it is not a
+complete plaintext-write audit. See the
+[fixture instructions](../testapps/license_flavor_patch_test/tool/windows_native/README.md)
+and [source validation record](validation/windows-native-lifecycle-source-20261101.json).
 
 Runtime-created listener and group-bound callbacks also pass the native ARM64
 PRODUCT host suite, including nested transitions, static-field isolation,
