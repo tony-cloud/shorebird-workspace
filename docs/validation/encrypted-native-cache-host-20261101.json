@@ -1,0 +1,36 @@
+{
+  "date": "2026-11-01",
+  "scope": "Encrypted native cache source integration, local updater and macOS engine tests, and iOS compile/link validation",
+  "sdk_commit": "a2095cb46492fe96c2bdee4ccdd9488c29ebe74c",
+  "flutter_source_commit": "2269400dcaefeddbda0e88724d78245049a6cab7",
+  "flutter_identity_commit": "c9e70e2fc639e56d57429ee8aeac1d7be9287ee4",
+  "updater_commit": "ea85ce31bd9ce57ac7518d0a8035a0e78518cd87",
+  "engine_artifact_identity": "1f63125767352479a8fbca078b8ca880e240e98a",
+  "local_tests_ran_before_commits": true,
+  "cli_commit": "40ce949eb1b2dc5473e178c05362a0167db52f78",
+  "local_build_provenance": "Native tests/builds preceded these commits; SDK runtime/compiler verification identified 29bb778e31 with verification enabled and snapshot format 59bdb68d057696db407fc3fda7fb552a. Source fingerprints and artifact hashes are retained under .agents/native-cache-engine-20261101. The new artifact identity denotes subsequent CI inputs, not these local binaries.",
+  "passed": {
+    "updater_workspace_tests": 333,
+    "updater_strict_clippy": "workspace/all-targets and aarch64 Apple iOS",
+    "generated_headers": "C11/C++17 layout/signature and production exports",
+    "flutter_policy_tests": 15,
+    "cli_policy_tests": 59,
+    "host_shorebird_tests": 87,
+    "host_aot_embedder_tests": 3,
+    "host_test_skips": 0,
+    "ios_framework_and_snapshot_build": "1039 actions completed; all five prepared-source API symbols defined"
+  },
+  "behavior": [
+    "Active Linux/Android native mode keeps authenticated encrypted transport on disk and reconstructs a bounded verified image into an anonymous sealed descriptor.",
+    "Prepared source ownership, begin/abort tokens and process selection prevent mixing a running patch with a later base fallback.",
+    "Required migration removes legacy installed plaintext before publishing usable configuration; key/resource failures remain distinguishable from invalid patch content.",
+    "The trusted release setting native_patch_max_bytes passes through CLI and Flutter compilation; default capable-engine budget is 512 MiB."
+  ],
+  "limits": [
+    "Actual Linux sealed-FD engine execution and Android linker/device execution are pending; macOS tests do not substitute for them.",
+    "Windows/macOS encrypted native-cache backends are not activated.",
+    "iOS result is a framework/snapshot build, not a new signed-device update test.",
+    "Full-profile FFI admission remains closed.",
+    "The current hosted Windows SDK run compiled successfully but failed CRLF golden comparisons; the scoped LF checkout fix still needs a fresh Windows CI run."
+  ]
+}

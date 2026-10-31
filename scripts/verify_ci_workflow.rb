@@ -220,6 +220,7 @@ required_files = %w[
   scripts/verify_dart_tool_sdk.sh
   scripts/verify_dart_tool_sdk_validator.sh
   scripts/verify_dart_sdk_tooling.py
+  scripts/verify_native_cache_engine_tests.py
   scripts/verify_dart_sdk_args.sh
   scripts/verify_engine_args.sh
   scripts/verify_hosted_full_sdk_build.sh
@@ -1929,6 +1930,10 @@ jobs.each do |job_name, job|
       step.dig('with', 'if-no-files-found') == 'error',
       "#{job_name} upload #{step.dig('with', 'name')} must fail on missing files"
     )
+    # Raw native-test logs/XML are retained on failures; this narrowly named
+    # diagnostic artifact is not one of the checksummed release packages.
+    next if job_name == 'linux-engine' && step.dig('with', 'name') == 'linux-native-cache-engine-tests'
+
     assert!(
       step.dig('with', 'path').to_s.include?('.sha256'),
       "#{job_name} upload #{step.dig('with', 'name')} must include a checksum sidecar"
@@ -2252,6 +2257,37 @@ assert!(
     run_text_by_job.fetch('linux-engine').include?('mirror/shorebird/flutter_infra_release/flutter/${engine_revision}/flutter_patched_sdk_product.zip'),
   'Linux engine job must build and verify the native AOT patch runtime and package GTK/patched SDK artifacts'
 )
+# Native cache coverage is release/AOT execution on Linux, not a host syntax
+# build or a zero/skipped-test gtest success. The XML gate also checks the full
+# dynamically listed Shorebird inventory, so partial/sharded runs fail closed.
+linux_native_steps = jobs.fetch('linux-engine').fetch('steps')
+linux_native_build = linux_native_steps.index { |step| step['name'] == 'Build Linux engine' }
+linux_native_test = linux_native_steps.index { |step| step['name'] == 'Run Linux prepared native cache engine tests' }
+linux_native_package = linux_native_steps.index { |step| step['name'] == 'Package Linux engine artifacts' }
+assert!(linux_native_build && linux_native_test && linux_native_package && linux_native_build < linux_native_test && linux_native_test < linux_native_package, 'Linux native cache engine controls must run after build and before artifact packaging')
+linux_native_configure = linux_native_steps.find { |step| step['name'] == 'Configure Linux engine' }.fetch('run')
+linux_native_build_run = linux_native_steps.fetch(linux_native_build).fetch('run')
+linux_native_test_step = linux_native_steps.fetch(linux_native_test)
+linux_native_test_run = linux_native_test_step.fetch('run')
+assert!(linux_native_configure.include?('--runtime-mode=release') && linux_native_configure.include?('--enable-unittests') && run_text_by_job.fetch('linux-engine').include?('enable_unittests=true'), 'Linux release engine must explicitly enable and verify unittest targets')
+%w[flutter/shell/common/shorebird:shorebird_unittests flutter/shell/platform/embedder:embedder_unittests].each do |target|
+  assert!(linux_native_build_run.include?(target), "Linux engine must build #{target}")
+end
+assert!(linux_native_test_step['working-directory'] == 'flutter/engine/src' && linux_native_test_run.include?('export LD_LIBRARY_PATH="$out') && linux_native_test_run.include?('export FLUTTER_BUILD_DIRECTORY="$out"') && linux_native_test_run.include?('test -s "$out/gen/flutter/shell/platform/embedder/assets/app_elf_snapshot.so"'), 'Linux native engine tests must use the engine source cwd, built libraries and generated real AOT fixture')
+assert!(linux_native_test_run.include?(%q{"$out/shorebird_unittests" --gtest_filter='*' --gtest_list_tests}) && linux_native_test_run.include?(%q{"$out/shorebird_unittests" --gtest_filter='*' --gtest_repeat=1}) && linux_native_test_run.include?('--gtest_output="xml:$results/shorebird.xml"') && linux_native_test_run.include?('--gtest_output="xml:$results/embedder.xml"'), 'Linux engine controls must execute the full Shorebird inventory and emit fresh gtest XML from both binaries')
+assert!(linux_native_test_run.include?('rm -f "$results/shorebird.xml" "$results/embedder.xml" "$results/shorebird-list.txt"'), 'Linux native engine controls must remove stale execution evidence before running')
+native_cache_validator = read_repo_file(repo_root, 'scripts/verify_native_cache_engine_tests.py')
+embedder_native_tests = %w[PreparedFDOwnershipAndImageSurviveMultipleEngines InvalidAOTDataSourcesMustReturnError CanCreateAndCollectAValidElfSource CanLaunchAndShutdownWithAValidElfSource]
+embedder_test_source = read_repo_file(repo_root, 'flutter/engine/src/flutter/shell/platform/embedder/tests/embedder_unittests.cc')
+embedder_native_tests.each do |test|
+  assert!(linux_native_test_run.include?("EmbedderTest.#{test}") && native_cache_validator.include?("EmbedderTest.#{test}"), "Linux gtest filter and strict validator must require EmbedderTest.#{test}")
+  assert!(embedder_test_source.match?(/TEST_F\s*\(\s*EmbedderTest\s*,\s*#{Regexp.escape(test)}\s*\)/), "Selected real AOT native control must exist in engine source: #{test}")
+end
+assert!(linux_native_test_run.include?('python3 "$GITHUB_WORKSPACE/scripts/verify_native_cache_engine_tests.py"') && %w[--shorebird-list --shorebird-xml --embedder-xml].all? { |arg| linux_native_test_run.include?(arg) }, 'Linux engine must validate exact executed test inventories, counts, failures and skips')
+native_evidence = linux_native_steps.find { |step| step['name'] == 'Upload Linux native cache engine test evidence' }
+assert!(native_evidence && native_evidence['if'].to_s.include?('always()') && native_evidence['uses'] == 'actions/upload-artifact@v4' && native_evidence.dig('with', 'path') == 'artifacts/linux-native-cache-tests/', 'Linux native engine logs and XML must be preserved even on test/build failure')
+assert!(run_text_by_job.fetch('source-checks').include?('python3 -m py_compile scripts/verify_native_cache_engine_tests.py') && run_text_by_job.fetch('source-checks').include?('python3 scripts/verify_native_cache_engine_tests.py --self-test'), 'Source checks must syntax-check and exercise native engine XML acceptance and rejection fixtures')
+
 assert!(
   run_text_by_job.fetch('android-engine').include?('verify_engine_args.sh') &&
     run_text_by_job.fetch('android-engine').include?('verify_dart_tool_sdk.sh') &&

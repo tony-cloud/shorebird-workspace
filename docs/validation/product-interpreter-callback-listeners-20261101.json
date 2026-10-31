@@ -1,0 +1,34 @@
+{
+  "date": "2026-11-01",
+  "scope": "Local native macOS ARM64 PRODUCT listener and isolate-group-bound callbacks, shared transition repair, and static-field access checks",
+  "tested_sdk_base": "29bb778e31bc1385051de3d7fb484ef779294d1b",
+  "provenance": "Tests ran before commit on the exact subsequently committed callback sources. Runtime and kernel verification hashes were both 29bb778e31. The final SDK commit additionally fixes Windows golden-file checkout line endings. This record does not claim a post-commit local rebuild, new device result, or successful Windows rerun.",
+  "passed_checks": [
+    "Matching SDK, PRODUCT runtime, callback and call-out harness build; six fresh offline SDK tooling checks",
+    "All eight independent compiled/interpreted nested transition children, including empty source threads, exact caller restoration, VM tags, API scopes, GC and mutator counts",
+    "Compiled and interpreted listeners: deferred delivery, Zone/error behavior, VarArgs, foreign pthreads, copied aggregate and Handle arguments, GC, close and shutdown lifecycle",
+    "Compiled and interpreted group-bound callbacks: same/cross-group transitions, closure immutability, exception fallbacks and lifecycle checks",
+    "Non-shared direct static load/store and implicit getter/setter reject access without an isolate; interpreted zero-local bytecode paths are inspected explicitly",
+    "Rejected lazy initialization has zero native side effects; ordinary owning-isolate access initializes once and continues to work",
+    "Flag-enabled shared-field access in compiled and interpreted callbacks, using a native initializer to prevent constant folding and requiring no reinitialization during the callback",
+    "Original scalar, capture, aggregate, Handle, guard-page, pool, ownership and termination callback coverage",
+    "PRODUCT FFI call-outs, six compiled callback metadata tests, PRODUCT full and structural replacement regressions, actual interpreter/JIT call-outs and strict undefined-symbol link checks",
+    "Host-executed Linux ARM, ARM64, RISC-V64 and x64 snapshot generation with emitted trampoline bounds checked"
+  ],
+  "fixed_failures": [
+    "Nested callbacks lost the original native VM tag or used the wrong thread when suspending and resuming isolate-group mutators",
+    "Four interpreter static-access error paths could overwrite the saved caller frame when the function had no locals",
+    "Compiled non-shared field checks depended on the shared-data experimental flag despite the group-bound callback contract",
+    "Test harness configured VM flags twice and queried a handler flag through the boolean-only flag API; normal one-call flag initialization and a read-only handler-state assertion fix the fixture"
+  ],
+  "limits": [
+    "Full-replacement profile FFI admission remains closed and requires separate end-to-end validation",
+    "No new callback-enabled iOS framework or physical-device execution is covered by this record",
+    "Cross-target snapshot generation is not Linux, Android, Windows, IA32 or RISC-V execution evidence",
+    "Deterministic allocation-failure injection and transient instruction/permission-write auditing were not performed",
+    "Encrypted native-cache integration and its platform-specific loading tests are separate work"
+  ],
+  "dart_sdk_commit": "a2095cb46492fe96c2bdee4ccdd9488c29ebe74c",
+  "callback_implementation_commit": "1a3b24b15976e2e7ec5b0b5106d905381f4f5a70",
+  "dart_sdk_tree": "a1d7ce9882561058a335d9bc60d10ec4c57cfd53"
+}

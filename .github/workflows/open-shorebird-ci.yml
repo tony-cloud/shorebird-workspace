@@ -159,6 +159,8 @@ jobs:
           python3 -m py_compile scripts/safe_extract_tar.py
           python3 -m py_compile scripts/write_artifact_manifest.py
           python3 -m py_compile scripts/verify_dart_sdk_tooling.py
+          python3 -m py_compile scripts/verify_native_cache_engine_tests.py
+          python3 scripts/verify_native_cache_engine_tests.py --self-test
           python3 -m py_compile dart-sdk/tools/test_aot_structural_patch.py
           python3 -m py_compile dart-sdk/tools/test_aot_full_replacement.py
           python3 -m py_compile dart-sdk/tools/test_aot_no_tfa_startup.py
@@ -1320,27 +1322,71 @@ jobs:
           ./flutter/tools/gn \
             --runtime-mode=release \
             --target-dir=linux_release_x64 \
+            --enable-unittests \
             --no-prebuilt-dart-sdk \
             --gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=false shorebird_enable_aot_patching=true shorebird_use_interpreter=false flutter_prebuilt_dart_sdk=false'
 
       - name: Build Linux engine
         working-directory: flutter/engine/src
         run: |
+          set -euo pipefail
+          results="$GITHUB_WORKSPACE/artifacts/linux-native-cache-tests"
+          mkdir -p "$results"
           ninja -C out/linux_release_x64 \
             flutter/shell/platform/linux:flutter_gtk \
             flutter/build/archives:flutter_patched_sdk \
-            flutter/tools/font_subset:font_subset
+            flutter/tools/font_subset:font_subset \
+            flutter/shell/common/shorebird:shorebird_unittests \
+            flutter/shell/platform/embedder:embedder_unittests \
+            2>&1 | tee "$results/build.log"
 
       - name: Verify Linux engine args
         run: |
           ./scripts/verify_engine_args.sh \
             flutter/engine/src/out/linux_release_x64/args.gn \
+            enable_unittests=true \
             dart_dynamic_modules=false \
             dart_enable_aot_patching=true \
             dart_enable_shorebird_interpreter=false \
             shorebird_enable_aot_patching=true \
             shorebird_use_interpreter=false \
             flutter_prebuilt_dart_sdk=false
+
+      - name: Run Linux prepared native cache engine tests
+        working-directory: flutter/engine/src
+        run: |
+          set -euo pipefail
+          out="$PWD/out/linux_release_x64"
+          results="$GITHUB_WORKSPACE/artifacts/linux-native-cache-tests"
+          mkdir -p "$results"
+          # Match the upstream engine runner's working directory and libraries.
+          # Selected embedder controls use the software renderer, without X/GPU.
+          export LD_LIBRARY_PATH="$out${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          export FLUTTER_BUILD_DIRECTORY="$out"
+          test -x "$out/shorebird_unittests"
+          test -x "$out/embedder_unittests"
+          test -s "$out/gen/flutter/shell/platform/embedder/assets/app_elf_snapshot.so"
+          # Reused provisioned runners must not satisfy this run with stale XML.
+          rm -f "$results/shorebird.xml" "$results/embedder.xml" "$results/shorebird-list.txt"
+          "$out/shorebird_unittests" --gtest_filter='*' --gtest_list_tests \
+            > "$results/shorebird-list.txt" 2> "$results/shorebird-list.stderr.log"
+          "$out/shorebird_unittests" --gtest_filter='*' --gtest_repeat=1 \
+            --gtest_output="xml:$results/shorebird.xml" 2>&1 | tee "$results/shorebird.log"
+          embedder_filter='EmbedderTest.PreparedFDOwnershipAndImageSurviveMultipleEngines:EmbedderTest.InvalidAOTDataSourcesMustReturnError:EmbedderTest.CanCreateAndCollectAValidElfSource:EmbedderTest.CanLaunchAndShutdownWithAValidElfSource'
+          "$out/embedder_unittests" --gtest_filter="$embedder_filter" --gtest_repeat=1 \
+            --gtest_output="xml:$results/embedder.xml" 2>&1 | tee "$results/embedder.log"
+          python3 "$GITHUB_WORKSPACE/scripts/verify_native_cache_engine_tests.py" \
+            --shorebird-list "$results/shorebird-list.txt" \
+            --shorebird-xml "$results/shorebird.xml" \
+            --embedder-xml "$results/embedder.xml" 2>&1 | tee "$results/validation.log"
+
+      - name: Upload Linux native cache engine test evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-native-cache-engine-tests
+          path: artifacts/linux-native-cache-tests/
+          if-no-files-found: error
 
       - name: Package Linux engine artifacts
         run: |

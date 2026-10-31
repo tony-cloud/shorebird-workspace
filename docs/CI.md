@@ -450,6 +450,12 @@ uploads `linux-x64-flutter-gtk.zip`, `flutter_patched_sdk_product.zip`,
 a manifest with the Flutter engine revision, and a `.sha256` sidecar. CI
 extracts the archive before upload and verifies the GTK zip, patched SDK zip,
 artifacts zip, args file, manifest, and mirror subtree.
+The release build also enables unit tests and runs the complete Shorebird suite
+plus four AOT embedder controls, including descriptor ownership and image reuse
+across engines. A strict inventory/XML check rejects missing, skipped, partial,
+or failed tests before packaging. The separate
+`linux-native-cache-engine-tests` artifact retains build logs, test logs and XML
+even when a test fails; it is diagnostic evidence, not a release package.
 
 `android-engine` builds `android_release_arm64` on Ubuntu with
 `dart_dynamic_modules=false`, `dart_enable_aot_patching=true`,

@@ -103,8 +103,36 @@ server response metadata. A real Go-produced encrypted native patch reconstructs
 the exact target binary in Rust; wrong-key rejection, retry, and strict boot
 identity are tested. Applications must provision derived device keys through
 their authenticated service. No secret is derived from a public device ID.
-The installed native executable cache remains plaintext; this delivery layer is
-distinct from the encrypted iOS interpreter artifact.
+The new Linux/Android native cache mode retains encrypted transport on disk and
+reconstructs a verified image into a sealed anonymous descriptor. It requires
+the app-owned key provider to be registered before engine initialization,
+strict patch verification, required authenticated responses, and the release
+public key. Activating this mode retires legacy plaintext cache entries before
+publishing usable configuration. Other platforms and legacy callers retain
+their existing cache behavior; this is separate from the encrypted iOS
+interpreter artifact.
+
+The expanded native image budget defaults to 512 MiB on capable native engines.
+An application can set `native_patch_max_bytes` in its source `shorebird.yaml`
+before building a release. CLI and Flutter compilation require a positive
+integer no greater than 9223372036854775807; quoted numbers, fractional values,
+null and zero are rejected. The compiled release setting controls the budget;
+an update cannot raise it. It bounds expanded image bytes, not total process
+memory or compressed download size.
+
+November 1 local validation passed 333 updater workspace tests, 15 Flutter
+configuration tests, 59 CLI configuration tests, 87 Shorebird engine tests and
+three AOT embedder controls. The iOS framework and snapshot build also passed.
+Actual Linux descriptor loading and Android linker/device execution remain
+required; the macOS host tests do not establish those paths. The next Linux CI
+checkpoint includes the descriptor-loading control. See the
+[native cache validation record](validation/encrypted-native-cache-host-20261101.json).
+
+Runtime-created listener and group-bound callbacks also pass the native ARM64
+PRODUCT host suite, including nested transitions, static-field isolation,
+shared-field access, GC and cleanup. Full-profile FFI admission remains closed;
+standalone callback coverage is not full-app or device acceptance. See the
+[callback validation record](validation/product-interpreter-callback-listeners-20261101.json).
 
 ## Prerequisites
 
