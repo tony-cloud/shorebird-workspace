@@ -164,6 +164,14 @@ absent. Generated App images remain Dart payloads for structural updates.
 These overlapping suites establish CLI behavior, not device/runtime acceptance;
 see the [archive guard record](validation/native-archive-guards-20261101.json).
 
+CLI artifact jobs also require the focused native archive suites before
+compilation and packaging. They retain test logs as diagnostic artifacts outside
+the release-mirror download patterns. The macOS jobs exercise real signing and
+versioned-framework archives; Windows skips the Unix permission/symlink writer
+fixture. These gates do not substitute for native runtime or device tests. The combined
+local gate passed 573 tests, including the native-mapping and no-publication
+regressions; see the [mapping validation record](validation/native-assets-manifest-guard-20261101.json).
+
 The new Windows lifecycle fixture uses real CLI release/patch commands, the Go
 server's signed encrypted delivery, a test-only DPAPI key provider, and the
 released Runner. It checks post-frame rendering and the running patch number,

@@ -221,6 +221,7 @@ required_files = %w[
   scripts/verify_dart_tool_sdk_validator.sh
   scripts/verify_dart_sdk_tooling.py
   scripts/verify_native_cache_engine_tests.py
+  scripts/run_native_archive_tests.sh
   testapps/license_flavor_patch_test/tool/windows_native_cache_e2e.py
   testapps/license_flavor_patch_test/tool/test_windows_native_cache_e2e.py
   testapps/license_flavor_patch_test/tool/windows_native/runner_patch_key_provider.h
@@ -1741,6 +1742,62 @@ end
 end
 
 cli_matrix = matrix_include(jobs.fetch('cli-artifacts'))
+cli_steps = jobs.fetch('cli-artifacts').fetch('steps')
+archive_test_index = cli_steps.index { |step| step['name'] == 'Test native archive guards' }
+archive_evidence_index = cli_steps.index { |step| step['name'] == 'Upload native archive test evidence' }
+cli_compile_index = cli_steps.index { |step| step['name'] == 'Compile Shorebird CLI and open patch tools' }
+assert!(
+  [archive_test_index, archive_evidence_index, cli_compile_index].all? &&
+    archive_test_index < archive_evidence_index && archive_evidence_index < cli_compile_index,
+  'CLI native archive tests and evidence must precede artifact compilation and packaging'
+)
+archive_gate = cli_steps.fetch(archive_test_index)
+assert!(
+  archive_gate['run'] == './scripts/run_native_archive_tests.sh' &&
+    !archive_gate.key?('if') && !archive_gate['continue-on-error'],
+  'Every CLI matrix member must require the archive regression gate'
+)
+archive_runner = read_repo_file(repo_root, 'scripts/run_native_archive_tests.sh')
+%w[
+  android_archive_differ_test.dart linux_bundle_differ_test.dart
+  windows_archive_differ_test.dart apple_archive_security_test.dart
+  full_replacement_archive_differ_test.dart macho_test.dart
+  patch_diff_checker_test.dart android_native_patch_diff_test.dart
+  patch_command_test.dart apple_patcher_mixin_test.dart
+  apple_archive_differ_test.dart ios_patcher_test.dart macos_patcher_test.dart
+].each do |suite|
+  assert!(archive_runner.include?(suite), "CLI archive gate must include #{suite}")
+end
+assert!(
+  archive_runner.include?('set -euo pipefail') &&
+    archive_runner.include?('"$DART_BIN" test --reporter expanded "${tests[@]}"') &&
+    archive_runner.include?('"$(uname -s)" == Darwin') &&
+    archive_runner.include?('tee "$RESULTS/tests.log"'),
+  'CLI archive gate must execute the selected portable/macOS suites and preserve failures'
+)
+archive_upload = cli_steps.fetch(archive_evidence_index)
+assert!(
+  archive_upload['if'] == 'always()' &&
+    archive_upload['uses'] == 'actions/upload-artifact@v4' &&
+    archive_upload.dig('with', 'name') == 'native-archive-tests-${{ matrix.artifact_os }}-${{ matrix.artifact_arch }}' &&
+    archive_upload.dig('with', 'path') == 'artifacts/cli-native-archive-tests/tests.log',
+  'CLI archive evidence must retain the exact test log on success or failure'
+)
+assert!(
+  !cli_steps.fetch(cli_compile_index).key?('if') &&
+    !cli_steps.fetch(cli_compile_index)['continue-on-error'],
+  'CLI packaging must retain default success gating after archive tests'
+)
+jobs.fetch('artifact-mirror').fetch('steps').each do |step|
+  next unless step['uses'].to_s.start_with?('actions/download-artifact@')
+
+  pattern = step.dig('with', 'pattern')
+  next unless pattern
+
+  matrix_texts(archive_upload.dig('with', 'name'), jobs.fetch('cli-artifacts')).each do |name|
+    assert!(!File.fnmatch(pattern, name), 'CLI diagnostic evidence must not match release artifact download patterns')
+  end
+end
 expected_cli_targets = [
   ['ubuntu-latest', 'linux', 'x64', 'patch-linux-x64.zip', 'patch'],
   ['macos-15-intel', 'macos', 'x64', 'patch-darwin-x64.zip', 'patch'],
@@ -1928,6 +1985,7 @@ required_uploads.each do |job_name, expected_names|
 end
 
 native_test_evidence_uploads = {
+  'cli-artifacts' => ['native-archive-tests-${{ matrix.artifact_os }}-${{ matrix.artifact_arch }}'],
   'linux-engine' => ['linux-native-cache-engine-tests'],
   'windows-engine' => %w[windows-native-cache-engine-tests windows-native-provider-tests windows-native-cache-e2e],
   'custom-dart-sdk' => ['linux-elf-memory-loader-tests'],

@@ -1,0 +1,45 @@
+{
+  "date": "2026-11-01",
+  "cli_commit": "1ef985106ef5e4366e050e3a6ffcd887f803029a",
+  "scope": "Standard bundled native asset lookup manifests on Apple, Android, Linux and Windows",
+  "behavior": [
+    "Root NativeAssetsManifest.json is native, excluded from ordinary assets, and compared using decompressed SHA-256.",
+    "Mapping changed, added or removed cannot bypass native confirmation through --allow-asset-diffs.",
+    "Explicit native override still reports hasNativeChanges.",
+    "Unchanged mappings permit canonical Dart payload and structural generated App/base changes.",
+    "Nested ordinary assets sharing the manifest filename keep ordinary asset behavior."
+  ],
+  "local_validation": {
+    "apple_focused_tests": 113,
+    "android_desktop_focused_tests": 234,
+    "combined_ci_runner_tests": 573,
+    "counts_overlap": true,
+    "host": "macOS ARM64",
+    "analysis": "Fatal-info checks passed for the nine changed component source/test files",
+    "format_and_diff": "Passed",
+    "workflow_run_blocks_checked": 206,
+    "shell_failure_probe": "Isolated test-command exit 37 propagated through tee and preserved its log"
+  },
+  "ci_gate": {
+    "script": "scripts/run_native_archive_tests.sh",
+    "platforms": [
+      "Linux x64",
+      "macOS x64",
+      "macOS arm64",
+      "Windows x64"
+    ],
+    "before": "CLI compilation and packaging",
+    "diagnostic_artifact": "native-archive-tests-<os>-<arch>",
+    "limitations": [
+      "Real codesign and ditto checks run only on macOS.",
+      "Unix permission/symlink writer fixture is skipped on Windows.",
+      "This new gate has local execution proof; hosted execution is pending."
+    ]
+  },
+  "limitations": [
+    "Custom legacy mappings embedded solely in Kernel via --native-assets still need recorded compiler-derived provenance.",
+    "No physical iOS FFI or new Windows runtime success is claimed.",
+    "Existing native override is an explicit acknowledgement, not proof of native equivalence."
+  ],
+  "combined_test_log_sha256": "af3042cdb286cb459a09f924ce3554aa3efc164d113ca34d4dd19cba6da47c46"
+}

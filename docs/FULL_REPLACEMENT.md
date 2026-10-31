@@ -78,6 +78,15 @@ validates and normalizes only the generated baseline asset and its YAML hash;
 native/plugin/application asset changes remain visible. Only the original-bound
 update wrapper is encrypted and published.
 
+The standard bundled `flutter_assets/NativeAssetsManifest.json` is a frozen
+native input. Adding, removing or changing it requires native-change
+confirmation even when ordinary asset differences are allowed. Its exact bytes
+are compared; a same-named nested user asset remains an ordinary asset. This
+does not yet establish equivalence for legacy mappings embedded only in Kernel
+through a custom `--native-assets` frontend option. Recording the effective
+embedded mapping remains a separate compatibility gap; the generated App image
+cannot simply be frozen because structural Dart updates legitimately change it.
+
 ## Runtime and fallback
 
 Installation occurs after frozen SDK bootstrap and before `MakeRunnable` or any
