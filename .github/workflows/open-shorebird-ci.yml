@@ -166,6 +166,7 @@ jobs:
           python3 -m py_compile dart-sdk/tools/test_aot_host_resolvers.py
           python3 -m py_compile dart-sdk/tools/test_interpreter_ffi_calls.py
           python3 -m py_compile dart-sdk/tools/test_aot_product_ffi.py
+          python3 -m py_compile dart-sdk/tools/test_aot_product_ffi_callbacks.py
           python3 -m py_compile scripts/package_android_maven.py
           python3 scripts/verify_android_maven.py
           python3 -m py_compile scripts/write_release_manifest.py
@@ -801,7 +802,7 @@ jobs:
       - name: Build patched Dart SDK
         working-directory: dart-sdk
         run: |
-          ninja -C xcodebuild/ReleaseARM64 create_sdk runtime gen_snapshot dartaotruntime dart_engine_aot_shared dart gen_snapshot_product dartaotruntime_product vm_platform_product dart_engine_aot_shared_product dartvm product_metadata_test product_ffi_test run_ffi_unit_tests
+          ninja -C xcodebuild/ReleaseARM64 create_sdk runtime gen_snapshot dartaotruntime dart_engine_aot_shared dart gen_snapshot_product dartaotruntime_product vm_platform_product dart_engine_aot_shared_product dartvm product_metadata_test product_ffi_test product_ffi_callback_test run_ffi_unit_tests
 
       - name: Run shared FFI ABI golden tests
         working-directory: dart-sdk
@@ -844,6 +845,9 @@ jobs:
 
       - name: Run PRODUCT interpreter native-call regression
         run: python3 dart-sdk/tools/test_aot_product_ffi.py --build-dir dart-sdk/xcodebuild/ReleaseARM64
+
+      - name: Run PRODUCT interpreter callback regression
+        run: python3 dart-sdk/tools/test_aot_product_ffi_callbacks.py --build-dir dart-sdk/xcodebuild/ReleaseARM64
 
       - name: Package Dart SDK artifact
         run: |

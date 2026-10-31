@@ -175,6 +175,43 @@ identities. A forged carrier is rejected by the native snapshot compiler.
 These checks establish host call-outs and asset ownership, not callback support,
 full-profile FFI execution or physical-device FFI validation.
 
+The separate macOS ARM64 PRODUCT callback harness now passes static
+`Pointer.fromFunction` and capturing `NativeCallable.isolateLocal` callbacks
+created from newly loaded bytecode. It covers scalar/pointer/primitive-varargs
+signatures, GC, nested calls, self-close, callback-page growth and reuse,
+registration rejection cleanup, and entry without a current Dart thread.
+Descriptors retain live roots without adding compiled callback code. Signed
+trampoline aliases match the released bytes and have the expected permissions
+at inspection checkpoints. Compiled callback controls remain separate from the
+interpreted cases. Two child-isolate termination tests verify native epilogues,
+embedding unwind errors and absence of further Dart execution.
+
+The call-out harness also verifies 300 native scope probes and 300 restoration
+checkpoints with an embedding API scope, then repeats them without one. The
+existing bytecode call instruction already owns the required per-call scope;
+the additional coverage verifies success, throws, returned errors, propagation,
+nested calls and Handle varargs. The runtime change propagates callback-induced
+isolate termination after the native epilogue.
+
+```sh
+python3 dart-sdk/tools/test_aot_product_ffi_callbacks.py \
+  --build-dir dart-sdk/xcodebuild/ReleaseARM64
+```
+
+Interpreted Handle/aggregate callback conversion, listener/group-bound callbacks,
+full-profile FFI admission and physical-device FFI execution remain outstanding.
+The host checks do not audit transient memory permissions or instruction writes.
+The [callback validation record](validation/product-interpreter-callbacks-20261031.json)
+identifies the tested SDK tree and the remaining gates.
+
+The earlier call-out SDK (`e8f281db2fca`) also passed local host
+SDK/snapshot-tool builds and an iOS framework build. That build does not cover
+the subsequent callback changes. The installed iOS 27 SDK required selecting Xcode's Apple
+linker in the generated local link rule because the bundled LLD could not parse
+its TAPI architecture tag. The [engine build record](validation/product-interpreter-engine-20261031.json)
+records this workaround, source revisions, artifact hashes and the limited scope
+of the engine-argument route check; it is not an iOS FFI execution result.
+
 ## Validation and remaining work
 
 Run the host acceptance with matching SDK artifacts:
@@ -197,7 +234,11 @@ Tear-off access is normally rejected before installation, so that path does not
 claim a captured retired closure was executed by the test.
 
 CI runs this profile's host harness on Linux x64 and macOS ARM64/x64 before SDK
-packaging. A configured check is not evidence of a successful hosted run.
+packaging. The iPad-tested milestone `c738750` passed all 30 configured build and
+validation jobs, including artifact-mirror assembly. The
+[CI record](validation/github-actions-full-build-20261031.json) lists every passed
+job and the four intentional skips. That run does not cover subsequent PRODUCT
+FFI changes.
 
 The Flutter/CLI plumbing has focused unit coverage for profile propagation,
 bundling, update-or-base selection, retained base configuration on retry, aligned
@@ -225,8 +266,9 @@ persisted by the local server.
 Recovery took 1.507 seconds from the process-relaunch command to the validated
 HTTP report. Three subsequent launches took 1.463, 1.110 and 1.114 seconds. These
 include device-control and network overhead; they are not VM startup, frame-time
-or RSS benchmarks. The tested code was the local integration working tree;
-hosted builds of the final pinned revisions remain a separate gate.
+or RSS benchmarks. The [physical test record](validation/full-replacement-ios-20261031.json)
+identifies the tested integration sources. Later FFI changes require separate
+hosted and physical validation.
 
 Remaining acceptance includes plugin FFI, broader plugin/application coverage,
 and launch/RSS/frame benchmarks. This work does not establish complete

@@ -1,0 +1,58 @@
+{
+  "date": "2026-10-31",
+  "scope": "All configured platform builds and CI tests for the iPad-tested full-replacement milestone; subsequent PRODUCT FFI changes are not covered.",
+  "repository_commit": "c738750a0330f792333921013186559b46bc4dd6",
+  "workflow_url": "https://github.com/tony-cloud/shorebird-workspace/actions/runs/41190700290",
+  "conclusion": "success",
+  "successful_job_count": 30,
+  "successful_jobs": [
+    "Source checks",
+    "Build custom Dart SDK",
+    "Build custom Dart SDK (macOS x64)",
+    "Build Android engine artifacts (arm, armv7-linux-androideabi, armeabi_v7a_release.jar, armeabi_v7...",
+    "Build custom Dart SDK (macOS arm64)",
+    "Build custom Dart SDK (Windows x64)",
+    "Build CLI artifacts (macos-14, macos, arm64, patch-darwin-arm64.zip, patch)",
+    "Build CLI artifacts (macos-15-intel, macos, x64, patch-darwin-x64.zip, patch)",
+    "Build server artifacts (linux, amd64)",
+    "Build Windows engine artifacts",
+    "Build server artifacts (darwin, arm64)",
+    "Build server artifacts (darwin, amd64)",
+    "Build macOS engine artifacts (arm64, macos-15, aarch64-apple-darwin)",
+    "Build macOS engine artifacts (x64, macos-15-intel, x86_64-apple-darwin)",
+    "Build iOS engine artifacts",
+    "Build Android engine artifacts (x64, x86_64-linux-android, x86_64_release.jar, x86_64_release)",
+    "Build Linux engine artifacts",
+    "Build server artifacts (windows, amd64, .exe)",
+    "Build CLI artifacts (windows-latest, windows, x64, .exe, patch-windows-x64.zip, patch.exe)",
+    "Build Android host snapshotters (arm64, windows-x64)",
+    "Build Android host snapshotters (x64, windows-x64)",
+    "Build Android host snapshotters (x64, darwin-x64)",
+    "Build Android host snapshotters (arm, windows-x64)",
+    "Build server artifacts (linux, arm64)",
+    "Build CLI artifacts (ubuntu-latest, linux, x64, patch-linux-x64.zip, patch)",
+    "Build Android host snapshotters (arm64, darwin-x64)",
+    "Build Android host snapshotters (arm, darwin-x64)",
+    "Build Android engine artifacts (arm64, aarch64-linux-android, arm64_v8a_release.jar, arm64_v8a_re...",
+    "Assemble universal macOS engine",
+    "Assemble publishable artifact mirror"
+  ],
+  "skipped_jobs": {
+    "Linux runtime patch smoke": "Optional runtime smoke was not requested for this run.",
+    "Android runtime patch smoke": "Optional runtime smoke was not requested for this run.",
+    "Build web SDK artifact": "Web is not a supported Shorebird patch platform; opt-in artifact build was not requested.",
+    "Publish tested Dart SDK release": "Publishing runs only on the default branch; this run used the topic branch."
+  },
+  "artifact_mirror_assembly": "passed",
+  "local_downloaded_artifact_verification": {
+    "manifest_checksum_and_commit": "passed",
+    "constituent_file_hash_size_and_sidecar_checks": "passed",
+    "verified_constituent_file_count": 41,
+    "mirror_download_and_full_extraction_verification": "pending; resumable transfer running after network timeouts"
+  },
+  "default_branch_release_published": false,
+  "limits": [
+    "Build and configured CI evidence does not establish runtime correctness on every platform.",
+    "Optional Linux and Android runtime smoke tests did not run."
+  ]
+}

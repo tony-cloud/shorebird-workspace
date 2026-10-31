@@ -1,0 +1,49 @@
+{
+  "date": "2026-10-31",
+  "scope": "Local iOS framework and host SDK/snapshot-tool compile, link and engine-argument verification",
+  "repository_commit": "c180f78f61f7325cc2a0139193a066c7863edeca",
+  "dart_sdk_commit": "e8f281db2fcaedfff57d652aa2ea830c64ab541a",
+  "dart_sdk_tree": "0ca0b7802c19e68b77b50038211987e301022d1c",
+  "flutter_commit": "2211113cc8c56cf30fde4da7baae2ebd5bc72b67",
+  "engine_artifact_identity": "cefcb915cbb87e980e09b172ac4688eaec36b294",
+  "source_changes_during_validation": false,
+  "host_targets": [
+    "gen_snapshot",
+    "flutter/third_party/dart:create_sdk",
+    "flutter/lib/snapshot:generate_snapshot_bins"
+  ],
+  "host_build": "passed",
+  "ios_targets": [
+    "flutter/shell/platform/darwin/ios:flutter_framework",
+    "flutter/lib/snapshot:generate_snapshot_bins"
+  ],
+  "ios_default_link": "failed: bundled ld64.lld could not parse SDK 27 TAPI architecture arm64e.x1-ios",
+  "ios_local_link_workaround": {
+    "result": "passed",
+    "linker": "Installed Xcode Apple ld 27037.1 / TAPI 21",
+    "change": "Generated ios_release/toolchain.ninja solink command only: select installed Apple ld via -fuse-ld. GN regeneration resets this local override.",
+    "production_source_changed": false
+  },
+  "ios_platform": "arm64 iOS, deployment target 15.0",
+  "ios_linked_symbols_verified": [
+    "DRT_FfiCall",
+    "DRT_ResolveNativeFunction",
+    "FfiCallTrampoline"
+  ],
+  "artifact_sha256": {
+    "ios_flutter_framework": "9586e0a6ac6aa0a741f8a49cd4dc602e7c95498bb6d0518a00d719aa974c0d8e",
+    "host_gen_snapshot": "b3138980ceef76d191afbc76738fa9d295ddbeda756153e55b3bee7864a4092c"
+  },
+  "additional_passed_checks": [
+    "Engine argument route verification: Shorebird interpreter enabled, dynamic modules disabled",
+    "Fresh host SDK Dart version/help and AOT dart2bytecode help",
+    "Both final target graphs report no pending work"
+  ],
+  "limits": [
+    "No iOS application or device FFI execution is covered.",
+    "Route verification inspected engine arguments; no app, IPA or patch was supplied.",
+    "The successful local iOS framework required the documented linker workaround.",
+    "Host targets did not include a macOS Flutter framework or flutter_tester.",
+    "New interpreted callback changes and full-profile FFI admission are not covered."
+  ]
+}

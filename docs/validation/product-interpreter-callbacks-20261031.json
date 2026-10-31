@@ -1,0 +1,42 @@
+{
+  "date": "2026-10-31",
+  "scope": "Local macOS ARM64 PRODUCT synchronous interpreted callbacks and call-out scope regression coverage",
+  "dart_sdk_commit": "272be3d1bccb508f6c72e9d4bf2eb55ace011169",
+  "dart_sdk_tree": "84809d02916033d38a8974c280489c16a898acc1",
+  "flutter_source_commit": "f37d61bf46a61b2b5934cacca25976fe8de187bb",
+  "flutter_identity_commit": "6eae5a8a982b103abcd16d8861f660b8ccfb4c6e",
+  "engine_artifact_identity": "73a880abc07199db6cbdac128e0a157bae470798",
+  "provenance": "Tests ran on the frozen working tree before commit. The committed SDK tree exactly matches the tested tree. The Flutter pins identify future engine build inputs; this record does not claim a callback-enabled Flutter framework build.",
+  "passed_checks": [
+    "Complete SDK and affected PRODUCT runtime/test targets build; fresh offline SDK tooling checks",
+    "Runtime-created static Pointer.fromFunction and capturing NativeCallable.isolateLocal callbacks from a new bytecode library with an application-FFI-free released baseline",
+    "Scalar, pointer, primitive VarArgs, ABI-specific integer, register/stack overflow callback cases and exceptional returns",
+    "GC, nested callbacks, self-close, two callback-page growth cycles, close/reuse and exact live-root restoration",
+    "Registration rejection cleanup and callback entry with no current Dart thread",
+    "Signed source/alias byte equality and RX/RW memory-permission checkpoints",
+    "Separate compiled static/capture/Handle/aggregate/listener/group-bound callback controls",
+    "Two child-isolate termination cases: native epilogues complete, API unwind errors observed, forbidden Dart continuation absent",
+    "300 native scope probes and 300 restoration checkpoints with an embedding scope, repeated without an embedding scope; success, throws, returned errors, propagation, nesting and Handle varargs",
+    "Six focused FfiCallbackMetadata unit tests, including recycling and multithreaded allocation/deletion",
+    "Regenerated PRODUCT metadata, host resolver, full replacement and structural replacement regressions",
+    "Actual non-AOT interpreter call-outs with ordinary JIT control",
+    "Strict PRODUCT linking with undefined symbols forbidden and all seven ABI/call-plan/callback symbols retained",
+    "Independent source review with no remaining blockers"
+  ],
+  "scope_assessment_correction": "The bytecode FfiCall instruction already owns a per-call API scope before establishing its exit frame. An initially proposed redundant runtime scope was removed. The new tests validate the existing lifetime contract; the production change handles callback-induced isolate termination after the native epilogue.",
+  "host_entitlements": {
+    "disable_library_validation": true,
+    "allow_jit": false,
+    "allow_unsigned_executable_memory": false,
+    "get_task_allow": false
+  },
+  "limits": [
+    "Interpreted Handle and aggregate callback conversion remains rejected.",
+    "Interpreted listener and group-bound callbacks remain rejected.",
+    "Full-profile FFI admission remains closed.",
+    "No iOS callback-enabled framework or physical-device FFI execution is covered.",
+    "Memory-permission and byte checkpoints do not audit transient permission changes or instruction writes.",
+    "The shared ABI golden suite was not rerun in this phase; the previous 774-case pass belongs to the earlier call-out checkpoint.",
+    "Hosted CI validation for this callback commit remains pending."
+  ]
+}
