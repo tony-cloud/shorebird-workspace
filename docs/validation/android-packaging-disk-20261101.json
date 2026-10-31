@@ -1,0 +1,26 @@
+{
+  "date": "2026-11-01",
+  "failed_run": 41248813370,
+  "failed_job": 124678865407,
+  "job_url": "https://github.com/tony-cloud/shorebird-workspace/actions/runs/41248813370/job/124678865407",
+  "failure": "Engine build passed; tar/gzip packaging failed with No space left on device and runner reported 0 MB free.",
+  "fix": [
+    "Finish staging archives, native tools, Maven products and manifest.",
+    "Reclaim only the allowlisted completed Android build output directory.",
+    "Create the same regular-file tar package, then remove staging before extracting it for verification.",
+    "Retain all native export, header, snapshotter, mirror-path and checksum checks."
+  ],
+  "validation": {
+    "exit_code": 0,
+    "build_tree_reclaimed": true,
+    "staging_reclaimed": true,
+    "unrelated_file_preserved": true,
+    "archive_checksum_verified": true,
+    "archive_types": "regular files and directories only",
+    "safe_extractor_accepted": true,
+    "scope": "Actual workflow packaging shell with tiny fixture ZIP/JAR products and stub readelf/snapshotter; not an Android native build or measured full-size disk-space proof."
+  },
+  "fixture_log_sha256": "857408085253a16221bc6cf5557687797ee186181844972a19f64cdf13b64508",
+  "review": "Independent source review found no remaining packaging consumers of reclaimed paths.",
+  "hosted_status": "Full-size hosted rerun pending; other jobs from the current run were left running."
+}

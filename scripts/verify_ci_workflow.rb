@@ -2644,6 +2644,13 @@ expected_maven_overrides = %w[flutter_embedding_release arm64_v8a_release armeab
 end
 assert!(maven_overrides.sort == expected_maven_overrides.sort, 'Maven overrides must include every supported Android JAR/POM/metadata and SHA-1 route')
 assert!(run_text_by_job.fetch('android-engine').include?('flutter/shell/platform/android:android_jar') && run_text_by_job.fetch('android-engine').include?('scripts/package_android_maven.py') && run_text_by_job.fetch('android-engine').include?('--include-embedding'), 'Android jobs must package real built ABI/embedding JARs through the public Flutter POM generator')
+android_package = jobs.fetch('android-engine').fetch('steps').find { |step| step['name'] == 'Package Android engine artifacts' }.fetch('run')
+reclaim = android_package.index('rm -rf -- "$out"')
+archive = android_package.index('tar -C artifacts -czf android-engine-')
+release_staging = android_package.index('rm -rf -- artifacts/android-engine')
+extract = android_package.index('tar -C "$engine_extract_dir" -xzf')
+assert!([reclaim, archive, release_staging, extract].all? && android_package.index('python3 scripts/package_android_maven.py') < reclaim && android_package.index('cat > artifacts/android-engine/manifest.json') < reclaim && reclaim < archive && archive < release_staging && release_staging < extract, 'Android packaging must finish staging before reclaiming build output, then release staging before archive verification')
+assert!(android_package.include?('flutter/engine/src/out/android_release_arm|flutter/engine/src/out/android_release_arm64|flutter/engine/src/out/android_release_x64)') && !android_package[(reclaim + 'rm -rf -- "$out"'.length)..].match?(/\$(?:out\b|\{out\})/), 'Android cleanup must be bounded to known build paths and no later step may consume them')
 assert!(run_text_by_job.fetch('source-checks').include?('python3 scripts/verify_android_maven.py'), 'source checks must exercise Maven POM generation and hashes')
 assert!(run_text_by_job.fetch('server-artifacts').include?('./scripts/run_server_client_smoke.sh') && step_uses(jobs.fetch('server-artifacts'), 'dart-lang/setup-dart@v1'), 'Linux server CI must run the real Dart client smoke')
 assert!(artifact_mirror_run_text.include?('cp -al downloaded-artifacts/. "$manifest_input/"'), 'release assembly must hard-link downloaded assets rather than duplicate all platform archives')

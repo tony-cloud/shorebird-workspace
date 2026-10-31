@@ -226,6 +226,13 @@ macOS:
 - Xcode command line tools
 - Full Xcode for iOS simulator/device follow-up
 
+Android packaging now reclaims completed build output after staging all products,
+and releases staging before verifying the produced tarball. This addresses a
+runner disk exhaustion after a successful arm64 engine build without removing
+native export or archive checks. A small packaging fixture passed locally; the
+full-size hosted rerun is pending. See the
+[disk failure and validation record](validation/android-packaging-disk-20261101.json).
+
 Android runtime validation:
 
 - Android SDK platform tools (`adb`)

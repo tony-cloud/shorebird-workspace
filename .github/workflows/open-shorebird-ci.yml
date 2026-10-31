@@ -1892,7 +1892,18 @@ jobs:
             ]
           }
           EOF
+          # All products are staged, including Maven JARs and host tools. The
+          # completed build tree otherwise competes with tar and verification
+          # copies for the runner's remaining disk space.
+          case "$out" in
+            flutter/engine/src/out/android_release_arm|flutter/engine/src/out/android_release_arm64|flutter/engine/src/out/android_release_x64) ;;
+            *) echo "refusing to reclaim unexpected Android build path: $out" >&2; exit 64 ;;
+          esac
+          rm -rf -- "$out"
           tar -C artifacts -czf android-engine-${{ matrix.arch }}.tar.gz android-engine
+          # Verification below uses only the produced archive, so release the
+          # staging copy before extracting another copy of the same products.
+          rm -rf -- artifacts/android-engine
           engine_extract_dir="$(mktemp -d)"
           tar -C "$engine_extract_dir" -xzf android-engine-${{ matrix.arch }}.tar.gz
           test -f "$engine_extract_dir/android-engine/manifest.json"
@@ -1926,6 +1937,7 @@ jobs:
               if archive.read("shorebird_patch_encryption.h") != expected:
                   raise SystemExit("Android archive lost the canonical patch encryption header")
           PYHEADER
+          rm -rf -- "$engine_extract_dir"
           ./scripts/write_sha256.sh android-engine-${{ matrix.arch }}.tar.gz android-engine-${{ matrix.arch }}.tar.gz.sha256
 
       - name: Upload Android engine artifact
