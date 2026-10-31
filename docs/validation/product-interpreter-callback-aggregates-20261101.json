@@ -1,0 +1,41 @@
+{
+  "date": "2026-11-01",
+  "scope": "Local macOS ARM64 PRODUCT interpreted Handle and aggregate callbacks plus regression coverage",
+  "dart_sdk_commit": "29bb778e31bc1385051de3d7fb484ef779294d1b",
+  "dart_sdk_tree": "5e694c8026f40d45b8c76f48488067162f95239f",
+  "flutter_source_commit": "535424ebe306a30fac34a87bdb1a969649de4984",
+  "flutter_identity_commit": "54f52a2161743365fe0912efa76b3eb049088d66",
+  "engine_artifact_identity": "8eeaa2bdbca464f50085500d8e7390531c6aef30",
+  "provenance": "Tests ran before commit on the exact committed SDK tree. Matching runtime/compiler verification hashes were 89dd2a0ebd during execution. Flutter pins identify subsequent engine build inputs; this record does not claim a new Flutter framework or device run.",
+  "passed_checks": [
+    "Matching SDK/runtime/harness build and fresh offline SDK tooling checks",
+    "Original static/capturing scalar/pointer/primitive-varargs callbacks, GC, nesting, self-close, page growth/reuse, owned-isolate entry and compiled controls",
+    "Struct/Union, float/double HFA, indirect, packed, nested, inline-array and compound-varargs callbacks",
+    "Exact guard-page and sentinel boundaries for packed tails and indirect results; separate and aliased x8 buffers require target input-read confirmation before failure zeroing",
+    "By-value native-input copy survives source unmapping; pointer fields preserve native aliases; managed views, nonzero offsets and overlapping native return buffers pass",
+    "Handle identity/null/read-only/persistent values, caller-scope result ownership, native-side GC, error inspection/propagation, explicit scopes and recursion",
+    "280 native callbacks and 260 completed restoration probes per embedding mode, repeated without an embedding API scope; propagation intentionally unwinds before a completion probe",
+    "Direct input-only Handle callback without an API scope, explicitly scoped result success, and expected-fatal missing-result-scope child",
+    "Handle-result termination child completes native epilogue and reports API unwind without forbidden Dart continuation; both original termination cases still pass",
+    "Existing PRODUCT call-out/scope harness, six compiled callback metadata tests, PRODUCT full/structural replacement and actual interpreter/JIT call-outs",
+    "Strict PRODUCT link with undefined symbols forbidden and seven ABI/call-plan/callback symbols retained",
+    "Independent converter and fixture reviews with no remaining blockers"
+  ],
+  "windows_test_configuration_fix": {
+    "dart_sdk_commit": "89dd2a0ebdc3c7e54a7e8fafc3b405ab67fee140",
+    "failed_run": "https://github.com/tony-cloud/shorebird-workspace/actions/runs/41203042779",
+    "cause": "Host-executed cross-ABI classifier tests included unused Windows unwind sources while selecting an Android ARM target.",
+    "change": "Exclude unwinding-record source/header files from the test-local source list only; production unwinding and all target ABI definitions remain unchanged.",
+    "local_validation": "All 18 ABI runners built and all 774 golden cases passed.",
+    "actual_windows_validation": "Pending a new CI run; macOS validation is not Windows execution evidence."
+  },
+  "incremental_build_note": "After committing source, regenerate GN before Ninja so kernel compiler -Dsdk_hash and the generated native runtime version match. The tooling check caught a stale GN hash; standard regeneration and matching snapshot rebuild fixed it without disabling verification.",
+  "limits": [
+    "Listener and group-bound interpreted callbacks and full-profile FFI admission remain disabled.",
+    "No callback-enabled Flutter framework or physical-device execution is covered.",
+    "Null/wrong aggregate return fixtures exercise managed checked-return failures, not fabricated unchecked VM objects.",
+    "Recoverable OOM injection was not exercised; no production test hook was added.",
+    "Memory permission/byte checkpoints do not audit transient changes or instruction writes.",
+    "Hosted validation of this checkpoint and the Windows test fix remains pending."
+  ]
+}

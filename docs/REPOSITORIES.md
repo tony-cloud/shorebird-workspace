@@ -85,13 +85,13 @@ file.
 
 ## Public interpreter toolchain identity
 
-The engine artifact key is `73a880abc07199db6cbdac128e0a157bae470798`.
+The engine artifact key is `8eeaa2bdbca464f50085500d8e7390531c6aef30`.
 It is SHA-1 of UTF-8 lines (including the final newline):
 
 ```text
 open-shorebird-toolchain-v1
-272be3d1bccb508f6c72e9d4bf2eb55ace011169
-f37d61bf46a61b2b5934cacca25976fe8de187bb
+29bb778e31bc1385051de3d7fb484ef779294d1b
+535424ebe306a30fac34a87bdb1a969649de4984
 7894c9d26f29e6f07f8a4d0796f6e87ccb4a8d36
 ```
 

@@ -198,9 +198,24 @@ python3 dart-sdk/tools/test_aot_product_ffi_callbacks.py \
   --build-dir dart-sdk/xcodebuild/ReleaseARM64
 ```
 
-Interpreted Handle/aggregate callback conversion, listener/group-bound callbacks,
-full-profile FFI admission and physical-device FFI execution remain outstanding.
-The host checks do not audit transient memory permissions or instruction writes.
+The expanded harness also passes Handle and by-value aggregate callbacks:
+Struct/Union, HFA, indirect returns, packed tails, nested arrays and compound
+varargs. Guard pages and sentinels check exact-size copies; aliasing cases verify
+that failed indirect returns are zeroed after the target has read its input.
+Retained wrappers own copies of native input, while pointer fields preserve
+their native alias. Managed views, nonzero backing offsets and overlapping
+native return buffers also pass.
+
+Handle cases verify caller-scope ownership, GC, errors, propagation and recursion
+with and without an embedding scope. A separate child confirms that a Handle
+result without a caller scope is rejected; another verifies Handle-result
+callback termination. Recoverable OOM injection was not exercised.
+The [aggregate callback record](validation/product-interpreter-callback-aggregates-20261101.json)
+identifies this later tested tree and the corrected Windows ABI-test source list.
+
+Listener/group-bound callbacks, full-profile FFI admission and physical-device
+FFI execution remain outstanding. The host checks do not audit transient memory
+permissions or instruction writes.
 The [callback validation record](validation/product-interpreter-callbacks-20261031.json)
 identifies the tested SDK tree and the remaining gates.
 
