@@ -1,0 +1,49 @@
+{
+  "date": "2026-11-01",
+  "cli_commit": "81c3bff1930d502c0108c3ddf624eaf8ad23f0f4",
+  "flutter_commit": "774baac5a31e953a7abee3d271613f7b658bb5e9",
+  "checks": {
+    "linux": {
+      "focused_tests_passed": 228,
+      "commit": "6e86ce83",
+      "coverage": "ELF and executable classification, SHA-256 payload comparison, executable modes, strict ZIP paths and real archive writer"
+    },
+    "android": {
+      "focused_tests_passed": 87,
+      "commit": "56b7a80c",
+      "coverage": "Engine, plugin, DEX, JAR and class changes, exact canonical Dart payload paths, CRC collisions, ZIP aliases and symlinks"
+    },
+    "apple": {
+      "focused_tests_passed": 242,
+      "coverage": "Native Mach-O and framework changes, bounded thin/fat parsing, signature containment, ZIP namespace and framework symlinks, fixed scratch paths, Podfile-independent confirmation",
+      "runtime_fixture_checks": [
+        "Disposable clang/codesign signed-image comparison",
+        "Production ditto versioned framework archive"
+      ],
+      "analysis": "Fatal-info analysis, format and diff checks passed",
+      "independent_reviews": "ZIP/scratch and Mach-O/native boundary reviews passed"
+    }
+  },
+  "limitations": [
+    "Focused suite counts overlap and must not be summed as unique tests.",
+    "These are CLI archive guards and host fixtures, not physical iOS FFI acceptance or all-platform runtime proof.",
+    "Canonical generated App.framework/App remains a Dart payload for structural full replacement.",
+    "Host ABI and native-assets mapping coverage is unchanged.",
+    "Changes in Apple signing settings may conservatively trigger native warnings.",
+    "Windows GN direct dependency repair awaits Windows CI."
+  ],
+  "apple_source_sha256": {
+    "lib/src/archive_analysis/apple_archive_differ.dart": "757f2e547bbf5d093ebf9db4b87db4e321135124ab0e0e3cad73867c368f2399",
+    "lib/src/archive_analysis/apple_zip_validator.dart": "6af4178b2c2e9df32d96162dc560978a74739686d013390cb8e7288fd9951eef",
+    "lib/src/archive_analysis/full_replacement_archive_differ.dart": "c36ddd4d762c0875b195154990eb47a1a05b438103a3cfe5ad62e8d93b9b61d9",
+    "lib/src/platform/apple/macho.dart": "75ddf85ae70d7a6009a1e386e4300107e3041ab07f114bdcc9a5e034cb2f5194",
+    "lib/src/commands/patch/apple_patcher_mixin.dart": "7c35c982629939198f5c98c1f1e36fd2aaf3667fcb611de3d126cf51c61aadc1",
+    "test/src/archive_analysis/apple_archive_security_test.dart": "a670c1a405ca98ac6d4081cd45d69152eca9d6631b7d65317825e357975a7dc2",
+    "test/src/archive_analysis/full_replacement_archive_differ_test.dart": "eff834a8dee5d52f403085e88285a41f2f95f6468762173d2b99e78fb8d3ef77",
+    "test/src/platform/apple/macho_test.dart": "f409506418bda645eee1c0b57b752f1e8469306469ccb31c54c40d33653d7ec7",
+    "test/src/platform/apple/macho_fixture.dart": "7efca8bcc28cf80a88e3dfe16cc7297a361bb84cc3feb15d510800b86a5935c3",
+    "test/src/commands/patch/apple_patcher_mixin_test.dart": "d8cff4deafe9ea6938d4cb2b8646a01fa86c400277e8bc6622d8f13ae387dfca",
+    "test/src/commands/patch/ios_patcher_test.dart": "69d0efce630071f8499dcf98e342d568ef5e15954cee5f0311cef5757e52e7ba",
+    "test/src/commands/patch/macos_patcher_test.dart": "048daafd3d3918eb9a57ee8f3adf2bed51d0392421fd13402a82a56afc952005"
+  }
+}

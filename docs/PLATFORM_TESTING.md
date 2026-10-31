@@ -154,6 +154,16 @@ Its 179 focused tests passed locally, including Dart-only changes and rejection
 before artifact creation/upload. Reproducible Windows native builds still need
 execution on the Windows runner.
 
+Linux and Android archive guards now classify native payloads from their actual
+contents and canonical paths, compare decompressed SHA-256 hashes, and reject
+ambiguous ZIP entries. Their focused suites passed 228 and 87 tests respectively.
+The Apple guard passed 242 tests, including real `codesign` and `ditto` fixtures.
+It validates Mach-O slices and framework links, uses fixed scratch paths, and
+requires native-change confirmation even when Podfile.lock is unchanged or
+absent. Generated App images remain Dart payloads for structural updates.
+These overlapping suites establish CLI behavior, not device/runtime acceptance;
+see the [archive guard record](validation/native-archive-guards-20261101.json).
+
 The new Windows lifecycle fixture uses real CLI release/patch commands, the Go
 server's signed encrypted delivery, a test-only DPAPI key provider, and the
 released Runner. It checks post-frame rendering and the running patch number,

@@ -1,0 +1,29 @@
+{
+  "run_id": 41237899850,
+  "root_commit": "e0ef8e04a71cbfce87c21bd36809c8f0b8917a27",
+  "sdk_commit": "bdc30207c93e422dfd56d4260fa84c522cbf95b1",
+  "macos_arm64": {
+    "job_id": 124646485043,
+    "job_url": "https://github.com/tony-cloud/shorebird-workspace/actions/runs/41237899850/job/124646485043",
+    "job_conclusion": "success",
+    "full_ffi_positive_fresh_groups": 12,
+    "full_ffi_rejections": 60,
+    "unique_rejection_cases": 30,
+    "routes": [
+      "source native baseline",
+      "from-dill native baseline"
+    ],
+    "evidence_excerpt_sha256": "925e698a8b1995171c68fbc7e5c1527409d605da93a18b60199fb4937f6640c2"
+  },
+  "linux_x64": {
+    "job_id": 124646485070,
+    "job_url": "https://github.com/tony-cloud/shorebird-workspace/actions/runs/41237899850/job/124646485070",
+    "job_conclusion": "success",
+    "encrypted_full_replacement_marker": "AES producer -> full replacement -> free passed",
+    "evidence_excerpt_sha256": "728d2653a345fa46268ab9f6468a09fa02ec4b7b24de3f5af60237c7ce351c70"
+  },
+  "limitations": [
+    "These are SDK host fixtures, not physical iOS FFI or complete native encrypted app lifecycle acceptance.",
+    "These jobs use the earlier e0ef/bdc source; they do not validate the Windows memory loader or lifecycle changes in root8ac663b."
+  ]
+}

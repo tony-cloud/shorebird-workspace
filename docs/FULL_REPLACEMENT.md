@@ -282,7 +282,11 @@ metadata, FFI owner/cache operands, normal/wide/truncated opcodes, ExternalCall
 pools and the exact reserved assets URI. Thirteen focused compiler/native-assets
 tests also pass, including direct bytecode API and from-dill validation. This host
 fixture does not exercise physical iOS FFI, CLI native archive comparison or
-server signature verification. It does not establish a new CI result.
+server signature verification. The earlier pinned SDK subsequently passed this
+same 12-positive/60-rejection suite on macOS ARM64 in GitHub Actions; the Linux
+SDK job also passed encrypted full replacement. See the
+[SDK CI record](validation/full-replacement-sdk-ci-20261101.json) for the exact
+commits and job links. These jobs do not validate the newer Windows changes.
 
 Run the host acceptance with matching SDK artifacts:
 
