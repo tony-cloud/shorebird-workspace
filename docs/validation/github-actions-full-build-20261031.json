@@ -45,10 +45,13 @@
   },
   "artifact_mirror_assembly": "passed",
   "local_downloaded_artifact_verification": {
-    "manifest_checksum_and_commit": "passed",
-    "constituent_file_hash_size_and_sidecar_checks": "passed",
-    "verified_constituent_file_count": 41,
-    "mirror_download_and_full_extraction_verification": "pending; resumable transfer running after network timeouts"
+    "result": "passed",
+    "verified_artifact_file_count": 42,
+    "checks": [
+      "Release manifest checksum and exact repository commit",
+      "All artifact hashes, sizes and checksum sidecars",
+      "Safe mirror archive extraction and complete artifact-mirror validation"
+    ]
   },
   "default_branch_release_published": false,
   "limits": [
