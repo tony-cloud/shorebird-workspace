@@ -8,6 +8,8 @@ mkdir -p "$RESULTS"
 
 tests=(
   test/src/artifact_manager_test.dart
+  test/src/archive_analysis/portable_zip_namespace_validator_test.dart
+  test/src/archive_analysis/release_supplement_validator_test.dart
   test/src/archive_analysis/android_archive_differ_test.dart
   test/src/archive_analysis/linux_bundle_differ_test.dart
   test/src/archive_analysis/windows_archive_differ_test.dart

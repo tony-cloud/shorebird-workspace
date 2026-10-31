@@ -196,6 +196,14 @@ publication. These tests use controlled transport bytes on macOS, and the
 expected digest remains supplied by the release service. See the
 [download integrity record](validation/release-artifact-integrity-20261101.json).
 
+Release supplements now use a separate regular-file extraction path. It validates
+the complete portable namespace before writes, then checks each decompressed
+file's length and CRC against the validated ZIP metadata. Empty directories and
+future safe files remain supported; extraction errors propagate to owned-output
+cleanup and stop patch creation. The expanded local gate passed 816 tests.
+Generic app archive extraction and framework links remain separate; see the
+[supplement validation record](validation/release-supplement-guard-20261101.json).
+
 The new Windows lifecycle fixture uses real CLI release/patch commands, the Go
 server's signed encrypted delivery, a test-only DPAPI key provider, and the
 released Runner. It checks post-frame rendering and the running patch number,

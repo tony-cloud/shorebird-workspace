@@ -222,6 +222,10 @@ required_files = %w[
   scripts/verify_dart_sdk_tooling.py
   scripts/verify_native_cache_engine_tests.py
   scripts/run_native_archive_tests.sh
+  shorebird/packages/shorebird_cli/lib/src/archive_analysis/portable_zip_namespace_validator.dart
+  shorebird/packages/shorebird_cli/test/src/archive_analysis/portable_zip_namespace_validator_test.dart
+  shorebird/packages/shorebird_cli/lib/src/archive_analysis/release_supplement_validator.dart
+  shorebird/packages/shorebird_cli/test/src/archive_analysis/release_supplement_validator_test.dart
   dart-sdk/pkg/frontend_server/test/shorebird_native_assets_descriptor_test.dart
   dart-sdk/pkg/vm/lib/native_assets/shorebird_descriptor.dart
   flutter/packages/flutter_tools/lib/src/shorebird/shorebird_native_assets.dart
@@ -1764,6 +1768,8 @@ assert!(
 archive_runner = read_repo_file(repo_root, 'scripts/run_native_archive_tests.sh')
 %w[
   artifact_manager_test.dart
+  portable_zip_namespace_validator_test.dart
+  release_supplement_validator_test.dart
   android_archive_differ_test.dart linux_bundle_differ_test.dart
   windows_archive_differ_test.dart apple_archive_security_test.dart
   full_replacement_archive_differ_test.dart macho_test.dart

@@ -1,0 +1,32 @@
+{
+  "date": "2026-11-01",
+  "cli_commit": "97841d24508f7402b7b298d062536dc553b596e9",
+  "change": "Validate release supplement namespace and contents before use as patch compiler inputs.",
+  "behavior": [
+    "Reuse the complete portable namespace guard with Windows archive analysis; native SHA and Dart/assets CRC policies are unchanged.",
+    "Require regular files/directories, safe portable paths, consistent ZIP records and unambiguous namespace before extraction writes.",
+    "Validate and decode the same opened ZIP input, preserving known and future safe supplement files plus directories.",
+    "Check actual decompressed file length and CRC against validated central metadata before opening each output file.",
+    "Use a dedicated supplement writer that propagates content/write errors; close streams and release per-entry buffers.",
+    "On extraction failure, attempt cleanup of the owned temporary output and exit before patch building/publication."
+  ],
+  "validation": {
+    "focused_tests": 328,
+    "combined_archive_gate_tests": 816,
+    "analysis": "nine files passed fatal-info analysis",
+    "format": "passed",
+    "workflow": "210 shell blocks and artifact contract passed",
+    "independent_review": "no remaining actionable blockers",
+    "compatibility": "Benign real extraction preserves baseline bytecode/manifest, obfuscation map, App link/table family, future nested safe file and empty directory.",
+    "rejection": "Pure namespace/content validators cover invalid entries; command-level injected extraction failures prove cleanup and no build/create/upload."
+  },
+  "limits": [
+    "Tests ran on macOS; no Windows/Linux filesystem acceptance claimed.",
+    "Unicode uppercase identity is conservative and not complete filesystem normalization emulation.",
+    "Generic extractZip and Apple framework links are outside this change.",
+    "No exploitation or extraction-bypass demonstration was performed.",
+    "Real OS write-error cleanup is source-reviewed plus injected-failure tested, not independently exercised across operating systems.",
+    "Hosted validation at this source revision remains pending."
+  ],
+  "combined_log_sha256": "7582d44b6fc80f086df1db96457621be00f797ba80bc9b8be1cecebddbca5db8"
+}
