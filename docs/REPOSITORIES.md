@@ -1,6 +1,6 @@
 # Repository Inventory
 
-Last verified: 2026-10-29.
+Last verified: 2026-10-31.
 
 The October update includes Shorebird upstream main `5f04c3ac` (version
 `1.6.134`, ahead of the latest upstream `v1.6.133` tag), Shorebird Flutter
@@ -14,11 +14,11 @@ compiler/runtime cache reuse.
 
 | Path | Remote URL | Branch | Pinned commit |
 | --- | --- | --- | --- |
-| `dart-sdk` | `https://github.com/tony-cloud/dart-sdk.git` | `tonycloud/dev` | `0a3820f1e0aa45c24ee30f1b920dea380ab97d9a` |
+| `dart-sdk` | `https://github.com/tony-cloud/dart-sdk.git` | `tonycloud/dev` | `e8f281db2fcaedfff57d652aa2ea830c64ab541a` |
 | `depot_tools` | `https://chromium.googlesource.com/chromium/tools/depot_tools.git` | `main` | `e154c8eda5e63cbe85a765ae9d06e2b7af05139e` |
-| `flutter` | `https://github.com/tony-cloud/flutter.git` | `tonycloud/dev` | `05484b8a00e09919d5b0afee38e8adabf47d7877` |
-| `shorebird` | `https://github.com/tony-cloud/shorebird.git` | `main` | `98772e3c3e0388b6c379232dc5ba3a232455772c` |
-| `shorebird-server` | `https://github.com/tony-cloud/shorebird-server.git` | `main` | `9f34acd642c4524611f64014d72130a55fe46202` |
+| `flutter` | `https://github.com/tony-cloud/flutter.git` | `tonycloud/dev` | `2211113cc8c56cf30fde4da7baae2ebd5bc72b67` |
+| `shorebird` | `https://github.com/tony-cloud/shorebird.git` | `main` | `e1eda751b9e63c0662dfe81086f7dc4d45a033ec` |
+| `shorebird-server` | `https://github.com/tony-cloud/shorebird-server.git` | `main` | `8cc3148fdcb489b20faa0a544d7a6690b6536da9` |
 | `updater` | `https://github.com/tony-cloud/shorebird-updater.git` | `main` | `7894c9d26f29e6f07f8a4d0796f6e87ccb4a8d36` |
 
 ## Submodule Policy
@@ -85,13 +85,13 @@ file.
 
 ## Public interpreter toolchain identity
 
-The engine artifact key is `e323fa1d40008806a2fae7dea34df2ed54e35364`.
+The engine artifact key is `cefcb915cbb87e980e09b172ac4688eaec36b294`.
 It is SHA-1 of UTF-8 lines (including the final newline):
 
 ```text
 open-shorebird-toolchain-v1
-9c62b1a2040ec3cd824998a45eac7980ff6c3fc0
-aea61a9f4d5c7999ab3f7a81ff0441952aae8175
+e8f281db2fcaedfff57d652aa2ea830c64ab541a
+04e12c7637d1a2f19f044e36bf159abb0f264c5d
 7894c9d26f29e6f07f8a4d0796f6e87ccb4a8d36
 ```
 

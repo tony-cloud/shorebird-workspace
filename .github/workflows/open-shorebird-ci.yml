@@ -162,6 +162,10 @@ jobs:
           python3 -m py_compile dart-sdk/tools/test_aot_structural_patch.py
           python3 -m py_compile dart-sdk/tools/test_aot_full_replacement.py
           python3 -m py_compile dart-sdk/tools/test_aot_no_tfa_startup.py
+          python3 -m py_compile dart-sdk/tools/test_aot_product_metadata.py
+          python3 -m py_compile dart-sdk/tools/test_aot_host_resolvers.py
+          python3 -m py_compile dart-sdk/tools/test_interpreter_ffi_calls.py
+          python3 -m py_compile dart-sdk/tools/test_aot_product_ffi.py
           python3 -m py_compile scripts/package_android_maven.py
           python3 scripts/verify_android_maven.py
           python3 -m py_compile scripts/write_release_manifest.py
@@ -611,7 +615,11 @@ jobs:
       - name: Build patched Dart SDK
         working-directory: dart-sdk
         run: |
-          ninja -C out/ReleaseX64 create_sdk runtime gen_snapshot dartaotruntime dart_engine_aot_shared dart gen_snapshot_product dartaotruntime_product vm_platform_product dart_engine_aot_shared_product
+          ninja -C out/ReleaseX64 create_sdk runtime gen_snapshot dartaotruntime dart_engine_aot_shared dart gen_snapshot_product dartaotruntime_product vm_platform_product dart_engine_aot_shared_product dartvm product_metadata_test run_ffi_unit_tests
+
+      - name: Run shared FFI ABI golden tests
+        working-directory: dart-sdk
+        run: python3 tools/test.py --mode=release --arch=x64 --tasks=2 --progress=line ffi_unit
 
       - name: Verify built SDK developer tools
         run: python3 scripts/verify_dart_sdk_tooling.py --dart "$PWD/dart-sdk/out/ReleaseX64/dart-sdk/bin/dart"
@@ -634,7 +642,9 @@ jobs:
           out/ReleaseX64/dart-sdk/bin/dart --packages=.dart_tool/package_config.json
           third_party/pkg/test/pkgs/test/bin/test.dart
           pkg/dart2bytecode/test/patch_test.dart
-          pkg/dart2bytecode/test/full_replacement_test.dart --concurrency=1
+          pkg/dart2bytecode/test/full_replacement_test.dart
+          pkg/dart2bytecode/test/native_assets_profile_test.dart
+          pkg/vm/test/native_assets/synthesizer_test.dart --concurrency=1
 
       - name: Run encrypted no-JIT replacement regression
         run: >-
@@ -653,6 +663,12 @@ jobs:
 
       - name: Run PRODUCT full replacement regression
         run: python3 dart-sdk/tools/test_aot_full_replacement.py --build-dir dart-sdk/out/ReleaseX64 --product
+
+      - name: Run PRODUCT interpreter metadata regression
+        run: python3 dart-sdk/tools/test_aot_product_metadata.py --build-dir dart-sdk/out/ReleaseX64
+
+      - name: Run PRODUCT host resolver regression
+        run: python3 dart-sdk/tools/test_aot_host_resolvers.py --build-dir dart-sdk/out/ReleaseX64
 
       - name: Run PRODUCT encrypted full replacement regression
         run: >-
@@ -785,7 +801,11 @@ jobs:
       - name: Build patched Dart SDK
         working-directory: dart-sdk
         run: |
-          ninja -C xcodebuild/ReleaseARM64 create_sdk runtime gen_snapshot dartaotruntime dart_engine_aot_shared dart gen_snapshot_product dartaotruntime_product vm_platform_product dart_engine_aot_shared_product
+          ninja -C xcodebuild/ReleaseARM64 create_sdk runtime gen_snapshot dartaotruntime dart_engine_aot_shared dart gen_snapshot_product dartaotruntime_product vm_platform_product dart_engine_aot_shared_product dartvm product_metadata_test product_ffi_test run_ffi_unit_tests
+
+      - name: Run shared FFI ABI golden tests
+        working-directory: dart-sdk
+        run: python3 tools/test.py --mode=release --arch=arm64 --tasks=2 --progress=line ffi_unit
 
       - name: Verify built SDK developer tools
         run: python3 scripts/verify_dart_sdk_tooling.py --dart "$PWD/dart-sdk/xcodebuild/ReleaseARM64/dart-sdk/bin/dart"
@@ -812,6 +832,18 @@ jobs:
 
       - name: Run PRODUCT full replacement regression
         run: python3 dart-sdk/tools/test_aot_full_replacement.py --build-dir dart-sdk/xcodebuild/ReleaseARM64 --product
+
+      - name: Run PRODUCT interpreter metadata regression
+        run: python3 dart-sdk/tools/test_aot_product_metadata.py --build-dir dart-sdk/xcodebuild/ReleaseARM64
+
+      - name: Run PRODUCT host resolver regression
+        run: python3 dart-sdk/tools/test_aot_host_resolvers.py --build-dir dart-sdk/xcodebuild/ReleaseARM64
+
+      - name: Run interpreter native-call regression
+        run: python3 dart-sdk/tools/test_interpreter_ffi_calls.py --build-dir dart-sdk/xcodebuild/ReleaseARM64
+
+      - name: Run PRODUCT interpreter native-call regression
+        run: python3 dart-sdk/tools/test_aot_product_ffi.py --build-dir dart-sdk/xcodebuild/ReleaseARM64
 
       - name: Package Dart SDK artifact
         run: |
@@ -926,7 +958,11 @@ jobs:
       - name: Build patched Dart SDK
         working-directory: dart-sdk
         run: |
-          ninja -C xcodebuild/ReleaseX64 create_sdk runtime gen_snapshot dartaotruntime dart_engine_aot_shared dart gen_snapshot_product dartaotruntime_product vm_platform_product dart_engine_aot_shared_product
+          ninja -C xcodebuild/ReleaseX64 create_sdk runtime gen_snapshot dartaotruntime dart_engine_aot_shared dart gen_snapshot_product dartaotruntime_product vm_platform_product dart_engine_aot_shared_product dartvm product_metadata_test run_ffi_unit_tests
+
+      - name: Run shared FFI ABI golden tests
+        working-directory: dart-sdk
+        run: python3 tools/test.py --mode=release --arch=x64 --tasks=2 --progress=line ffi_unit
 
       - name: Verify built SDK developer tools
         run: python3 scripts/verify_dart_sdk_tooling.py --dart "$PWD/dart-sdk/xcodebuild/ReleaseX64/dart-sdk/bin/dart"
@@ -953,6 +989,12 @@ jobs:
 
       - name: Run PRODUCT full replacement regression
         run: python3 dart-sdk/tools/test_aot_full_replacement.py --build-dir dart-sdk/xcodebuild/ReleaseX64 --product
+
+      - name: Run PRODUCT interpreter metadata regression
+        run: python3 dart-sdk/tools/test_aot_product_metadata.py --build-dir dart-sdk/xcodebuild/ReleaseX64
+
+      - name: Run PRODUCT host resolver regression
+        run: python3 dart-sdk/tools/test_aot_host_resolvers.py --build-dir dart-sdk/xcodebuild/ReleaseX64
 
       - name: Package Dart SDK artifact
         run: |
@@ -1127,7 +1169,11 @@ jobs:
       - name: Build patched Dart SDK
         working-directory: dart-sdk
         run: |
-          ninja -C out/ReleaseX64 create_sdk runtime gen_snapshot dartaotruntime
+          ninja -C out/ReleaseX64 create_sdk runtime gen_snapshot dartaotruntime run_ffi_unit_tests
+
+      - name: Run shared FFI ABI golden tests
+        working-directory: dart-sdk
+        run: python3 tools/test.py --mode=release --arch=x64 --tasks=2 --progress=line ffi_unit
 
       - name: Verify built SDK developer tools
         run: python3 scripts/verify_dart_sdk_tooling.py --dart "$PWD/dart-sdk/out/ReleaseX64/dart-sdk/bin/dart.exe"

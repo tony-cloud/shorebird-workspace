@@ -1,0 +1,51 @@
+{
+  "date": "2026-10-31",
+  "scope": "macOS ARM64 local PRODUCT interpreter call-out and host metadata validation",
+  "dart_sdk_commit": "e8f281db2fcaedfff57d652aa2ea830c64ab541a",
+  "dart_sdk_tree": "0ca0b7802c19e68b77b50038211987e301022d1c",
+  "flutter_source_commit": "04e12c7637d1a2f19f044e36bf159abb0f264c5d",
+  "flutter_identity_commit": "2211113cc8c56cf30fde4da7baae2ebd5bc72b67",
+  "engine_artifact_identity": "cefcb915cbb87e980e09b172ac4688eaec36b294",
+  "provenance": "Tests ran on the frozen working tree before commit. The committed SDK tree exactly matches the staged tested tree. Hosted builds and physical-device FFI are separate gates.",
+  "passed_checks": [
+    "18 shared native ABI golden executables: 774 cases",
+    "Complete SDK and PRODUCT runtime/test build; offline SDK tooling including default-TFA executable compilation",
+    "Strict PRODUCT linking with undefined symbols forbidden and ABI, signature and interpreter call-plan symbols retained",
+    "Actual PRODUCT interpreted calls with DRT_FfiCall frame and linked static trampoline caller verification",
+    "Scalar, pointer, packed/overflow arguments, compounds, HFA, Union, nested and inline-array layouts, and varargs",
+    "Handle identity/results, 24 native garbage collections, and borrowed typed-data/struct addresses",
+    "ABI-specific arguments/results and four memory operations on both native and typed-data backing",
+    "Nine caught ArgumentErrors for missing ABI mappings; protected pages, sentinels and native-call counters unchanged",
+    "Registered resolver, process and released native-assets routes; cache and error behavior",
+    "Ordinary AOT assets; full source/from-dill base/update map identity, carrier exclusion and fresh plugin identities",
+    "Compiler carrier contracts and native-backend forged-carrier rejection with no output artifact",
+    "PRODUCT evaluated metadata, host resolver ownership, full replacement and additive structural regressions",
+    "Ordinary JIT and actual non-AOT interpreter FFI controls after final runtime changes"
+  ],
+  "execution_profile": {
+    "product": true,
+    "precompiled_runtime": true,
+    "application_callbacks_in_baseline": false,
+    "application_ffi_in_baseline": false,
+    "callout_library": "new ordinary bytecode library loaded into structural baseline"
+  },
+  "host_test_entitlements": [
+    "com.apple.security.cs.disable-library-validation"
+  ],
+  "jit_entitlement": false,
+  "debugger_entitlement": false,
+  "memory_audit": {
+    "kind": "before/after mapping checkpoints",
+    "added_executable_mappings_observed": false,
+    "added_writable_executable_mappings_observed": false,
+    "transient_permission_changes_audited": false,
+    "instruction_writes_audited": false
+  },
+  "limits": [
+    "Full-profile FFI admission remains closed",
+    "New PRODUCT interpreter callback signatures remain unsupported",
+    "Physical iOS FFI execution is not covered",
+    "Other runtime architectures are not covered by this host execution proof",
+    "Body-only baselines do not retain arbitrary first-use SDK declarations; actual call-outs use a structural baseline"
+  ]
+}

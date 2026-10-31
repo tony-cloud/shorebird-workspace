@@ -1937,6 +1937,25 @@ jobs.each do |job_name, job|
 end
 
 run_text_by_job = jobs.transform_values { |job| job_runs(job).join("\n") }
+assert!(run_text_by_job.fetch('custom-dart-sdk').include?('pkg/dart2bytecode/test/native_assets_profile_test.dart'), 'Linux SDK must test native-assets carrier profile and imported-component contracts')
+{
+  'custom-dart-sdk' => 'x64',
+  'custom-dart-sdk-macos' => 'arm64',
+  'custom-dart-sdk-macos-x64' => 'x64',
+  'custom-dart-sdk-windows' => 'x64',
+}.each do |job_name, architecture|
+  run_text = run_text_by_job.fetch(job_name)
+  assert!(
+    run_text.include?('run_ffi_unit_tests') &&
+      run_text.include?("tools/test.py --mode=release --arch=#{architecture} --tasks=2 --progress=line ffi_unit"),
+    "#{job_name} must build and execute the shared FFI ABI golden suite"
+  )
+end
+ffi_test_suite = File.read(repo_path(repo_root, 'dart-sdk/pkg/test_runner/lib/src/test_suite.dart'))
+%w[arm64_ios_product_aot x64_linux_product_aot].each do |variant|
+  assert!(ffi_test_suite.include?("\"#{variant}\""),
+          "FFI test discovery must include #{variant}")
+end
 assert!(
   run_text_by_job.fetch('cli-artifacts').include?('"flutter_revision": "${flutter_revision}"') &&
     run_text_by_job.fetch('cli-artifacts').include?('"engine_revision": "${engine_revision}"'),
@@ -2498,13 +2517,29 @@ assert!(flutter_engine_archives_build.include?('if (build_analyze_snapshot) {') 
   assert!(product_structural && package && product_structural < package && steps.fetch(product_structural).fetch('run').include?("test_aot_structural_patch.py --build-dir dart-sdk/#{build_dir} --product"), "#{name} must prove structural replacement through the production AOT embedding library")
   assert!(full_replacement && package && full_replacement < package && steps.fetch(full_replacement).fetch('run').include?("test_aot_full_replacement.py --build-dir dart-sdk/#{build_dir} --product"), "#{name} must prove the experimental full-domain profile through the production AOT embedding library")
   assert!(startup && package && startup < package && steps.fetch(startup).fetch('run').include?("test_aot_no_tfa_startup.py --build-dir dart-sdk/#{build_dir}"), "#{name} must exercise PRODUCT standalone no-TFA bootstrap before publishing its SDK")
-  %w[dart gen_snapshot_product dartaotruntime_product vm_platform_product dart_engine_aot_shared_product].each do |target|
+  prerequisite_tests = {
+    'Run PRODUCT interpreter metadata regression' => 'test_aot_product_metadata.py',
+    'Run PRODUCT host resolver regression' => 'test_aot_host_resolvers.py',
+  }
+  if name == 'custom-dart-sdk-macos'
+    prerequisite_tests['Run interpreter native-call regression'] = 'test_interpreter_ffi_calls.py'
+    prerequisite_tests['Run PRODUCT interpreter native-call regression'] = 'test_aot_product_ffi.py'
+    assert!(steps.find { |step| step['name'] == 'Build patched Dart SDK' }.fetch('run').split.include?('product_ffi_test'), 'macOS ARM64 must build the PRODUCT interpreter native-call harness')
+  end
+  prerequisite_tests.each do |step_name, harness|
+    regression = steps.index { |step| step['name'] == step_name }
+    assert!(regression && package && regression < package && steps.fetch(regression).fetch('run').include?("#{harness} --build-dir dart-sdk/#{build_dir}"), "#{name} must run #{harness} before publishing its SDK")
+  end
+  %w[dart dartvm product_metadata_test gen_snapshot_product dartaotruntime_product vm_platform_product dart_engine_aot_shared_product].each do |target|
     assert!(steps.find { |step| step['name'] == 'Build patched Dart SDK' }.fetch('run').split.include?(target), "#{name} standalone startup harness requires explicit #{target} build output")
   end
 end
 assert!(run_text_by_job.fetch('source-checks').include?('python3 -m py_compile dart-sdk/tools/test_aot_structural_patch.py'), 'source checks must syntax-check the structural runtime harness')
 assert!(run_text_by_job.fetch('source-checks').include?('python3 -m py_compile dart-sdk/tools/test_aot_full_replacement.py'), 'source checks must syntax-check the full replacement runtime harness')
 assert!(run_text_by_job.fetch('source-checks').include?('python3 -m py_compile dart-sdk/tools/test_aot_no_tfa_startup.py'), 'source checks must syntax-check the PRODUCT standalone startup harness')
+%w[test_aot_product_metadata.py test_aot_host_resolvers.py test_interpreter_ffi_calls.py test_aot_product_ffi.py].each do |harness|
+  assert!(run_text_by_job.fetch('source-checks').include?("python3 -m py_compile dart-sdk/tools/#{harness}"), "source checks must syntax-check #{harness}")
+end
 assert!(!run_text_by_job.fetch('custom-dart-sdk-windows').include?('test_aot_no_tfa_startup.py'), 'Windows compile/tooling evidence must remain distinct from the unsupported PRODUCT startup harness')
 assert!(run_text_by_job.fetch('custom-dart-sdk').include?('scripts/verify_encrypted_aot_runtime.py --structural') && run_text_by_job.fetch('custom-dart-sdk').include?('--tooling-dart dart-sdk/out/ReleaseX64/dart-sdk/bin/dart'), 'Linux SDK must prove encrypted structural replacement through the real producer and native runtime')
 linux_sdk_steps = jobs.fetch('custom-dart-sdk').fetch('steps')

@@ -1,15 +1,20 @@
 # Experimental complete-domain replacement
 
 The SDK has an opt-in full replacement profile intended to cover changes beyond
-body replacement and additive structural patches. Flutter/CLI integration is
-implemented locally and undergoing end-to-end validation; it is not yet a
-validated release feature. Existing releases continue to use their existing
-profile. A new native release is required to enable the full profile.
+body replacement and additive structural patches. Flutter/CLI integration has
+passed one distribution-signed physical iPad update and recovery lifecycle;
+broader compatibility and release validation remain incomplete. Existing releases
+continue to use their existing profile. A new native release is required to
+enable the full profile.
 
 ## Model and binding
 
 The native snapshot retains the SDK (`dart:*`, including `dart:ui`) as its frozen
-host. Every non-SDK library belongs to the mutable domain. Before application
+host. Every non-SDK Dart code library belongs to the mutable domain. The reserved
+`vm:ffi:native-assets` carrier contains compiler metadata only: its map belongs
+to the released native host, and the carrier is omitted from replacement
+payloads and manifests. Declarations or dependencies under that reserved URI
+are rejected; this exception does not exclude plugin libraries. Before application
 execution, a fresh isolate group must install either its bundled base component
 or one replacement component. Both use the same loader. The loader allocates new
 library, class, member, constant, layout and static identities, then publishes
@@ -82,6 +87,13 @@ inside SDK/native collections or caches, and must reacquire the entrypoint after
 installation. The direct-handle checks do not establish safety for arbitrary
 nested object graphs retained by an embedder.
 
+Native resolver registrations made by the embedder transfer to a replacement
+library with the same URI. New URIs start unregistered, removed URIs disappear,
+and resolver APIs reject retired handles and failed installation groups.
+Registration on the current library remains possible after startup. This copies
+only the three C callback pointers; it does not preserve Dart objects held by
+the embedder or change native-asset and process lookup behavior.
+
 A failure after staging starts poisons that group. Destroy it, create a fresh
 group, and install bundled base bytecode. Running the inactive native application
 is not a fallback for this profile. Never install base and update sequentially
@@ -92,14 +104,76 @@ layouts and unsupported native bytecodes. Supporting ordinary plugin FFI require
 additional design and validation; silently excluding those libraries from the
 mutable domain is not supported.
 
-The existing interpreted FFI call and symbol-resolution runtime entries are
-disabled in `DART_PRECOMPILED_RUNTIME`. Enabling imports alone would reach
-unsupported runtime paths. Completing plugin FFI requires PRODUCT-safe call
-marshaling and symbol resolution, replacement Struct/Union layout metadata, and
-callback trampolines that enter interpreted closures without generating
-executable code. Native symbols and assets must remain bound to the released
-host. Scalar/pointer calls, aggregates, ABI-specific integers, native annotations
-and callback GC/isolate lifetimes each need runtime coverage.
+The native ARM64 PRODUCT call-out path uses the shared ABI classifier and a
+statically linked trampoline. Full-profile FFI admission remains disabled while
+runtime and callback integration is completed; other architectures retain their
+previous execution restrictions. Completing plugin FFI requires validation of
+replacement Struct/Union layout metadata and callback trampolines that enter
+interpreted closures without generating executable code. Native symbols and
+assets must remain bound to the released host. Scalar/pointer calls, aggregates,
+ABI-specific integers, native annotations and callback GC/isolate lifetimes each
+need runtime coverage.
+
+The shared native ABI classifier and a data-only interpreter call plan now
+compile and link in PRODUCT without compiler backend dependencies. The ABI
+golden suite also builds with precompiled-runtime defines. A macOS ARM64 native
+fixture verifies the real interpreter call frame for scalar, mixed, overflow,
+packed, compound and variadic calls, with ordinary JIT execution as a control.
+It also covers `@Native`, `Native.addressOf` and an empty-stack trampoline guard.
+Nullable local and persistent Handle identity, native Handle results, 24
+nonleaf garbage collections, and leaf typed-data/struct pointer borrowing pass
+in both the interpreter and JIT control. Pointer checks include views, nonzero
+struct backing offsets, boundary sentinels and native-backed structs.
+This fixture runs the non-AOT interpreter; it does not establish PRODUCT FFI
+execution or change the full-profile rejection policy.
+
+```sh
+python3 dart-sdk/tools/test_interpreter_ffi_calls.py \
+  --build-dir dart-sdk/xcodebuild/ReleaseARM64
+```
+
+Build `dartvm` explicitly before this check. The `dart` command can delegate to
+a separate VM executable, so rebuilding the launcher alone does not establish
+that the test exercises the changed runtime.
+
+The PRODUCT metadata harness verifies evaluated pragmas on fresh function,
+class and field declarations, frozen SDK annotation identity, first-use
+`asFunction` signature metadata, actual `IntPtr` ABI conversion, malformed
+annotation rejection and full-profile base/update installation. It also checks
+that ordinary AOT still drops metadata and that a patchable baseline retains the
+specific SDK class and field descriptors needed for lookup. The harness does
+not invoke FFI calls. Its macOS-only library-validation entitlement is confined
+to the test executable so it can load locally signed snapshot fixtures.
+
+```sh
+python3 dart-sdk/tools/test_aot_product_metadata.py \
+  --build-dir dart-sdk/xcodebuild/ReleaseARM64
+```
+
+The macOS ARM64 PRODUCT call-out harness passes against a structural baseline
+with no application FFI use. It loads a new ordinary bytecode library through
+the existing embedding API and verifies its interpreter frame and return into
+the linked static trampoline. Coverage includes scalars, pointers, Handles and
+GC, compounds, HFA, Union, nested/packed/inline-array layouts, varargs,
+ABI-specific integer calls and memory operations, and resolver/process/released
+asset lookup. Missing ABI mappings raise `ArgumentError` before memory access or
+native invocation; guard-page, sentinel and native-call counter checks pass.
+The host executable requests no JIT or debugger entitlement. Mapping snapshots
+showed no added executable or writable-executable regions at the checkpoints;
+they do not audit transient permission changes or instruction writes.
+
+```sh
+python3 dart-sdk/tools/test_aot_product_ffi.py \
+  --build-dir dart-sdk/xcodebuild/ReleaseARM64
+```
+
+This harness also passes ordinary AOT native-assets loading and no-FFI full
+base/update installation from source and prelinked kernels. The released map
+retains its identity and contents, the metadata carrier stays outside the
+replacement domain, and package plugin libraries/classes receive fresh
+identities. A forged carrier is rejected by the native snapshot compiler.
+These checks establish host call-outs and asset ownership, not callback support,
+full-profile FFI execution or physical-device FFI validation.
 
 ## Validation and remaining work
 
