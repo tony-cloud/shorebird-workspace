@@ -34,6 +34,23 @@ PRODUCT standalone startup tests exercise full bootstrap, core APIs and
 `Function.apply`, rather than relying only on an embedder that skips bootstrap.
 Physical Flutter/iOS acceptance is a separate required gate.
 
+On October 29, the distribution-signed structural baseline rendered and reported
+`license:free` on a physical iPad without a debugger. This verifies baseline
+startup only. No structural patch was installed: patch compilation exposed a
+nullable FFI declaration reader defect and inconsistent Flutter version defines
+between baseline compilation and its manifest. The reader and CLI ordering fixes
+require a new release and a complete download/install/restart test; the earlier
+baseline cannot stand in for that evidence.
+
+The completed October 29 CI run
+[40803323899](https://github.com/tony-cloud/shorebird-workspace/actions/runs/40803323899)
+passed 27 jobs, including iOS/Android/Linux/macOS engines, Linux/macOS SDKs,
+all CLI/server targets, Android host snapshotters, and universal macOS assembly.
+Windows SDK configuration and Windows engine packaging failed. Windows engine
+compilation itself passed; the packaging check detected a missing exported key
+provider API. Local fixes require a new complete CI run before all-platform
+support or a publishable artifact mirror can be claimed.
+
 Existing signatures, inheritance and field definitions cannot change, and
 removed declarations are rejected. Added fields on existing const, deeply
 immutable or native-wrapper classes are unsupported. Constructor-only nonnullable

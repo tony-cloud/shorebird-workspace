@@ -54,9 +54,9 @@ execute source-level checks and build distributable CLI/server artifacts:
 - self-hosted `shorebird-server` archives for Linux, macOS, and Windows
 
 Default push and pull request runs also build the large SDK and engine outputs:
-patched Dart SDK archives for Linux x64 and macOS arm64, Linux x64 desktop
-engine artifacts, Android arm64 engine artifacts, and Apple iOS/macOS engine
-artifacts. Shorebird does not support web patching, so web is excluded from the
+patched Dart SDK archives for Linux x64, macOS x64/arm64, and Windows x64;
+Linux/Windows desktop engines; Android arm/arm64/x64 engines and host
+snapshotters; and Apple iOS/macOS engine artifacts. Shorebird does not support web patching, so web is excluded from the
 default build and artifact mirror. A successful full SDK run also uploads
 `open-shorebird-artifact-mirror`, a publish-ready mirror archive assembled from
 the produced patch-tool, metadata, and native engine artifacts, plus
@@ -130,7 +130,8 @@ workspace GitHub Release asset by default; set
 
 The iOS candidate route uses encrypted Dart bytecode interpreted inside a
 precompiled runtime with `DART_DYNAMIC_MODULES=false`. Current host tests prove
-body replacement and encrypted-envelope rejection in the same AOT process.
+body replacement, opted-in additive structural updates, and encrypted-envelope
+rejection in matching development and PRODUCT AOT runtimes.
 Physical-device results from June 2026 describe an earlier snapshot; they do not
 validate the current release/download/install lifecycle. See
 [the current validation boundary](docs/PLATFORM_TESTING.md#october-2026-validation-boundary)
