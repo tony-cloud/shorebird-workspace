@@ -16,6 +16,7 @@ import json
 import os
 from pathlib import Path
 import plistlib
+import re
 import secrets
 import signal
 import shlex
@@ -34,6 +35,82 @@ FIXTURE = ROOT / 'testapps/license_flavor_patch_test'
 DEVICE = '00008132-000C396801D9001C'
 TEAM = '43FN6K7B4C'
 BUNDLETOOL_SHA = 'a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29'
+FFI_SCHEMA = 'full-replacement-ffi-v1'
+FFI_BASE_CHECKS = ('native-version', 'scalar-v1', 'struct-v1')
+FFI_UPDATE_CHECKS = (
+    'native-version', 'scalar-v2', 'struct-v2', 'new-binding',
+    'native-address-of', 'process-lookup', 'bool-pointer', 'static-callback',
+    'local-static', 'local-capture', 'local-aggregate', 'foreign-group',
+    'listener-scalar', 'listener-compound', 'quiescent-join', 'callbacks-closed',
+)
+FFI_EXPORTS = (
+    'IosFullFfiRetain', 'IosFullFfiVersion', 'IosFullFfiScalarV1',
+    'IosFullFfiScalarV2', 'IosFullFfiChangeRecordV1', 'IosFullFfiChangeRecordV2',
+    'IosFullFfiUpdateOnly', 'IosFullFfiNegate', 'IosFullFfiEchoPointer',
+    'IosFullFfiCallScalar', 'IosFullFfiCallRecord', 'IosFullFfiStartWorkers',
+    'IosFullFfiWorkersDone', 'IosFullFfiJoinWorkers',
+)
+
+
+def fixture_profile(state):
+    if state.get('full_replacement_ffi', False):
+        return 'full_replacement_ffi'
+    if state.get('full_replacement', False):
+        return 'full_replacement'
+    if state.get('structural_updates', False):
+        return 'structural'
+    return None
+
+
+def verified_ffi_exports(output):
+    symbols = set(re.findall(r'\b_?(IosFullFfi[A-Za-z0-9_]+)\b', output))
+    missing = set(FFI_EXPORTS) - symbols
+    if missing:
+        raise RuntimeError('Released Mach-O lacks FFI exports: ' + ', '.join(sorted(missing)))
+    return list(FFI_EXPORTS)
+
+
+def validate_launch_report(content, state):
+    """A historical license-only success cannot satisfy a new FFI session."""
+    if not state.get('full_replacement_ffi', False):
+        if content not in ('license:free\npro-feature:off\n',
+                           'license:pro\npro-feature:enabled\n'):
+            raise ValueError('Invalid legacy license status')
+        return {'schema': 'license-v1'}
+    report = json.loads(content)
+    required = {
+        'schema', 'phase', 'license', 'pro_feature_enabled',
+        'structural_verified', 'ffi_verified', 'rendered_text', 'checks',
+        'workers_started', 'workers_joined', 'callbacks_closed',
+        'static_callbacks_retained',
+    }
+    if not isinstance(report, dict) or set(report) != required or report['schema'] != FFI_SCHEMA:
+        raise ValueError('Missing distinct full FFI verification schema')
+    phase = report['phase']
+    if phase not in ('base', 'update'):
+        raise ValueError('Invalid full FFI phase')
+    base = phase == 'base'
+    expected_checks = FFI_BASE_CHECKS if base else FFI_UPDATE_CHECKS
+    expected_text = ('license:free full-replacement:verified value:10 full-ffi:v1-base'
+                     if base else
+                     'license:pro full-replacement:verified value:28 full-ffi:v2-update')
+    checks = report['checks']
+    if (report['license'] != ('free' if base else 'pro') or
+            report['pro_feature_enabled'] is not (not base) or
+            report['structural_verified'] is not True or
+            report['ffi_verified'] is not True or
+            report['workers_joined'] is not True or
+            report['callbacks_closed'] is not True or
+            type(report['workers_started']) is not int or
+            report['workers_started'] != (0 if base else 2) or
+            type(report['static_callbacks_retained']) is not int or
+            report['static_callbacks_retained'] != (0 if base else 1) or
+            report['rendered_text'] != expected_text or
+            not isinstance(checks, list) or
+            any(not isinstance(check, str) for check in checks) or
+            len(checks) != len(expected_checks) or set(checks) != set(expected_checks)):
+        raise ValueError('Full FFI verification incomplete')
+    return report
 
 
 def run(command, *, cwd=ROOT, env=None, log=None):
@@ -220,7 +297,9 @@ def prepare(args, work):
         'version': 1, 'cli_ref': cli_ref, 'flutter_ref': flutter_ref,
         'engine_id': engine_id, 'device': args.device, 'team': args.team,
         'structural_updates': args.structural_updates,
-        'full_replacement': args.full_replacement,
+        'full_replacement': args.full_replacement or args.full_replacement_ffi,
+        'full_replacement_ffi': args.full_replacement_ffi,
+        'status_schema': FFI_SCHEMA if args.full_replacement_ffi else 'license-v1',
         'include_working_tree': args.include_working_tree,
         'bundle_id': f'org.tonycloud.shorebird-license-e2e.{session}',
         'key_id': f'device-e2e-{session}', 'release_version': '1.0.0+1',
@@ -233,7 +312,14 @@ def prepare(args, work):
                                         FIXTURE / 'ios/Runner/SceneDelegate.swift',
                                         FIXTURE / 'ios/Runner/Info.plist',
                                         FIXTURE / 'lib/launch_status_io.dart'] +
-                           (sorted((FIXTURE / 'tool/structural').rglob('*.template'))
+                           (sorted((FIXTURE / 'tool/full_replacement_ffi').rglob('*.template')) +
+                            [FIXTURE / 'ios/Runner/FullFfiFixture.c',
+                             FIXTURE / 'ios/Runner/FullFfiFixture.h',
+                             FIXTURE / 'ios/Runner/Runner-Bridging-Header.h',
+                             FIXTURE / 'ios/Runner.xcodeproj/project.pbxproj',
+                             FIXTURE / 'tool/ios_device_e2e.py']
+                            if args.full_replacement_ffi else
+                            sorted((FIXTURE / 'tool/structural').rglob('*.template'))
                             if args.structural_updates else
                             sorted((FIXTURE / 'tool/full_replacement').rglob('*.template'))
                             if args.full_replacement else [])},
@@ -258,10 +344,9 @@ def prepare(args, work):
     write_json(work / 'state.json', state)
     shutil.copytree(FIXTURE, work / 'app', ignore=shutil.ignore_patterns(
         '.dart_tool', 'build', 'Pods', '.symlinks', '.gradle', '.git'))
-    if state['structural_updates']:
-        apply_fixture(work, 'base', 'structural')
-    elif state['full_replacement']:
-        apply_fixture(work, 'base', 'full_replacement')
+    profile = fixture_profile(state)
+    if profile:
+        apply_fixture(work, 'base', profile)
     project = work / 'app/ios/Runner.xcodeproj/project.pbxproj'
     source = project.read_text().replace(
         'com.example.licenseflavorpatchtest.licenseFlavorPatchTest', state['bundle_id'])
@@ -429,14 +514,16 @@ def serve(work):
             except (ValueError, OSError, UnicodeError):
                 self.send_error(400)
                 return
-            if content not in ('license:free\npro-feature:off\n',
-                               'license:pro\npro-feature:enabled\n'):
+            try:
+                verification = validate_launch_report(content, state)
+            except (ValueError, TypeError):
                 self.send_error(400)
                 return
             with (work / 'launch-status.jsonl').open('a') as output:
                 output.write(json.dumps({'time': time.time(),
                                          'peer': self.client_address[0],
-                                         'status': content}) + '\n')
+                                         'status': content,
+                                         'verification': verification}) + '\n')
             self.send_response(204)
             self.end_headers()
 
@@ -525,10 +612,9 @@ def build_phase(args, work):
     patch = args.phase == 'patch'
     if patch and 'release_codesign' not in state:
         raise RuntimeError('Complete the free release before patching')
-    if patch and state.get('structural_updates', False):
-        apply_fixture(work, 'patch', 'structural')
-    elif patch and state.get('full_replacement', False):
-        apply_fixture(work, 'patch', 'full_replacement')
+    profile = fixture_profile(state)
+    if patch and profile:
+        apply_fixture(work, 'patch', profile)
     signed = state['release_codesign'] if patch else args.signed
     command = [work / 'cli/bin/shorebird-e2e', '--json',
                f"--local-engine-src-path={state['engine_src']}",
@@ -568,6 +654,15 @@ def verified_app(args, work, state):
     if result.returncode or entitlements.get('get-task-allow') is True:
         raise RuntimeError('Debug entitlement found; refusing physical validation')
     run(['codesign', '--verify', '--strict', app])
+    if state.get('full_replacement_ffi', False):
+        binary = app / info['CFBundleExecutable']
+        exports = run(['xcrun', 'dyld_info', '-exports', binary],
+                      log=work / 'ffi-native-exports.log').decode()
+        verified_exports = verified_ffi_exports(exports)
+        write_json(work / 'ffi-native-exports.json', {
+            'schema': FFI_SCHEMA, 'binary_sha256': hashlib.sha256(binary.read_bytes()).hexdigest(),
+            'verified_exports': verified_exports, 'source': 'dyld_info -exports',
+        })
     strict_env = dict(os.environ, APP_STORE_STRICT='1', IOS_APP_BUNDLE=str(app),
                       IOS_ENGINE_DIR=str(Path(state['engine_src']) / 'out/ios_release'),
                       HOST_ENGINE_DIR=state['host_engine'])
@@ -598,6 +693,8 @@ def main():
                         help='Prepare a structural release and patch adding a Flutter widget and fields')
     profiles.add_argument('--full-replacement', action='store_true',
                         help='Prepare a full replacement release and patch with changed layouts and removals')
+    profiles.add_argument('--full-replacement-ffi', action='store_true',
+                        help='Full replacement plus fixed released C exports and actual FFI/callback checks')
     parser.add_argument('--app', type=Path)
     parser.add_argument('--provision', action='store_true')
     args = parser.parse_args()
@@ -610,6 +707,8 @@ def main():
                 extra.append('--structural-updates')
             if phase == 'prepare' and args.full_replacement:
                 extra.append('--full-replacement')
+            if phase == 'prepare' and args.full_replacement_ffi:
+                extra.append('--full-replacement-ffi')
             if phase == 'prepare' and args.include_working_tree:
                 extra.append('--include-working-tree')
             print(shlex.join(['python3', str(Path(__file__)), phase, '--work-dir', str(work), '--execute', *extra]))

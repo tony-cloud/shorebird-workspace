@@ -1,0 +1,305 @@
+import 'dart:async';
+import 'dart:ffi';
+import 'ffi_status.dart';
+
+// Same mutable class name, changed native layout; C V2 was already released.
+final class PluginRecord extends Struct {
+  @Int64()
+  external int number;
+  @Double()
+  external double fraction;
+  @Int64()
+  external int extra;
+}
+
+typedef ScalarCallback = Int64 Function(Int64, Int64);
+typedef RecordCallback = PluginRecord Function(PluginRecord);
+typedef ScalarListener = Void Function(Int64, Int64);
+typedef RecordListener = Void Function(Int64, PluginRecord);
+
+@Native<Int64 Function()>(symbol: 'IosFullFfiVersion')
+external int nativeVersion();
+@Native<Int64 Function(Int64)>(symbol: 'IosFullFfiScalarV2')
+external int scalar(int value);
+@Native<PluginRecord Function(PluginRecord)>(symbol: 'IosFullFfiChangeRecordV2')
+external PluginRecord changeRecord(PluginRecord value);
+@Native<Int64 Function(Int64)>(symbol: 'IosFullFfiUpdateOnly')
+external int updateOnly(int value);
+@Native<Bool Function(Bool)>(symbol: 'IosFullFfiNegate')
+external bool negate(bool value);
+@Native<Pointer<Void> Function(Pointer<Void>)>(symbol: 'IosFullFfiEchoPointer')
+external Pointer<Void> echoPointer(Pointer<Void> value);
+@Native<Int64 Function(Pointer<NativeFunction<ScalarCallback>>, Int64, Int64)>(
+  symbol: 'IosFullFfiCallScalar',
+)
+external int callScalar(
+  Pointer<NativeFunction<ScalarCallback>> callback,
+  int a,
+  int b,
+);
+@Native<
+  PluginRecord Function(Pointer<NativeFunction<RecordCallback>>, PluginRecord)
+>(symbol: 'IosFullFfiCallRecord')
+external PluginRecord callRecord(
+  Pointer<NativeFunction<RecordCallback>> callback,
+  PluginRecord value,
+);
+@Native<
+  Int32 Function(
+    Pointer<NativeFunction<ScalarCallback>>,
+    Pointer<NativeFunction<ScalarListener>>,
+    Pointer<NativeFunction<RecordListener>>,
+  )
+>(symbol: 'IosFullFfiStartWorkers')
+external int startWorkers(
+  Pointer<NativeFunction<ScalarCallback>> group,
+  Pointer<NativeFunction<ScalarListener>> listener,
+  Pointer<NativeFunction<RecordListener>> recordListener,
+);
+@Native<Int32 Function()>(symbol: 'IosFullFfiWorkersDone')
+external int workersDone();
+@Native<Int64 Function()>(symbol: 'IosFullFfiJoinWorkers')
+external int joinWorkers();
+
+void equal(Object? expected, Object? actual) {
+  if (expected != actual) throw StateError('Expected $expected, got $actual');
+}
+
+@pragma('vm:entry-point')
+int staticTarget(int a, int b) {
+  if (a == -1) throw StateError('Static callback exception control');
+  return a * 3 + b;
+}
+
+// A separate scope is essential: group callbacks must not share the mutable
+// local-callback/listener context below. Capture a final scalar, not a formal.
+NativeCallable<ScalarCallback> immutableGroup(int offset) {
+  final int amount = offset;
+  return NativeCallable<ScalarCallback>.isolateGroupBound(
+    (int a, int b) => amount + a + b,
+    exceptionalReturn: -7005,
+  );
+}
+
+// Keep callbacks rooted if an underlying runtime failure prevents quiescence.
+// The failure never reports verified status and never closes an active pointer.
+final _owners = <NativeCallable>[];
+
+Future<int> _joinAfterQuiescence() async {
+  final deadline = DateTime.now().add(const Duration(seconds: 10));
+  while (workersDone() != 1) {
+    if (DateTime.now().isAfter(deadline)) {
+      throw TimeoutException(
+        'Native workers not quiescent; callbacks retained',
+      );
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+  }
+  // Native checks its completion flag again. Every worker has finished all
+  // Dart entries before this join, so it cannot wait on the current mutator.
+  final result = joinWorkers();
+  if (result == -9223372036854775808) {
+    throw StateError('Quiescent native join failed; callbacks retained');
+  }
+  return result;
+}
+
+void _closeOwners() {
+  for (final callback in _owners) {
+    callback.close();
+    equal(false, callback.keepIsolateAlive);
+    var closed = false;
+    try {
+      callback.nativeFunction;
+    } on StateError {
+      closed = true;
+    }
+    equal(true, closed);
+  }
+  _owners.clear();
+}
+
+Future<FfiEvidence> runFfiChecks() async {
+  if (_owners.isNotEmpty)
+    throw StateError('Previous native callbacks still live');
+  equal(2, nativeVersion());
+  equal(207, scalar(7));
+  equal(
+    208,
+    Native.addressOf<NativeFunction<Int64 Function(Int64)>>(
+      scalar,
+    ).asFunction<int Function(int)>()(8),
+  );
+  equal(407, updateOnly(7));
+  final dynamicCall = DynamicLibrary.process()
+      .lookupFunction<Int64 Function(Int64), int Function(int)>(
+        'IosFullFfiUpdateOnly',
+      );
+  equal(409, dynamicCall(9));
+  equal(false, negate(true));
+  equal(true, negate(false));
+  equal(1234, echoPointer(Pointer<Void>.fromAddress(1234)).address);
+  equal(24, sizeOf<PluginRecord>());
+  final input = Struct.create<PluginRecord>()
+    ..number = 20
+    ..fraction = 2.5
+    ..extra = 30;
+  final result = changeRecord(input);
+  equal(22, result.number);
+  equal(7.5, result.fraction);
+  equal(35, result.extra);
+  equal(20, input.number);
+  equal(30, input.extra);
+
+  // This one noncloseable static entry intentionally lives until shutdown.
+  final staticPointer = Pointer.fromFunction<ScalarCallback>(
+    staticTarget,
+    -7001,
+  );
+  equal(19, callScalar(staticPointer, 5, 4));
+  equal(-7001, callScalar(staticPointer, -1, 4));
+  var nativeStarted = false;
+  var joined = false;
+  var started = 0;
+  Object? callbackFailure;
+  StackTrace? callbackFailureStack;
+  try {
+    final localStatic = NativeCallable<ScalarCallback>.isolateLocal(
+      staticTarget,
+      exceptionalReturn: -7002,
+    );
+    _owners.add(localStatic);
+    equal(19, callScalar(localStatic.nativeFunction, 5, 4));
+    final captured = <int>[40];
+    final local = NativeCallable<ScalarCallback>.isolateLocal(
+      (int a, int b) => captured[0] + a + b,
+      exceptionalReturn: -7003,
+    );
+    _owners.add(local);
+    equal(52, callScalar(local.nativeFunction, 7, 5));
+    captured[0] = 100;
+    equal(112, callScalar(local.nativeFunction, 7, 5));
+    final aggregate = NativeCallable<RecordCallback>.isolateLocal((
+      PluginRecord value,
+    ) {
+      value.number += captured[0];
+      value.extra += 2;
+      return value;
+    });
+    _owners.add(aggregate);
+    final aggregateInput = Struct.create<PluginRecord>()
+      ..number = 10
+      ..fraction = 2.5
+      ..extra = 20;
+    final aggregateResult = callRecord(
+      aggregate.nativeFunction,
+      aggregateInput,
+    );
+    equal(110, aggregateResult.number);
+    equal(22, aggregateResult.extra);
+    equal(10, aggregateInput.number);
+
+    final completed = Completer<void>();
+    final scalarEvents = <int>{};
+    final recordEvents = <int>{};
+    void ready() {
+      if (scalarEvents.length == 2 &&
+          recordEvents.length == 2 &&
+          !completed.isCompleted) {
+        completed.complete();
+      }
+    }
+
+    void failed(Object error, StackTrace stack) {
+      callbackFailure ??= error;
+      callbackFailureStack ??= stack;
+      if (!completed.isCompleted) completed.completeError(error, stack);
+    }
+
+    final listener = NativeCallable<ScalarListener>.listener((
+      int index,
+      int value,
+    ) {
+      try {
+        equal(true, index == 0 || index == 1);
+        equal(true, scalarEvents.add(index));
+        equal(52 + index, value);
+        ready();
+      } on Object catch (error, stack) {
+        failed(error, stack);
+      }
+    });
+    _owners.add(listener);
+    final recordListener = NativeCallable<RecordListener>.listener((
+      int index,
+      PluginRecord value,
+    ) {
+      try {
+        equal(true, index == 0 || index == 1);
+        equal(true, recordEvents.add(index));
+        equal(21 + index, value.number);
+        equal(2.5 + index, value.fraction);
+        equal(31 + index, value.extra);
+        ready();
+      } on Object catch (error, stack) {
+        failed(error, stack);
+      }
+    });
+    _owners.add(recordListener);
+    final group = immutableGroup(37);
+    _owners.add(group);
+    started = startWorkers(
+      group.nativeFunction,
+      listener.nativeFunction,
+      recordListener.nativeFunction,
+    );
+    nativeStarted = started > 0;
+    equal(2, started);
+    await completed.future.timeout(const Duration(seconds: 10));
+    equal(2, scalarEvents.length);
+    equal(2, recordEvents.length);
+  } finally {
+    int? sum;
+    try {
+      if (nativeStarted) {
+        sum = await _joinAfterQuiescence();
+        joined = true;
+        // All producers are joined. Let any already-queued listener messages
+        // run while their descriptors remain live, including error controls.
+        await Future<void>.delayed(Duration.zero);
+      }
+    } finally {
+      if (!nativeStarted || joined) _closeOwners();
+    }
+    if (nativeStarted) equal(105, sum);
+  }
+  equal(true, joined);
+  equal(0, _owners.length);
+  if (callbackFailure != null) {
+    Error.throwWithStackTrace(callbackFailure!, callbackFailureStack!);
+  }
+  return FfiEvidence(
+    checks: const [
+      'native-version',
+      'scalar-v2',
+      'struct-v2',
+      'new-binding',
+      'native-address-of',
+      'process-lookup',
+      'bool-pointer',
+      'static-callback',
+      'local-static',
+      'local-capture',
+      'local-aggregate',
+      'foreign-group',
+      'listener-scalar',
+      'listener-compound',
+      'quiescent-join',
+      'callbacks-closed',
+    ],
+    workersStarted: started,
+    workersJoined: joined,
+    callbacksClosed: _owners.isEmpty,
+    staticCallbacksRetained: 1,
+  );
+}

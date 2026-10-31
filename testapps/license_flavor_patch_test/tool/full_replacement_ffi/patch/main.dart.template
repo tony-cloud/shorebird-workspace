@@ -1,0 +1,48 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'ffi_plugin.dart';
+import 'ffi_status.dart';
+import 'pro_feature.dart';
+import 'unchanged_caller.dart';
+
+final statusKey = GlobalKey();
+const expectedText =
+    'license:pro full-replacement:verified value:28 full-ffi:v2-update';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final evidence = await runFfiChecks();
+  final firstFrame = Completer<void>();
+  runApp(const LicenseFlavorPatchApp());
+  WidgetsBinding.instance.addPostFrameCallback((_) => firstFrame.complete());
+  await firstFrame.future;
+  final rendered = statusKey.currentContext?.findRenderObject();
+  if (rendered is! RenderParagraph ||
+      !rendered.attached ||
+      !rendered.hasSize ||
+      rendered.size.isEmpty ||
+      rendered.text.toPlainText() != expectedText) {
+    throw StateError('Full replacement patch rendered assertion failed');
+  }
+  writeFullFfiStatus(
+    phase: 'update',
+    license: state.name,
+    proFeatureEnabled: state.isPro,
+    renderedText: expectedText,
+    evidence: evidence,
+  );
+}
+
+class LicenseFlavorPatchApp extends StatelessWidget {
+  const LicenseFlavorPatchApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        body: ReplacementFeature<int>(expected: 28, statusKey: statusKey),
+      ),
+    );
+  }
+}

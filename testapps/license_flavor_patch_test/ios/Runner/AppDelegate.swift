@@ -6,6 +6,8 @@ import UIKit
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
   override init() {
     super.init()
+    let fixtureExports = IosFullFfiRetain()
+    precondition(fixtureExports == 13, "Released FFI fixture exports missing")
     // Device-test provisioning is supplied by the test runner, never bundled
     // into the app or uploaded as release metadata. Subsequent cold launches
     // retrieve the provisioned key from this app's device-only Keychain item.

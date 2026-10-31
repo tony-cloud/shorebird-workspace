@@ -1,0 +1,69 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+
+class FfiEvidence {
+  final List<String> checks;
+  final int workersStarted;
+  final bool workersJoined;
+  final bool callbacksClosed;
+  final int staticCallbacksRetained;
+  const FfiEvidence({
+    required this.checks,
+    required this.workersStarted,
+    required this.workersJoined,
+    required this.callbacksClosed,
+    required this.staticCallbacksRetained,
+  });
+}
+
+// Called only after the FFI Future and exact rendered/structural assertions.
+// This schema deliberately differs from historical license-only device runs.
+void writeFullFfiStatus({
+  required String phase,
+  required String license,
+  required bool proFeatureEnabled,
+  required String renderedText,
+  required FfiEvidence evidence,
+}) {
+  final contents = jsonEncode({
+    'schema': 'full-replacement-ffi-v1',
+    'phase': phase,
+    'license': license,
+    'pro_feature_enabled': proFeatureEnabled,
+    'structural_verified': true,
+    'ffi_verified': true,
+    'rendered_text': renderedText,
+    'checks': evidence.checks,
+    'workers_started': evidence.workersStarted,
+    'workers_joined': evidence.workersJoined,
+    'callbacks_closed': evidence.callbacksClosed,
+    'static_callbacks_retained': evidence.staticCallbacksRetained,
+  });
+  try {
+    File(
+      '${Directory.systemTemp.path}/license_flavor_patch_ffi_status.json',
+    ).writeAsStringSync(contents, flush: true);
+  } on Object {
+    // Device observer reporting remains available without container access.
+  }
+  const reportUrl = String.fromEnvironment('PATCH_TEST_REPORT_URL');
+  if (reportUrl.isNotEmpty) {
+    unawaited(_report(Uri.parse(reportUrl), contents));
+  }
+}
+
+Future<void> _report(Uri url, String contents) async {
+  final client = HttpClient()..connectionTimeout = const Duration(seconds: 5);
+  try {
+    final request = await client.postUrl(url);
+    request.headers.contentType = ContentType.json;
+    request.write(contents);
+    final response = await request.close().timeout(const Duration(seconds: 5));
+    await response.drain<void>();
+  } on Object {
+    // Missing transport is a missing acceptance report, never a false success.
+  } finally {
+    client.close(force: true);
+  }
+}

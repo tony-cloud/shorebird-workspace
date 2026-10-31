@@ -1,0 +1,42 @@
+import 'dart:ffi';
+import 'ffi_status.dart';
+
+// B uses no callback API or signatures introduced by U. All C exports still
+// ship in Runner from the start; this mutable Dart library is replaced in U.
+final class PluginRecord extends Struct {
+  @Int64()
+  external int number;
+  @Double()
+  external double fraction;
+}
+
+@Native<Int64 Function()>(symbol: 'IosFullFfiVersion')
+external int nativeVersion();
+@Native<Int64 Function(Int64)>(symbol: 'IosFullFfiScalarV1')
+external int scalar(int value);
+@Native<PluginRecord Function(PluginRecord)>(symbol: 'IosFullFfiChangeRecordV1')
+external PluginRecord changeRecord(PluginRecord value);
+
+void equal(Object? expected, Object? actual) {
+  if (expected != actual) throw StateError('Expected $expected, got $actual');
+}
+
+Future<FfiEvidence> runFfiChecks() async {
+  equal(2, nativeVersion());
+  equal(107, scalar(7));
+  equal(16, sizeOf<PluginRecord>());
+  final input = Struct.create<PluginRecord>()
+    ..number = 20
+    ..fraction = 2.5;
+  final result = changeRecord(input);
+  equal(21, result.number);
+  equal(5.0, result.fraction);
+  equal(20, input.number);
+  return const FfiEvidence(
+    checks: ['native-version', 'scalar-v1', 'struct-v1'],
+    workersStarted: 0,
+    workersJoined: true,
+    callbacksClosed: true,
+    staticCallbacksRetained: 0,
+  );
+}

@@ -1,0 +1,20 @@
+class LicenseState {
+  final int retained;
+  final String removedField;
+
+  const LicenseState({this.retained = 7, this.removedField = 'retired-field'});
+
+  static int factor = 1;
+  static final String staticLabel = 'free-static';
+  static String describe(int value) => 'free:$value';
+
+  String get name => 'free';
+  bool get isPro => false;
+  int score(int bonus) => retained + bonus;
+  String removedMethod() => 'retired-method';
+}
+
+class RemovedLicense {
+  const RemovedLicense();
+  String get value => 'retired-class';
+}
