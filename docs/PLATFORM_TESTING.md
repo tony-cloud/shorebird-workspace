@@ -187,6 +187,15 @@ comparison. This is tooling validation with synthetic binding fixtures, not a
 native app runtime test; see the
 [provenance record](validation/native-mapping-provenance-20261101.json).
 
+Release artifact downloads now reject malformed SHA-256 metadata and mismatching
+bytes before patching. Failed owned downloads are cleaned up; valid cached
+reuse, retry recovery and verified cache-rename fallback remain supported.
+The expanded CLI gate passed 762 tests, including production integrity checks
+that stop corrupt primary artifacts and supplements before extraction or
+publication. These tests use controlled transport bytes on macOS, and the
+expected digest remains supplied by the release service. See the
+[download integrity record](validation/release-artifact-integrity-20261101.json).
+
 The new Windows lifecycle fixture uses real CLI release/patch commands, the Go
 server's signed encrypted delivery, a test-only DPAPI key provider, and the
 released Runner. It checks post-frame rendering and the running patch number,

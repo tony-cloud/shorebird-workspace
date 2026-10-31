@@ -7,6 +7,7 @@ RESULTS="$ROOT/artifacts/cli-native-archive-tests"
 mkdir -p "$RESULTS"
 
 tests=(
+  test/src/artifact_manager_test.dart
   test/src/archive_analysis/android_archive_differ_test.dart
   test/src/archive_analysis/linux_bundle_differ_test.dart
   test/src/archive_analysis/windows_archive_differ_test.dart

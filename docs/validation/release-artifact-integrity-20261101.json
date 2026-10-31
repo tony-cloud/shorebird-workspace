@@ -1,0 +1,35 @@
+{
+  "date": "2026-11-01",
+  "cli_commit": "069a088deca10254e7e5de4c7da8010aa7b187c6",
+  "problem": "A freshly downloaded release artifact whose SHA-256 differed from server metadata was warned about but still returned for patching.",
+  "behavior": [
+    "Reject malformed expected SHA-256 metadata before cache or network access; accept uppercase hex and normalize to lowercase.",
+    "Hash cached and downloaded bytes and reject mismatching downloads; never use them as patch inputs.",
+    "Remove owned failed download directories on download/hash-read/hash-mismatch failures.",
+    "Retain valid cached reuse, corrupt cache redownload/recovery, and verified-download fallback when cache rename fails.",
+    "Log bounded artifact-id and hexadecimal-digest diagnostics without arbitrary metadata or signed download URLs."
+  ],
+  "validation": {
+    "focused_artifact_and_command_tests": 164,
+    "final_combined_archive_gate_tests": 762,
+    "final_three_file_analysis": "passed with fatal infos",
+    "format": "passed",
+    "workflow": "210 shell blocks and artifact contract passed",
+    "independent_review": "no remaining actionable findings",
+    "patch_command_boundary": "Production integrity verification with controlled transport bytes rejects corrupt primary and supplementary artifacts before extraction/build/create/upload for an explicitly selected release.",
+    "final_test_cleanup": "Temporary roots use the existing cleanup helper; final full gate passed after correcting a redundant teardown."
+  },
+  "limits": [
+    "Expected digests remain supplied by the authenticated release service; content hashing is not an independent publisher signature.",
+    "These CLI tests ran on macOS with simulated HTTP/transport, not a native device or live hosted-service lifecycle.",
+    "Release-version inference may build locally before it knows which release artifact to download.",
+    "Windows cache-sharing behavior is covered by a deterministic rename-failure fixture, not native concurrent-process execution.",
+    "Hosted CI at this revision is pending."
+  ],
+  "source_sha256": {
+    "shorebird/packages/shorebird_cli/lib/src/artifact_manager.dart": "7113998e53296374bdd1073212ab01ec35880b9ee47b7de106dbed15fd968abb",
+    "shorebird/packages/shorebird_cli/test/src/artifact_manager_test.dart": "7e77b4745d07094ec4700c47c0c10c3ea59b82692a95cc22863c4c0f7db6b118",
+    "shorebird/packages/shorebird_cli/test/src/commands/patch/patch_command_test.dart": "dc0a21a8351647a3bf3331fb96afcb523979ab90329b8d40a206eb7d28c9eed5"
+  },
+  "final_gate_log_sha256": "1210119e1f81151ad3a391d2151e8e5c86c3284bfd58e740a051c7d1e2b132e3"
+}

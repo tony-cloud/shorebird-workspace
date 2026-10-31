@@ -1763,6 +1763,7 @@ assert!(
 )
 archive_runner = read_repo_file(repo_root, 'scripts/run_native_archive_tests.sh')
 %w[
+  artifact_manager_test.dart
   android_archive_differ_test.dart linux_bundle_differ_test.dart
   windows_archive_differ_test.dart apple_archive_security_test.dart
   full_replacement_archive_differ_test.dart macho_test.dart
