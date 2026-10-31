@@ -62,17 +62,27 @@ passed 27 jobs, including iOS/Android/Linux/macOS engines, Linux/macOS SDKs,
 all CLI/server targets, Android host snapshotters, and universal macOS assembly.
 Windows SDK configuration and Windows engine packaging failed. Windows engine
 compilation itself passed; the packaging check detected a missing exported key
-provider API. Follow-up CI [41177930723](https://github.com/tony-cloud/shorebird-workspace/actions/runs/41177930723)
-checks the integrated fixes. All-platform support and a publishable artifact
+provider API. Follow-up CI [41179506485](https://github.com/tony-cloud/shorebird-workspace/actions/runs/41179506485)
+found a further Windows SDK version mismatch between Dart toolchain files;
+the declarations now agree on the installed SDK and a source check enforces this.
+All-platform support and a publishable artifact
 mirror require the final source revisions to pass the complete matrix.
 
-Existing signatures, inheritance and field definitions cannot change, and
+In the shipping additive profile, existing signatures, inheritance and field definitions cannot change, and
 removed declarations are rejected. Added fields on existing const, deeply
 immutable or native-wrapper classes are unsupported. Constructor-only nonnullable
 fields require an initializer or `late` for preexisting objects. These limits
 mean unrestricted structural replacement is still incomplete. See the
 [SDK protocol and limitations](../dart-sdk/docs/shorebird-structural-patching.md).
 Size and performance impact have not been benchmarked.
+
+The separate experimental full-replacement SDK profile has passed local macOS
+ARM64 PRODUCT/development host acceptance for const layout and constructor-default
+changes, statics, removals, inheritance, GC and child isolates. The real AES
+producer, decryption, replacement and payload-free lifecycle also passes, with
+wrong-key, altered-ciphertext and expiry rejection. These are host proofs;
+Flutter/CLI integration and full-profile iPad validation remain outstanding.
+See [the full-replacement contract and limits](FULL_REPLACEMENT.md).
 
 The real Dart client/Go server smoke covers managed signing, release-scoped
 patches, signed update responses, rollback/forward, refresh rotation, and restart

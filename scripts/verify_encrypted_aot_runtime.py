@@ -7,6 +7,7 @@ the SDK's body-patch fixture and compiler, then bridges the actual Dart crypto
 producer to Dart_InstallAotPatch -> Dart_ReloadBytecodePatch -> payload free.
 This is host runtime evidence, not an iOS device or FlutterEngine test.
 Use --structural for the opted-in boot-only structural baseline and delta.
+Use --full-replacement for the experimental complete-domain wrapper profile.
 Add --product to exercise matching PRODUCT compiler, platform and shared runtime.
 """
 
@@ -224,13 +225,16 @@ def main():
     parser.add_argument('--tooling-dart', type=Path,
                         help='Dart SDK used to run the real envelope producer')
     parser.add_argument('--cxx', default='c++')
-    parser.add_argument('--structural', action='store_true',
+    profile = parser.add_mutually_exclusive_group()
+    profile.add_argument('--structural', action='store_true',
                         help='Verify encrypted boot-only structural additions')
+    profile.add_argument('--full-replacement', action='store_true',
+                         help='Verify encrypted complete-domain replacement')
     parser.add_argument('--product', action='store_true',
-                        help='Use PRODUCT compiler/runtime (requires --structural)')
+                        help='Use PRODUCT compiler/runtime (requires a boot profile)')
     args = parser.parse_args()
-    if args.product and not args.structural:
-        parser.error('--product currently requires --structural')
+    if args.product and not (args.structural or args.full_replacement):
+        parser.error('--product requires --structural or --full-replacement')
     root = Path(__file__).resolve().parents[1]
     sdk = root / 'dart-sdk'
     build = args.build_dir.resolve()
@@ -270,11 +274,14 @@ def main():
                 raise RuntimeError(f'{label} failed with exit {result.returncode}')
             return result.stdout
 
-        if args.structural:
+        if args.structural or args.full_replacement:
             producer = work / 'encrypt_fixture.dart'
             producer.write_text(DART_PRODUCER)
-            output = run('encrypted-structural-runtime', [
-                sys.executable, sdk / 'tools/test_aot_structural_patch.py',
+            name = 'full-replacement' if args.full_replacement else 'structural'
+            harness = ('test_aot_full_replacement.py' if args.full_replacement
+                       else 'test_aot_structural_patch.py')
+            output = run(f'encrypted-{name}-runtime', [
+                sys.executable, sdk / 'tools' / harness,
                 '--build-dir', build, '--work-dir', work / 'sdk-fixture',
                 '--cxx', args.cxx,
                 *(['--product'] if args.product else []),

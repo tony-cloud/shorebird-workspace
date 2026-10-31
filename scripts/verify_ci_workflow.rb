@@ -2468,6 +2468,13 @@ end
   path = "flutter_infra_release/flutter/$engine/#{host}/font-subset.zip"
   assert!(generated_artifact_overrides.include?(path), "#{host} font tools must use the matching custom SDK mirror")
 end
+windows_sdk_versions = %w[
+  dart-sdk/build/vs_toolchain.py
+  dart-sdk/build/toolchain/win/setup_toolchain.py
+].map do |path|
+  read_repo_file(repo_root, path)[/^SDK_VERSION = ['"]([^'"]+)['"]$/, 1]
+end
+assert!(windows_sdk_versions.all? && windows_sdk_versions.uniq.length == 1, 'Dart Windows toolchain SDK_VERSION declarations must agree')
 windows_sdk_generate = jobs.fetch('custom-dart-sdk-windows').fetch('steps').find { |step| step['name'] == 'Generate patched Dart SDK build files' }.fetch('run')
 assert!(windows_sdk_generate.include?('gn.RunGnOnConfiguredConfigurations(options, dict(os.environ))') && windows_sdk_generate.include?("sys.argv[0] = 'tools/gn.py'"), 'Windows SDK GN must preserve its source root and inherit native Python PATH and Visual Studio environment through the public build helper')
 windows_engine_build = jobs.fetch('windows-engine').fetch('steps').find { |step| step['name'] == 'Build Windows engine' }
@@ -2484,22 +2491,27 @@ assert!(flutter_engine_archives_build.include?('if (build_analyze_snapshot) {') 
   startup = steps.index { |step| step['name'] == 'Run PRODUCT no-TFA startup regression' }
   structural = steps.index { |step| step['name'] == 'Run boot-time structural patch regression' }
   product_structural = steps.index { |step| step['name'] == 'Run PRODUCT structural patch regression' }
+  full_replacement = steps.index { |step| step['name'] == 'Run PRODUCT full replacement regression' }
   package = steps.index { |step| step['name'] == 'Package Dart SDK artifact' }
   assert!(structural && package && structural < package && steps.fetch(structural).fetch('run').include?("test_aot_structural_patch.py --build-dir dart-sdk/#{build_dir}"), "#{name} must run the actual structural no-JIT harness before publishing its SDK")
   assert!(run_text_by_job.fetch(name).include?('dart_engine_aot_shared'), "#{name} structural harness requires the native AOT embedding library")
   assert!(product_structural && package && product_structural < package && steps.fetch(product_structural).fetch('run').include?("test_aot_structural_patch.py --build-dir dart-sdk/#{build_dir} --product"), "#{name} must prove structural replacement through the production AOT embedding library")
+  assert!(full_replacement && package && full_replacement < package && steps.fetch(full_replacement).fetch('run').include?("test_aot_full_replacement.py --build-dir dart-sdk/#{build_dir} --product"), "#{name} must prove the experimental full-domain profile through the production AOT embedding library")
   assert!(startup && package && startup < package && steps.fetch(startup).fetch('run').include?("test_aot_no_tfa_startup.py --build-dir dart-sdk/#{build_dir}"), "#{name} must exercise PRODUCT standalone no-TFA bootstrap before publishing its SDK")
   %w[dart gen_snapshot_product dartaotruntime_product vm_platform_product dart_engine_aot_shared_product].each do |target|
     assert!(steps.find { |step| step['name'] == 'Build patched Dart SDK' }.fetch('run').split.include?(target), "#{name} standalone startup harness requires explicit #{target} build output")
   end
 end
 assert!(run_text_by_job.fetch('source-checks').include?('python3 -m py_compile dart-sdk/tools/test_aot_structural_patch.py'), 'source checks must syntax-check the structural runtime harness')
+assert!(run_text_by_job.fetch('source-checks').include?('python3 -m py_compile dart-sdk/tools/test_aot_full_replacement.py'), 'source checks must syntax-check the full replacement runtime harness')
 assert!(run_text_by_job.fetch('source-checks').include?('python3 -m py_compile dart-sdk/tools/test_aot_no_tfa_startup.py'), 'source checks must syntax-check the PRODUCT standalone startup harness')
 assert!(!run_text_by_job.fetch('custom-dart-sdk-windows').include?('test_aot_no_tfa_startup.py'), 'Windows compile/tooling evidence must remain distinct from the unsupported PRODUCT startup harness')
 assert!(run_text_by_job.fetch('custom-dart-sdk').include?('scripts/verify_encrypted_aot_runtime.py --structural') && run_text_by_job.fetch('custom-dart-sdk').include?('--tooling-dart dart-sdk/out/ReleaseX64/dart-sdk/bin/dart'), 'Linux SDK must prove encrypted structural replacement through the real producer and native runtime')
 linux_sdk_steps = jobs.fetch('custom-dart-sdk').fetch('steps')
+full_encrypted = linux_sdk_steps.index { |step| step['name'] == 'Run PRODUCT encrypted full replacement regression' }
 product_encrypted = linux_sdk_steps.index { |step| step['name'] == 'Run PRODUCT encrypted structural patch regression' }
 linux_sdk_package = linux_sdk_steps.index { |step| step['name'] == 'Package Dart SDK artifact' }
+assert!(full_encrypted && linux_sdk_package && full_encrypted < linux_sdk_package && linux_sdk_steps.fetch(full_encrypted).fetch('run').include?('scripts/verify_encrypted_aot_runtime.py --full-replacement --product'), 'Linux SDK must prove encrypted full-domain replacement before publishing')
 assert!(product_encrypted && linux_sdk_package && product_encrypted < linux_sdk_package && linux_sdk_steps.fetch(product_encrypted).fetch('run').include?('scripts/verify_encrypted_aot_runtime.py --structural --product'), 'Linux SDK must prove encrypted structural replacement with the PRODUCT runtime and snapshotter before publishing')
 assert!(!run_text_by_job.fetch('custom-dart-sdk-windows').include?('test_aot_structural_patch.py'), 'Windows compilation/tooling evidence must remain distinct from the unsupported PE structural harness')
 assert!(inputs.dig('windows_heavy_runner', 'default') == 'windows-2022', 'Windows heavy jobs must select the VS2022 image supported by the Dart/Chromium toolchain')

@@ -138,6 +138,12 @@ structural patch download, restart, wrong-key fallback, and recovery update. See
 for evidence and limitations. App Store acceptance is not established by these
 tests.
 
+An experimental SDK full-replacement profile now passes local PRODUCT and
+development host tests for changed const layouts, constructor defaults, statics,
+removals and inheritance, including encrypted payloads. It still needs
+Flutter/CLI integration and device validation; see
+[the profile and remaining work](docs/FULL_REPLACEMENT.md).
+
 CI builds Linux, Android, macOS, and Windows native engines plus the iOS
 interpreter engine. Use `scripts/android_runtime_patch_smoke.sh` on an attached
 Android device or emulator and `scripts/linux_runtime_patch_smoke.sh` on a Linux

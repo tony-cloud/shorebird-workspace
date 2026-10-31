@@ -160,6 +160,7 @@ jobs:
           python3 -m py_compile scripts/write_artifact_manifest.py
           python3 -m py_compile scripts/verify_dart_sdk_tooling.py
           python3 -m py_compile dart-sdk/tools/test_aot_structural_patch.py
+          python3 -m py_compile dart-sdk/tools/test_aot_full_replacement.py
           python3 -m py_compile dart-sdk/tools/test_aot_no_tfa_startup.py
           python3 -m py_compile scripts/package_android_maven.py
           python3 scripts/verify_android_maven.py
@@ -627,6 +628,14 @@ jobs:
         working-directory: shorebird
         run: ../dart-sdk/out/ReleaseX64/dart-sdk/bin/dart pub get
 
+      - name: Test replacement compiler contracts
+        working-directory: dart-sdk
+        run: >-
+          out/ReleaseX64/dart-sdk/bin/dart --packages=.dart_tool/package_config.json
+          third_party/pkg/test/pkgs/test/bin/test.dart
+          pkg/dart2bytecode/test/patch_test.dart
+          pkg/dart2bytecode/test/full_replacement_test.dart --concurrency=1
+
       - name: Run encrypted no-JIT replacement regression
         run: >-
           python3 scripts/verify_encrypted_aot_runtime.py
@@ -641,6 +650,15 @@ jobs:
 
       - name: Run PRODUCT structural patch regression
         run: python3 dart-sdk/tools/test_aot_structural_patch.py --build-dir dart-sdk/out/ReleaseX64 --product
+
+      - name: Run PRODUCT full replacement regression
+        run: python3 dart-sdk/tools/test_aot_full_replacement.py --build-dir dart-sdk/out/ReleaseX64 --product
+
+      - name: Run PRODUCT encrypted full replacement regression
+        run: >-
+          python3 scripts/verify_encrypted_aot_runtime.py --full-replacement --product
+          --build-dir dart-sdk/out/ReleaseX64
+          --tooling-dart dart-sdk/out/ReleaseX64/dart-sdk/bin/dart
 
       - name: Run encrypted structural patch regression
         run: >-
@@ -792,6 +810,9 @@ jobs:
       - name: Run PRODUCT structural patch regression
         run: python3 dart-sdk/tools/test_aot_structural_patch.py --build-dir dart-sdk/xcodebuild/ReleaseARM64 --product
 
+      - name: Run PRODUCT full replacement regression
+        run: python3 dart-sdk/tools/test_aot_full_replacement.py --build-dir dart-sdk/xcodebuild/ReleaseARM64 --product
+
       - name: Package Dart SDK artifact
         run: |
           mkdir -p artifacts/custom-dart-sdk-macos-arm64
@@ -929,6 +950,9 @@ jobs:
 
       - name: Run PRODUCT structural patch regression
         run: python3 dart-sdk/tools/test_aot_structural_patch.py --build-dir dart-sdk/xcodebuild/ReleaseX64 --product
+
+      - name: Run PRODUCT full replacement regression
+        run: python3 dart-sdk/tools/test_aot_full_replacement.py --build-dir dart-sdk/xcodebuild/ReleaseX64 --product
 
       - name: Package Dart SDK artifact
         run: |
