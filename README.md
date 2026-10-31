@@ -132,8 +132,8 @@ The iOS candidate route uses encrypted Dart bytecode interpreted inside a
 precompiled runtime with `DART_DYNAMIC_MODULES=false`. Current host tests prove
 body replacement, opted-in additive structural updates, and encrypted-envelope
 rejection in matching development and PRODUCT AOT runtimes.
-Physical-device results from June 2026 describe an earlier snapshot; they do not
-validate the current release/download/install lifecycle. See
+An October 31 physical iPad test exercised the signed release, encrypted
+structural patch download, restart, wrong-key fallback, and recovery update. See
 [the current validation boundary](docs/PLATFORM_TESTING.md#october-2026-validation-boundary)
 for evidence and limitations. App Store acceptance is not established by these
 tests.

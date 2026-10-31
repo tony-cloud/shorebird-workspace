@@ -34,13 +34,27 @@ PRODUCT standalone startup tests exercise full bootstrap, core APIs and
 `Function.apply`, rather than relying only on an embedder that skips bootstrap.
 Physical Flutter/iOS acceptance is a separate required gate.
 
-On October 29, the distribution-signed structural baseline rendered and reported
-`license:free` on a physical iPad without a debugger. This verifies baseline
-startup only. No structural patch was installed: patch compilation exposed a
-nullable FFI declaration reader defect and inconsistent Flutter version defines
-between baseline compilation and its manifest. The reader and CLI ordering fixes
-require a new release and a complete download/install/restart test; the earlier
-baseline cannot stand in for that evidence.
+On October 31, a distribution-signed structural release completed the real
+CLI/server/updater lifecycle on a physical iPad with no debugger or JIT
+entitlements. After downloading the encrypted patch and restarting, it rendered
+a new generic Flutter widget and validated a new helper plus fields added to an
+existing mutable class before reporting `license:pro`. The baseline retained
+its original field values. Bytecode and native compilation used identical
+Flutter version defines, and the manifest hash matched the captured defines.
+
+Provisioning a deliberately wrong AES key caused the next launch to fall back to
+the clean `license:free` baseline. Restoring the key did not reactivate the rejected
+patch. A fresh patch then downloaded and booted successfully; another cold app
+launch retained `pro` without a provisioning environment. The fixed server
+accepted and persisted the device's canonical download and install events.
+
+The tested toolchain was Dart `d5779da2cab`, Flutter `356567577b1`, CLI
+`229fe706`, updater `7894c9d`, and engine artifact identity
+`57ff1f88449aa4ecc134db978416c1a5d83ceff7`. Recovery/event acceptance used
+server `7a64b41`. The fixture is `tool/structural` under
+`testapps/license_flavor_patch_test`; the runner is `tool/ios_device_e2e.py`.
+This establishes the additive structural profile, not arbitrary changes to
+existing const classes, signatures, or static initializers.
 
 The completed October 29 CI run
 [40803323899](https://github.com/tony-cloud/shorebird-workspace/actions/runs/40803323899)
@@ -48,8 +62,9 @@ passed 27 jobs, including iOS/Android/Linux/macOS engines, Linux/macOS SDKs,
 all CLI/server targets, Android host snapshotters, and universal macOS assembly.
 Windows SDK configuration and Windows engine packaging failed. Windows engine
 compilation itself passed; the packaging check detected a missing exported key
-provider API. Local fixes require a new complete CI run before all-platform
-support or a publishable artifact mirror can be claimed.
+provider API. Follow-up CI [41177930723](https://github.com/tony-cloud/shorebird-workspace/actions/runs/41177930723)
+checks the integrated fixes. All-platform support and a publishable artifact
+mirror require the final source revisions to pass the complete matrix.
 
 Existing signatures, inheritance and field definitions cannot change, and
 removed declarations are rejected. Added fields on existing const, deeply
@@ -80,7 +95,7 @@ Linux:
 - Git
 - Bash
 - Dart or Flutter on `PATH`
-- Go 1.23+
+- Go 1.26.10 (the current server deployment toolchain pin)
 - Python and standard build dependencies required by Dart/Flutter
 - Flutter Linux desktop build dependencies (`clang`, `cmake`, `ninja`,
   `pkg-config`, GTK development headers)
@@ -91,7 +106,7 @@ macOS:
 - Git
 - Bash
 - Dart or Flutter on `PATH`
-- Go 1.23+
+- Go 1.26.10 (the current server deployment toolchain pin)
 - Xcode command line tools
 - Full Xcode for iOS simulator/device follow-up
 
