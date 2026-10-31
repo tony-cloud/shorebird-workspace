@@ -170,6 +170,8 @@ jobs:
           python3 -m py_compile dart-sdk/tools/test_aot_product_ffi.py
           python3 -m py_compile dart-sdk/tools/test_aot_product_ffi_callbacks.py
           python3 -m py_compile dart-sdk/tools/test_aot_full_replacement_ffi.py
+          python3 -m py_compile testapps/license_flavor_patch_test/tool/ios_device_e2e.py
+          python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p test_ios_device_e2e.py -v
           python3 -m py_compile scripts/package_android_maven.py
           python3 scripts/verify_android_maven.py
           python3 -m py_compile scripts/write_release_manifest.py
@@ -624,6 +626,32 @@ jobs:
       - name: Run shared FFI ABI golden tests
         working-directory: dart-sdk
         run: python3 tools/test.py --mode=release --arch=x64 --tasks=2 --progress=line ffi_unit
+
+      - name: Build ELF memory loader test
+        working-directory: dart-sdk
+        run: |
+          set -euo pipefail
+          results="$GITHUB_WORKSPACE/artifacts/linux-elf-memory-loader-tests"
+          mkdir -p "$results"
+          rm -f "$results/build.log" "$results/loader.log" "$results/acg-denial.log"
+          ninja -C out/ReleaseX64 elf_loader_memory_test 2>&1 | tee "$results/build.log"
+
+      - name: Run ELF memory loader test
+        working-directory: dart-sdk
+        run: |
+          set -euo pipefail
+          results="$GITHUB_WORKSPACE/artifacts/linux-elf-memory-loader-tests"
+          test -x out/ReleaseX64/elf_loader_memory_test
+          out/ReleaseX64/elf_loader_memory_test 2>&1 | tee "$results/loader.log"
+          tr -d '\r' < "$results/loader.log" | grep -Fx 'ELF memory loader tests passed'
+
+      - name: Upload ELF memory loader test evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-elf-memory-loader-tests
+          path: artifacts/linux-elf-memory-loader-tests/
+          if-no-files-found: error
 
       - name: Verify built SDK developer tools
         run: python3 scripts/verify_dart_sdk_tooling.py --dart "$PWD/dart-sdk/out/ReleaseX64/dart-sdk/bin/dart"
@@ -1193,6 +1221,35 @@ jobs:
         working-directory: dart-sdk
         run: python3 tools/test.py --mode=release --arch=x64 --tasks=2 --progress=line ffi_unit
 
+      - name: Build ELF memory loader test
+        working-directory: dart-sdk
+        run: |
+          set -euo pipefail
+          results="$GITHUB_WORKSPACE/artifacts/windows-elf-memory-loader-tests"
+          mkdir -p "$results"
+          rm -f "$results/build.log" "$results/loader.log" "$results/acg-denial.log"
+          ninja -C out/ReleaseX64 elf_loader_memory_test 2>&1 | tee "$results/build.log"
+
+      - name: Run ELF memory loader test
+        working-directory: dart-sdk
+        run: |
+          set -euo pipefail
+          results="$GITHUB_WORKSPACE/artifacts/windows-elf-memory-loader-tests"
+          test -x out/ReleaseX64/elf_loader_memory_test.exe
+          out/ReleaseX64/elf_loader_memory_test.exe 2>&1 | tee "$results/loader.log"
+          tr -d '\r' < "$results/loader.log" | grep -Fx 'ELF memory loader tests passed'
+          # A fresh process confines the irreversible ACG policy to this test.
+          out/ReleaseX64/elf_loader_memory_test.exe --acg-denial 2>&1 | tee "$results/acg-denial.log"
+          tr -d '\r' < "$results/acg-denial.log" | grep -Fx 'ELF memory loader ACG denial test passed'
+
+      - name: Upload ELF memory loader test evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-elf-memory-loader-tests
+          path: artifacts/windows-elf-memory-loader-tests/
+          if-no-files-found: error
+
       - name: Verify built SDK developer tools
         run: python3 scripts/verify_dart_sdk_tooling.py --dart "$PWD/dart-sdk/out/ReleaseX64/dart-sdk/bin/dart.exe"
 
@@ -1344,6 +1401,7 @@ jobs:
           set -euo pipefail
           results="$GITHUB_WORKSPACE/artifacts/linux-native-cache-tests"
           mkdir -p "$results"
+          rm -f "$results/shorebird.xml" "$results/embedder.xml" "$results/shorebird-list.txt" "$results/"*.log
           ninja -C out/linux_release_x64 \
             flutter/shell/platform/linux:flutter_gtk \
             flutter/build/archives:flutter_patched_sdk \
@@ -1384,10 +1442,10 @@ jobs:
             > "$results/shorebird-list.txt" 2> "$results/shorebird-list.stderr.log"
           "$out/shorebird_unittests" --gtest_filter='*' --gtest_repeat=1 \
             --gtest_output="xml:$results/shorebird.xml" 2>&1 | tee "$results/shorebird.log"
-          embedder_filter='EmbedderTest.PreparedFDOwnershipAndImageSurviveMultipleEngines:EmbedderTest.InvalidAOTDataSourcesMustReturnError:EmbedderTest.CanCreateAndCollectAValidElfSource:EmbedderTest.CanLaunchAndShutdownWithAValidElfSource'
+          embedder_filter='EmbedderTest.PreparedFDOwnershipAndImageSurviveMultipleEngines:EmbedderTest.PreparedMemoryImageSurvivesInputAndMultipleEngines:EmbedderTest.InvalidAOTDataSourcesMustReturnError:EmbedderTest.CanCreateAndCollectAValidElfSource:EmbedderTest.CanLaunchAndShutdownWithAValidElfSource'
           "$out/embedder_unittests" --gtest_filter="$embedder_filter" --gtest_repeat=1 \
             --gtest_output="xml:$results/embedder.xml" 2>&1 | tee "$results/embedder.log"
-          python3 "$GITHUB_WORKSPACE/scripts/verify_native_cache_engine_tests.py" \
+          python3 "$GITHUB_WORKSPACE/scripts/verify_native_cache_engine_tests.py" --platform linux \
             --shorebird-list "$results/shorebird-list.txt" \
             --shorebird-xml "$results/shorebird.xml" \
             --embedder-xml "$results/embedder.xml" 2>&1 | tee "$results/validation.log"
@@ -2641,6 +2699,7 @@ jobs:
           python3 flutter/tools/gn \
             --windows-cpu=x64 \
             --runtime-mode=release --target-dir=windows_release_x64 \
+            --enable-unittests \
             --no-prebuilt-dart-sdk \
             --gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=false shorebird_enable_aot_patching=true shorebird_use_interpreter=false flutter_prebuilt_dart_sdk=false'
 
@@ -2654,15 +2713,86 @@ jobs:
             throw "Expected the Visual Studio linker, found $linker"
           }
           Write-Host "Using native Microsoft linker: $linker"
-          ninja -C out/windows_release_x64 flutter/build/archives:windows_flutter flutter/tools/font_subset:font_subset
+          $results = Join-Path $env:GITHUB_WORKSPACE 'artifacts/windows-native-cache-tests'
+          New-Item -ItemType Directory -Force $results | Out-Null
+          Remove-Item -Force -ErrorAction SilentlyContinue "$results/*.log", "$results/*.xml", "$results/shorebird-list.txt"
+          ninja -C out/windows_release_x64 flutter/build/archives:windows_flutter flutter/tools/font_subset:font_subset flutter/shell/common/shorebird:shorebird_unittests flutter/shell/platform/embedder:embedder_unittests flutter/shell/platform/windows:flutter_windows_unittests 2>&1 | Tee-Object -FilePath "$results/build.log"
+          if ($LASTEXITCODE) { throw 'Windows engine and native cache test build failed' }
 
       - name: Verify Windows engine args
         run: |
           ./scripts/verify_engine_args.sh \
             flutter/engine/src/out/windows_release_x64/args.gn \
+            enable_unittests=true \
             dart_dynamic_modules=false dart_enable_aot_patching=true \
             dart_enable_shorebird_interpreter=false shorebird_enable_aot_patching=true \
             shorebird_use_interpreter=false flutter_prebuilt_dart_sdk=false
+
+      - name: Run Windows prepared native cache engine tests
+        working-directory: flutter/engine/src
+        run: |
+          set -euo pipefail
+          out="$(cygpath -m "$PWD/out/windows_release_x64")"
+          results="$(cygpath -m "$GITHUB_WORKSPACE")/artifacts/windows-native-cache-tests"
+          mkdir -p "$results"
+          # Native fixtures need Windows paths and the built DLLs on PATH.
+          export PATH="$PWD/out/windows_release_x64:$PATH"
+          export FLUTTER_BUILD_DIRECTORY="$out"
+          test -x "$out/shorebird_unittests.exe"
+          test -x "$out/embedder_unittests.exe"
+          test -x "$out/flutter_windows_unittests.exe"
+          test -s "$out/icudtl.dat"
+          test -s "$out/gen/flutter/shell/platform/windows/assets/app_elf_snapshot.so"
+          test -s "$out/gen/flutter/shell/platform/embedder/assets/app_elf_snapshot.so"
+          rm -f "$results/shorebird.xml" "$results/embedder.xml" "$results/shorebird-list.txt"
+          rm -f "$results/windows.xml"
+          "$out/shorebird_unittests.exe" --gtest_filter='*' --gtest_list_tests \
+            > "$results/shorebird-list.txt" 2> "$results/shorebird-list.stderr.log"
+          "$out/shorebird_unittests.exe" --gtest_filter='*' --gtest_repeat=1 \
+            --gtest_output="xml:$results/shorebird.xml" 2>&1 | tee "$results/shorebird.log"
+          embedder_filter='EmbedderTest.PreparedMemoryImageSurvivesInputAndMultipleEngines:EmbedderTest.InvalidAOTDataSourcesMustReturnError:EmbedderTest.CanCreateAndCollectAValidElfSource:EmbedderTest.CanLaunchAndShutdownWithAValidElfSource'
+          "$out/embedder_unittests.exe" --gtest_filter="$embedder_filter" --gtest_repeat=1 \
+            --gtest_output="xml:$results/embedder.xml" 2>&1 | tee "$results/embedder.log"
+          # The adapter owns a 10-second Dart signal deadline per engine.
+          # Bound the separate native process too, including its UI-thread teardown.
+          python3 - "$out" "$results" <<'PYWINDOWSTEST' 2>&1 | tee "$results/windows.log"
+          from pathlib import Path
+          import subprocess
+          import sys
+
+          out, results = map(Path, sys.argv[1:])
+          subprocess.run([
+              str(out / 'flutter_windows_unittests.exe'),
+              '--gtest_filter=ShorebirdFlutterWindowsEngineTest.*',
+              '--gtest_repeat=1',
+              f'--gtest_output=xml:{results / "windows.xml"}',
+          ], cwd=out, timeout=120, check=True)
+          PYWINDOWSTEST
+          python3 "$GITHUB_WORKSPACE/scripts/verify_native_cache_engine_tests.py" --platform windows \
+            --shorebird-list "$results/shorebird-list.txt" \
+            --shorebird-xml "$results/shorebird.xml" \
+            --embedder-xml "$results/embedder.xml" \
+            --windows-xml "$results/windows.xml" 2>&1 | tee "$results/validation.log"
+
+      - name: Run Windows updater tests
+        shell: pwsh
+        working-directory: updater
+        run: |
+          $results = Join-Path $env:GITHUB_WORKSPACE 'artifacts/windows-native-cache-tests'
+          New-Item -ItemType Directory -Force $results | Out-Null
+          Remove-Item -Force -ErrorAction SilentlyContinue "$results/updater.log"
+          rustup show active-toolchain
+          if ($LASTEXITCODE) { throw 'Windows stable Rust toolchain is unavailable' }
+          cargo test -p updater --locked -- --test-threads=1 2>&1 | Tee-Object -FilePath "$results/updater.log"
+          if ($LASTEXITCODE) { throw 'Windows updater tests failed' }
+
+      - name: Upload Windows native cache engine test evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-native-cache-engine-tests
+          path: artifacts/windows-native-cache-tests/
+          if-no-files-found: error
 
       - name: Package Windows engine artifacts
         run: |

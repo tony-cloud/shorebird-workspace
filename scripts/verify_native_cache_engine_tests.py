@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
-"""Require executed, successful Linux native-cache engine controls in gtest XML.
+"""Require executed, successful native-cache engine controls in gtest XML.
 
 The Shorebird report must cover its complete --gtest_list_tests inventory. The
-embedder report must contain exactly the four release/AOT controls below. This
-validator does not execute native code; --self-test uses synthetic XML only.
+embedder report must contain exactly the platform's release/AOT controls.
+Windows additionally requires its four native adapter controls. This validator
+does not execute native code; --self-test uses synthetic XML only.
 """
 
 import argparse
+import contextlib
+import io
 from pathlib import Path
 import re
 import sys
@@ -15,13 +18,14 @@ import unittest
 import xml.etree.ElementTree as ET
 
 
-EMBEDDER_TESTS = frozenset({
-    "EmbedderTest.PreparedFDOwnershipAndImageSurviveMultipleEngines",
+COMMON_EMBEDDER_TESTS = frozenset({
+    "EmbedderTest.PreparedMemoryImageSurvivesInputAndMultipleEngines",
     "EmbedderTest.InvalidAOTDataSourcesMustReturnError",
     "EmbedderTest.CanCreateAndCollectAValidElfSource",
     "EmbedderTest.CanLaunchAndShutdownWithAValidElfSource",
 })
-REQUIRED_SHOREBIRD_TESTS = frozenset({
+FD_EMBEDDER_TEST = "EmbedderTest.PreparedFDOwnershipAndImageSurviveMultipleEngines"
+COMMON_SHOREBIRD_TESTS = frozenset({
     "PreparedUpdaterTest.BeginsBeforeTheLoaderAndDoesNotStartLegacyBoot",
     "PreparedUpdaterTest.LaterEngineFailureCannotSwitchRunningPatchToBase",
     "PreparedUpdaterTest.LaterBaseSelectionCannotReplaceRunningPatch",
@@ -31,13 +35,40 @@ REQUIRED_SHOREBIRD_TESTS = frozenset({
     "PreparedUpdaterTest.FailedRequiredConfigurationCannotStartImplicitly",
     "PreparedUpdaterTest.PreparationFailureCannotFallThroughToLegacySelection",
     "PreparedUpdaterTest.FailedAbortCannotReportCandidateSuccessOrStartUpdates",
-    "PreparedBootSourceTest.ClosesOwnedFDAndTransfersDetachedFD",
+    "PreparedBootSourceTest.MemoryLeaseOutlivesCallerAndEndsAfterLoader",
     "Shorebird.NativePatchBudgetUsesReleaseDefaultOrExplicitOverride",
     "Shorebird.NativePatchBudgetRejectsMalformedAmbiguousAndOverflowValues",
 })
+FD_SHOREBIRD_TEST = "PreparedBootSourceTest.ClosesOwnedFDAndTransfersDetachedFD"
+WINDOWS_ENGINE_TESTS = frozenset({
+    "ShorebirdFlutterWindowsEngineTest.PreparedMemoryRunsAndLaterEnginesCannotMixBase",
+    "ShorebirdFlutterWindowsEngineTest.RefusedMemoryBeginsBaseBeforeLoadingIt",
+    "ShorebirdFlutterWindowsEngineTest.FailedPreparationNeverLoadsBundledOrLegacyCode",
+    "ShorebirdFlutterWindowsEngineTest.FailedPreparedConfigurationNeverPreparesOrLoadsCode",
+})
 
 
-def listed_tests(path: Path) -> set[str]:
+def embedder_tests(platform: str) -> frozenset[str]:
+    if platform == "windows":
+        return COMMON_EMBEDDER_TESTS
+    if platform == "linux":
+        return COMMON_EMBEDDER_TESTS | {FD_EMBEDDER_TEST}
+    raise ValueError(f"Unsupported native-cache test platform: {platform}")
+
+
+def required_shorebird_tests(platform: str) -> frozenset[str]:
+    if platform == "windows":
+        return COMMON_SHOREBIRD_TESTS
+    if platform == "linux":
+        return COMMON_SHOREBIRD_TESTS | {FD_SHOREBIRD_TEST}
+    raise ValueError(f"Unsupported native-cache test platform: {platform}")
+
+
+EMBEDDER_TESTS = embedder_tests("linux")
+REQUIRED_SHOREBIRD_TESTS = required_shorebird_tests("linux")
+
+
+def listed_tests(path: Path, platform: str = "linux") -> set[str]:
     """Parse gtest inventory, including parameterized names and inline comments."""
     suite = None
     names = set()
@@ -57,8 +88,9 @@ def listed_tests(path: Path) -> set[str]:
         if full_name in names or any(part.startswith("DISABLED_") for part in (suite, name)):
             raise ValueError(f"Duplicate or disabled listed test: {full_name}")
         names.add(full_name)
-    if not REQUIRED_SHOREBIRD_TESTS <= names:
-        raise ValueError(f"Missing Shorebird controls in binary: {sorted(REQUIRED_SHOREBIRD_TESTS - names)}")
+    required = required_shorebird_tests(platform)
+    if not required <= names:
+        raise ValueError(f"Missing {platform} Shorebird controls in binary: {sorted(required - names)}")
     return names
 
 
@@ -123,12 +155,16 @@ class ValidatorTests(unittest.TestCase):
     def write(self, root):
         ET.ElementTree(root).write(self.path, encoding="utf-8", xml_declaration=True)
 
-    def test_exact_controls_pass_and_full_shorebird_inventory_includes_legacy(self):
-        self.write(self.report())
-        self.assertEqual(validate_report(self.path, EMBEDDER_TESTS), 4)
-        names = REQUIRED_SHOREBIRD_TESTS | {"UpdaterTest.ReportLaunchStartOnlyCallsOnce"}
+    def listing(self, names):
         listing = self.path.with_suffix(".txt")
         listing.write_text("".join(f"{suite}.\n" + "".join(f"  {name.split('.', 1)[1]}\n" for name in sorted(names) if name.startswith(suite + ".")) for suite in sorted({name.split('.', 1)[0] for name in names})), encoding="utf-8")
+        return listing
+
+    def test_exact_controls_pass_and_full_shorebird_inventory_includes_legacy(self):
+        self.write(self.report())
+        self.assertEqual(validate_report(self.path, EMBEDDER_TESTS), 5)
+        names = REQUIRED_SHOREBIRD_TESTS | {"UpdaterTest.ReportLaunchStartOnlyCallsOnce"}
+        listing = self.listing(names)
         self.write(self.report(names))
         self.assertEqual(validate_report(self.path, listed_tests(listing)), len(names))
         root = self.report(REQUIRED_SHOREBIRD_TESTS)
@@ -160,12 +196,13 @@ class ValidatorTests(unittest.TestCase):
             lambda root: root.find("testsuite").set("skipped", "1"),
             lambda root: root.find("testsuite").set("disabled", "1"),
         ]
-        for mutation in mutations:
-            root = self.report()
-            mutation(root)
-            self.write(root)
-            with self.subTest(mutation=mutation), self.assertRaises(ValueError):
-                validate_report(self.path, EMBEDDER_TESTS)
+        for expected in (embedder_tests("linux"), embedder_tests("windows"), WINDOWS_ENGINE_TESTS):
+            for mutation in mutations:
+                root = self.report(expected)
+                mutation(root)
+                self.write(root)
+                with self.subTest(expected=expected, mutation=mutation), self.assertRaises(ValueError):
+                    validate_report(self.path, expected)
         self.path.write_text("<testsuites", encoding="utf-8")
         with self.assertRaises(ET.ParseError):
             validate_report(self.path, EMBEDDER_TESTS)
@@ -176,26 +213,101 @@ class ValidatorTests(unittest.TestCase):
             with self.subTest(listing=listing), self.assertRaises(ValueError):
                 listed_tests(self.path)
 
+    def test_platform_specific_controls_and_full_inventory(self):
+        windows_names = required_shorebird_tests("windows") | {"UpdaterTest.ReportLaunchStartOnlyCallsOnce"}
+        listing = self.listing(windows_names)
+        self.write(self.report(windows_names))
+        self.assertEqual(validate_report(self.path, listed_tests(listing, "windows")), len(windows_names))
+        with self.assertRaises(ValueError):
+            listed_tests(listing, "linux")
+        self.write(self.report(embedder_tests("windows")))
+        self.assertEqual(validate_report(self.path, embedder_tests("windows")), 4)
+        with self.assertRaises(ValueError):
+            validate_report(self.path, embedder_tests("linux"))
+        self.write(self.report(embedder_tests("linux")))
+        with self.assertRaises(ValueError):
+            validate_report(self.path, embedder_tests("windows"))
 
-def main() -> int:
+    def test_memory_controls_cannot_be_replaced_by_legacy_controls(self):
+        memory_shorebird = "PreparedBootSourceTest.MemoryLeaseOutlivesCallerAndEndsAfterLoader"
+        memory_embedder = "EmbedderTest.PreparedMemoryImageSurvivesInputAndMultipleEngines"
+        for platform in ("linux", "windows"):
+            with self.subTest(platform=platform):
+                listing = self.listing(required_shorebird_tests(platform) - {memory_shorebird})
+                with self.assertRaises(ValueError):
+                    listed_tests(listing, platform)
+                self.write(self.report(embedder_tests(platform) - {memory_embedder}))
+                with self.assertRaises(ValueError):
+                    validate_report(self.path, embedder_tests(platform))
+                # A stale legacy-only XML cannot satisfy the new inventory.
+                listing = self.listing(required_shorebird_tests(platform))
+                self.write(self.report(required_shorebird_tests(platform) - {memory_shorebird}))
+                with self.assertRaises(ValueError):
+                    validate_report(self.path, listed_tests(listing, platform))
+
+    def test_invalid_platform_fails(self):
+        for controls in (required_shorebird_tests, embedder_tests):
+            with self.assertRaises(ValueError):
+                controls("macos")
+
+    def test_windows_adapter_requires_exact_executed_controls(self):
+        self.write(self.report(WINDOWS_ENGINE_TESTS))
+        self.assertEqual(validate_report(self.path, WINDOWS_ENGINE_TESTS), 4)
+        for names in (set(), WINDOWS_ENGINE_TESTS - {min(WINDOWS_ENGINE_TESTS)}, WINDOWS_ENGINE_TESTS | {"ShorebirdFlutterWindowsEngineTest.Unrequested"}, embedder_tests("windows")):
+            self.write(self.report(names))
+            with self.subTest(names=names), self.assertRaises(ValueError):
+                validate_report(self.path, WINDOWS_ENGINE_TESTS)
+
+    def test_platform_cli_requires_the_matching_complete_reports(self):
+        for platform in ("linux", "windows"):
+            shorebird = self.listing(required_shorebird_tests(platform))
+            paths = {}
+            inventories = {"shorebird": required_shorebird_tests(platform), "embedder": embedder_tests(platform)}
+            if platform == "windows":
+                inventories["windows"] = WINDOWS_ENGINE_TESTS
+            for name, inventory in inventories.items():
+                paths[name] = Path(self.directory.name) / f"{name}.xml"
+                ET.ElementTree(self.report(inventory)).write(paths[name], encoding="utf-8")
+            arguments = ["--shorebird-list", str(shorebird), "--shorebird-xml", str(paths["shorebird"]), "--embedder-xml", str(paths["embedder"])]
+            with self.subTest(platform=platform), contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                if platform == "linux":
+                    self.assertEqual(main(arguments), 0)  # Linux remains the default.
+                    with self.assertRaises(SystemExit):
+                        main(arguments + ["--windows-xml", str(paths["shorebird"])])
+                else:
+                    arguments += ["--platform", "windows"]
+                    with self.assertRaises(SystemExit):
+                        main(arguments)
+                    self.assertEqual(main(arguments + ["--windows-xml", str(paths["windows"])]), 0)
+                    self.assertEqual(main(arguments + ["--windows-xml", str(paths["embedder"])]), 1)
+
+
+def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--self-test", action="store_true")
+    parser.add_argument("--platform", choices=("linux", "windows"), default="linux")
     parser.add_argument("--shorebird-list", type=Path)
     parser.add_argument("--shorebird-xml", type=Path)
     parser.add_argument("--embedder-xml", type=Path)
-    args = parser.parse_args()
+    parser.add_argument("--windows-xml", type=Path,
+                        help="Required native Windows adapter report for --platform windows")
+    args = parser.parse_args(argv)
     if args.self_test:
         result = unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.loadTestsFromTestCase(ValidatorTests))
         return 0 if result.wasSuccessful() else 1
     if not all((args.shorebird_list, args.shorebird_xml, args.embedder_xml)):
         parser.error("--shorebird-list, --shorebird-xml, and --embedder-xml are required")
+    if (args.platform == "windows") != bool(args.windows_xml):
+        parser.error("--windows-xml is required exactly when --platform windows")
     try:
-        shorebird = validate_report(args.shorebird_xml, listed_tests(args.shorebird_list))
-        embedder = validate_report(args.embedder_xml, EMBEDDER_TESTS)
+        shorebird = validate_report(args.shorebird_xml, listed_tests(args.shorebird_list, args.platform))
+        embedder = validate_report(args.embedder_xml, embedder_tests(args.platform))
+        windows = validate_report(args.windows_xml, WINDOWS_ENGINE_TESTS) if args.windows_xml else 0
     except (OSError, ValueError, ET.ParseError) as error:
         print(f"Native cache engine test contract failed: {error}", file=sys.stderr)
         return 1
-    print(f"Native cache engine test contract passed: {shorebird} Shorebird tests and {embedder} AOT embedder controls executed; no failures/skips")
+    adapter = f", {windows} Windows adapter controls" if args.windows_xml else ""
+    print(f"Native cache engine test contract passed ({args.platform}): {shorebird} Shorebird tests, {embedder} AOT embedder controls{adapter} executed; no failures/skips")
     return 0
 
 

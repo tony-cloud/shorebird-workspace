@@ -85,14 +85,14 @@ file.
 
 ## Public interpreter toolchain identity
 
-The engine artifact key is `0b65b0bea03ad4421928f0c0b7b8bebf97632a6b`.
+The engine artifact key is `92f74daf8ce33d867994e00104e01e36087e379d`.
 It is SHA-1 of UTF-8 lines (including the final newline):
 
 ```text
 open-shorebird-toolchain-v1
-bdc30207c93e422dfd56d4260fa84c522cbf95b1
-c22367f64e674d59203818f2df586ea1669965b1
-ea85ce31bd9ce57ac7518d0a8035a0e78518cd87
+fdc857ef4018ceddc9155a01036fcb3960062d95
+7c3c08a8bdf9effa0e3dbb1987cc9e16f2641adb
+bb4224303d18baaacd1c2316e24336813517142d
 ```
 
 Inputs are Dart, Flutter immediately before its engine-identity commit, and

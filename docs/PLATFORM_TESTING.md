@@ -108,9 +108,13 @@ reconstructs a verified image into a sealed anonymous descriptor. It requires
 the app-owned key provider to be registered before engine initialization,
 strict patch verification, required authenticated responses, and the release
 public key. Activating this mode retires legacy plaintext cache entries before
-publishing usable configuration. Other platforms and legacy callers retain
-their existing cache behavior; this is separate from the encrypted iOS
-interpreter artifact.
+publishing usable configuration. Windows now has an experimental source
+implementation that reconstructs into private RW memory, consumes the writable
+owner, changes the mapping to RO, and authenticates those final bytes before
+leasing them to the existing ELF loader. Windows native execution remains a
+required CI gate, not a completed capability claim. macOS and legacy callers
+retain their existing cache behavior; this is separate from the encrypted iOS
+interpreter artifact. No macOS executable-memory entitlement is added.
 
 The expanded native image budget defaults to 512 MiB on capable native engines.
 An application can set `native_patch_max_bytes` in its source `shorebird.yaml`
@@ -127,6 +131,18 @@ Actual Linux descriptor loading and Android linker/device execution remain
 required; the macOS host tests do not establish those paths. The next Linux CI
 checkpoint includes the descriptor-loading control. See the
 [native cache validation record](validation/encrypted-native-cache-host-20261101.json).
+
+The subsequent Windows memory-source changes pass 341 updater tests and strict
+lint checks on macOS. The actual SDK memory-loader target passes a separate
+macOS GN/Ninja build and runtime check, plus address/undefined-behavior sanitizer
+checks. C++ updater production and test sources pass syntax checks. These
+results do not execute the Windows allocator, unwind registration, engine
+adapter, or ACG denial path. Mandatory native Windows CI now covers those
+paths, including real AOT engine creation after the input lease expires and
+after engine recreation, exact executed test inventories, and a separate
+process with executable-memory protection enabled. Those CI results and a
+complete encrypted offline Windows app lifecycle remain pending. See the
+[memory-source validation record](validation/verified-native-memory-host-20261101.json).
 
 Runtime-created listener and group-bound callbacks also pass the native ARM64
 PRODUCT host suite, including nested transitions, static-field isolation,

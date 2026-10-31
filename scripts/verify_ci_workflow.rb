@@ -1922,6 +1922,12 @@ required_uploads.each do |job_name, expected_names|
   end
 end
 
+native_test_evidence_uploads = {
+  'linux-engine' => 'linux-native-cache-engine-tests',
+  'windows-engine' => 'windows-native-cache-engine-tests',
+  'custom-dart-sdk' => 'linux-elf-memory-loader-tests',
+  'custom-dart-sdk-windows' => 'windows-elf-memory-loader-tests',
+}
 jobs.each do |job_name, job|
   job.fetch('steps', []).each do |step|
     next unless step['uses'].to_s.start_with?('actions/upload-artifact@')
@@ -1932,7 +1938,7 @@ jobs.each do |job_name, job|
     )
     # Raw native-test logs/XML are retained on failures; this narrowly named
     # diagnostic artifact is not one of the checksummed release packages.
-    next if job_name == 'linux-engine' && step.dig('with', 'name') == 'linux-native-cache-engine-tests'
+    next if native_test_evidence_uploads.key?(job_name) && native_test_evidence_uploads[job_name] == step.dig('with', 'name')
 
     assert!(
       step.dig('with', 'path').to_s.include?('.sha256'),
@@ -2257,36 +2263,103 @@ assert!(
     run_text_by_job.fetch('linux-engine').include?('mirror/shorebird/flutter_infra_release/flutter/${engine_revision}/flutter_patched_sdk_product.zip'),
   'Linux engine job must build and verify the native AOT patch runtime and package GTK/patched SDK artifacts'
 )
-# Native cache coverage is release/AOT execution on Linux, not a host syntax
-# build or a zero/skipped-test gtest success. The XML gate also checks the full
-# dynamically listed Shorebird inventory, so partial/sharded runs fail closed.
-linux_native_steps = jobs.fetch('linux-engine').fetch('steps')
-linux_native_build = linux_native_steps.index { |step| step['name'] == 'Build Linux engine' }
-linux_native_test = linux_native_steps.index { |step| step['name'] == 'Run Linux prepared native cache engine tests' }
-linux_native_package = linux_native_steps.index { |step| step['name'] == 'Package Linux engine artifacts' }
-assert!(linux_native_build && linux_native_test && linux_native_package && linux_native_build < linux_native_test && linux_native_test < linux_native_package, 'Linux native cache engine controls must run after build and before artifact packaging')
-linux_native_configure = linux_native_steps.find { |step| step['name'] == 'Configure Linux engine' }.fetch('run')
-linux_native_build_run = linux_native_steps.fetch(linux_native_build).fetch('run')
-linux_native_test_step = linux_native_steps.fetch(linux_native_test)
-linux_native_test_run = linux_native_test_step.fetch('run')
-assert!(linux_native_configure.include?('--runtime-mode=release') && linux_native_configure.include?('--enable-unittests') && run_text_by_job.fetch('linux-engine').include?('enable_unittests=true'), 'Linux release engine must explicitly enable and verify unittest targets')
-%w[flutter/shell/common/shorebird:shorebird_unittests flutter/shell/platform/embedder:embedder_unittests].each do |target|
-  assert!(linux_native_build_run.include?(target), "Linux engine must build #{target}")
-end
-assert!(linux_native_test_step['working-directory'] == 'flutter/engine/src' && linux_native_test_run.include?('export LD_LIBRARY_PATH="$out') && linux_native_test_run.include?('export FLUTTER_BUILD_DIRECTORY="$out"') && linux_native_test_run.include?('test -s "$out/gen/flutter/shell/platform/embedder/assets/app_elf_snapshot.so"'), 'Linux native engine tests must use the engine source cwd, built libraries and generated real AOT fixture')
-assert!(linux_native_test_run.include?(%q{"$out/shorebird_unittests" --gtest_filter='*' --gtest_list_tests}) && linux_native_test_run.include?(%q{"$out/shorebird_unittests" --gtest_filter='*' --gtest_repeat=1}) && linux_native_test_run.include?('--gtest_output="xml:$results/shorebird.xml"') && linux_native_test_run.include?('--gtest_output="xml:$results/embedder.xml"'), 'Linux engine controls must execute the full Shorebird inventory and emit fresh gtest XML from both binaries')
-assert!(linux_native_test_run.include?('rm -f "$results/shorebird.xml" "$results/embedder.xml" "$results/shorebird-list.txt"'), 'Linux native engine controls must remove stale execution evidence before running')
+# Native cache gates execute real release/AOT binaries on each target OS.
+# The XML oracle checks the complete dynamically listed Shorebird inventory,
+# exact platform controls, execution status, failures and skips.
 native_cache_validator = read_repo_file(repo_root, 'scripts/verify_native_cache_engine_tests.py')
-embedder_native_tests = %w[PreparedFDOwnershipAndImageSurviveMultipleEngines InvalidAOTDataSourcesMustReturnError CanCreateAndCollectAValidElfSource CanLaunchAndShutdownWithAValidElfSource]
 embedder_test_source = read_repo_file(repo_root, 'flutter/engine/src/flutter/shell/platform/embedder/tests/embedder_unittests.cc')
-embedder_native_tests.each do |test|
-  assert!(linux_native_test_run.include?("EmbedderTest.#{test}") && native_cache_validator.include?("EmbedderTest.#{test}"), "Linux gtest filter and strict validator must require EmbedderTest.#{test}")
-  assert!(embedder_test_source.match?(/TEST_F\s*\(\s*EmbedderTest\s*,\s*#{Regexp.escape(test)}\s*\)/), "Selected real AOT native control must exist in engine source: #{test}")
+shorebird_test_source = read_repo_file(repo_root, 'flutter/engine/src/flutter/shell/common/shorebird/updater_unittests.cc')
+common_embedder_controls = %w[PreparedMemoryImageSurvivesInputAndMultipleEngines InvalidAOTDataSourcesMustReturnError CanCreateAndCollectAValidElfSource CanLaunchAndShutdownWithAValidElfSource]
+assert!(native_cache_validator.include?('choices=("linux", "windows"), default="linux"') && native_cache_validator.include?('PreparedBootSourceTest.MemoryLeaseOutlivesCallerAndEndsAfterLoader') && shorebird_test_source.match?(/TEST\s*\(\s*PreparedBootSourceTest\s*,\s*MemoryLeaseOutlivesCallerAndEndsAfterLoader\s*\)/), 'Platform-aware native cache validation must require the real memory lease lifetime control')
+%w[linux windows].each do |platform|
+  title = platform.capitalize
+  steps = jobs.fetch("#{platform}-engine").fetch('steps')
+  configure = steps.index { |step| step['name'] == "Configure #{title} engine" }
+  build = steps.index { |step| step['name'] == "Build #{title} engine" }
+  test = steps.index { |step| step['name'] == "Run #{title} prepared native cache engine tests" }
+  evidence = steps.index { |step| step['name'] == "Upload #{title} native cache engine test evidence" }
+  package = steps.index { |step| step['name'] == "Package #{title} engine artifacts" }
+  assert!([configure, build, test, evidence, package].all? && configure < build && build < test && test < evidence && evidence < package, "#{title} native engine controls and evidence must precede artifact packaging")
+  [configure, build, test, package].each do |index|
+    step = steps.fetch(index)
+    assert!(step['if'].nil? && !step['continue-on-error'], "#{title} native engine gates must not be conditional or tolerate failure")
+  end
+  configure_run = steps.fetch(configure).fetch('run')
+  build_run = steps.fetch(build).fetch('run')
+  test_step = steps.fetch(test)
+  test_run = test_step.fetch('run')
+  assert!(configure_run.include?('--runtime-mode=release') && configure_run.include?('--enable-unittests') && run_text_by_job.fetch("#{platform}-engine").include?('enable_unittests=true'), "#{title} release engine must enable and verify unittest targets")
+  %w[flutter/shell/common/shorebird:shorebird_unittests flutter/shell/platform/embedder:embedder_unittests].each do |target|
+    assert!(build_run.include?(target), "#{title} engine must build #{target}")
+  end
+  suffix = platform == 'windows' ? '.exe' : ''
+  assert!(test_step['working-directory'] == 'flutter/engine/src' && test_run.include?('export FLUTTER_BUILD_DIRECTORY="$out"') && test_run.include?('test -s "$out/gen/flutter/shell/platform/embedder/assets/app_elf_snapshot.so"'), "#{title} native engine tests must use the engine source cwd and generated real AOT fixture")
+  if platform == 'linux'
+    assert!(test_run.include?('export LD_LIBRARY_PATH="$out'), 'Linux native engine tests must resolve built libraries')
+  else
+    assert!(test_run.include?('cygpath -m "$PWD/out/windows_release_x64"') && test_run.include?('export PATH="$PWD/out/windows_release_x64:$PATH"'), 'Windows native engine tests must use native fixture paths and resolve built DLLs')
+  end
+  assert!(test_run.include?(%Q{"$out/shorebird_unittests#{suffix}" --gtest_filter='*' --gtest_list_tests}) && test_run.include?(%Q{"$out/shorebird_unittests#{suffix}" --gtest_filter='*' --gtest_repeat=1}) && test_run.include?('--gtest_output="xml:$results/shorebird.xml"') && test_run.include?('--gtest_output="xml:$results/embedder.xml"'), "#{title} engine controls must execute the full Shorebird inventory and emit fresh XML from both binaries")
+  cleanup = 'rm -f "$results/shorebird.xml" "$results/embedder.xml" "$results/shorebird-list.txt"'
+  assert!(test_run.include?(cleanup) && test_run.index(cleanup) < test_run.index(%Q{"$out/shorebird_unittests#{suffix}" --gtest_filter='*' --gtest_list_tests}), "#{title} native engine controls must remove stale XML and inventory before running")
+  controls = common_embedder_controls.dup
+  controls << 'PreparedFDOwnershipAndImageSurviveMultipleEngines' if platform == 'linux'
+  expected_filter = controls.map { |control| "EmbedderTest.#{control}" }
+  actual_filter = test_run[/^embedder_filter='([^']+)'$/, 1].to_s.split(':')
+  assert!(actual_filter.sort == expected_filter.sort && test_run.include?(%Q{"$out/embedder_unittests#{suffix}" --gtest_filter="$embedder_filter" --gtest_repeat=1}), "#{title} embedder filter must execute exactly its #{controls.length} release/AOT controls")
+  controls.each do |control|
+    assert!(native_cache_validator.include?("EmbedderTest.#{control}") && embedder_test_source.match?(/TEST_F\s*\(\s*EmbedderTest\s*,\s*#{Regexp.escape(control)}\s*\)/), "Selected real AOT native control must exist in validator and engine source: #{control}")
+  end
+  assert!(test_run.include?('set -euo pipefail') && test_run.include?(%Q{python3 "$GITHUB_WORKSPACE/scripts/verify_native_cache_engine_tests.py" --platform #{platform}}) && %w[--shorebird-list --shorebird-xml --embedder-xml].all? { |arg| test_run.include?(arg) }, "#{title} must enforce its strict executed XML contract and propagate pipeline failures")
+  upload = steps.fetch(evidence)
+  assert!(upload['if'].to_s.include?('always()') && upload['uses'] == 'actions/upload-artifact@v4' && upload.dig('with', 'name') == "#{platform}-native-cache-engine-tests" && upload.dig('with', 'path') == "artifacts/#{platform}-native-cache-tests/", "#{title} native logs and XML must be preserved even on build/test failure")
+  next unless platform == 'windows'
+
+  assert!(build_run.include?('flutter/shell/platform/windows:flutter_windows_unittests'), 'Windows engine must build the actual native Windows adapter tests')
+  assert!(test_run.include?('test -s "$out/icudtl.dat"') && test_run.include?('test -s "$out/gen/flutter/shell/platform/windows/assets/app_elf_snapshot.so"') && test_run.include?('rm -f "$results/windows.xml"') && test_run.include?("str(out / 'flutter_windows_unittests.exe')") && test_run.index('rm -f "$results/windows.xml"') < test_run.index("str(out / 'flutter_windows_unittests.exe')") && test_run.include?("'--gtest_filter=ShorebirdFlutterWindowsEngineTest.*'") && test_run.include?(%q{f'--gtest_output=xml:{results / "windows.xml"}'}) && test_run.include?('cwd=out, timeout=120, check=True') && test_run.include?('--windows-xml "$results/windows.xml"'), 'Windows adapter tests must use the actual release fixture and output cwd, discard stale XML, enforce a process deadline and validate the fresh report')
+  windows_adapter_source = read_repo_file(repo_root, 'flutter/engine/src/flutter/shell/platform/windows/shorebird_flutter_windows_engine_unittests.cc')
+  %w[PreparedMemoryRunsAndLaterEnginesCannotMixBase RefusedMemoryBeginsBaseBeforeLoadingIt FailedPreparationNeverLoadsBundledOrLegacyCode FailedPreparedConfigurationNeverPreparesOrLoadsCode].each do |control|
+    assert!(native_cache_validator.include?("ShorebirdFlutterWindowsEngineTest.#{control}") && windows_adapter_source.match?(/TEST_F\s*\(\s*ShorebirdFlutterWindowsEngineTest\s*,\s*#{Regexp.escape(control)}\s*\)/), "Windows adapter must execute and strictly validate its real native control: #{control}")
+  end
+  updater = steps.index { |step| step['name'] == 'Run Windows updater tests' }
+  rust = steps.index { |step| step['uses'] == 'dtolnay/rust-toolchain@stable' }
+  assert!(updater && rust && rust < updater && test < updater && updater < evidence, 'Windows must run native updater tests with stable Rust before evidence upload and packaging')
+  updater_step = steps.fetch(updater)
+  updater_run = updater_step.fetch('run')
+  assert!(updater_step['if'].nil? && !updater_step['continue-on-error'] && updater_step['shell'] == 'pwsh' && updater_step['working-directory'] == 'updater' && updater_run.include?('cargo test -p updater --locked -- --test-threads=1') && updater_run.include?('Tee-Object -FilePath "$results/updater.log"') && updater_run.include?("if ($LASTEXITCODE) { throw 'Windows updater tests failed' }"), 'Windows must execute the full native updater suite and fail on any cargo error')
+  assert!(build_run.include?('Remove-Item -Force -ErrorAction SilentlyContinue "$results/*.log", "$results/*.xml", "$results/shorebird-list.txt"'), 'Windows native build must discard previous-run execution evidence')
 end
-assert!(linux_native_test_run.include?('python3 "$GITHUB_WORKSPACE/scripts/verify_native_cache_engine_tests.py"') && %w[--shorebird-list --shorebird-xml --embedder-xml].all? { |arg| linux_native_test_run.include?(arg) }, 'Linux engine must validate exact executed test inventories, counts, failures and skips')
-native_evidence = linux_native_steps.find { |step| step['name'] == 'Upload Linux native cache engine test evidence' }
-assert!(native_evidence && native_evidence['if'].to_s.include?('always()') && native_evidence['uses'] == 'actions/upload-artifact@v4' && native_evidence.dig('with', 'path') == 'artifacts/linux-native-cache-tests/', 'Linux native engine logs and XML must be preserved even on test/build failure')
-assert!(run_text_by_job.fetch('source-checks').include?('python3 -m py_compile scripts/verify_native_cache_engine_tests.py') && run_text_by_job.fetch('source-checks').include?('python3 scripts/verify_native_cache_engine_tests.py --self-test'), 'Source checks must syntax-check and exercise native engine XML acceptance and rejection fixtures')
+assert!(run_text_by_job.fetch('source-checks').include?('python3 -m py_compile scripts/verify_native_cache_engine_tests.py') && run_text_by_job.fetch('source-checks').include?('python3 scripts/verify_native_cache_engine_tests.py --self-test'), 'Source checks must syntax-check and exercise platform-specific XML acceptance and rejection fixtures')
+
+# These standalone SDK tests exercise the actual loader, native page protection,
+# resource cleanup, and (on Windows) an isolated no-opt-out ACG refusal process.
+{ 'custom-dart-sdk' => ['linux', ''], 'custom-dart-sdk-windows' => ['windows', '.exe'] }.each do |job_name, (platform, suffix)|
+  steps = jobs.fetch(job_name).fetch('steps')
+  sdk_build = steps.index { |step| step['name'] == 'Build patched Dart SDK' }
+  build = steps.index { |step| step['name'] == 'Build ELF memory loader test' }
+  test = steps.index { |step| step['name'] == 'Run ELF memory loader test' }
+  evidence = steps.index { |step| step['name'] == 'Upload ELF memory loader test evidence' }
+  package = steps.index { |step| step['name'] == 'Package Dart SDK artifact' }
+  assert!([sdk_build, build, test, evidence, package].all? && sdk_build < build && build < test && test < evidence && evidence < package, "#{platform} SDK loader build, execution and evidence must precede SDK packaging")
+  [build, test].each do |index|
+    step = steps.fetch(index)
+    assert!(step['if'].nil? && !step['continue-on-error'] && step['working-directory'] == 'dart-sdk' && step.fetch('run').include?('set -euo pipefail'), "#{platform} loader gates must execute unconditionally in the SDK and propagate failures")
+  end
+  build_run = steps.fetch(build).fetch('run')
+  test_run = steps.fetch(test).fetch('run')
+  binary = "out/ReleaseX64/elf_loader_memory_test#{suffix}"
+  normal = "#{binary} 2>&1 | tee \"$results/loader.log\""
+  assert!(build_run.include?('ninja -C out/ReleaseX64 elf_loader_memory_test 2>&1 | tee "$results/build.log"') && build_run.include?('rm -f "$results/build.log" "$results/loader.log" "$results/acg-denial.log"'), "#{platform} SDK must build the real memory loader target with fresh logs")
+  assert!(test_run.include?(normal) && test_run.include?(%q{tr -d '\r' < "$results/loader.log" | grep -Fx 'ELF memory loader tests passed'}), "#{platform} SDK must require actual successful memory loader execution")
+  if platform == 'windows'
+    denial = "#{binary} --acg-denial 2>&1 | tee \"$results/acg-denial.log\""
+    assert!(test_run.include?(denial) && test_run.index(normal) < test_run.index(denial) && test_run.include?(%q{tr -d '\r' < "$results/acg-denial.log" | grep -Fx 'ELF memory loader ACG denial test passed'}), 'Windows SDK must require normal loading and actual ACG denial in separate fresh processes with no skip')
+  end
+  upload = steps.fetch(evidence)
+  assert!(upload['if'].to_s.include?('always()') && upload['uses'] == 'actions/upload-artifact@v4' && upload.dig('with', 'name') == "#{platform}-elf-memory-loader-tests" && upload.dig('with', 'path') == "artifacts/#{platform}-elf-memory-loader-tests/", "#{platform} SDK loader evidence must always upload before packaging")
+end
+elf_loader_test_build = read_repo_file(repo_root, 'dart-sdk/runtime/bin/BUILD.gn')
+assert!(elf_loader_test_build.include?('executable("elf_loader_memory_test")') && elf_loader_test_build.include?('"elf_loader_memory_test.cc"'), 'SDK memory loader gates must build the real standalone loader fault-test target')
 
 assert!(
   run_text_by_job.fetch('android-engine').include?('verify_engine_args.sh') &&
@@ -2584,6 +2657,7 @@ assert!(run_text_by_job.fetch('source-checks').include?('python3 -m py_compile d
 %w[test_aot_product_metadata.py test_aot_host_resolvers.py test_interpreter_ffi_calls.py test_aot_product_ffi.py test_aot_product_ffi_callbacks.py test_aot_full_replacement_ffi.py].each do |harness|
   assert!(run_text_by_job.fetch('source-checks').include?("python3 -m py_compile dart-sdk/tools/#{harness}"), "source checks must syntax-check #{harness}")
 end
+assert!(run_text_by_job.fetch('source-checks').include?('python3 -m py_compile testapps/license_flavor_patch_test/tool/ios_device_e2e.py') && run_text_by_job.fetch('source-checks').include?('python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p test_ios_device_e2e.py -v'), 'Source checks must validate the physical iOS fixture report and export gates without device access')
 assert!(!run_text_by_job.fetch('custom-dart-sdk-windows').include?('test_aot_no_tfa_startup.py'), 'Windows compile/tooling evidence must remain distinct from the unsupported PRODUCT startup harness')
 assert!(run_text_by_job.fetch('custom-dart-sdk').include?('scripts/verify_encrypted_aot_runtime.py --structural') && run_text_by_job.fetch('custom-dart-sdk').include?('--tooling-dart dart-sdk/out/ReleaseX64/dart-sdk/bin/dart'), 'Linux SDK must prove encrypted structural replacement through the real producer and native runtime')
 linux_sdk_steps = jobs.fetch('custom-dart-sdk').fetch('steps')

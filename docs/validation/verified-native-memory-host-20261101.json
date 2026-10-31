@@ -1,0 +1,50 @@
+{
+  "date": "2026-11-01",
+  "status": "source implemented; Windows runtime validation pending",
+  "integration_revisions": {
+    "dart-sdk": "fdc857ef4018ceddc9155a01036fcb3960062d95",
+    "flutter": "745ca52ca1762f71596f22b1b6d984565d30777f",
+    "updater": "bb4224303d18baaacd1c2316e24336813517142d"
+  },
+  "engine_artifact_identity": "92f74daf8ce33d867994e00104e01e36087e379d",
+  "tests_preceded_commits": true,
+  "runtime_toolchain_before_commit": "bdc30207c93e422dfd56d4260fa84c522cbf95b1",
+  "passed": {
+    "updater_host_os": "macOS ARM64",
+    "updater_tests": 341,
+    "updater_clippy_all_targets_warnings_denied": true,
+    "sdk_loader_direct_plain": true,
+    "sdk_loader_asan_ubsan": true,
+    "sdk_loader_gn_target": "elf_loader_memory_test",
+    "sdk_loader_gn_build_actions": 13,
+    "sdk_loader_gn_runtime": "macOS ARM64 synthetic ELF; actual loader and protection operations",
+    "cpp_syntax_only": [
+      "updater.cc",
+      "updater_unittests.cc"
+    ],
+    "ci_validator_synthetic_tests": 9,
+    "ci_workflow_bash_blocks_checked": 205,
+    "ci_workflow_powershell_syntax_checked": true
+  },
+  "contracts": [
+    "Windows input allocation requests RW only; checked transition to RO; VirtualFree on failure and final release",
+    "Final immutable bytes rehashed and publisher signature verified before selection publication",
+    "Arc leases survive selection abort; stale selection IDs cannot acquire new leases",
+    "Existing boot-source ABI unchanged; Windows-only production capability 2 and source kind 3",
+    "Checked ELF protection/cache/unwind failures return before publishing a loaded image",
+    "Process retained LoadedElf preserves mappings and unwind registrations across engine recreation",
+    "No native policy opt-out, no macOS entitlement change, no plaintext update cache path"
+  ],
+  "required_unrun": [
+    "Native Windows allocator/VirtualQuery/failure cleanup and updater suite",
+    "Native Windows SDK normal and actual ACG-denial tests",
+    "Native Windows embedder and FlutterWindowsEngine adapter tests",
+    "Real Windows Dart exception unwinding and CFG release validation",
+    "Complete encrypted delivery/install/process-death/offline-boot/rollback lifecycle and file-write audit",
+    "Linux native memory helper regression on the new checkpoint",
+    "Current source full supported-platform CI matrix"
+  ],
+  "ci_note": "Run 41237899850 targets older e0ef8e0 source; it does not validate these memory-source changes",
+  "physical_ios_note": "Separate pinned 0b65b0be full-FFI device session is awaiting unlock; its prebuilt engines remain unchanged",
+  "security_limit": "Application-managed encrypted-at-rest storage does not hide executing plaintext from the process owner, paging, crash capture, or privileged inspection."
+}
