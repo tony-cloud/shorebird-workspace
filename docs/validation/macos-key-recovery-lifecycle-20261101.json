@@ -1,0 +1,643 @@
+{
+  "date": "2026-11-01",
+  "scope": "Actual local native ARM64 macOS Developer ID signed full-interpreter recovery lifecycle; not full replacement completion",
+  "result": "passed tested key recovery, rollback/rollforward and isolated tamper rejection",
+  "root_fixture_revision": "0bf60d78bb006567787bcb7098be977f8a020603",
+  "pins": {
+    "dart_sdk": "b17e766a7f25f22f31dcaeb313c55d40945a8c8a",
+    "flutter_source": "6dd7382ca9ce9b36d17d56d12d719f805ed110ad",
+    "updater": "92a7015bca749842de87131e354bfda626390128",
+    "server": "8cc3148fdcb489b20faa0a544d7a6690b6536da9",
+    "identity_material": "open-shorebird-toolchain-v1\nb17e766a7f25f22f31dcaeb313c55d40945a8c8a\n6dd7382ca9ce9b36d17d56d12d719f805ed110ad\n92a7015bca749842de87131e354bfda626390128\n",
+    "engine_identity": "29c8889bc81cec630a83b1e05416c0d588e6b2db",
+    "flutter": "dfd36cfc65621872864de714ba3948c7c2f5596c",
+    "shorebird": "ee0480819e9d61ddf84389d3cb6400e60fc07b1e"
+  },
+  "machine_arch": "arm64",
+  "private_toolchain_changes": [
+    "CLI isolated config-directory override",
+    "Flutter direct developer launcher with matching built SDK",
+    "Selected host generated sky_engine staging",
+    "Explicit matching engine.stamp and empty engine.realm; isolated pinned server checkout and Go caches"
+  ],
+  "signing": {
+    "certificate_sha1": "CB505CEFDE0F13359AFC01406E1B27438065D257",
+    "team_id": "43FN6K7B4C",
+    "hardened_runtime": true,
+    "app_entitlements": {
+      "com.apple.security.app-sandbox": true,
+      "com.apple.security.network.client": true
+    },
+    "executable_memory_or_library_validation_exceptions": false,
+    "debugger_attached": false,
+    "notarization_tested": false,
+    "exports": [
+      "IosFullFfiRetain",
+      "IosFullFfiVersion",
+      "IosFullFfiScalarV1",
+      "IosFullFfiScalarV2",
+      "IosFullFfiChangeRecordV1",
+      "IosFullFfiChangeRecordV2",
+      "IosFullFfiUpdateOnly",
+      "IosFullFfiNegate",
+      "IosFullFfiEchoPointer",
+      "IosFullFfiCallScalar",
+      "IosFullFfiCallRecord",
+      "IosFullFfiStartWorkers",
+      "IosFullFfiWorkersDone",
+      "IosFullFfiJoinWorkers"
+    ],
+    "code_sha256": {
+      "released/license_flavor_patch_test.app": "0c4c296a4b246c1a09e5016e34ab390a6151db9b5816001d45344b11d9f276c5",
+      "released/license_flavor_patch_test.app/Contents/Frameworks/App.framework/Versions/A/App": "292bd40c907db568a152d08ac217fc4eab757624709a816f3914403eb1394aee",
+      "released/license_flavor_patch_test.app/Contents/Frameworks/FlutterMacOS.framework/Versions/A/FlutterMacOS": "1bf62aba2423131fe5f39c61dee7ae220638232330bf25bb3273302365dc4d83",
+      "released/license_flavor_patch_test.app/Contents/MacOS/license_flavor_patch_test": "0c4c296a4b246c1a09e5016e34ab390a6151db9b5816001d45344b11d9f276c5"
+    }
+  },
+  "encrypted_artifact": {
+    "metadata": {
+      "target_os": "macos",
+      "target_arch": "arm64",
+      "runtime_mode": "dart-bytecode-interpreter",
+      "app_id": "39556294-d120-4a53-aebe-fefc8a374f38",
+      "app_build_id": "1.0.0+1"
+    },
+    "sha256": "60518bd49656d93bc9547e72013d38f8e6b03b45e8c030f7f27880ea5667d452",
+    "size": 11742497,
+    "format": "open-aot-vmcode-encrypted-v1",
+    "payload_kind": "full-snapshot",
+    "algorithm": "AES-256-GCM",
+    "runtime_encrypted_install_verified": true
+  },
+  "accepted_launches": [
+    {
+      "label": "download-base",
+      "phase": "base",
+      "check_count": 3,
+      "checks": [
+        "native-version",
+        "scalar-v1",
+        "struct-v1"
+      ],
+      "pid": 83581,
+      "started": 1793542898.0923588,
+      "report_sha256": "7f3f574604bce835bfe4531c5cba5451affd07173f5b603080eaece317523bd4",
+      "offline_endpoints_closed": false,
+      "signed_bundle_unchanged": true
+    },
+    {
+      "label": "initial-base",
+      "phase": "base",
+      "check_count": 3,
+      "checks": [
+        "native-version",
+        "scalar-v1",
+        "struct-v1"
+      ],
+      "pid": 53342,
+      "started": 1793542309.210081,
+      "report_sha256": "7f3f574604bce835bfe4531c5cba5451affd07173f5b603080eaece317523bd4",
+      "offline_endpoints_closed": false,
+      "signed_bundle_unchanged": true
+    },
+    {
+      "label": "missing-key-base",
+      "phase": "base",
+      "check_count": 3,
+      "checks": [
+        "native-version",
+        "scalar-v1",
+        "struct-v1"
+      ],
+      "pid": 87387,
+      "started": 1793542974.621286,
+      "report_sha256": "7f3f574604bce835bfe4531c5cba5451affd07173f5b603080eaece317523bd4",
+      "offline_endpoints_closed": true,
+      "signed_bundle_unchanged": true
+    },
+    {
+      "label": "missing-key-recovered",
+      "phase": "update",
+      "check_count": 16,
+      "checks": [
+        "native-version",
+        "scalar-v2",
+        "struct-v2",
+        "new-binding",
+        "native-address-of",
+        "process-lookup",
+        "bool-pointer",
+        "static-callback",
+        "local-static",
+        "local-capture",
+        "local-aggregate",
+        "foreign-group",
+        "listener-scalar",
+        "listener-compound",
+        "quiescent-join",
+        "callbacks-closed"
+      ],
+      "pid": 87943,
+      "started": 1793542986.628442,
+      "report_sha256": "84621f04aa254c072a7d6445331b263f7598ad56b6e79bfa2502dd94b15ef808",
+      "offline_endpoints_closed": true,
+      "signed_bundle_unchanged": true
+    },
+    {
+      "label": "offline-rollback-base",
+      "phase": "base",
+      "check_count": 3,
+      "checks": [
+        "native-version",
+        "scalar-v1",
+        "struct-v1"
+      ],
+      "pid": 91620,
+      "started": 1793543062.679331,
+      "report_sha256": "7f3f574604bce835bfe4531c5cba5451affd07173f5b603080eaece317523bd4",
+      "offline_endpoints_closed": true,
+      "signed_bundle_unchanged": true
+    },
+    {
+      "label": "offline-rollforward-update",
+      "phase": "update",
+      "check_count": 16,
+      "checks": [
+        "native-version",
+        "scalar-v2",
+        "struct-v2",
+        "new-binding",
+        "native-address-of",
+        "process-lookup",
+        "bool-pointer",
+        "static-callback",
+        "local-static",
+        "local-capture",
+        "local-aggregate",
+        "foreign-group",
+        "listener-scalar",
+        "listener-compound",
+        "quiescent-join",
+        "callbacks-closed"
+      ],
+      "pid": 97807,
+      "started": 1793543192.629737,
+      "report_sha256": "84621f04aa254c072a7d6445331b263f7598ad56b6e79bfa2502dd94b15ef808",
+      "offline_endpoints_closed": true,
+      "signed_bundle_unchanged": true
+    },
+    {
+      "label": "offline-update",
+      "phase": "update",
+      "check_count": 16,
+      "checks": [
+        "native-version",
+        "scalar-v2",
+        "struct-v2",
+        "new-binding",
+        "native-address-of",
+        "process-lookup",
+        "bool-pointer",
+        "static-callback",
+        "local-static",
+        "local-capture",
+        "local-aggregate",
+        "foreign-group",
+        "listener-scalar",
+        "listener-compound",
+        "quiescent-join",
+        "callbacks-closed"
+      ],
+      "pid": 86606,
+      "started": 1793542959.267004,
+      "report_sha256": "84621f04aa254c072a7d6445331b263f7598ad56b6e79bfa2502dd94b15ef808",
+      "offline_endpoints_closed": true,
+      "signed_bundle_unchanged": true
+    },
+    {
+      "label": "receive-rollback",
+      "phase": "update",
+      "check_count": 16,
+      "checks": [
+        "native-version",
+        "scalar-v2",
+        "struct-v2",
+        "new-binding",
+        "native-address-of",
+        "process-lookup",
+        "bool-pointer",
+        "static-callback",
+        "local-static",
+        "local-capture",
+        "local-aggregate",
+        "foreign-group",
+        "listener-scalar",
+        "listener-compound",
+        "quiescent-join",
+        "callbacks-closed"
+      ],
+      "pid": 89831,
+      "started": 1793543026.5373151,
+      "report_sha256": "84621f04aa254c072a7d6445331b263f7598ad56b6e79bfa2502dd94b15ef808",
+      "offline_endpoints_closed": false,
+      "signed_bundle_unchanged": true
+    },
+    {
+      "label": "redownload-base",
+      "phase": "base",
+      "check_count": 3,
+      "checks": [
+        "native-version",
+        "scalar-v1",
+        "struct-v1"
+      ],
+      "pid": 92935,
+      "started": 1793543090.249741,
+      "report_sha256": "7f3f574604bce835bfe4531c5cba5451affd07173f5b603080eaece317523bd4",
+      "offline_endpoints_closed": false,
+      "signed_bundle_unchanged": true
+    },
+    {
+      "label": "tampered-ciphertext-base",
+      "phase": "base",
+      "check_count": 3,
+      "checks": [
+        "native-version",
+        "scalar-v1",
+        "struct-v1"
+      ],
+      "pid": 99380,
+      "started": 1793543226.634801,
+      "report_sha256": "7f3f574604bce835bfe4531c5cba5451affd07173f5b603080eaece317523bd4",
+      "offline_endpoints_closed": true,
+      "signed_bundle_unchanged": true
+    },
+    {
+      "label": "tampered-signature-base",
+      "phase": "base",
+      "check_count": 3,
+      "checks": [
+        "native-version",
+        "scalar-v1",
+        "struct-v1"
+      ],
+      "pid": 332,
+      "started": 1793543243.2389078,
+      "report_sha256": "7f3f574604bce835bfe4531c5cba5451affd07173f5b603080eaece317523bd4",
+      "offline_endpoints_closed": true,
+      "signed_bundle_unchanged": true
+    },
+    {
+      "label": "wrong-key-base",
+      "phase": "base",
+      "check_count": 3,
+      "checks": [
+        "native-version",
+        "scalar-v1",
+        "struct-v1"
+      ],
+      "pid": 88577,
+      "started": 1793543000.098303,
+      "report_sha256": "7f3f574604bce835bfe4531c5cba5451affd07173f5b603080eaece317523bd4",
+      "offline_endpoints_closed": true,
+      "signed_bundle_unchanged": true
+    },
+    {
+      "label": "wrong-key-recovered",
+      "phase": "update",
+      "check_count": 16,
+      "checks": [
+        "native-version",
+        "scalar-v2",
+        "struct-v2",
+        "new-binding",
+        "native-address-of",
+        "process-lookup",
+        "bool-pointer",
+        "static-callback",
+        "local-static",
+        "local-capture",
+        "local-aggregate",
+        "foreign-group",
+        "listener-scalar",
+        "listener-compound",
+        "quiescent-join",
+        "callbacks-closed"
+      ],
+      "pid": 88994,
+      "started": 1793543008.54856,
+      "report_sha256": "84621f04aa254c072a7d6445331b263f7598ad56b6e79bfa2502dd94b15ef808",
+      "offline_endpoints_closed": true,
+      "signed_bundle_unchanged": true
+    }
+  ],
+  "cache_snapshots": {
+    "downloaded": {
+      "label": "downloaded",
+      "files": {
+        "patches/1/authentication.json": {
+          "size": 1618,
+          "sha256": "4c01d171d0a28d1a200d9ef3d80a17db3da29db66e49e021f9212d7a09b2f27a"
+        },
+        "patches/1/dlc.vmcode": {
+          "size": 11742497,
+          "sha256": "60518bd49656d93bc9547e72013d38f8e6b03b45e8c030f7f27880ea5667d452"
+        },
+        "patches/1/state.json": {
+          "size": 408,
+          "sha256": "7ca3780a78a25c581d19837b6f6ab1a265668b4eac8b6a8cd6aa063d11163c06"
+        },
+        "pointers.json": {
+          "size": 117,
+          "sha256": "027eb8ec00ef624f34bfe653efc08dc3f93f4daf269ce5a023009f109874209a"
+        },
+        "state.json": {
+          "size": 112,
+          "sha256": "5e6ff06eac81e40528d94ae97104f57f0a85737c0d346548892e636fa171a105"
+        }
+      },
+      "key_bytes_or_hex_present": false,
+      "cached_artifact_matches_published": true,
+      "cached_artifact_format": "open-aot-vmcode-encrypted-v1",
+      "pointers": {
+        "next_boot_patch": 1,
+        "last_booted_patch": null,
+        "currently_booting_patch": null,
+        "boot_started_at": null
+      }
+    },
+    "offline-update": {
+      "label": "offline-update",
+      "files": {
+        "patches/1/authentication.json": {
+          "size": 1618,
+          "sha256": "4c01d171d0a28d1a200d9ef3d80a17db3da29db66e49e021f9212d7a09b2f27a"
+        },
+        "patches/1/dlc.vmcode": {
+          "size": 11742497,
+          "sha256": "60518bd49656d93bc9547e72013d38f8e6b03b45e8c030f7f27880ea5667d452"
+        },
+        "patches/1/state.json": {
+          "size": 408,
+          "sha256": "7ca3780a78a25c581d19837b6f6ab1a265668b4eac8b6a8cd6aa063d11163c06"
+        },
+        "pointers.json": {
+          "size": 114,
+          "sha256": "4d409eb9ae53577cc8d7e1397dc341195702d13efca4fab80f301b0a0adb6df8"
+        },
+        "state.json": {
+          "size": 501,
+          "sha256": "39de2fbe64273b42b37b15b7394f315a6c769450738cb8f93f513b2879e58aff"
+        }
+      },
+      "key_bytes_or_hex_present": false,
+      "cached_artifact_matches_published": true,
+      "cached_artifact_format": "open-aot-vmcode-encrypted-v1",
+      "pointers": {
+        "next_boot_patch": 1,
+        "last_booted_patch": 1,
+        "currently_booting_patch": null,
+        "boot_started_at": null
+      }
+    },
+    "missing-key": {
+      "label": "missing-key",
+      "files": {
+        "patches/1/authentication.json": {
+          "size": 1618,
+          "sha256": "4c01d171d0a28d1a200d9ef3d80a17db3da29db66e49e021f9212d7a09b2f27a"
+        },
+        "patches/1/dlc.vmcode": {
+          "size": 11742497,
+          "sha256": "60518bd49656d93bc9547e72013d38f8e6b03b45e8c030f7f27880ea5667d452"
+        },
+        "patches/1/state.json": {
+          "size": 408,
+          "sha256": "7ca3780a78a25c581d19837b6f6ab1a265668b4eac8b6a8cd6aa063d11163c06"
+        },
+        "pointers.json": {
+          "size": 114,
+          "sha256": "4d409eb9ae53577cc8d7e1397dc341195702d13efca4fab80f301b0a0adb6df8"
+        },
+        "state.json": {
+          "size": 1029,
+          "sha256": "a755e97e27ff10c7b07b56c1a015944860fb9727516bfa454e9bd9f647d06237"
+        }
+      },
+      "key_bytes_or_hex_present": false,
+      "cached_artifact_matches_published": true,
+      "cached_artifact_format": "open-aot-vmcode-encrypted-v1",
+      "pointers": {
+        "next_boot_patch": 1,
+        "last_booted_patch": 1,
+        "currently_booting_patch": null,
+        "boot_started_at": null
+      }
+    },
+    "wrong-key": {
+      "label": "wrong-key",
+      "files": {
+        "patches/1/authentication.json": {
+          "size": 1618,
+          "sha256": "4c01d171d0a28d1a200d9ef3d80a17db3da29db66e49e021f9212d7a09b2f27a"
+        },
+        "patches/1/dlc.vmcode": {
+          "size": 11742497,
+          "sha256": "60518bd49656d93bc9547e72013d38f8e6b03b45e8c030f7f27880ea5667d452"
+        },
+        "patches/1/state.json": {
+          "size": 408,
+          "sha256": "7ca3780a78a25c581d19837b6f6ab1a265668b4eac8b6a8cd6aa063d11163c06"
+        },
+        "pointers.json": {
+          "size": 114,
+          "sha256": "4d409eb9ae53577cc8d7e1397dc341195702d13efca4fab80f301b0a0adb6df8"
+        },
+        "state.json": {
+          "size": 1557,
+          "sha256": "b0ab781478bfb961102f28750c2dd1cf5a2d1e6da5f3057c1b83391d441ea90c"
+        }
+      },
+      "key_bytes_or_hex_present": false,
+      "cached_artifact_matches_published": true,
+      "cached_artifact_format": "open-aot-vmcode-encrypted-v1",
+      "pointers": {
+        "next_boot_patch": 1,
+        "last_booted_patch": 1,
+        "currently_booting_patch": null,
+        "boot_started_at": null
+      }
+    },
+    "rollback-received": {
+      "label": "rollback-received",
+      "files": {
+        "pointers.json": {
+          "size": 120,
+          "sha256": "37026eb7ab2982adb96086e2e1fdc23996f0171070e3ff0ed7283d39aa95ede0"
+        },
+        "state.json": {
+          "size": 112,
+          "sha256": "5e6ff06eac81e40528d94ae97104f57f0a85737c0d346548892e636fa171a105"
+        }
+      },
+      "key_bytes_or_hex_present": false,
+      "cached_artifact_matches_published": null,
+      "pointers": {
+        "next_boot_patch": null,
+        "last_booted_patch": null,
+        "currently_booting_patch": null,
+        "boot_started_at": null
+      }
+    },
+    "rollforward-downloaded": {
+      "label": "rollforward-downloaded",
+      "files": {
+        "patches/1/authentication.json": {
+          "size": 1618,
+          "sha256": "f654485d21d11c44d75f834439c878e92c5a3253ead3cce0b593331fb41a217c"
+        },
+        "patches/1/dlc.vmcode": {
+          "size": 11742497,
+          "sha256": "60518bd49656d93bc9547e72013d38f8e6b03b45e8c030f7f27880ea5667d452"
+        },
+        "patches/1/state.json": {
+          "size": 408,
+          "sha256": "7ca3780a78a25c581d19837b6f6ab1a265668b4eac8b6a8cd6aa063d11163c06"
+        },
+        "pointers.json": {
+          "size": 117,
+          "sha256": "027eb8ec00ef624f34bfe653efc08dc3f93f4daf269ce5a023009f109874209a"
+        },
+        "state.json": {
+          "size": 112,
+          "sha256": "5e6ff06eac81e40528d94ae97104f57f0a85737c0d346548892e636fa171a105"
+        }
+      },
+      "key_bytes_or_hex_present": false,
+      "cached_artifact_matches_published": true,
+      "cached_artifact_format": "open-aot-vmcode-encrypted-v1",
+      "pointers": {
+        "next_boot_patch": 1,
+        "last_booted_patch": null,
+        "currently_booting_patch": null,
+        "boot_started_at": null
+      }
+    },
+    "rollforward-active": {
+      "label": "rollforward-active",
+      "files": {
+        "patches/1/authentication.json": {
+          "size": 1618,
+          "sha256": "f654485d21d11c44d75f834439c878e92c5a3253ead3cce0b593331fb41a217c"
+        },
+        "patches/1/dlc.vmcode": {
+          "size": 11742497,
+          "sha256": "60518bd49656d93bc9547e72013d38f8e6b03b45e8c030f7f27880ea5667d452"
+        },
+        "patches/1/state.json": {
+          "size": 408,
+          "sha256": "7ca3780a78a25c581d19837b6f6ab1a265668b4eac8b6a8cd6aa063d11163c06"
+        },
+        "pointers.json": {
+          "size": 114,
+          "sha256": "4d409eb9ae53577cc8d7e1397dc341195702d13efca4fab80f301b0a0adb6df8"
+        },
+        "state.json": {
+          "size": 501,
+          "sha256": "481618e5d73a8161f80882da8e9773a15f1c58a17e92e4cefd9e225263a5ba35"
+        }
+      },
+      "key_bytes_or_hex_present": false,
+      "cached_artifact_matches_published": true,
+      "cached_artifact_format": "open-aot-vmcode-encrypted-v1",
+      "pointers": {
+        "next_boot_patch": 1,
+        "last_booted_patch": 1,
+        "currently_booting_patch": null,
+        "boot_started_at": null
+      }
+    },
+    "ciphertext-rejected": {
+      "label": "ciphertext-rejected",
+      "files": {
+        "patches/1/state.json": {
+          "size": 450,
+          "sha256": "35f1457d527b562e1f1935157a667b5c0561341dcd166b1802f5f1d4a3698356"
+        },
+        "pointers.json": {
+          "size": 117,
+          "sha256": "1ca6fcfef358bde18114d597b352ed19d6530adc314494711c2bec949b1330c8"
+        },
+        "state.json": {
+          "size": 1073,
+          "sha256": "248d2959997c3b8dd8d3cd0fb5e0c7ca7936d35b2b606cf9065f40dd169b8c15"
+        }
+      },
+      "key_bytes_or_hex_present": false,
+      "cached_artifact_matches_published": null,
+      "pointers": {
+        "next_boot_patch": null,
+        "last_booted_patch": 1,
+        "currently_booting_patch": null,
+        "boot_started_at": null
+      }
+    },
+    "signature-rejected": {
+      "label": "signature-rejected",
+      "files": {
+        "patches/1/state.json": {
+          "size": 450,
+          "sha256": "52b4a652eed1f5104dfdf951a5dfd6f11fadb2bc82cd8bc210c8b3edbea76984"
+        },
+        "pointers.json": {
+          "size": 117,
+          "sha256": "1ca6fcfef358bde18114d597b352ed19d6530adc314494711c2bec949b1330c8"
+        },
+        "state.json": {
+          "size": 1039,
+          "sha256": "8c6159978c1f88661f9b2a9068d8a144d383bc8e75ebed877c0d1f5ea22ccfe6"
+        }
+      },
+      "key_bytes_or_hex_present": false,
+      "cached_artifact_matches_published": null,
+      "pointers": {
+        "next_boot_patch": null,
+        "last_booted_patch": 1,
+        "currently_booting_patch": null,
+        "boot_started_at": null
+      }
+    }
+  },
+  "key_refusal_retains_identical_ciphertext_and_authentication": true,
+  "raw_or_hex_key_found_in_cache": false,
+  "complete_plaintext_update_bytecode_found_in_pristine_cache": false,
+  "tamper_controls": {
+    "ciphertext": "One cached ciphertext character changed; existing artifact signature caused BASE rejection",
+    "signature": "Pristine cache manually restored between independent controls, then one artifact-signature character changed; BASE rejection",
+    "recovery_claim": "Manual cache restoration is test setup, not an application tamper-recovery proof"
+  },
+  "cleanup": {
+    "time": 1793543297.6232262,
+    "key_receipt_verified": true,
+    "key_deletion_evidence": "/Users/tonylu/Library/Caches/shorebird-fixtures/macos-key-recovery-20261101/cleanup-evidence/native-key-deletion.json",
+    "owned_app_removed": true,
+    "container_removed": false,
+    "container_payload_removed": true,
+    "os_metadata_shell_remaining": "/Users/tonylu/Library/Containers/org.tonycloud.shorebird-macos-ffi.e1bc7f4a9039",
+    "os_metadata_file_remaining": "/Users/tonylu/Library/Containers/org.tonycloud.shorebird-macos-ffi.e1bc7f4a9039/.com.apple.containermanagerd.metadata.plist",
+    "metadata_removal_errno": 1,
+    "owned_app_and_container_removed": false,
+    "cleanup_complete": false,
+    "bootstrap_secrets_removed": true,
+    "servers_stopped_externally": true,
+    "private_build_evidence_retained": true
+  },
+  "limitations": [
+    "No v2 independent variant or enterprise switching in this pinned application",
+    "No app-owned persistent data schema migration/sentinel test",
+    "No macOS x64 runtime acceptance",
+    "No notarization or distribution acceptance",
+    "Cache tamper rejection proved; automatic repair after tamper not proved"
+  ],
+  "local_private_evidence_directory": "/Users/tonylu/Library/Caches/shorebird-fixtures/macos-key-recovery-20261101"
+}
