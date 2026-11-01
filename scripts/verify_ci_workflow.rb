@@ -1920,9 +1920,9 @@ assert!(variant_run.include?(%q{printf '%s  %s\n' 518080049ba83181914419d11a25d9
         variant_run.index('sha256sum --check --strict') < variant_run.index('-p test_android_variant_app.py -v') &&
         !variant_run.include?('|| true'), 'The production Java context-before-cache authorization test must run after mandatory checksum verification')
 {
-  'macos-engine' => ['macOS provider ledger', 'test_macos_variant_e2e.VariantFixtureTest.test_actual_swift_provider_ledger_is_fresh_bounded_atomic_thread_safe_and_fail_closed', 1],
-  'ios-engine' => ['iOS cache controls', 'test_ios_variant_adversarial.NativeCacheControlsTest', 3],
-}.each do |job_name, (title, suite, count)|
+  'macos-engine' => ['macOS provider ledger', ['test_macos_variant_e2e.VariantFixtureTest.test_actual_swift_provider_ledger_is_fresh_bounded_atomic_thread_safe_and_fail_closed'], 1],
+  'ios-engine' => ['iOS cache controls', ['test_ios_variant_adversarial.NativeCacheControlsTest', 'test_ios_variant_adversarial.NativeDiagnosticTest'], 5],
+}.each do |job_name, (title, suites, count)|
   steps = jobs.fetch(job_name).fetch('steps')
   index = steps.index { |step| step['name'] == "Require #{title} Swift controls" }
   configure = steps.index { |step| step['name'].to_s.start_with?('Configure ') }
@@ -1936,7 +1936,7 @@ assert!(variant_run.include?(%q{printf '%s  %s\n' 518080049ba83181914419d11a25d9
   end
   assert!(run.include?('test "$(uname -s)" = Darwin') && run.include?('test -x "$(xcrun --find swiftc)"') &&
           run.include?('export PYTHONPATH="$GITHUB_WORKSPACE/testapps/license_flavor_patch_test/tool${PYTHONPATH:+:$PYTHONPATH}"') &&
-          run.include?("suite = unittest.defaultTestLoader.loadTestsFromNames(['#{suite}'])") &&
+          run.include?("suite = unittest.defaultTestLoader.loadTestsFromNames([#{suites.map { |suite| "'#{suite}'" }.join(', ')}])") &&
           run.include?("expected = #{count}\n") && run.include?('if suite.countTestCases() != expected:') &&
           run.include?('if not result.wasSuccessful() or result.skipped or result.testsRun != expected:'),
           "#{job_name} must execute the exact real Swift inventory and reject missing, failed, or skipped controls")

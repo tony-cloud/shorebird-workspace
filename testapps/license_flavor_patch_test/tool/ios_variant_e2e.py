@@ -69,7 +69,7 @@ def require_open(work, state, *, deletion=False):
 
 
 def fixture_sources():
-    return [Path(__file__), Path(adversarial.__file__), TEMPLATES / 'AppDelegate.swift.template', TEMPLATES / 'CacheControls.swift.template', TEMPLATES / 'variant_status.dart.template',
+    return [Path(__file__), Path(adversarial.__file__), TEMPLATES / 'AppDelegate.swift.template', TEMPLATES / 'CacheControls.swift.template', TEMPLATES / 'Diagnostics.swift.template', TEMPLATES / 'variant_status.dart.template',
         Path(ios.__file__), Path(selection.__file__), Path(selection.v1.__file__),
         Path(__file__).with_name('owned_host_processes.py'),
         ios.FIXTURE / 'ios/Runner/FullFfiFixture.c', ios.FIXTURE / 'ios/Runner/FullFfiFixture.h',
@@ -229,11 +229,20 @@ def configure_native(work, state):
         return
     source = (TEMPLATES / 'AppDelegate.swift.template').read_text()
     source = source.replace('__CACHE_CONTROLS__', (TEMPLATES / 'CacheControls.swift.template').read_text())
+    source = source.replace('__DIAGNOSTICS__', (TEMPLATES / 'Diagnostics.swift.template').read_text())
     for key, value in {'__SERVICE__': state['key_service'], '__BUNDLE_ID__': state['bundle_id'],
             '__SESSION__': state['session'], '__APP_ID__': state['app_id'], '__RELEASE__': state['release_version'],
             '__PRO_KEY_ID__': state['key_ids']['pro'], '__ENTERPRISE_KEY_ID__': state['key_ids']['enterprise']}.items():
         source = source.replace(key, value)
     ios.private_write(work / 'app/ios/Runner/AppDelegate.swift', source)
+    project = work / 'app/ios/Runner.xcodeproj/project.pbxproj'
+    project_source = project.read_text()
+    marker = '"-Wl,-export_dynamic", '
+    retain = '"-Wl,-u,_IosVariantDiagnosticStage", '
+    if retain not in project_source:
+        if project_source.count(marker) != 3:
+            raise ValueError('Review changed copied native export retention settings')
+        ios.private_write(project, project_source.replace(marker, marker + retain))
     # A fresh unique bundle can only save this UIKit bootstrap configuration;
     # neither initial startup nor restored sessions may auto-load Flutter Main.
     info_path = work / 'app/ios/Runner/Info.plist'
@@ -731,8 +740,9 @@ def inspect_app(work, state, app):
         raise ValueError('Supply an exported distribution .app')
     app = ios.verified_app(argparse.Namespace(app=app), work, state)
     exports = (work / 'ffi-native-exports.log').read_text()
-    if not re.search(r'\b_?IosVariantSubmitReport\b', exports):
-        raise ValueError('Distribution Mach-O lacks the native observer FFI export')
+    for name in ('IosVariantSubmitReport', 'IosVariantDiagnosticStage'):
+        if not re.search(r'\b_?' + name + r'\b', exports):
+            raise ValueError('Distribution Mach-O lacks required fixture FFI export: ' + name)
     validate_compiled_scope(state, app)
     info = plistlib.loads((app / 'Info.plist').read_bytes())
     validate_scene_bootstrap(info)

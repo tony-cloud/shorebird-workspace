@@ -1,0 +1,79 @@
+import Foundation
+
+// Local diagnostic evidence only. No HTTP, key material, status acceptance or
+// updater/cache calls; the application supplies its fixed NSHomeDirectory root.
+enum IosVariantDiagnostics {
+  static let lock = NSLock()
+  static var sequence = 0
+  static var detail = [UInt8]()
+  static var dartFlags: Int64?
+  static let stages: [Int64: String] = [
+    0: "native-ready", 1: "variant-entry", 2: "constructor-before", 3: "constructor-after",
+    4: "installation-before", 5: "installation-after", 6: "initial-status-before", 7: "initial-status-after",
+    8: "data-before", 9: "data-after", 10: "report-status-before", 11: "report-status-after",
+    12: "report-encode-before", 13: "report-encode-after", 14: "report-allocation-before",
+    15: "report-allocation-after", 16: "report-lookup-before", 17: "report-lookup-after",
+    18: "report-call-before", 19: "report-call-after", 20: "error", 21: "function-complete",
+    22: "root-isolate-heartbeat", 23: "native-report-entered", 24: "native-report-written",
+    25: "native-report-http-started", 26: "dart-environment-read", 90: "error-detail-before", 92: "error-detail-after"]
+
+  static func record(root: URL, context: [String: Any], stage: Int64, value: Int64) -> Bool {
+    lock.lock()
+    defer { lock.unlock() }
+    guard sequence < 512, value >= 0, value <= 1023 else { return false }
+    if stage == 91 {
+      guard value < 128, detail.count < 8192 else { detail.removeAll(); return false }
+      detail.append(UInt8(value))
+      return true
+    }
+    guard let name = stages[stage], let session = context["session"] as? String,
+          let pid = context["pid"] as? Int, pid > 0 else { return false }
+    if stage == 26 { dartFlags = value & 255 }
+    if stage == 90 { detail.removeAll(keepingCapacity: true) }
+    let suppliedNonce = context["nonce"] as? String
+    let nonce = suppliedNonce.flatMap { $0.range(of: "^[a-f0-9]{48}$", options: .regularExpression) == nil ? nil : $0 }
+    func route(_ key: String, _ allowed: [String]) -> String {
+      guard let text = context[key] as? String else { return "absent" }
+      return allowed.contains(text) ? text : "invalid"
+    }
+    var entry: [String: Any] = ["schema": "ios-variant-diagnostic-v1", "session": session,
+      "nonce": nonce as Any? ?? NSNull(), "pid": pid, "sequence": sequence,
+      "time": Date().timeIntervalSince1970, "stage": name, "value": value,
+      "native_environment": ["nonce_present": nonce != nil,
+        "home_present": context["home_present"] as? Bool ?? false,
+        "status_route": route("status_route", ["public", "native-ffi"]),
+        "report_route": route("report_route", ["native", "dart", "file"])],
+      "dart_environment_flags": dartFlags as Any? ?? NSNull()]
+    if stage == 92 {
+      defer { detail.removeAll() }
+      guard let parsed = try? JSONSerialization.jsonObject(with: Data(detail)) as? [String: Any],
+            Set(parsed.keys) == Set(["error_type", "frames"]),
+            let type = parsed["error_type"] as? String,
+            type.range(of: "^[A-Za-z_][A-Za-z0-9_]{0,79}$", options: .regularExpression) != nil,
+            let frames = parsed["frames"] as? [String], frames.count <= 16,
+            frames.allSatisfy({ $0.range(of: "^[A-Za-z0-9_.-]{1,80}\\.dart:[0-9]{1,8}(:[0-9]{1,8})?$", options: .regularExpression) != nil }) else { return false }
+      entry["error"] = ["error_type": type, "frames": frames]
+    }
+    do {
+      try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+      let file = root.appendingPathComponent("diagnostic-" + (nonce ?? "unbound-\(pid)") + ".jsonl")
+      if !FileManager.default.fileExists(atPath: file.path) {
+        guard FileManager.default.createFile(atPath: file.path, contents: nil,
+            attributes: [.posixPermissions: 0o600]) else { return false }
+      }
+      let attributes = try FileManager.default.attributesOfItem(atPath: file.path)
+      guard attributes[.type] as? FileAttributeType == .typeRegular,
+            (attributes[.referenceCount] as? NSNumber)?.intValue == 1,
+            ((attributes[.size] as? NSNumber)?.intValue ?? Int.max) < 1024 * 1024 else { return false }
+      let handle = try FileHandle(forWritingTo: file)
+      defer { try? handle.close() }
+      try handle.seekToEnd()
+      var bytes = try JSONSerialization.data(withJSONObject: entry, options: [.sortedKeys])
+      bytes.append(10)
+      try handle.write(contentsOf: bytes)
+      try handle.synchronize()
+      sequence += 1
+      return true
+    } catch { return false } // Diagnostics cannot grant acceptance or crash cleanup.
+  }
+}

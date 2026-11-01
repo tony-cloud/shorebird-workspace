@@ -5,6 +5,8 @@ import Security
 
 __CACHE_CONTROLS__
 
+__DIAGNOSTICS__
+
 // Disposable independently authenticated provisioning control. Keys arrive only
 // in a private child environment, never assets, output, receipts or Dart code.
 enum IosVariantFixture {
@@ -180,6 +182,7 @@ enum IosVariantFixture {
       // Dart report transports this native receipt even when distribution app
       // containers cannot be downloaded. No debugger or network provisioning.
     }
+    iosVariantDiagnosticStage(0, 0)
     precondition(IosFullFfiRetain() == 13, "Released native exports missing")
     precondition(FlutterDartProject.setShorebirdAotPatchKeyProviderV2 { read($0, $1) },
                  "V2 provider must precede first engine")
@@ -205,8 +208,23 @@ enum IosVariantFixture {
 }
 
 
+// Integer-only @Native markers avoid the malloc/lookupFunction path under
+// investigation. The linker explicitly retains this export in the copied app.
+@_cdecl("IosVariantDiagnosticStage")
+public func iosVariantDiagnosticStage(_ stage: Int64, _ value: Int64) {
+  guard !IosVariantFixture.cleanupOnly else { return }
+  let env = ProcessInfo.processInfo.environment
+  _ = IosVariantDiagnostics.record(root: IosVariantFixture.evidenceDirectory, context: [
+    "session": IosVariantFixture.session, "pid": Int(ProcessInfo.processInfo.processIdentifier),
+    "nonce": env["OPEN_SHOREBIRD_TEST_NONCE"] as Any? ?? NSNull(),
+    "home_present": env["HOME"] != nil,
+    "status_route": env["OPEN_SHOREBIRD_TEST_STATUS_ROUTE"] as Any? ?? NSNull(),
+    "report_route": env["OPEN_SHOREBIRD_TEST_REPORT_ROUTE"] as Any? ?? NSNull()], stage: stage, value: value)
+}
+
 @_cdecl("IosVariantSubmitReport")
 public func iosVariantSubmitReport(_ pointer: UnsafePointer<CChar>?) {
+  iosVariantDiagnosticStage(23, 0)
   guard let pointer = pointer,
         let body = String(validatingUTF8: pointer)?.data(using: .utf8),
         body.count <= 65536,
@@ -225,6 +243,7 @@ public func iosVariantSubmitReport(_ pointer: UnsafePointer<CChar>?) {
     let final = try JSONSerialization.data(withJSONObject: value, options: [.sortedKeys])
     guard final.count <= 65536 else { return }
     try final.write(to: IosVariantFixture.evidenceDirectory.appendingPathComponent("variant-status.json"), options: [.atomic])
+    iosVariantDiagnosticStage(24, 0)
     guard value["report_route"] as? String == "native",
           let endpoint = ProcessInfo.processInfo.environment["OPEN_SHOREBIRD_TEST_OBSERVER"],
           let url = URL(string: endpoint) else { return }
@@ -234,6 +253,7 @@ public func iosVariantSubmitReport(_ pointer: UnsafePointer<CChar>?) {
   request.httpBody = final
   // Never wait on a semaphore on the Flutter/UI thread. The device's local
   // network permission prompt must remain serviceable while updates run.
+  iosVariantDiagnosticStage(25, 0)
   URLSession.shared.dataTask(with: request) { _, _, _ in }.resume()
   } catch { preconditionFailure("Native cache observation failed") }
 }

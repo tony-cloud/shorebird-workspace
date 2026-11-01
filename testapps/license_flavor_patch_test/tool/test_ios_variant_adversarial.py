@@ -359,6 +359,63 @@ class AdversarialTest(unittest.TestCase):
             execute.assert_not_called()
         self.assertEqual(self.state['launches'], [])
 
+    def test_diagnostic_records_cannot_accept_reports_or_clear_native_fences(self):
+        self.paid()
+        with mock.patch.object(runner.ios, 'run', return_value=b''):
+            launch = runner.launch(self.work, self.state, cache_action='inspect')
+        diagnostic = dict(schema='ios-variant-diagnostic-v1', session=self.state['session'],
+            nonce=launch['nonce'], pid=12, stage='function-complete', time=time.time())
+        with self.assertRaisesRegex(ValueError, 'schema'):
+            runner.receive_report(self.work, json.dumps(diagnostic).encode())
+        path = self.work / 'diagnostic-only.json'
+        runner.ios.write_json(path, diagnostic)
+        with self.assertRaisesRegex(ValueError, 'foreign nonce-bound'):
+            runner.read_report(self.work, self.state, variant='pro', path=path)
+        self.assertEqual(runner.load(self.work)['pending_cache_launch'], launch)
+        self.assertNotIn('validated_nonce', self.state)
+        native = (self.work / 'app/ios/Runner/AppDelegate.swift').read_text()
+        start = native.index('@_cdecl("IosVariantDiagnosticStage")')
+        end = native.index('@_cdecl("IosVariantSubmitReport")')
+        self.assertNotIn('URLSession', native[start:end])
+        helper = (runner.TEMPLATES / 'Diagnostics.swift.template').read_text()
+        self.assertNotIn('URLSession', helper)
+        self.assertIn('handle.synchronize()', helper)
+        self.assertIn('guard !IosVariantFixture.cleanupOnly else { return }', native[start:end])
+        project = (self.work / 'app/ios/Runner.xcodeproj/project.pbxproj').read_text()
+        self.assertEqual(project.count('-Wl,-u,_IosVariantDiagnosticStage'), 3)
+
+    def test_inspection_requires_the_retained_diagnostic_export(self):
+        app = self.work / 'fake-original.app'
+        app.mkdir()
+        info = plistlib.loads((self.work / 'app/ios/Runner/Info.plist').read_bytes())
+        info['CFBundleExecutable'] = 'Runner'
+        (app / 'Info.plist').write_bytes(plistlib.dumps(info))
+        (app / 'Runner').write_bytes(b'not an executable; mocked inspection only')
+        export_log = self.work / 'ffi-native-exports.log'
+        export_log.write_text('_IosVariantSubmitReport\n')
+        with mock.patch.object(runner.ios, 'verified_app', return_value=app), mock.patch.object(runner, 'validate_compiled_scope'):
+            with self.assertRaisesRegex(ValueError, 'IosVariantDiagnosticStage'):
+                runner.inspect_app(self.work, self.state, app)
+            export_log.write_text('_IosVariantSubmitReport\n_IosVariantDiagnosticStage\n')
+            inspected, digest = runner.inspect_app(self.work, self.state, app)
+        self.assertEqual(inspected, app)
+        self.assertEqual(digest, hashlib.sha256((app / 'Runner').read_bytes()).hexdigest())
+
+    def test_diagnostics_surround_normal_constructor_and_status_without_switching_routes(self):
+        source = (self.work / 'app/lib/variant_status.dart').read_text()
+        for before, operation, after in ((2, 'final updater = ShorebirdUpdater();', 3),
+                (4, 'final installation = nativeStatus ?', 5),
+                (6, 'final initial = nativeStatus ?', 7), (8, 'final data = updateFixtureData();', 9)):
+            with self.subTest(operation=operation):
+                self.assertLess(source.index(f'_nativeDiagnosticStage({before}, flags);'), source.index(operation))
+                self.assertLess(source.index(operation), source.index(f'_nativeDiagnosticStage({after}, flags'))
+        self.assertIn('Timer.periodic', source)
+        self.assertIn('heartbeat?.cancel()', source)
+        self.assertIn("symbol: 'IosVariantDiagnosticStage'", source)
+        self.assertIn('on Object catch (error, stack)', source)
+        self.assertIn('variantDiagnosticErrorDetails(error, stack)', source)
+        self.assertNotIn('error.toString()', source.replace('// Never include error.toString()', ''))
+
 
 @unittest.skipUnless(shutil.which('xcrun'), 'Native helper tests require the installed Apple Swift toolchain')
 class NativeCacheControlsTest(unittest.TestCase):
@@ -440,6 +497,68 @@ class NativeCacheControlsTest(unittest.TestCase):
             self.assertNotIn(secret, encoded)
         runner.adversarial.snapshot(result)
         self.assertEqual(result['files']['patches/2/state.json']['kind'], 'Installed')
+
+
+
+
+
+@unittest.skipUnless(shutil.which('xcrun'), 'Native diagnostics require the installed Apple Swift toolchain')
+class NativeDiagnosticTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.temp = tempfile.TemporaryDirectory(prefix='ios-native-diagnostic-test-')
+        cls.addClassCleanup(cls.temp.cleanup)
+        cls.work = Path(cls.temp.name).resolve()
+        source = cls.work / 'Diagnostic.swift'
+        source.write_text((runner.TEMPLATES / 'Diagnostics.swift.template').read_text() + r'''
+@main struct TestMain {
+  static func main() throws {
+    let root = URL(fileURLWithPath: CommandLine.arguments[1], isDirectory: true)
+    let context: [String: Any] = ["session": "test-session", "pid": 42, "nonce": String(repeating: "a", count: 48),
+      "home_present": false, "status_route": "public", "report_route": "native", "KEY_HEX": "never-log-this-secret"]
+    _ = IosVariantDiagnostics.record(root: root, context: context, stage: 0, value: 0)
+    _ = IosVariantDiagnostics.record(root: root, context: context, stage: 1, value: 0)
+    _ = IosVariantDiagnostics.record(root: root, context: context, stage: 26, value: 154)
+    _ = IosVariantDiagnostics.record(root: root, context: context, stage: 2, value: 154)
+    _ = IosVariantDiagnostics.record(root: root, context: context, stage: 22, value: 1)
+    let detail = CommandLine.arguments[2]
+    _ = IosVariantDiagnostics.record(root: root, context: context, stage: 90, value: 0)
+    for byte in detail.utf8 { _ = IosVariantDiagnostics.record(root: root, context: context, stage: 91, value: Int64(byte)) }
+    let result = IosVariantDiagnostics.record(root: root, context: context, stage: 92, value: 0)
+    print(result ? "accepted-detail" : "refused-detail")
+  }
+}
+''')
+        cls.binary = cls.work / 'diagnostic-test'
+        result = subprocess.run(['xcrun', 'swiftc', '-parse-as-library', '-swift-version', '5',
+            '-module-cache-path', str(cls.work / 'module-cache'), str(source), '-o', str(cls.binary)], capture_output=True)
+        if result.returncode: raise AssertionError('Native diagnostics failed compilation: ' + result.stderr.decode()[:3000])
+
+    def test_actual_native_flushed_nonce_stages_and_sanitized_stack_without_home(self):
+        with tempfile.TemporaryDirectory(prefix='ios-diagnostic-case-') as directory:
+            payload = dict(error_type='StateError', frames=['variant_status.dart:4:2', 'updater_bindings.g.dart:2375'])
+            result = subprocess.run([self.binary, directory, json.dumps(payload)], capture_output=True, check=True)
+            self.assertEqual(result.stdout.strip(), b'accepted-detail')
+            path = Path(directory) / ('diagnostic-' + 'a' * 48 + '.jsonl')
+            rows = [json.loads(line) for line in path.read_text().splitlines()]
+            self.assertEqual([x['stage'] for x in rows], ['native-ready', 'variant-entry', 'dart-environment-read', 'constructor-before',
+                'root-isolate-heartbeat', 'error-detail-before', 'error-detail-after'])
+            self.assertEqual([x['sequence'] for x in rows], list(range(len(rows))))
+            self.assertTrue(all(x['pid'] == 42 and x['nonce'] == 'a' * 48 for x in rows))
+            self.assertFalse(rows[1]['native_environment']['home_present'])
+            self.assertEqual(rows[-1]['error'], payload)
+            self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+            self.assertNotIn('never-log-this-secret', path.read_text())
+
+    def test_actual_native_refuses_unsanitized_error_payload_and_arbitrary_frame_uri(self):
+        for payload in (dict(error_type='StateError', frames=[], message='never-log-this-secret'),
+                dict(error_type='StateError', frames=['https://example.invalid/?token=never-log-this-secret'])):
+            with self.subTest(payload=payload), tempfile.TemporaryDirectory(prefix='ios-diagnostic-refusal-') as directory:
+                result = subprocess.run([self.binary, directory, json.dumps(payload)], capture_output=True, check=True)
+                self.assertEqual(result.stdout.strip(), b'refused-detail')
+                path = Path(directory) / ('diagnostic-' + 'a' * 48 + '.jsonl')
+                self.assertNotIn('never-log-this-secret', path.read_text())
+                self.assertNotIn('"error"', path.read_text())
 
 
 if __name__ == '__main__':

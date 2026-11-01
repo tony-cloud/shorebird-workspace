@@ -1,0 +1,236 @@
+{
+  "schema": "ios-current-variant-incomplete-v1",
+  "recorded_at_utc": "2026-11-01T20:46:12.718438+00:00",
+  "fixture_root_commit": "44b71648720280a1f56730147149a19648fa7c4a",
+  "pins": {
+    "dart_sdk": "dbef3f1e9ade0e74b190c3a91e45aaffce056b19",
+    "flutter_source": "61e4422447053bece99a6457ec004d7eeab70401",
+    "updater": "9d79a58bf49014af9f358cfa0d30d38d881dba2b",
+    "server": "3479ee0445a4db67eb223d8abbbaaf65202a909b",
+    "identity_material": "open-shorebird-toolchain-v1\ndbef3f1e9ade0e74b190c3a91e45aaffce056b19\n61e4422447053bece99a6457ec004d7eeab70401\n9d79a58bf49014af9f358cfa0d30d38d881dba2b\n",
+    "engine_identity": "d0343086cd8f2c6d752ea96c4b862e8532c514a1",
+    "flutter": "3a453a2d63cc95485e3abdf8cbdaa7505801c105",
+    "shorebird": "01015c74206767b5a3ecea17cf44effb976a8eae"
+  },
+  "status": "physical_base_render_and_ffi_passed_variant_status_failed",
+  "session": "779d4a621663",
+  "source_hashes": {
+    "testapps/license_flavor_patch_test/tool/ios_variant_e2e.py": "cf6094a0096b9cc0372f78f95f02e75fa514b27ab0c3911b85dbb5562e1e18d6",
+    "testapps/license_flavor_patch_test/tool/ios_variant_adversarial.py": "379b781a341d34cc7ba0be535a11f11d56757c18d576a229f04c78391ab1cb76",
+    "testapps/license_flavor_patch_test/tool/ios_variant/AppDelegate.swift.template": "c638694406baa628eb7bf8f159d2412ef190efdb1bf2fa0e9195557c7e96f533",
+    "testapps/license_flavor_patch_test/tool/ios_variant/CacheControls.swift.template": "64c24644c17a981b27088cf499f54ac178eaa8045d6ff0cd6b922822b42baf0f",
+    "testapps/license_flavor_patch_test/tool/ios_variant/variant_status.dart.template": "ed34f600a6c3c9c0bf4272079e5f26951dc27661364bd99025b7a54e0b30e62d",
+    "testapps/license_flavor_patch_test/tool/ios_device_e2e.py": "a422346ead7a1c0eb23b8f802129353882729f7b4554e6271a03f8dba89a9f9a",
+    "testapps/license_flavor_patch_test/tool/macos_variant_e2e.py": "0f07204a948e99979cfe123537594e268d46c08c241f45614ad976e3795debf7",
+    "testapps/license_flavor_patch_test/tool/macos_interpreter_e2e.py": "2a2490d5e22ae391ab2a835091b01cdfc96ed6e93f6e9bb5ac8bc0f306cae517",
+    "testapps/license_flavor_patch_test/tool/owned_host_processes.py": "afe17333220fd9f32d15e1009e73dfed78f495baf370f5c56cae049aa580064e",
+    "testapps/license_flavor_patch_test/ios/Runner/FullFfiFixture.c": "e609fa61bacf96f10cda32a17973914f4bb2dfd6cb355f1ef76b672571d768f8",
+    "testapps/license_flavor_patch_test/ios/Runner/FullFfiFixture.h": "2c1665dd0cccda69257c606aa59158ce51d8d583f1c1e9bf8407385f63ead3ec",
+    "testapps/license_flavor_patch_test/ios/Runner.xcodeproj/project.pbxproj": "5e2f2c22de7533dad6b1189acafd7fc1024ece9b35d08a7f877e3a7cf12f9bb9",
+    "testapps/license_flavor_patch_test/ios/Runner/Info.plist": "91016f9b118361d1916b6c98f97d970acf84dfe6b65e9c249d6e1326b29ce662",
+    "testapps/license_flavor_patch_test/ios/Runner/SceneDelegate.swift": "654bc7d64bfa1505719934f38195e6b89331461e55bb8a681a2785527f1b5dca",
+    "testapps/license_flavor_patch_test/tool/full_replacement_ffi/base/ffi_plugin.dart.template": "07fb33a9a20465f9c62e74466af679a0407768546efe13189ddbe609ef0ad2f6",
+    "testapps/license_flavor_patch_test/tool/full_replacement_ffi/base/ffi_status.dart.template": "1d93070e8a4f538c786b0d673ca44d38a784bf4fa6e9cd364249bdc399972066",
+    "testapps/license_flavor_patch_test/tool/full_replacement_ffi/base/license.dart.template": "6f091ad44d49784081743da99c5470f4dde91b15e931bc3ce0c97defe53a69d4",
+    "testapps/license_flavor_patch_test/tool/full_replacement_ffi/base/main.dart.template": "dd7d6a8c1bb786cacb89b0d6f7492d91d6e8990fa53e70430a9be51233315582",
+    "testapps/license_flavor_patch_test/tool/full_replacement_ffi/base/removed_library.dart.template": "75b103048dbb9ccec1a3b023d5e6bcb34d94bf592cfa787ac284a3b6d4712136",
+    "testapps/license_flavor_patch_test/tool/full_replacement_ffi/base/unchanged_caller.dart.template": "2765416c97ce5e03225e3efd722a818dfaafaae661918e7cf887ca3c015f3bb1",
+    "testapps/license_flavor_patch_test/tool/full_replacement_ffi/patch/ffi_plugin.dart.template": "90d104867f03f34374f5a981c35203892c61b38cce9cfb8d154bcbe0d6dd5b15",
+    "testapps/license_flavor_patch_test/tool/full_replacement_ffi/patch/ffi_status.dart.template": "1d93070e8a4f538c786b0d673ca44d38a784bf4fa6e9cd364249bdc399972066",
+    "testapps/license_flavor_patch_test/tool/full_replacement_ffi/patch/license.dart.template": "c2db6ca9bcc0ad6f473a574d95179f09adebff35d27cba0dc2c4adce3e414004",
+    "testapps/license_flavor_patch_test/tool/full_replacement_ffi/patch/main.dart.template": "229a06a0c46b01bbea8081dd0486280341046e58eae252ecf4e4e7d35153b614",
+    "testapps/license_flavor_patch_test/tool/full_replacement_ffi/patch/pro_feature.dart.template": "a1915f910d89c83a7ba19ea715d551e6df2d7c540f4c132a4a3c58161199f345",
+    "testapps/license_flavor_patch_test/tool/full_replacement_ffi/patch/unchanged_caller.dart.template": "2765416c97ce5e03225e3efd722a818dfaafaae661918e7cf887ca3c015f3bb1"
+  },
+  "copied_template_hashes": {
+    "tool/full_replacement_ffi/base/ffi_plugin.dart.template": "07fb33a9a20465f9c62e74466af679a0407768546efe13189ddbe609ef0ad2f6",
+    "tool/full_replacement_ffi/base/ffi_status.dart.template": "1d93070e8a4f538c786b0d673ca44d38a784bf4fa6e9cd364249bdc399972066",
+    "tool/full_replacement_ffi/base/license.dart.template": "6f091ad44d49784081743da99c5470f4dde91b15e931bc3ce0c97defe53a69d4",
+    "tool/full_replacement_ffi/base/main.dart.template": "dd7d6a8c1bb786cacb89b0d6f7492d91d6e8990fa53e70430a9be51233315582",
+    "tool/full_replacement_ffi/base/removed_library.dart.template": "75b103048dbb9ccec1a3b023d5e6bcb34d94bf592cfa787ac284a3b6d4712136",
+    "tool/full_replacement_ffi/base/unchanged_caller.dart.template": "2765416c97ce5e03225e3efd722a818dfaafaae661918e7cf887ca3c015f3bb1",
+    "tool/full_replacement_ffi/patch/ffi_plugin.dart.template": "90d104867f03f34374f5a981c35203892c61b38cce9cfb8d154bcbe0d6dd5b15",
+    "tool/full_replacement_ffi/patch/ffi_status.dart.template": "1d93070e8a4f538c786b0d673ca44d38a784bf4fa6e9cd364249bdc399972066",
+    "tool/full_replacement_ffi/patch/license.dart.template": "c2db6ca9bcc0ad6f473a574d95179f09adebff35d27cba0dc2c4adce3e414004",
+    "tool/full_replacement_ffi/patch/main.dart.template": "229a06a0c46b01bbea8081dd0486280341046e58eae252ecf4e4e7d35153b614",
+    "tool/full_replacement_ffi/patch/pro_feature.dart.template": "a1915f910d89c83a7ba19ea715d551e6df2d7c540f4c132a4a3c58161199f345",
+    "tool/full_replacement_ffi/patch/unchanged_caller.dart.template": "2765416c97ce5e03225e3efd722a818dfaafaae661918e7cf887ca3c015f3bb1"
+  },
+  "original_signed_app_sha256": "c9314c66f4c513599159eba7d234064b7bffb97d346c48c10bc6006e0bdfaa78",
+  "build_phases": [
+    {
+      "phase": "base",
+      "command": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/Users/tonylu/git/shorebird-workspace/testapps/license_flavor_patch_test/tool/ios_variant_e2e.py",
+        "base",
+        "--work-dir",
+        "/Users/tonylu/Library/Caches/shorebird-fixtures/ios-ci-unicode-path-20261102b",
+        "--execute"
+      ],
+      "returncode": 0,
+      "elapsed_seconds": 251.39
+    },
+    {
+      "phase": "pro_seed",
+      "command": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/Users/tonylu/git/shorebird-workspace/testapps/license_flavor_patch_test/tool/ios_variant_e2e.py",
+        "pro_seed",
+        "--work-dir",
+        "/Users/tonylu/Library/Caches/shorebird-fixtures/ios-ci-unicode-path-20261102b",
+        "--execute"
+      ],
+      "returncode": 0,
+      "elapsed_seconds": 271.52
+    },
+    {
+      "phase": "pro",
+      "command": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/Users/tonylu/git/shorebird-workspace/testapps/license_flavor_patch_test/tool/ios_variant_e2e.py",
+        "pro",
+        "--work-dir",
+        "/Users/tonylu/Library/Caches/shorebird-fixtures/ios-ci-unicode-path-20261102b",
+        "--execute"
+      ],
+      "returncode": 0,
+      "elapsed_seconds": 229.67
+    },
+    {
+      "phase": "enterprise",
+      "command": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/Users/tonylu/git/shorebird-workspace/testapps/license_flavor_patch_test/tool/ios_variant_e2e.py",
+        "enterprise",
+        "--work-dir",
+        "/Users/tonylu/Library/Caches/shorebird-fixtures/ios-ci-unicode-path-20261102b",
+        "--execute"
+      ],
+      "returncode": 0,
+      "elapsed_seconds": 226.93
+    }
+  ],
+  "original_install_count": 1,
+  "distribution_signed_no_debugger": true,
+  "observed_base_ffi": {
+    "schema": "full-replacement-ffi-v1",
+    "phase": "base",
+    "license": "free",
+    "pro_feature_enabled": false,
+    "structural_verified": true,
+    "ffi_verified": true,
+    "rendered_text": "license:free full-replacement:verified value:10 full-ffi:v1-base",
+    "checks": [
+      "native-version",
+      "scalar-v1",
+      "struct-v1"
+    ],
+    "workers_started": 0,
+    "workers_joined": true,
+    "callbacks_closed": true,
+    "static_callbacks_retained": 0
+  },
+  "launches": [
+    {
+      "nonce": "9149deb2090c475fe523d7f4a04032405c5ad66cae784415",
+      "after": 1793565112.192676,
+      "check": false,
+      "action": null,
+      "variant": null,
+      "cache_action": null,
+      "cache_patch": null,
+      "cache_sha256": null,
+      "rejected_check": false,
+      "report_route": "native",
+      "status_route": "public"
+    },
+    {
+      "nonce": "e93526d2f4a2bc9628c98fff26689bf4b229a5a7ebb8961b",
+      "after": 1793565514.346472,
+      "check": false,
+      "action": null,
+      "variant": null,
+      "cache_action": null,
+      "cache_patch": null,
+      "cache_sha256": null,
+      "rejected_check": false,
+      "report_route": "native",
+      "status_route": "public",
+      "diagnostic_only": true
+    },
+    {
+      "nonce": "73f0c63c8f5c6918f9f488ffb77b2a01d32f9194de0be117",
+      "after": 1793565600.640485,
+      "check": false,
+      "action": null,
+      "variant": null,
+      "cache_action": null,
+      "cache_patch": null,
+      "cache_sha256": null,
+      "rejected_check": false,
+      "report_route": "native",
+      "status_route": "native-ffi"
+    }
+  ],
+  "validated_full_variant_reports": 0,
+  "public_route_attempts": 2,
+  "native_ffi_route_diagnostic_attempts": 1,
+  "patch_key_or_cache_controls_executed": false,
+  "conclusion": "The base UI and three FFI checks finished. Neither public nor direct native status route produced a variant report or user-data file. Initial public launch timed out; separate console/native-status launches were diagnostic only. The shared constructor/status/report path remains under investigation; no specific root cause is proven. No variant lifecycle acceptance is claimed.",
+  "cleanup": {
+    "all_variant_keys_deleted": true,
+    "owned_app_uninstalled": true,
+    "secrets_removed": true,
+    "unresolved_runtime_controls_preserved": false
+  },
+  "cleanup_receipt_transport": {
+    "transport": "devicectl_owned_app_container_read",
+    "source": "Library/Application Support/shorebird-ios-variant-fixture/native-cleanup.json",
+    "destination": "/Users/tonylu/Library/Caches/shorebird-fixtures/ios-ci-unicode-path-20261102b/native-cleanup/624058e35f56cb99714c295a65a294894665bd73a096f372.json",
+    "native_original_nonce_validated": true,
+    "http_observer_delivery": false,
+    "time": 1793565861.3925068
+  },
+  "evidence": {
+    ".agents/ios-ci-unicode-path-20261102/b-app-build-results.json": {
+      "sha256": "44d0b1df604b425c25a0ad3962cefab342297a2300d48dacb80a1b31ac6a6f12"
+    },
+    ".agents/ios-ci-unicode-path-20261102/b-initial-failure.json": {
+      "sha256": "ca4845e1e6c4ff70b8a9f507f34ba9d2138cfa2629eee7dbdc88c11155eec698"
+    },
+    ".agents/ios-ci-unicode-path-20261102/b-console-intent.json": {
+      "sha256": "4be248538ff577a6dc5d78509135b3da38540fec48147c858ede00090af9713f"
+    },
+    ".agents/ios-ci-unicode-path-20261102/b-console.log": {
+      "sha256": "ea63c6c7477a2c3f22084dfbfc41d4e2157ee7253773e6db0c6cc60a58cce5ca"
+    },
+    ".agents/ios-ci-unicode-path-20261102/b-native-status-diagnostic.json": {
+      "sha256": "ee53e9c753ba8613d84fc4261f01c924208ebf5a6a47b7a3f0da050d4c12c0e8"
+    },
+    ".agents/ios-ci-unicode-path-20261102/b-ffi-status.json": {
+      "sha256": "7f3f574604bce835bfe4531c5cba5451affd07173f5b603080eaece317523bd4"
+    },
+    ".agents/ios-ci-unicode-path-20261102/b-device-apps.json": {
+      "sha256": "d2215597ed6d0f7ce4db4e4db7c30d4d834c28f0de2bb6c1b5722ddb63a478f2"
+    },
+    ".agents/ios-ci-unicode-path-20261102/b-device-processes.json": {
+      "sha256": "8c88549ea5d3390d42f0ef0629000d801d172a109f28452b0f9628219a8d7bd7"
+    },
+    ".agents/ios-ci-unicode-path-20261102/b-tmp-files.json": {
+      "sha256": "bb8b54e0e82519a61565f7eb335a5fe55f8525a867e1c1e8014fb6b754afa317"
+    },
+    ".agents/ios-ci-unicode-path-20261102/b-native-status-files.json": {
+      "sha256": "82f4e401f41dec95d3d25e4a5d120e23a7034e6f48697c73315326ba0a400657"
+    },
+    ".agents/ios-ci-unicode-path-20261102/b-native-cleanup-device.json": {
+      "sha256": "88c78cef6c2d6470b2f3250ea8598f51188d44d42c35f5827a074f86aba57f67"
+    },
+    ".agents/ios-ci-unicode-path-20261102/b-cleanup-receipt-transport.json": {
+      "sha256": "d2b1646154dcecb866487a0d5dcc1c85ca72129f42ae6fb682a01a6c64f1ca92"
+    },
+    ".agents/ios-ci-unicode-path-20261102/b-cleanup.log": {
+      "sha256": "b3e7ea81ef1aea2357e503b2b2a87312ca2f74d8b3e3e635661150feac8ba8d3"
+    }
+  }
+}

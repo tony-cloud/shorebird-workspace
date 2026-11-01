@@ -1,0 +1,425 @@
+{
+  "schema": "macos-full-adversarial-lifecycle-evidence-v1",
+  "recorded_at_utc": "2026-11-01T19:51:04.053432+00:00",
+  "runtime_acceptance": true,
+  "scope": "Actual signed, sandboxed and hardened macOS ARM64 interpreter-full variant lifecycle, including FFI, key failures, cache corruption repair, expiry and delivered old-response rejection. Does not establish native Intel, iOS, Android, Linux or Windows acceptance.",
+  "fixture_root_source_commit": "a50c22e9d84c210a72e7f7dd53d50ba87d6f291f",
+  "root_head_at_review": "44b71648720280a1f56730147149a19648fa7c4a",
+  "macos_source_unchanged_between_commits": true,
+  "only_intervening_changed_path": "testapps/license_flavor_patch_test/ios/Runner.xcodeproj/project.pbxproj",
+  "pins": {
+    "dart_sdk": "dbef3f1e9ade0e74b190c3a91e45aaffce056b19",
+    "flutter_source": "61e4422447053bece99a6457ec004d7eeab70401",
+    "updater": "9d79a58bf49014af9f358cfa0d30d38d881dba2b",
+    "server": "3479ee0445a4db67eb223d8abbbaaf65202a909b",
+    "identity_material": "open-shorebird-toolchain-v1\ndbef3f1e9ade0e74b190c3a91e45aaffce056b19\n61e4422447053bece99a6457ec004d7eeab70401\n9d79a58bf49014af9f358cfa0d30d38d881dba2b\n",
+    "engine_identity": "d0343086cd8f2c6d752ea96c4b862e8532c514a1",
+    "flutter": "3a453a2d63cc95485e3abdf8cbdaa7505801c105",
+    "shorebird": "01015c74206767b5a3ecea17cf44effb976a8eae"
+  },
+  "engine_build_evidence": "docs/validation/ci-unicode-apple-engines-20261102.json",
+  "runner": {
+    "source": "testapps/license_flavor_patch_test/tool/macos_variant_lifecycle.py",
+    "exit_code": 0,
+    "exit_observation": "Parent observed actual runner process exit 0; retained terminal result has runtime_acceptance=true and no execution or cleanup_errors.",
+    "log_path": ".agents/ci-unicode-path-integration-20261102/actual-lifecycle.log",
+    "log_sha256": "8a0fc1eecdbffa6515fb34fbaded1d70dc616467f65ee3a9da7438b1291ca14a",
+    "launches": 62,
+    "distinct_pids": 62,
+    "fresh_full_reports": 54,
+    "native_key_control_runs": 8,
+    "validated_launches": 62,
+    "variant_report_counts": {
+      "free": 29,
+      "pro": 17,
+      "enterprise": 8
+    }
+  },
+  "source_provenance": {
+    "execution_sources_sha256": {
+      "testapps/license_flavor_patch_test/tool/macos_variant_lifecycle.py": "4c78496f9fb556e1a398381dbb3b62d5f1e57d86f168767588a111797caa7c22",
+      "testapps/license_flavor_patch_test/tool/macos_variant_e2e.py": "0f07204a948e99979cfe123537594e268d46c08c241f45614ad976e3795debf7",
+      "testapps/license_flavor_patch_test/tool/macos_interpreter_e2e.py": "2a2490d5e22ae391ab2a835091b01cdfc96ed6e93f6e9bb5ac8bc0f306cae517",
+      "testapps/license_flavor_patch_test/tool/owned_host_processes.py": "afe17333220fd9f32d15e1009e73dfed78f495baf370f5c56cae049aa580064e",
+      "testapps/license_flavor_patch_test/tool/ios_device_e2e.py": "a422346ead7a1c0eb23b8f802129353882729f7b4554e6271a03f8dba89a9f9a",
+      "testapps/license_flavor_patch_test/tool/macos_interpreter/PatchTestKeysV2.swift.template": "ac551f9364e9ddadf2ee036c42ac80787d940c4b3974e33798a2aaaa6d796c94",
+      "testapps/license_flavor_patch_test/tool/macos_variant/variant_status.dart.template": "d076c8c45787eeb770ac954eb8f2f52be1c2ef6cea1bb6c858d43925544e5116"
+    },
+    "generated_native_source_sha256": {
+      "macos/Runner/MainFlutterWindow.swift": "4a2794f54ee38a62cb0832b5beb804afbb069a4878a6a56571824ad71ab7df26",
+      "macos/Runner/PatchTestKeys.swift": "f6a87bf56b75de11ff20809399d9a46d08d7aae141cdcc346e999fce3569d6cb",
+      "macos/Runner/FullFfiFixture.c": "e609fa61bacf96f10cda32a17973914f4bb2dfd6cb355f1ef76b672571d768f8",
+      "macos/Runner/FullFfiFixture.h": "2c1665dd0cccda69257c606aa59158ce51d8d583f1c1e9bf8407385f63ead3ec",
+      "macos/Runner/Runner-Bridging-Header.h": "489463c61597eca9dc7fe7df2edd945c1e11068d49c3bffccca7e4e729de1888",
+      "macos/Runner/Release.entitlements": "b043dea477bbd5da1552ef2f436a0cb644b884bb2568a9f831bd4ee362f9e99b",
+      "macos/Runner/Configs/Release.xcconfig": "b2219da8bbb3b6de3f87ad7e27fe1918e859ceab867cbcc4b60d93bd8fbaa325",
+      "macos/Runner.xcodeproj/project.pbxproj": "284a591cc639b4706438dff7863fdc45ba57a995f7b9dff3dabd8e781d48fcf6"
+    },
+    "generated_hashes_rechecked": true,
+    "private_toolchain_changes": [
+      "CLI isolated config-directory override",
+      "Flutter direct developer launcher with matching built SDK",
+      "Selected host generated sky_engine staging"
+    ],
+    "private_toolchain_receipt_sha256": "665457a6cbc539565a61acebba2600d7f4e528834c2bd211aef5cd12f7608cf1"
+  },
+  "signing": {
+    "binaries": {
+      "application_bundle": {
+        "sha256": "76752a36c306a6d4f3487e116ca68981788dbaac10c245fd7de3c02cf76f5d31",
+        "team_identifier": "43FN6K7B4C",
+        "certificate_sha1": "CB505CEFDE0F13359AFC01406E1B27438065D257",
+        "hardened_runtime": true,
+        "entitlements": {
+          "com.apple.security.app-sandbox": true,
+          "com.apple.security.network.client": true
+        }
+      },
+      "app_framework": {
+        "sha256": "6e761d20ef0d4e58dc7ec411a856e4932d7787740575cf68768d2effcedbc4cb",
+        "team_identifier": "43FN6K7B4C",
+        "certificate_sha1": "CB505CEFDE0F13359AFC01406E1B27438065D257",
+        "hardened_runtime": true,
+        "entitlements": {}
+      },
+      "flutter_framework": {
+        "sha256": "b5822245d4387fae093c1411ca1cd40e082501ab7387d8bff379da7e3c4c7c63",
+        "team_identifier": "43FN6K7B4C",
+        "certificate_sha1": "CB505CEFDE0F13359AFC01406E1B27438065D257",
+        "hardened_runtime": true,
+        "entitlements": {}
+      },
+      "main_executable": {
+        "sha256": "76752a36c306a6d4f3487e116ca68981788dbaac10c245fd7de3c02cf76f5d31",
+        "team_identifier": "43FN6K7B4C",
+        "certificate_sha1": "CB505CEFDE0F13359AFC01406E1B27438065D257",
+        "hardened_runtime": true,
+        "entitlements": {
+          "com.apple.security.app-sandbox": true,
+          "com.apple.security.network.client": true
+        }
+      }
+    },
+    "all62launches_same_signatures_and_unchanged_bundle": true,
+    "native_exports": 14,
+    "bundle_tree_sha256": "401373212a345daf5d2ed13be84a23e0aa602271f4c851ccb9d01d6c9faf140f",
+    "receipt_sha256": "547b8f1e440d9fb15276562a7a847d7e0a916d72be5733e30762297710773f75",
+    "independently_inspected_architecture": "arm64"
+  },
+  "ffi": {
+    "fresh_verified_reports": 54,
+    "base_reports": 29,
+    "paid_reports": 25,
+    "paid_checks": [
+      "scalar-v2",
+      "struct-v2",
+      "new-binding",
+      "native-address-of",
+      "process-lookup",
+      "bool-pointer",
+      "static-callback",
+      "local-static",
+      "local-capture",
+      "local-aggregate",
+      "foreign-group",
+      "listener-scalar",
+      "listener-compound",
+      "quiescent-join",
+      "callbacks-closed"
+    ],
+    "paid_worker_threads_per_launch": 2,
+    "all_workers_joined_and_callbacks_closed": true,
+    "paid_static_callbacks_intentionally_retained": 1
+  },
+  "persistent_data": {
+    "same_installation": true,
+    "same_session_and_sentinel": true,
+    "launch_counter": {
+      "first": 1,
+      "last": 54
+    },
+    "history_length": 54,
+    "history_exactly_tracks_reported_variants": true,
+    "schema_progression": [
+      1,
+      2,
+      3
+    ],
+    "earlier_additive_fields_retained": true,
+    "initial_user_data_sha256": "dbb9e62999828646fe829eca815b178de15233e8dcfe59c2ff2b4d2730b05803",
+    "final_user_data_sha256": "4d7b07e1cb4f988bdcd1ce72d1ff0d81d0570419aee101685085582bd7d4c556"
+  },
+  "provider_ledger": {
+    "schema": "macos-variant-provider-ledger-v2",
+    "fresh_ledgers": 54,
+    "distinct_launch_nonces": 54,
+    "pid_nonce_time_scope_and_current_authorization_revalidated": true,
+    "counts": {
+      "attempts": 27,
+      "successful_releases": 26,
+      "refused": 1
+    },
+    "ordinary_free_or_corruption_expiry_replay_base_launches_without_attempts": 27,
+    "missing_key": "One attempt refused with key_unavailable; free fallback and subsequent offline recovery.",
+    "wrong_key": "One 32-byte wrong-key release occurred, then VM authentication failed closed to free; not a zero-release case.",
+    "receipt_count": 54
+  },
+  "cases": {
+    "cold_switches": [
+      "free",
+      "pro",
+      "enterprise",
+      "pro",
+      "free",
+      "enterprise",
+      "free"
+    ],
+    "same_content_higher_epoch": {
+      "patch_number": 2,
+      "from_epoch": "8",
+      "to_epoch": "9",
+      "checked_restart_required": true,
+      "cold_variant": "pro"
+    },
+    "offline_paid": {
+      "variant": "pro",
+      "accepted_epoch": "9",
+      "next_boot_reason": "ready"
+    },
+    "key_failure_and_recovery": {
+      "missing": {
+        "fallback": {
+          "variant": "free",
+          "accepted_epoch": "9",
+          "current_epoch": "9",
+          "next_boot_reason": "ready",
+          "provider_counts": {
+            "attempts": 1,
+            "successful_releases": 0,
+            "refused": 1
+          }
+        },
+        "recovered": {
+          "variant": "pro",
+          "accepted_epoch": "9"
+        },
+        "ciphertext_metadata_and_journal_unchanged": true,
+        "offline": true
+      },
+      "wrong": {
+        "fallback": {
+          "variant": "free",
+          "accepted_epoch": "9",
+          "current_epoch": "9",
+          "next_boot_reason": "ready",
+          "provider_counts": {
+            "attempts": 1,
+            "successful_releases": 1,
+            "refused": 0
+          }
+        },
+        "recovered": {
+          "variant": "pro",
+          "accepted_epoch": "9"
+        },
+        "ciphertext_metadata_and_journal_unchanged": true,
+        "offline": true
+      }
+    },
+    "cache_corruption_repairs": {
+      "ciphertext": {
+        "tampered_file": "patches/2/dlc.vmcode",
+        "tampered_sha256": "2337c0b34ee516468542cb239c0dac552542294ded7ca3ce57a9df1935c250c5",
+        "fallback": {
+          "variant": "free",
+          "accepted_epoch": "9",
+          "current_epoch": "9",
+          "next_boot_reason": "content_unavailable",
+          "provider_counts": {
+            "attempts": 0,
+            "successful_releases": 0,
+            "refused": 0
+          }
+        },
+        "fallback_journal_sha256_unchanged": [
+          "0550779ed10f31fbe54426f7af5f399e113cd02f84b571ad7f592f3018b1c5c5"
+        ],
+        "free_epoch": "10",
+        "reauthorized_epoch": "11",
+        "recovered": {
+          "variant": "pro",
+          "accepted_epoch": "11"
+        },
+        "original_and_recovered_artifact": {
+          "size": 12093036,
+          "sha256": "6a14b81cde83026cbb17d643e86fa7d0d5c6580d318d81b4c21d78c6b49eaaac"
+        },
+        "repair": "Explicit authenticated free selection, paid reauthorization, fresh install and offline paid cold launch; no manual cache restoration/reset.",
+        "tamper_receipt_sha256": "bc26deae9b61797bd751050e0dbbe91f37b5a7dfe4082ce563c475fe7e2a7ab5",
+        "independently_verified_matching_http_200_downloads": 1,
+        "installed_hash_matches_authenticated_delivery": true
+      },
+      "signature": {
+        "tampered_file": "patches/2/state.json",
+        "tampered_sha256": "97d441eb95232a4e41d17ec24482e58e1ac0ca79eaeda7f6d47b63e0e0ee0b5f",
+        "fallback": {
+          "variant": "free",
+          "accepted_epoch": "11",
+          "current_epoch": "11",
+          "next_boot_reason": "content_unavailable",
+          "provider_counts": {
+            "attempts": 0,
+            "successful_releases": 0,
+            "refused": 0
+          }
+        },
+        "fallback_journal_sha256_unchanged": [
+          "2787dddbc934e189dd569d0f338501e63bafb84ff23a2de1454b1d647b996afa"
+        ],
+        "free_epoch": "12",
+        "reauthorized_epoch": "13",
+        "recovered": {
+          "variant": "pro",
+          "accepted_epoch": "13"
+        },
+        "original_and_recovered_artifact": {
+          "size": 12093036,
+          "sha256": "6a14b81cde83026cbb17d643e86fa7d0d5c6580d318d81b4c21d78c6b49eaaac"
+        },
+        "repair": "Explicit authenticated free selection, paid reauthorization, fresh install and offline paid cold launch; no manual cache restoration/reset.",
+        "tamper_receipt_sha256": "013827154f1eea82d202df7dff57c9a7840390a0fa8218e7e72f17a058abf663",
+        "independently_verified_matching_http_200_downloads": 1,
+        "installed_hash_matches_authenticated_delivery": true
+      }
+    },
+    "lease_expiry": {
+      "accepted_epoch": "14",
+      "deadline_unix_seconds": 1793562176,
+      "valid_offline_launch_seconds_before_deadline": 38.71894812583923,
+      "expired_launch_seconds_after_deadline": 1.0190248489379883,
+      "clock": "Actual host wall clock used by updater and runner; expiry launch began after deadline.",
+      "fallback": {
+        "variant": "free",
+        "accepted_epoch": "14",
+        "current_epoch": "14",
+        "next_boot_reason": "expired",
+        "provider_counts": {
+          "attempts": 0,
+          "successful_releases": 0,
+          "refused": 0
+        }
+      },
+      "real_api_stopped": true,
+      "receipt_sha256": "e3d639b48f555e27775438e69c2e05a26fbf179cf89a714d30df62b9fd05a36a"
+    },
+    "delivered_old_response_replay": {
+      "captured_epoch": "13",
+      "accepted_epoch": "14",
+      "completed_http_body_writes": 1,
+      "actual_request_body_sha256": "48ea56fac2baca659f6e74aaf5a1156403c3b96a32ce1b8958421751deb41358",
+      "actual_response_body_sha256": "4b583ddd17d52d9b7bfa0a85a09dda716812d01eaec512586f656222552891ce",
+      "received_at": 1793562179.512525,
+      "completed_at": 1793562179.512823,
+      "delivery_completed_within_fresh_launch": true,
+      "fresh_request_nonce_differs_from_capture": true,
+      "request_scope_and_high_water_match_actual_installation": true,
+      "public_check_status": "upToDate",
+      "public_check_error": null,
+      "fallback": {
+        "variant": "free",
+        "accepted_epoch": "14",
+        "current_epoch": "14",
+        "next_boot_reason": "expired",
+        "provider_counts": {
+          "attempts": 0,
+          "successful_releases": 0,
+          "refused": 0
+        }
+      },
+      "accepted_identity_and_journal_bytes_unchanged": true,
+      "journal_sha256": [
+        "24a2bd21ff741ba5ad2d2eaac8bdaae4c6c45020d40d47b482f10ed393d666d7"
+      ],
+      "real_api_stopped_owned_replay_listener_used": true,
+      "receipts_sha256": "a5ec5f7ec8ba9b640a8f8ce9ffc8461f92eec973c216ba1cea0a5290ac747573",
+      "capture_sha256": "c8c44b2839f35bb2e3ff2d15c620f38a13b95bf55f3fdb61d992ec1cb55081ca",
+      "limitation": "Complete old-response rejection combines stale nonce and older epoch. A completed server write/flush is recorded, but is not an independent client-parser acknowledgement or an isolated epoch/signature test."
+    },
+    "server_expiry_free": {
+      "variant": "free",
+      "accepted_epoch": "15",
+      "next_boot_reason": "selected_base"
+    },
+    "rollback_cold_free": {
+      "variant": "free",
+      "accepted_epoch": "17",
+      "next_boot_reason": "selected_base"
+    },
+    "rollforward_without_reauthorization": {
+      "variant": "free",
+      "accepted_epoch": "17",
+      "next_boot_reason": "selected_base"
+    },
+    "explicit_enterprise_reauthorization": {
+      "variant": "enterprise",
+      "accepted_epoch": "18",
+      "next_boot_reason": "ready"
+    },
+    "final_offline_free": {
+      "variant": "free",
+      "accepted_epoch": "19",
+      "next_boot_reason": "selected_base"
+    }
+  },
+  "cache_observation": {
+    "snapshots": 62,
+    "plaintext_keys_detected": false,
+    "limitation": "Checks retained observed cache files; does not prove absence of transient writes or constitute a memory-forensics claim."
+  },
+  "cleanup": {
+    "all_variant_keys_deleted": true,
+    "owned_processes_and_server_stopped": true,
+    "bootstrap_secrets_removed": true,
+    "owned_app_removed": true,
+    "container_payload_removed": true,
+    "container_removed": false,
+    "cleanup_complete": false,
+    "remaining": "OS metadata-only container shell with .com.apple.containermanagerd.metadata.plist",
+    "metadata_removal_errno": 1,
+    "metadata_removal_error": "EPERM",
+    "remaining_files_rechecked": true,
+    "native_key_deletion_receipts_sha256": {
+      "pro": "7cce0f8772f858f6072cac441d04fc345f7931b1155498a31c317186cc5bbc6e",
+      "enterprise": "26cb5d5dff52bab4b55112c0a409d9d289265d725522bb63dfbb24e53d90b600"
+    }
+  },
+  "private_evidence": {
+    "root": "/Users/tonylu/Library/Caches/shorebird-fixtures/macos-ci-unicode-path-20261102/lifecycle",
+    "result_sha256": "0381125d3dd72ed0285736b881a812f2aa5b33064317979ed11ba3d5a388d36f",
+    "retained_full_report_files_rehashed": 270,
+    "canonical_report_file_hash_manifest_sha256": "e1bb9656a57c28c623c43764feb693079f2d8bbc2007a7517d646a7bdc2be4ce",
+    "native_control_receipts": 8,
+    "raw_identifiers_journals_signed_urls_and_keys_published": false
+  },
+  "independent_review": {
+    "status": "complete",
+    "verdict": "qualified acceptance: fresh hardened macOS ARM64 PRODUCT interpreter-full lifecycle",
+    "findings": [],
+    "evidence": ".agents/ci-unicode-path-integration-20261102/runtime-review.json",
+    "sha256": "0a28b91827f11e680406acd09a1725fb96489350209da6823b130ee26624c49f",
+    "verified_signed_journal_snapshots": 61,
+    "key_findings": [
+      "Independent RSA/SHA256 verification of 61 journal snapshots and authentic E13 replay; canonical descriptor digests, installation scope and nondecreasing time floor verified.",
+      "Original uploaded app ZIP compiled YAML matches signed-bundle inventory and retained signing key; publisher artifact hash signatures verified.",
+      "Each corruption repair has exactly one matching HTTP 200 artifact GET in its reauthorization-check to cold-launch interval, with installed hash matching authenticated delivery.",
+      "Fresh provider ledgers, immutable signing inventory, additive data, post-fence native key deletions and metadata-only cleanup exception confirmed."
+    ]
+  },
+  "limits": [
+    "This is the current completed run; older MAC5 receipts and claims were not reused.",
+    "Recovery prevents local corruption from becoming a new bad-artifact quarantine; it does not migrate old ambiguous Bad ValidationFailed history.",
+    "The deployment/profile tested is interpreter-full on macOS ARM64; native transport capability and other platform validation have separate evidence.",
+    "Runtime acceptance and resource cleanup completion are separate: runtime passed while the OS-owned metadata shell remains.",
+    "Offline means the owned API/provisioning endpoints were stopped and closed; the host was not globally air-gapped."
+  ]
+}

@@ -51,21 +51,98 @@ Map<String, Object?> selectionStatus(VariantSelectionStatus value) => {
   'restart_required': value.restartRequired,
 };
 
+// Native integer-only checkpoints are independent of Dart malloc, generic
+// DynamicLibrary lookup, HOME and HTTP. They are never acceptance reports.
+@Native<Void Function(Int64, Int64)>(symbol: 'IosVariantDiagnosticStage')
+external void _nativeDiagnosticStage(int stage, int value);
+
+int _diagnosticFlags() {
+  final env = Platform.environment;
+  final nonce = env['OPEN_SHOREBIRD_TEST_NONCE'];
+  return (env['HOME'] != null ? 1 : 0) | (nonce != null ? 2 : 0) |
+      (env['OPEN_SHOREBIRD_TEST_STATUS_ROUTE'] == 'native-ffi' ? 4 : 0) |
+      (env['OPEN_SHOREBIRD_TEST_STATUS_ROUTE'] == 'public' ? 8 : 0) |
+      (env['OPEN_SHOREBIRD_TEST_REPORT_ROUTE'] == 'native' ? 16 : 0) |
+      (env['OPEN_SHOREBIRD_TEST_REPORT_ROUTE'] == 'dart' ? 32 : 0) |
+      (env['OPEN_SHOREBIRD_TEST_REPORT_ROUTE'] == 'file' ? 64 : 0) |
+      (nonce != null && RegExp(r'^[a-f0-9]{48}$').hasMatch(nonce) ? 128 : 0);
+}
+
+String variantDiagnosticErrorDetails(Object error, StackTrace stack) {
+  const types = <String>{'ArgumentError', 'StateError', 'FormatException',
+    'TimeoutException', 'RangeError', 'TypeError', '_TypeError', 'NoSuchMethodError',
+    'UnsupportedError', 'FileSystemException', 'Exception', 'OSError'};
+  const files = <String>{'variant_status.dart', 'shorebird_updater_io.dart',
+    'updater.dart', 'selection_status.dart', 'selection_bindings.g.dart',
+    'updater_bindings.g.dart', 'isolate.dart', 'isolate_patch.dart',
+    'ffi_dynamic_library_patch.dart', 'ffi_patch.dart', 'utf8.dart',
+    'allocation.dart', 'main.dart', 'future_impl.dart', 'async_patch.dart',
+    'zone.dart', 'timer_impl.dart', 'object_patch.dart'};
+  final type = error.runtimeType.toString();
+  final frames = <String>[];
+  for (final match in RegExp(r'([A-Za-z0-9_.-]+\.dart):([0-9]{1,8})(?::([0-9]{1,8}))?').allMatches(stack.toString())) {
+    if (frames.length == 16) break;
+    final file = files.contains(match[1]) ? match[1]! : 'other.dart';
+    frames.add('$file:${match[2]}${match[3] == null ? '' : ':${match[3]}'}');
+  }
+  // Never include error.toString(), function names, URI prefixes, environment,
+  // raw JSON, credentials or arbitrary filenames in failure details.
+  return jsonEncode({'error_type': types.contains(type) ? type : 'Object', 'frames': frames});
+}
+
 Future<void> writeVariantStatus() async {
+  _nativeDiagnosticStage(1, 0);
+  var flags = 0;
+  Timer? heartbeat;
+  try {
+    flags = _diagnosticFlags();
+    _nativeDiagnosticStage(26, flags);
+    var beats = 0;
+    heartbeat = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (++beats > 30) { timer.cancel(); return; }
+      _nativeDiagnosticStage(22, beats);
+    });
+    await _writeVariantStatus(flags);
+    _nativeDiagnosticStage(21, flags);
+  } on Object catch (error, stack) {
+    _nativeDiagnosticStage(20, flags);
+    final details = utf8.encode(variantDiagnosticErrorDetails(error, stack));
+    _nativeDiagnosticStage(90, 0);
+    for (final byte in details) { _nativeDiagnosticStage(91, byte); }
+    _nativeDiagnosticStage(92, 0);
+    // A root-isolate error must not print an original message containing a
+    // presigned URL or data. The local receipt holds the sanitized stack.
+    throw StateError('Variant fixture failed; inspect local native diagnostics');
+  } finally {
+    heartbeat?.cancel();
+  }
+}
+
+Future<void> _writeVariantStatus(int flags) async {
+  _nativeDiagnosticStage(2, flags);
   final updater = ShorebirdUpdater();
+  _nativeDiagnosticStage(3, flags | (updater.isAvailable ? 256 : 0));
   final nativeStatus = Platform.environment['OPEN_SHOREBIRD_TEST_STATUS_ROUTE'] == 'native-ffi';
   // Diagnostic direct ABI reads are explicitly reported. Normal acceptance
   // also exercises the public asynchronous updater API.
+  _nativeDiagnosticStage(4, flags);
   final installation = nativeStatus ? const Updater().installationId() : await updater.readInstallationId();
+  _nativeDiagnosticStage(5, flags | (installation != null && installation.isNotEmpty ? 256 : 0));
+  _nativeDiagnosticStage(6, flags);
   final initial = nativeStatus ? const Updater().selectionStatus() : await updater.readSelectionStatus();
+  _nativeDiagnosticStage(7, flags | (initial != null ? 256 : 0));
   if (!updater.isAvailable || installation == null || installation.isEmpty || initial == null) {
     throw StateError('Protocol 2 public installation/status API unavailable');
   }
+  _nativeDiagnosticStage(8, flags);
   final data = updateFixtureData();
+  _nativeDiagnosticStage(9, flags);
   final directory = Directory('${Platform.environment['HOME']}/Library/Application Support/shorebird-ios-variant-fixture');
   final started = DateTime.now().millisecondsSinceEpoch / 1000;
   Future<void> report(String stage, {String? updateStatus, String? error}) async {
+    _nativeDiagnosticStage(10, flags);
     final status = nativeStatus ? const Updater().selectionStatus() : await updater.readSelectionStatus();
+    _nativeDiagnosticStage(11, flags | (status != null ? 256 : 0));
     if (status == null) throw StateError('Protocol 2 status became unavailable');
     final nonce = Platform.environment['OPEN_SHOREBIRD_TEST_NONCE'];
     if (nonce == null || !RegExp(r'^[a-f0-9]{48}$').hasMatch(nonce)) throw StateError('Owned launch nonce absent');
@@ -76,6 +153,7 @@ Future<void> writeVariantStatus() async {
     final providerFile = File('${directory.path}/provider.json');
     final provider = providerFile.existsSync() ? jsonDecode(providerFile.readAsStringSync()) as Map : null;
     final route = Platform.environment['OPEN_SHOREBIRD_TEST_REPORT_ROUTE'] ?? 'native';
+    _nativeDiagnosticStage(12, flags);
     final contents = jsonEncode({
       'schema': 'ios-variant-e2e-v2', 'session': fixtureSession, 'nonce': nonce,
       'post_frame': true, 'status_route': nativeStatus ? 'native-ffi' : 'public', 'report_route': route,
@@ -88,6 +166,7 @@ Future<void> writeVariantStatus() async {
       'stage': stage, 'update_status': updateStatus, 'error': error,
       'data': data, 'selection': selectionStatus(status),
     });
+    _nativeDiagnosticStage(13, flags);
     // Observe only after FFI, UI, status and data readback finish. Transport is
     // asynchronous and cannot hold up the native update/status lock or UI.
     if (!const ['native', 'dart', 'file'].contains(route)) {
@@ -95,8 +174,17 @@ Future<void> writeVariantStatus() async {
     }
     // Every route obtains the same native cache observations and local report.
     // The existing native callback only starts HTTP for the native route.
+    _nativeDiagnosticStage(14, flags);
     final pointer = contents.toNativeUtf8();
-    try { _submitNativeReport(pointer); } finally { malloc.free(pointer); }
+    _nativeDiagnosticStage(15, flags);
+    try {
+      _nativeDiagnosticStage(16, flags);
+      final submit = _submitNativeReport;
+      _nativeDiagnosticStage(17, flags);
+      _nativeDiagnosticStage(18, flags);
+      submit(pointer);
+      _nativeDiagnosticStage(19, flags);
+    } finally { malloc.free(pointer); }
     if (route == 'dart') {
       unawaited(_submitDartReport(File('${directory.path}/variant-status.json').readAsStringSync()));
     }

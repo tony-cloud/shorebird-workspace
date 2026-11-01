@@ -1,0 +1,208 @@
+{
+  "schema": "ci-unicode-apple-engines-v1",
+  "recorded_at_utc": "2026-11-01T19:26:42.877278+00:00",
+  "root_commit": "a50c22e9d84c210a72e7f7dd53d50ba87d6f291f",
+  "pins": {
+    "dart_sdk": "dbef3f1e9ade0e74b190c3a91e45aaffce056b19",
+    "flutter_source": "61e4422447053bece99a6457ec004d7eeab70401",
+    "updater": "9d79a58bf49014af9f358cfa0d30d38d881dba2b",
+    "server": "3479ee0445a4db67eb223d8abbbaaf65202a909b",
+    "identity_material": "open-shorebird-toolchain-v1\ndbef3f1e9ade0e74b190c3a91e45aaffce056b19\n61e4422447053bece99a6457ec004d7eeab70401\n9d79a58bf49014af9f358cfa0d30d38d881dba2b\n",
+    "engine_identity": "d0343086cd8f2c6d752ea96c4b862e8532c514a1",
+    "flutter": "3a453a2d63cc95485e3abdf8cbdaa7505801c105",
+    "shorebird": "01015c74206767b5a3ecea17cf44effb976a8eae"
+  },
+  "committed_root_gitlinks_and_engine_identity_verified": true,
+  "toolchain_evidence": {
+    "path": ".agents/ci-unicode-path-integration-20261102/toolchain.json",
+    "sha256": "812b2e369d1631515f8085c4523cc289b98380c8668ca77b3c26d1c3f5f7a5eb"
+  },
+  "scope": "Coherent Apple engine rebuilds after the C++20 Unicode-path test correction: completed builds and macOS engine host tests only; fresh app lifecycle validation pending.",
+  "preceding_ledger": {
+    "path": "docs/validation/native-encrypted-opt-in-engines-20261102.json",
+    "purpose": "Common architecture, native V2 transport opt-in gate, unchanged signed contexts,55 focused updater tests, and actual Go/Rust endpoint proof. This ledger supplies the subsequent pins and new Apple build/test/artifact evidence."
+  },
+  "source_fix": {
+    "file": "flutter/engine/src/flutter/shell/common/shorebird/shorebird_config_unittests.cc",
+    "description": "Replace C++20-deprecated u8path calls with explicit std::u8string/path construction and a u8 Unicode literal, preserving Windows UTF-8 semantics without suppressing warnings.",
+    "original_ci_run": 41329799721,
+    "original_failed_jobs": [
+      124919697158,
+      124919697330
+    ],
+    "diagnosis": {
+      "path": ".agents/ci-native-x64-20261102/linux-engine-u8path-diagnosis.json",
+      "sha256": "1f30f199c7cd663cabe0d609bbf85fea293e210c63bcac2af2547cffb26522e7"
+    },
+    "prior_focused_validation": "Actual test translation unit failed with the two original deprecation errors, then compiled with -Werror=deprecated-declarations; privately relinked exact Unicode test passed. The same test also ran in the fresh158-test engine suite below."
+  },
+  "macos_arm64": {
+    "output": "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-ci-unicode-path-20261102/out/macos_release_arm64",
+    "completed_incremental_actions": 50,
+    "build_exit_code": 0,
+    "clone_provenance": {
+      "source": "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-native-encrypted-20261102",
+      "destination": "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-ci-unicode-path-20261102",
+      "method": "independent APFS clone of frozen previous engine output"
+    },
+    "build_log": {
+      "path": ".agents/ci-unicode-path-integration-20261102/engine-build.log",
+      "sha256": "2f0344777e6a42b2c58de85a2dbd4a4911c36f2ed85a9c212b570dcb13dbe568"
+    },
+    "build_exit_evidence": {
+      "path": ".agents/ci-unicode-path-integration-20261102/build-exit.json",
+      "sha256": "df4d721d233a2334088d2d2e0110346ae9e509ff46bf0b379fbcfa85c715af4d"
+    },
+    "args_gn_sha256": "377fa2c42f056a832f41fca5fc3b82fb831a8b9908e5f640e371d84579ffb282",
+    "tests": {
+      "shorebird": {
+        "executed": 146,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "disabled": 0,
+        "xml": {
+          "path": ".agents/ci-unicode-path-integration-20261102/integrated-engine-tests/shorebird.xml",
+          "sha256": "5d62fed3ca9ed986440c8ec79d4dd3183daa0ee08e23230fc677dd6c05a3d257"
+        }
+      },
+      "embedder": {
+        "executed": 5,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "disabled": 0,
+        "xml": {
+          "path": ".agents/ci-unicode-path-integration-20261102/integrated-engine-tests/embedder.xml",
+          "sha256": "07ffc3a6f522bd718c597070f13d4809f285e247471fada840f3f3808de0bf1b"
+        }
+      },
+      "runtime": {
+        "executed": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "disabled": 0,
+        "xml": {
+          "path": ".agents/ci-unicode-path-integration-20261102/integrated-engine-tests/runtime.xml",
+          "sha256": "6e56d88f2eb15fa7719b01c80e714356aaa0b6d357425bd406209914c598b172"
+        }
+      },
+      "cocoa": {
+        "executed": 5,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "disabled": 0,
+        "xml": {
+          "path": ".agents/ci-unicode-path-integration-20261102/integrated-engine-tests/cocoa.xml",
+          "sha256": "8292d6bc39ff5e02994a06f93a4d279ee17e59e0155a14b05be6cd9e38bcf67d"
+        }
+      }
+    },
+    "tests_total_executed": 158,
+    "unicode_scope_test_executed_and_passed": true,
+    "inventory_validator_log": {
+      "path": ".agents/ci-unicode-path-integration-20261102/engine-tests-control.log",
+      "sha256": "e0d39e044931fd6677e316cdd1dd698315174df792d4d08a66364821ce6d284b"
+    },
+    "artifacts_sha256": {
+      "shorebird_unittests": "b26b3408bb439d2518264a1e172c48a5cca161d28c1122632715f3a8daa6c63d",
+      "embedder_unittests": "7419dbfc24c9d1e1318ae79758536b284054eedc9b9d1ea2e853b01aea14dabb",
+      "runtime_unittests": "b0dc5d844a971ae997d6d07faa91a063a31b4dc7fc955245405d49eee5c27873",
+      "flutter_desktop_darwin_unittests": "0b7e3170b0387120c6a1973d613ed226e9b61622ff3ff020fe181f25117ac5cc",
+      "FlutterMacOS.framework/Versions/A/FlutterMacOS": "184343ff42ca96ea3cc2e34a0e8da13c021bfdc15736e24e39e1a34f0ab34565",
+      "gen_snapshot": "67a258fa268786180924d0e761809755df4584673c7cf9b19d5e51eb989c3696",
+      "universal/gen_snapshot_arm64": "48b0f58e8e71b43460724b4ec709c820a17566a48041bfbcb3278bf41ffd635f",
+      "dart-sdk/bin/dart": "618615581d8a650ca345a1801deb635ba4ec80dcd2f161c3c3519440a6b67873"
+    },
+    "runtime_acceptance": false
+  },
+  "ios_arm64": {
+    "output": "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-ios-ci-unicode-path-20261102/out/ios_release",
+    "route": "Physical-target ARM64 release using Dart bytecode interpreter; build/route verification only.",
+    "completed_incremental_actions": 24,
+    "build_complete": true,
+    "clone_provenance": {
+      "source": "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-ios-native-encrypted-20261102",
+      "destination": "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-ios-ci-unicode-path-20261102",
+      "method": "independent APFS clone of frozen previous engine output"
+    },
+    "build_log": {
+      "path": ".agents/ios-ci-unicode-path-20261102/build.log",
+      "sha256": "81a971cef956a631377cc949476610ac28caac3db60a037b6fc60f80891bc35a"
+    },
+    "build_marker": {
+      "path": ".agents/ios-ci-unicode-path-20261102/built.json",
+      "sha256": "bbb5819c8a8ce1149fc266c33eca83c587b0b386715e096b1e6e0ce13486be4c"
+    },
+    "verified_marker": {
+      "path": ".agents/ios-ci-unicode-path-20261102/verified.json",
+      "sha256": "2d4d44bae560a78ba4090cd1f9ff19a62d3f567137189718447baac77615b81c"
+    },
+    "args_gn_sha256": "526bcfa982303fb991b4cd41cb8a6918e2058a9dec13b98c21b299cdba7cc594",
+    "artifacts_sha256": {
+      "Flutter.framework/Flutter": "cd861645e52759b9dde3d7bb41e9b3f99c95e1023a4c4c2e325e317c0a2afd58",
+      "libFlutter.dylib": "cd861645e52759b9dde3d7bb41e9b3f99c95e1023a4c4c2e325e317c0a2afd58",
+      "universal/gen_snapshot_arm64": "51fd10c3847a39acdf00415dae1ae600a9c2445fa2385f24575ffc04efa79007",
+      "flutter_patched_sdk/platform_strong.dill": "0d8d6b0e6b5d29c4ca89964e8a4da0eebc011d22bdac0c1ed0b5394c2e5d6c97"
+    },
+    "recorded_artifact_hashes_rechecked": true,
+    "linker": {
+      "scope": "Owned generated solink rule retains the explicit installed Apple linker override; same policy described in preceding ledger.",
+      "toolchain_ninja_sha256": "eb7760acf6abd84fd3314ba35818af89954a70075eccf5a4875433519a524f41",
+      "seal_rechecked": true,
+      "diff": {
+        "path": ".agents/ios-ci-unicode-path-20261102/ios-apple-linker.diff",
+        "sha256": "b9ca52bcdba550e88628650eed27d98dc4973866f82788d7aed96cdaaf22ea3a"
+      }
+    },
+    "host_tools": {
+      "source": "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-ci-unicode-path-20261102/out/macos_release_arm64",
+      "destination": "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-ios-ci-unicode-path-20261102/out/host_release_arm64",
+      "method": "Independent APFS clone; removed only owned not-yet-frozen previous copied host",
+      "source_and_staged_hashes_rechecked": true,
+      "sha256": {
+        "args.gn": "377fa2c42f056a832f41fca5fc3b82fb831a8b9908e5f640e371d84579ffb282",
+        "dart-sdk/bin/dart": "618615581d8a650ca345a1801deb635ba4ec80dcd2f161c3c3519440a6b67873",
+        "dart-sdk/bin/dartaotruntime": "d8751164acee2efed201f9ee27973a2498c7318f51d66927267c85eead5d964f",
+        "dart-sdk/bin/snapshots/frontend_server_aot.dart.snapshot": "a6f5610707f76e90ddda035afddb14538fe6e1389b6106b815827a82a6f2c08c",
+        "dart-sdk/bin/snapshots/dart2bytecode.dart.snapshot": "7d4640be06465a257da07b43e969767c2be346c4ba8b9730dc89489ced62d6f4",
+        "gen/const_finder.dart.snapshot": "67d79b8ff4862114871f6a34f6df65edb8f33e0db7d13cce24feaa63bfc69c16",
+        "font-subset": "7ce3b9c1540a312cb62f951295fc767793de0a79352d898c2cba8a5114cd8eb7",
+        "gen/dart-pkg/sky_engine/lib/ui/ui.dart": "d225c09776d8d0e373523b3f237f2b6b7882c5b73ff8537ab88c88ab6294366f"
+      },
+      "evidence": {
+        "path": ".agents/ios-ci-unicode-path-20261102/host-tool-staging.json",
+        "sha256": "c0b54b441156285a673e58aad48eca148aca7b53b0706f5064f6822127373d29"
+      }
+    },
+    "v2_provider_header_present": true,
+    "route_validator": {
+      "result": "passed",
+      "log": {
+        "path": ".agents/ios-ci-unicode-path-20261102/route-check.log",
+        "sha256": "de5d55010f663dd991fc49a15d6fa16dfa665be7b45d7fc9bdb2d8bc3d962481"
+      }
+    },
+    "runtime_acceptance": false
+  },
+  "new_ci": {
+    "run_id": 41341567783,
+    "url": "https://github.com/tony-cloud/shorebird-workspace/actions/runs/41341567783",
+    "root_commit": "a50c22e9d84c210a72e7f7dd53d50ba87d6f291f",
+    "status_at_assignment": "pending, as reported by parent",
+    "status_refreshed_during_ledger_assembly": false
+  },
+  "limits": [
+    "Action counts are incremental builds in independent cloned outputs, not clean-build counts.",
+    "macOS evidence is executed engine host tests; iOS evidence is a physical-target build and route/host-tool verification, not device execution.",
+    "Fresh app builds/lifecycles were pending at assignment. No runtime result or hosted-CI success is claimed.",
+    "Ledger assembly performed read-only hashing, XML/log/pin verification and JSON checks; no build, test rerun, device action or commit."
+  ],
+  "app_runtime_status": "pending",
+  "runtime_acceptance": false,
+  "root_commit_role": "integrated source checkpoint after build, not clean original producer HEAD",
+  "local_producer_base_head": "a519585ce69bb6d009c332334531ea3fd1fda792",
+  "local_producer_source_note": "Build preceded a50 commit; exact current component checkouts were dirty root gitlinks. Reflog and retained build timestamps identify original base HEAD. APFS incremental clone lineage retained; no clean-from-scratch claim."
+}

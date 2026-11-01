@@ -2539,8 +2539,8 @@ jobs:
           export PYTHONPATH="$GITHUB_WORKSPACE/testapps/license_flavor_patch_test/tool${PYTHONPATH:+:$PYTHONPATH}"
           python3 - <<'PYSWIFT'
           import unittest
-          suite = unittest.defaultTestLoader.loadTestsFromNames(['test_ios_variant_adversarial.NativeCacheControlsTest'])
-          expected = 3
+          suite = unittest.defaultTestLoader.loadTestsFromNames(['test_ios_variant_adversarial.NativeCacheControlsTest', 'test_ios_variant_adversarial.NativeDiagnosticTest'])
+          expected = 5
           if suite.countTestCases() != expected:
               raise SystemExit('Required Swift control test inventory changed')
           result = unittest.TextTestRunner(verbosity=2).run(suite)
