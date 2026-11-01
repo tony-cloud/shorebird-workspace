@@ -192,8 +192,8 @@ results do not execute the Windows allocator, unwind registration, engine
 adapter, or ACG denial path. Mandatory native Windows CI now covers those
 paths, including real AOT engine creation after the input lease expires and
 after engine recreation, exact executed test inventories, and a separate
-process with executable-memory protection enabled. Those CI results and a
-complete encrypted offline Windows app lifecycle remain pending. See the
+process with executable-memory protection enabled. Complete encrypted offline
+Windows app acceptance remains pending. See the
 [memory-source validation record](validation/verified-native-memory-host-20261101.json).
 
 The current Windows SDK job built the SDK and passed its shared FFI ABI tests,
@@ -203,6 +203,18 @@ tests pass locally using the actual current macOS ARM64 CI SDK artifact,
 including a Windows path containing spaces and `#`; the corrected Windows
 hosted run remains required. See the
 [platform URI regression record](validation/windows-sdk-platform-uri-20261101.json).
+
+The preceding Windows engine run built successfully and passed 87 Shorebird
+tests, four AOT embedder controls, four Windows adapter controls, 343 updater
+tests and the native DPAPI provider contract. Its full app lifecycle stopped
+while generating the Windows project. The discarded private log cannot establish
+the first failure cause. Independent source inspection found missing local
+`sky_engine` staging and a storage URL override absent from direct Flutter calls;
+both Windows and Linux preparation paths now supply them. Real offline pub
+resolution reproduces the missing-package error and succeeds with the package
+staged. Failure reports now retain fixed diagnostic classifications and log
+hashes without raw log text or credentials. Corrected hosted app execution is
+still required; see the [desktop preparation record](validation/desktop-native-preparation-20261101.json).
 
 The Windows CLI now compares decompressed EXE/DLL bytes with SHA-256 and
 rejects ambiguous or malformed native ZIP entries before patch creation.

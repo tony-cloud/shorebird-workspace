@@ -42,6 +42,7 @@ sha256, file_hash = portable.sha256, portable.file_hash
 strict_json, private_write = portable.strict_json, portable.private_write
 replace_once, tree_hashes = portable.replace_once, portable.tree_hashes
 local_engine_flags = portable.local_engine_flags
+stage_local_engine_packages = portable.stage_local_engine_packages
 wait_for, free_port = portable.wait_for, portable.free_port
 LocalService, installed_evidence = portable.LocalService, portable.installed_evidence
 verify_release_policy = portable.verify_release_policy
@@ -414,16 +415,21 @@ class Lifecycle:
 
     def run_command(self, command, *, cwd=None, env=None, name='command', input=None):
         self.manifest['operation'] = name
-        with (self.work / (name + '.private.log')).open('ab') as log:
+        path = self.work / (name + '.private.log')
+        with path.open('ab') as log:
             process = self.job.spawn([str(x) for x in command], cwd=cwd or ROOT,
                 env=env or self.environment(), stdin=subprocess.PIPE if input is not None else subprocess.DEVNULL,
                 stdout=log, stderr=log)
+            code, timed_out = None, False
             try:
                 process.communicate(input=input, timeout=self.args.build_timeout)
                 code = process.returncode
+            except subprocess.TimeoutExpired:
+                timed_out = True
             finally:
                 self.job.stop(process)
-        if code:
+        if code or timed_out:
+            self.manifest['command_failure'] = portable.command_failure(name, code, timed_out, path)
             raise FixtureError(name + ' failed (private log removed during cleanup)')
 
     def output(self, command, cwd=None):
@@ -452,7 +458,8 @@ class Lifecycle:
                     'SHOREBIRD_HOSTED_URL': self.api_url,
                     'AUTH_SERVICE_URL': self.api_url + '/auth',
                     'SHOREBIRD_ARTIFACT_BASE_URL': self.api_url,
-                    'SHOREBIRD_FLUTTER_STORAGE_BASE_URL': 'https://storage.googleapis.com',
+                    'SHOREBIRD_FLUTTER_STORAGE_BASE_URL': portable.PUBLIC_FLUTTER_STORAGE,
+                    'FLUTTER_STORAGE_BASE_URL': portable.PUBLIC_FLUTTER_STORAGE,
                     'FLUTTER_ROOT': str(self.work / 'flutter'),
                     'PUB_CACHE': str(self.work / 'pub-cache'),
                     'PATH': str(self.work / 'flutter/bin') + os.pathsep + os.environ['PATH'],
@@ -478,6 +485,8 @@ class Lifecycle:
         sdk = self.work / 'flutter/bin/cache/dart-sdk'
         shutil.rmtree(sdk)
         shutil.copytree(self.args.engine_src / 'out' / self.args.host_engine / 'dart-sdk', sdk)
+        stage_local_engine_packages(self.args.engine_src / 'out' / self.args.host_engine,
+                                    self.work / 'flutter')
         mappings = [(ROOT / 'shorebird', self.work / 'cli'), (ROOT / 'flutter', self.work / 'flutter'),
                     (pub, self.work / 'pub-cache')]
         self.remap_config(ROOT / 'shorebird/.dart_tool/package_config.json',

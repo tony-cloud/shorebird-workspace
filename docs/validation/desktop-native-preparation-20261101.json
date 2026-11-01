@@ -1,0 +1,71 @@
+{
+  "date": "2026-11-01",
+  "scope": "Desktop native lifecycle preparation and bounded failure diagnostics",
+  "prior_windows_run": {
+    "run_id": 41262099401,
+    "root_revision": "cdf7f74907b2d7f2e2d32400d36ed960904e3938",
+    "job_id": 124718471432,
+    "status": "failed",
+    "failure_operation": "generate-windows",
+    "first_cause": "Unknown: previous cleanup discarded the detailed private log. Concrete preparation gaps were subsequently identified independently.",
+    "engine_build": "passed",
+    "shorebird_tests": 87,
+    "aot_embedder_controls": 4,
+    "windows_adapter_controls": 4,
+    "native_engine_tests_failed_or_skipped": 0,
+    "updater_tests_passed": 343,
+    "dpapi_provider_contract": "passed",
+    "full_encrypted_flutter_lifecycle": "not_reached",
+    "evidence_artifacts": [
+      {
+        "id": 13067574897,
+        "name": "windows-native-cache-engine-tests",
+        "digest": "sha256:e6b65767ba4e0d9c5855859fdbee4e181f648b49d8ae74126387fcaaae5a102b"
+      },
+      {
+        "id": 13068660494,
+        "name": "windows-native-provider-tests",
+        "digest": "sha256:f194c19fa4929c120b1ffc7718b9f72e7a9da812d3f0a1f3cbb956bd2f63c23d"
+      }
+    ],
+    "native_inventory_reverified_locally": true
+  },
+  "fixes": [
+    "Copy the selected local engine generated sky_engine package into the private Flutter package cache before copying its vended SDK. Replace stale cache contents without aliases or changing the source engine.",
+    "Set FLUTTER_STORAGE_BASE_URL explicitly for direct Flutter tool invocations, consistently with the existing Shorebird storage URL.",
+    "Retain only bounded predefined failure classifications, exit/timeout status, log size and hash. Private raw logs, URLs, arguments and credentials still disappear with session cleanup."
+  ],
+  "source_sha256": {
+    "testapps/license_flavor_patch_test/tool/windows_native_cache_e2e.py": "79597f4dbbd3eb3e3622d314298dcf9418ea3d86cdf5bb66c8d62a79e2224841",
+    "testapps/license_flavor_patch_test/tool/linux_native_cache_e2e.py": "b196901dea2af1a89336941379098f1373f0abcf31f679a699d46c1f0a04e6f8",
+    "testapps/license_flavor_patch_test/tool/test_windows_native_cache_e2e.py": "c0bc8a3312491e91e00f524f6c8911e447eb2d9e3185d3ee9a69e909a593d3ee",
+    "testapps/license_flavor_patch_test/tool/test_linux_native_cache_e2e.py": "9b36dbb18e9a0cd16f524ac5476174b2fa3f1031810813d1037908f16394e294"
+  },
+  "local_tests": {
+    "windows_driver": {
+      "passed": 32,
+      "skipped": 0
+    },
+    "linux_driver": {
+      "passed": 27,
+      "skipped": 1,
+      "skip_reason": "Linux/proc runtime integration unavailable on macOS"
+    },
+    "pub_resolver": {
+      "scope": "Real packaged Dart pub SDK package resolution, offline; source sky_engine package metadata used, no engine/app execution",
+      "dart_version": "Dart SDK version: 3.14.0-edge.ec6287baef0def9b34f66af7fa48931fff7b152f (main) (Sun Nov 1 09:34:29 2026 +0800) on \"macos_arm64\"",
+      "without_cached_package_exit": 69,
+      "with_cached_package_exit": 0,
+      "pubspec_source": "flutter/engine/src/flutter/sky/packages/sky_engine/pubspec.yaml",
+      "pubspec_sha256": "f2586b596944addbe3ce5da7080af416b80227eca064c274a47d61dfa36180d0",
+      "temporary_work_removed": true
+    },
+    "review": "No actionable findings in cleanup, privacy, preparation order or independent package copies."
+  },
+  "hosted_corrected_windows_and_linux_lifecycle": "pending",
+  "limitations": [
+    "Focused Python tests mock external native tool invocations.",
+    "Offline pub reproduction exercises real SDK package resolution using source package metadata, not a generated native app.",
+    "Prior Windows native tests and provider proof do not establish the full encrypted Flutter app lifecycle."
+  ]
+}

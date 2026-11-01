@@ -7,6 +7,8 @@ import io
 import json
 import os
 from pathlib import Path
+import shutil
+import subprocess
 import tempfile
 import unittest
 from unittest import mock
@@ -259,6 +261,173 @@ class ReleasePolicyTest(unittest.TestCase):
                 path.write_text(value)
                 with self.subTest(value=value), self.assertRaises(e2e.FixtureError):
                     e2e.verify_release_policy(bundle, 'disposable-app')
+
+
+class ToolchainPreparationTest(unittest.TestCase):
+    def test_generated_package_replaces_stale_cache_without_aliases(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            host, flutter = root / 'host', root / 'flutter'
+            generated = host / 'gen/dart-pkg/sky_engine'
+            generated.mkdir(parents=True)
+            (generated / 'pubspec.yaml').write_text('name: sky_engine\n')
+            (generated / 'ui.dart').write_text('generated API')
+            source_hashes = e2e.tree_hashes(host)
+            target = flutter / 'bin/cache/pkg/sky_engine'
+            target.mkdir(parents=True)
+            (target / 'stale.dart').write_text('obsolete')
+            e2e.stage_local_engine_packages(host, flutter)
+            self.assertEqual(e2e.tree_hashes(target), e2e.tree_hashes(generated))
+            self.assertFalse((target / 'stale.dart').exists())
+            self.assertFalse(any(path.is_symlink() for path in target.rglob('*')))
+            self.assertFalse(os.path.samefile(target / 'ui.dart', generated / 'ui.dart'))
+            (target / 'ui.dart').write_text('private mutation')
+            self.assertEqual(e2e.tree_hashes(host), source_hashes)
+            # Missing source must fail before discarding even a stale cache.
+            (generated / 'pubspec.yaml').unlink()
+            with self.assertRaisesRegex(e2e.FixtureError, 'sky_engine package missing'):
+                e2e.stage_local_engine_packages(host, flutter)
+            self.assertEqual((target / 'ui.dart').read_text(), 'private mutation')
+
+    @unittest.skipIf(os.name == 'nt', 'Symlink privileges are not assumed on Windows')
+    def test_stale_alias_is_unlinked_without_mutating_original(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            host, flutter, original = root / 'host', root / 'flutter', root / 'original'
+            source = host / 'gen/dart-pkg/sky_engine'
+            source.mkdir(parents=True)
+            (source / 'pubspec.yaml').write_text('name: sky_engine\n')
+            original.mkdir()
+            (original / 'preserve').write_text('original')
+            target = flutter / 'bin/cache/pkg/sky_engine'
+            target.parent.mkdir(parents=True)
+            target.symlink_to(original, target_is_directory=True)
+            e2e.stage_local_engine_packages(host, flutter)
+            self.assertFalse(target.is_symlink())
+            self.assertEqual((original / 'preserve').read_text(), 'original')
+            shutil.rmtree(target.parent)
+            target.parent.symlink_to(original, target_is_directory=True)
+            with self.assertRaisesRegex(e2e.FixtureError, 'escapes owned SDK'):
+                e2e.stage_local_engine_packages(host, flutter)
+            self.assertEqual((original / 'preserve').read_text(), 'original')
+
+    def test_prepare_stages_generated_package_before_vended_copy_and_commands(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            checkout, work, host = root / 'checkout', root / 'work', root / 'engine/out/host'
+            for name in ('shorebird/bin/internal', 'flutter/bin/internal',
+                         'flutter/bin/cache/dart-sdk', 'flutter/bin/cache/pkg/sky_engine'):
+                (checkout / name).mkdir(parents=True)
+            (checkout / 'flutter/bin/internal/engine.version').write_text('engine-id')
+            (checkout / 'flutter/bin/cache/pkg/sky_engine/stale').write_text('old')
+            generated = host / 'gen/dart-pkg/sky_engine'
+            generated.mkdir(parents=True)
+            (generated / 'pubspec.yaml').write_text('name: sky_engine\n')
+            (host / 'dart-sdk').mkdir()
+            pub = root / 'pub'
+            pub.mkdir()
+            fixture = root / 'fixture'
+            (fixture / 'lib').mkdir(parents=True)
+            (fixture / 'pubspec.yaml').write_text('name: fixture\nversion: 0.0.0\n')
+            patch = root / 'patch.exe'
+            patch.write_bytes(b'prebuilt patch tool')
+            args = mock.Mock(work=work, engine_src=root / 'engine', host_engine='host',
+                             target_engine='windows_release', pub_cache=pub, patch_tool=patch)
+            with mock.patch.object(e2e, 'OwnedWindowsJob'), mock.patch.object(e2e, 'free_port', return_value=1234):
+                lifecycle = e2e.Lifecycle(args)
+            def snapshot(source, target):
+                shutil.copytree(source, target)
+                lifecycle.manifest.setdefault('sources', {})[source.name] = {'head': 'flutter-ref'}
+            lifecycle.snapshot = snapshot
+            lifecycle.output = mock.Mock(return_value=b'S-1-5-21-123')
+            lifecycle.remap_config = mock.Mock()
+            operations = []
+            def stop_before_tools(command, **kwargs):
+                operations.append(kwargs['name'])
+                if kwargs['name'] == 'compile-server':
+                    return
+                self.assertIn(kwargs['name'], ('compile-cli', 'generate-windows'))
+                for sdk in (work / 'flutter', work / 'cli/bin/cache/flutter/flutter-ref'):
+                    package = sdk / 'bin/cache/pkg/sky_engine'
+                    self.assertEqual(e2e.tree_hashes(package), e2e.tree_hashes(generated))
+                    self.assertFalse((package / 'stale').exists())
+                    self.assertFalse(os.path.samefile(package / 'pubspec.yaml', generated / 'pubspec.yaml'))
+                for key in ('FLUTTER_STORAGE_BASE_URL', 'SHOREBIRD_FLUTTER_STORAGE_BASE_URL'):
+                    self.assertEqual(kwargs['env'][key], 'https://storage.googleapis.com')
+                if kwargs['name'] == 'generate-windows':
+                    self.assertEqual(command, e2e.create_windows_command(args, work))
+                    raise RuntimeError('stop before external tools')
+            lifecycle.run_command = stop_before_tools
+            with mock.patch.object(e2e, 'ROOT', checkout), \
+                    mock.patch.object(e2e, 'FIXTURE', fixture), \
+                    mock.patch.dict(os.environ, {'FLUTTER_STORAGE_BASE_URL': 'http://untrusted.invalid',
+                        'SHOREBIRD_FLUTTER_STORAGE_BASE_URL': 'http://untrusted.invalid'}), \
+                    self.assertRaisesRegex(RuntimeError, 'stop before external tools'):
+                lifecycle.prepare()
+            self.assertEqual(operations, ['compile-cli', 'compile-server', 'generate-windows'])
+            self.assertEqual((checkout / 'flutter/bin/cache/pkg/sky_engine/stale').read_text(), 'old')
+            self.assertFalse((host / 'gen/dart-pkg/flutter_gpu').exists())
+
+
+class CommandDiagnosticsTest(unittest.TestCase):
+    def test_only_fixed_classifications_and_full_log_digest_survive(self):
+        variants = {
+            b'Could not find package sky_engine in the Flutter SDK. Version solving failed.': 'missing_sky_engine',
+            b'Material Fonts: http://localhost:8080/download.flutter.io/material_fonts.zip': 'material_fonts_local_artifact_server',
+            b'the Flutter SDK is not available': 'flutter_sdk_unavailable',
+            b'Version solving failed.': 'pub_solver',
+            b'arbitrary private-token text': 'unknown',
+        }
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / 'private.log'
+            for content, classification in variants.items():
+                path.write_bytes(content)
+                result = e2e.command_failure('generate-windows', 1, False, path)
+                self.assertEqual(result['classification'], classification)
+                self.assertEqual(result['log_sha256'], e2e.sha256(content))
+                self.assertEqual(result['log_bytes'], len(content))
+                self.assertFalse(result['classification_scan_truncated'])
+                self.assertNotIn(content.decode(), json.dumps(result))
+            content = (b'A' * e2e.FAILURE_SCAN_BYTES +
+                       b'could not find package sky_engine in the Flutter SDK' +
+                       b'B' * e2e.FAILURE_SCAN_BYTES + b'Version solving failed')
+            path.write_bytes(content)
+            result = e2e.command_failure('generate-windows', 1, False, path)
+            self.assertEqual(result['classification'], 'pub_solver')
+            self.assertTrue(result['classification_scan_truncated'])
+            self.assertEqual(result['log_sha256'], e2e.sha256(content))
+
+    def test_failed_and_timed_out_commands_retain_no_secrets_after_cleanup(self):
+        for timeout in (False, True):
+            with self.subTest(timeout=timeout), tempfile.TemporaryDirectory() as temp:
+                work = Path(temp) / 'private'
+                work.mkdir()
+                args = mock.Mock(work=work, build_timeout=1)
+                with mock.patch.object(e2e, 'OwnedWindowsJob'), mock.patch.object(e2e, 'free_port', return_value=1234):
+                    lifecycle = e2e.Lifecycle(args)
+                lifecycle.work_owned = True
+                payload = b'Bearer private-token https://private.invalid/?sig=secret password=private-password\n'
+                process = mock.Mock()
+                process.wait.side_effect = subprocess.TimeoutExpired('private-command', 1) if timeout else None
+                process.wait.return_value = 17
+                def spawn(*_args, **kwargs):
+                    kwargs['stdout'].write(payload)
+                    return process
+                lifecycle.job.spawn.side_effect = spawn
+                with mock.patch.object(e2e, 'stop_process') as stop, self.assertRaises(e2e.FixtureError):
+                    lifecycle.run_command(['private-command', 'private-argument'], name='generate-windows')
+                stop.assert_called_once_with(process)
+                evidence = lifecycle.manifest['command_failure']
+                self.assertEqual(evidence['exit_code'], None if timeout else 17)
+                self.assertEqual(evidence['timed_out'], timeout)
+                self.assertEqual(evidence['log_sha256'], e2e.sha256(payload))
+                lifecycle.cleanup()
+                self.assertFalse(work.exists())
+                encoded = json.dumps(lifecycle.manifest)
+                for secret in ('private-token', 'private.invalid', 'private-password', 'private-command', 'private-argument'):
+                    self.assertNotIn(secret, encoded)
+                self.assertEqual(set(evidence), {'operation', 'exit_code', 'timed_out', 'log_bytes',
+                    'log_sha256', 'classification', 'classification_scan_truncated'})
 
 
 class ExecutionBoundaryTest(unittest.TestCase):

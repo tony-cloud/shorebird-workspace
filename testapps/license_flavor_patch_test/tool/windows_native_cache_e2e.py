@@ -40,6 +40,8 @@ AAD_FIELDS = ('app_id', 'release_id', 'patch_number', 'patch_hash',
               'transport_hash', 'platform', 'arch', 'device_id_hash')
 HEX64 = re.compile(r'[0-9a-f]{64}\Z')
 MAX_BODY = 32768
+PUBLIC_FLUTTER_STORAGE = 'https://storage.googleapis.com'
+FAILURE_SCAN_BYTES = 64 * 1024
 
 
 class FixtureError(RuntimeError):
@@ -56,6 +58,48 @@ def file_hash(path):
         for block in iter(lambda: source.read(1024 * 1024), b''):
             digest.update(block)
     return digest.hexdigest()
+
+
+def command_failure(name, code, timed_out, path):
+    """Retain only bounded, predefined diagnostics; never log text or captures."""
+    size = path.stat().st_size
+    with path.open('rb') as source:
+        head = source.read(FAILURE_SCAN_BYTES).lower()
+        source.seek(max(0, size - FAILURE_SCAN_BYTES))
+        tail = source.read(FAILURE_SCAN_BYTES).lower()
+    def contains(value):
+        return value in head or value in tail
+    classification = 'unknown'
+    if contains(b'could not find package sky_engine in the flutter sdk'):
+        classification = 'missing_sky_engine'
+    elif (contains(b'material_fonts') or contains(b'material fonts')) and contains(b'localhost:8080'):
+        classification = 'material_fonts_local_artifact_server'
+    elif contains(b'the flutter sdk is not available'):
+        classification = 'flutter_sdk_unavailable'
+    elif contains(b'version solving failed'):
+        classification = 'pub_solver'
+    return {'operation': name, 'exit_code': code, 'timed_out': timed_out,
+            'log_bytes': size, 'log_sha256': file_hash(path),
+            'classification': classification,
+            'classification_scan_truncated': size > 2 * FAILURE_SCAN_BYTES}
+
+
+def stage_local_engine_packages(host, flutter):
+    # LocalEngineArtifacts skips FlutterSdk downloads; pub still searches this
+    # cache for sky_engine. Copy generated contents before copying the vended SDK.
+    source = host / 'gen/dart-pkg/sky_engine'
+    if not (source / 'pubspec.yaml').is_file():
+        raise FixtureError('Prebuilt generated sky_engine package missing')
+    target = flutter / 'bin/cache/pkg/sky_engine'
+    try:
+        target.parent.resolve().relative_to(flutter.resolve())
+    except ValueError:
+        raise FixtureError('Private Flutter package cache escapes owned SDK') from None
+    if target.is_symlink() or target.is_file():
+        target.unlink()
+    elif target.exists():
+        remove_owned_tree(target)
+    shutil.copytree(source, target)
 
 
 def strict_json(data):
@@ -601,11 +645,15 @@ class Lifecycle:
         with path.open('ab') as log:
             process = self.job.spawn([str(x) for x in command], cwd=cwd or ROOT,
                                      env=env, stdout=log, stderr=log)
+            code, timed_out = None, False
             try:
                 code = process.wait(timeout=self.args.build_timeout)
+            except subprocess.TimeoutExpired:
+                timed_out = True
             finally:
                 stop_process(process)
-        if code:
+        if code or timed_out:
+            self.manifest['command_failure'] = command_failure(name, code, timed_out, path)
             # Raw log/args can contain signed URLs or credentials. Never export them.
             raise FixtureError(name + ' failed (private log removed during cleanup)')
         if re.search(rb'\b(?:LNK4044|D9002)\b', path.read_bytes()):
@@ -665,7 +713,8 @@ class Lifecycle:
                     'SHOREBIRD_HOSTED_URL': self.api_url,
                     'AUTH_SERVICE_URL': self.api_url + '/auth',
                     'SHOREBIRD_ARTIFACT_BASE_URL': self.api_url,
-                    'SHOREBIRD_FLUTTER_STORAGE_BASE_URL': 'https://storage.googleapis.com',
+                    'SHOREBIRD_FLUTTER_STORAGE_BASE_URL': PUBLIC_FLUTTER_STORAGE,
+                    'FLUTTER_STORAGE_BASE_URL': PUBLIC_FLUTTER_STORAGE,
                     'FLUTTER_ROOT': str(self.work / 'flutter'),
                     'PUB_CACHE': str(self.work / 'pub-cache'),
                     'PATH': str(self.work / 'flutter/bin') + os.pathsep + os.environ['PATH'],
@@ -695,6 +744,8 @@ class Lifecycle:
         sdk = self.work / 'flutter/bin/cache/dart-sdk'
         remove_owned_tree(sdk)
         shutil.copytree(self.args.engine_src / 'out' / self.args.host_engine / 'dart-sdk', sdk)
+        stage_local_engine_packages(self.args.engine_src / 'out' / self.args.host_engine,
+                                    self.work / 'flutter')
         mappings = [(ROOT / 'shorebird', self.work / 'cli'), (ROOT / 'flutter', self.work / 'flutter'),
                     (pub, self.work / 'pub-cache')]
         self.remap_config(ROOT / 'shorebird/.dart_tool/package_config.json',

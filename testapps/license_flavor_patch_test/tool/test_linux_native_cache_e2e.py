@@ -5,6 +5,7 @@ import io
 import json
 import os
 from pathlib import Path
+import shutil
 import signal
 import select
 import sys
@@ -282,6 +283,93 @@ class EnvironmentAndInjectionTest(unittest.TestCase):
                          'SHOREBIRD_E2E_PROVISION_TOKEN', 'HTTP_PROXY', 'PATCH_DELIVERY_AES_SECRET',
                          'SHOREBIRD_E2E_KEY_CACHE_DIR'):
                 self.assertNotIn(name, env)
+
+    def test_prepare_copies_host_generated_package_before_vended_sdk_and_tools(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            checkout, work, host = root / 'checkout', root / 'work', root / 'engine/out/host'
+            for name in ('shorebird/bin/internal', 'shorebird-server', 'flutter/bin/internal',
+                         'flutter/bin/cache/dart-sdk', 'flutter/bin/cache/pkg/sky_engine'):
+                (checkout / name).mkdir(parents=True)
+            (checkout / 'flutter/bin/internal/engine.version').write_text('engine-id')
+            (checkout / 'flutter/bin/cache/pkg/sky_engine/stale').write_text('old')
+            generated = host / 'gen/dart-pkg/sky_engine'
+            generated.mkdir(parents=True)
+            (generated / 'pubspec.yaml').write_text('name: sky_engine\n')
+            (host / 'dart-sdk').mkdir()
+            pub = root / 'pub'
+            pub.mkdir()
+            fixture = root / 'fixture'
+            (fixture / 'lib').mkdir(parents=True)
+            (fixture / 'pubspec.yaml').write_text('name: fixture\nversion: 0.0.0\n')
+            patch = root / 'patch'
+            patch.write_bytes(b'prebuilt patch tool')
+            args = mock.Mock(work=work, engine_src=root / 'engine', host_engine='host',
+                             target_engine='linux_release', pub_cache=pub, patch_tool=patch)
+            lifecycle = e2e.Lifecycle(args)
+            def snapshot(source, target):
+                shutil.copytree(source, target)
+                lifecycle.manifest.setdefault('sources', {})[source.name] = {'head': 'flutter-ref'}
+            lifecycle.snapshot = snapshot
+            lifecycle.remap_config = mock.Mock()
+            operations = []
+            def stop_before_tools(command, **kwargs):
+                operations.append(kwargs['name'])
+                if kwargs['name'] == 'compile-server':
+                    return
+                self.assertIn(kwargs['name'], ('compile-cli', 'generate-linux'))
+                for sdk in (work / 'flutter', work / 'cli/bin/cache/flutter/flutter-ref'):
+                    package = sdk / 'bin/cache/pkg/sky_engine'
+                    self.assertEqual(e2e.tree_hashes(package), e2e.tree_hashes(generated))
+                    self.assertFalse((package / 'stale').exists())
+                    self.assertFalse(os.path.samefile(package / 'pubspec.yaml', generated / 'pubspec.yaml'))
+                for key in ('FLUTTER_STORAGE_BASE_URL', 'SHOREBIRD_FLUTTER_STORAGE_BASE_URL'):
+                    self.assertEqual(kwargs['env'][key], 'https://storage.googleapis.com')
+                if kwargs['name'] == 'generate-linux':
+                    self.assertEqual(command, e2e.create_linux_command(args, work))
+                    raise RuntimeError('stop before external tools')
+            lifecycle.run_command = stop_before_tools
+            with mock.patch.object(e2e, 'ROOT', checkout), \
+                    mock.patch.object(e2e, 'FIXTURE', fixture), \
+                    mock.patch.object(e2e, 'OwnedSessionKeyring'), \
+                    mock.patch.dict(os.environ, {'FLUTTER_STORAGE_BASE_URL': 'http://untrusted.invalid',
+                        'SHOREBIRD_FLUTTER_STORAGE_BASE_URL': 'http://untrusted.invalid'}), \
+                    self.assertRaisesRegex(RuntimeError, 'stop before external tools'):
+                lifecycle.prepare()
+            self.assertEqual(operations, ['compile-cli', 'compile-server', 'generate-linux'])
+            self.assertEqual((checkout / 'flutter/bin/cache/pkg/sky_engine/stale').read_text(), 'old')
+            self.assertEqual((generated / 'pubspec.yaml').read_text(), 'name: sky_engine\n')
+            self.assertFalse((host / 'gen/dart-pkg/flutter_gpu').exists())
+
+    def test_failed_and_timed_out_command_diagnostics_survive_private_cleanup(self):
+        for timeout in (False, True):
+            with self.subTest(timeout=timeout), tempfile.TemporaryDirectory() as temp:
+                work = Path(temp) / 'private'
+                work.mkdir()
+                lifecycle = self.lifecycle(work)
+                lifecycle.work_owned = True
+                lifecycle.job = mock.Mock()
+                payload = (b'could not find package sky_engine in the Flutter SDK\n'
+                           b'Bearer private-token https://private.invalid/?sig=secret password=private-password')
+                process = mock.Mock(returncode=17)
+                process.communicate.side_effect = subprocess.TimeoutExpired('private-command', 1) if timeout else None
+                def spawn(*_args, **kwargs):
+                    kwargs['stdout'].write(payload)
+                    return process
+                lifecycle.job.spawn.side_effect = spawn
+                with self.assertRaises(e2e.FixtureError):
+                    lifecycle.run_command(['private-command', 'private-argument'], name='generate-linux')
+                lifecycle.job.stop.assert_called_once_with(process)
+                evidence = lifecycle.manifest['command_failure']
+                self.assertEqual(evidence['exit_code'], None if timeout else 17)
+                self.assertEqual(evidence['timed_out'], timeout)
+                self.assertEqual(evidence['classification'], 'missing_sky_engine')
+                self.assertEqual(evidence['log_sha256'], e2e.sha256(payload))
+                lifecycle.cleanup()
+                self.assertFalse(work.exists())
+                encoded = json.dumps(lifecycle.manifest)
+                for secret in ('private-token', 'private.invalid', 'private-password', 'private-command', 'private-argument'):
+                    self.assertNotIn(secret, encoded)
 
     def test_staged_toolchain_blocks_unselected_precache_and_shell_sdk_bootstrap(self):
         with tempfile.TemporaryDirectory() as temp:
