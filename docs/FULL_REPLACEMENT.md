@@ -303,6 +303,10 @@ same 12-positive/60-rejection suite on macOS ARM64 in GitHub Actions; the Linux
 SDK job also passed encrypted full replacement. See the
 [SDK CI record](validation/full-replacement-sdk-ci-20261101.json) for the exact
 commits and job links. These jobs do not validate the newer Windows changes.
+That same `e0ef8e0` checkpoint has now completed the full 30-job build matrix and
+artifact-mirror validation. Its [completed CI record](validation/github-actions-full-build-20261101.json)
+preserves the exact source revisions and separates this result from subsequent
+source changes and outstanding physical-device runtime acceptance.
 
 Run the host acceptance with matching SDK artifacts:
 

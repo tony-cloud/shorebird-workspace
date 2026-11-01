@@ -1,0 +1,197 @@
+{
+  "date": "2026-11-01",
+  "scope": "Completed build and configured-test matrix for the PRODUCT FFI/native-cache checkpoint; later Windows memory and CLI/compiler hardening are not covered.",
+  "repository_commit": "e0ef8e04a71cbfce87c21bd36809c8f0b8917a27",
+  "component_commits": {
+    "dart-sdk": "bdc30207c93e422dfd56d4260fa84c522cbf95b1",
+    "depot_tools": "e154c8eda5e63cbe85a765ae9d06e2b7af05139e",
+    "flutter": "41865d0ebfc6bb3814f2e796ceafb141993d4e6e",
+    "shorebird": "40ce949eb1b2dc5473e178c05362a0167db52f78",
+    "shorebird-server": "8cc3148fdcb489b20faa0a544d7a6690b6536da9",
+    "updater": "ea85ce31bd9ce57ac7518d0a8035a0e78518cd87"
+  },
+  "workflow_url": "https://github.com/tony-cloud/shorebird-workspace/actions/runs/41237899850",
+  "conclusion": "success",
+  "successful_job_count": 30,
+  "successful_jobs": [
+    {
+      "id": 124645430955,
+      "name": "Source checks",
+      "conclusion": "success"
+    },
+    {
+      "id": 124646485016,
+      "name": "Build custom Dart SDK (macOS x64)",
+      "conclusion": "success"
+    },
+    {
+      "id": 124646485020,
+      "name": "Build CLI artifacts (ubuntu-latest, linux, x64, patch-linux-x64.zip, patch)",
+      "conclusion": "success"
+    },
+    {
+      "id": 124646485033,
+      "name": "Build custom Dart SDK (Windows x64)",
+      "conclusion": "success"
+    },
+    {
+      "id": 124646485035,
+      "name": "Build CLI artifacts (macos-15, macos, arm64, patch-darwin-arm64.zip, patch)",
+      "conclusion": "success"
+    },
+    {
+      "id": 124646485037,
+      "name": "Build CLI artifacts (windows-latest, windows, x64, .exe, patch-windows-x64.zip, patch.exe)",
+      "conclusion": "success"
+    },
+    {
+      "id": 124646485043,
+      "name": "Build custom Dart SDK (macOS arm64)",
+      "conclusion": "success"
+    },
+    {
+      "id": 124646485060,
+      "name": "Build CLI artifacts (macos-15-intel, macos, x64, patch-darwin-x64.zip, patch)",
+      "conclusion": "success"
+    },
+    {
+      "id": 124646485070,
+      "name": "Build custom Dart SDK",
+      "conclusion": "success"
+    },
+    {
+      "id": 124646485152,
+      "name": "Build Windows engine artifacts",
+      "conclusion": "success"
+    },
+    {
+      "id": 124646485163,
+      "name": "Build server artifacts (darwin, amd64)",
+      "conclusion": "success"
+    },
+    {
+      "id": 124646485168,
+      "name": "Build macOS engine artifacts (x64, macos-15-intel, x86_64-apple-darwin)",
+      "conclusion": "success"
+    },
+    {
+      "id": 124646485171,
+      "name": "Build Android host snapshotters (x64, darwin-x64)",
+      "conclusion": "success"
+    },
+    {
+      "id": 124646485186,
+      "name": "Build Android host snapshotters (x64, windows-x64)",
+      "conclusion": "success"
+    },
+    {
+      "id": 124646485190,
+      "name": "Build Android engine artifacts (arm64, aarch64-linux-android, arm64_v8a_release.jar, arm64_v8a_re...",
+      "conclusion": "success"
+    },
+    {
+      "id": 124646485194,
+      "name": "Build Android engine artifacts (arm, armv7-linux-androideabi, armeabi_v7a_release.jar, armeabi_v7...",
+      "conclusion": "success"
+    },
+    {
+      "id": 124646485198,
+      "name": "Build Linux engine artifacts",
+      "conclusion": "success"
+    },
+    {
+      "id": 124646485200,
+      "name": "Build Android host snapshotters (arm64, windows-x64)",
+      "conclusion": "success"
+    },
+    {
+      "id": 124646485218,
+      "name": "Build server artifacts (linux, amd64)",
+      "conclusion": "success"
+    },
+    {
+      "id": 124646485220,
+      "name": "Build Android host snapshotters (arm, windows-x64)",
+      "conclusion": "success"
+    },
+    {
+      "id": 124646485243,
+      "name": "Build iOS engine artifacts",
+      "conclusion": "success"
+    },
+    {
+      "id": 124646485245,
+      "name": "Build Android engine artifacts (x64, x86_64-linux-android, x86_64_release.jar, x86_64_release)",
+      "conclusion": "success"
+    },
+    {
+      "id": 124646485260,
+      "name": "Build server artifacts (windows, amd64, .exe)",
+      "conclusion": "success"
+    },
+    {
+      "id": 124646485264,
+      "name": "Build server artifacts (linux, arm64)",
+      "conclusion": "success"
+    },
+    {
+      "id": 124646485266,
+      "name": "Build Android host snapshotters (arm, darwin-x64)",
+      "conclusion": "success"
+    },
+    {
+      "id": 124646485274,
+      "name": "Build Android host snapshotters (arm64, darwin-x64)",
+      "conclusion": "success"
+    },
+    {
+      "id": 124646485275,
+      "name": "Build macOS engine artifacts (arm64, macos-15, aarch64-apple-darwin)",
+      "conclusion": "success"
+    },
+    {
+      "id": 124646485279,
+      "name": "Build server artifacts (darwin, arm64)",
+      "conclusion": "success"
+    },
+    {
+      "id": 124683751069,
+      "name": "Assemble universal macOS engine",
+      "conclusion": "success"
+    },
+    {
+      "id": 124695550886,
+      "name": "Assemble publishable artifact mirror",
+      "conclusion": "success"
+    }
+  ],
+  "skipped_jobs": [
+    "Android runtime patch smoke",
+    "Linux runtime patch smoke",
+    "Build web SDK artifact",
+    "Publish tested Dart SDK release"
+  ],
+  "artifact_mirror_assembly": "passed; CI safely extracted and validated assembled mirror, then validated release manifest",
+  "artifact_mirror_id": 13062713664,
+  "release_manifest_artifact_id": 13062773187,
+  "local_release_manifest_verification": {
+    "result": "passed",
+    "zip_sha256": "c8ae366da435edad2b6602ee0b0638e35f98084b770d2fdf57a6bc379913eb3e",
+    "manifest_sha256": "b921256f828e6926d1c61e0fc72ad2f018b25ae058d2b4edebc7706d1a7f0149",
+    "artifact_entries": 42,
+    "checks": [
+      "Downloaded manifest ZIP matches GitHub artifact digest",
+      "Exact two expected manifest members",
+      "Manifest bytes match checksum sidecar",
+      "Repository commit and artifact count match expected checkpoint"
+    ],
+    "complete_artifact_payloads_downloaded_locally": false
+  },
+  "default_branch_release_published": false,
+  "limits": [
+    "This completed older checkpoint does not validate current root86ffb47 or its newer compiler mapping, archive-integrity guards and Linux GTK lifecycle.",
+    "Optional Linux and Android runtime smoke jobs did not run; web build is opt-in and publishing is default-branch-only.",
+    "CI build success does not establish runtime correctness on every platform or physical iOS FFI.",
+    "Full assembled mirror was validated on the CI runner; only its release manifest was independently downloaded and checked locally in this follow-up."
+  ]
+}

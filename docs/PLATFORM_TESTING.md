@@ -68,6 +68,18 @@ the declarations now agree on the installed SDK and a source check enforces this
 All-platform support and a publishable artifact
 mirror require the final source revisions to pass the complete matrix.
 
+The November 1 PRODUCT FFI/native-cache checkpoint `e0ef8e0` subsequently
+completed all 30 configured build and validation jobs, including Windows SDK,
+Windows engine, universal macOS assembly and the publishable artifact mirror.
+The mirror and its 42-entry release manifest passed CI validation; the manifest
+archive digest, checksum and exact source commit were also checked locally.
+Four optional/default-branch-only jobs were intentionally skipped. See the
+[completed CI record](validation/github-actions-full-build-20261101.json).
+This is an older checkpoint: subsequent Windows memory changes, compiler
+mapping provenance, CLI archive/integrity guards and the Linux GTK lifecycle
+still require their newer CI results. Optional Android/Linux app runtime smokes
+did not execute in this completed run.
+
 In the shipping additive profile, existing signatures, inheritance and field definitions cannot change, and
 removed declarations are rejected. Added fields on existing const, deeply
 immutable or native-wrapper classes are unsupported. Constructor-only nonnullable
