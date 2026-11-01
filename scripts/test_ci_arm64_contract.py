@@ -27,7 +27,10 @@ class Arm64WorkflowContractTest(unittest.TestCase):
             ('cli-runner', edit_job(source, 'cli-artifacts', 'os: ubuntu-24.04-arm', 'os: ubuntu-latest'), 'missing CLI target linux/arm64'),
             ('linux-gn', edit_job(source, 'linux-engine-arm64', '--linux-cpu=arm64', '--linux-cpu=x64'), 'explicit ARM64 engine and Rust targets'),
             ('windows-rust', edit_job(source, 'windows-engine-arm64', 'rustup target add aarch64-pc-windows-msvc', 'rustup target add x86_64-pc-windows-msvc'), 'explicit ARM64 engine and Rust targets'),
-            ('runtime-plan', edit_job(source, 'linux-engine-arm64', 'run --execute --arch arm64', 'plan --arch arm64'), 'execute the real ARM64 app lifecycle'),
+            # V1 and V2 share the execution flags; mutate only the intended
+            # driver so each negative control reaches its own required gate.
+            ('runtime-plan', edit_job(source, 'linux-engine-arm64', 'linux_native_cache_e2e.py run --execute --arch arm64', 'linux_native_cache_e2e.py plan --arch arm64'), 'execute the real ARM64 app lifecycle'),
+            ('variant-runtime-plan', edit_job(source, 'linux-engine-arm64', 'linux_variant_e2e.py run --execute --arch arm64', 'linux_variant_e2e.py plan --arch arm64'), 'linux-engine-arm64 native V2 driver must execute'),
             ('sdk-gn', edit_job(source, 'custom-dart-sdk-linux-arm64', "'target_cpu=\"arm64\"'", "'target_cpu=\"x64\"'"), 'explicit ARM64 GN and patching flags'),
             ('mirror-inventory', edit_job(source, 'artifact-mirror', "--require 'windows-engine-arm64/*windows-engine-arm64.tar.gz'", "--require 'removed/windows-engine-arm64.tar.gz'"), 'release manifest must require windows-engine-arm64'),
             ('native-process', edit_job(source, 'windows-engine-arm64', '--require-native-host', ''), 'native host and binary machine types'),
