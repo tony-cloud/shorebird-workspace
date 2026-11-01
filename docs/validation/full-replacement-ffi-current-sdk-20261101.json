@@ -1,0 +1,70 @@
+{
+  "date": "2026-11-01",
+  "scope": "Current-source native macOS ARM64 PRODUCT encrypted full replacement FFI host acceptance",
+  "dart_sdk_commit": "ec6287baef0def9b34f66af7fa48931fff7b152f",
+  "command": "python3 scripts/verify_encrypted_aot_runtime.py --full-replacement-ffi --build-dir dart-sdk/xcodebuild/ReleaseARM64 --tooling-dart dart-sdk/xcodebuild/ReleaseARM64/dart-sdk/bin/dart --work-dir /private/tmp/shorebird-current-sdk-ffi-20261101",
+  "build_exit_code": 0,
+  "test_exit_code": 0,
+  "encrypted_positive_groups": 12,
+  "native_loader_rejections": 60,
+  "host_acceptance": {
+    "profile": "PRODUCT full replacement",
+    "host_abi": "57683d37983db3857e19de685c104cfa4733bf393f3b01f39c0466849465fc2a",
+    "released_native_sha256": "8a3abcc39b6a4cf89ebc4e1dd1c76dd0772f4797120dafdec96537b284009c02",
+    "base_sha256": "78fdd76ea41c70f42023662c919cd806a593823f6dbd478fa8ab12c92fb1091c",
+    "update_sha256": "13e1e21253cc68a115ad37296922f9242b198847684de06701c1f71713c84186",
+    "native_baselines": [
+      "source",
+      "from-dill"
+    ],
+    "direct_loader_rejection_cases": [
+      "missing-full",
+      "ffi-only",
+      "mirrors-flag",
+      "structural-flag",
+      "unknown-flag",
+      "plain-external",
+      "old-native-flags",
+      "old-native-name",
+      "missing-ffi-annotation",
+      "nonarray-metadata",
+      "fullFfiBadOption",
+      "fullFfiBadSignature",
+      "fullFfiBadIdentity",
+      "invalid-ffi-owner",
+      "ffi-cache-out-of-range",
+      "ffi-cache-wrong-kind",
+      "wide-ffi-cache-out-of-range",
+      "resolve-cache-out-of-range",
+      "resolve-missing-annotation-push",
+      "resolve-wrong-annotation",
+      "external-pool",
+      "external-opcode",
+      "external-wide-opcode",
+      "unknown-opcode",
+      "truncated-ffi",
+      "truncated-wide-ffi",
+      "truncated-resolve",
+      "truncated-wide-resolve",
+      "closure-missing-pragma",
+      "reserved-assets-carrier"
+    ],
+    "encrypted_additional_positive_cases": [
+      "cleared-ffi-flag"
+    ],
+    "status": "host_execution_passed",
+    "physical_ios": "not_exercised",
+    "cli_archive_differ": "not_exercised",
+    "server_signature_verification": "not_exercised_by_this_host_harness"
+  },
+  "limits": [
+    "macOS ARM64 SDK host only; physical iOS, Android engine recovery and other platforms remain separate.",
+    "This fixture does not verify server signatures or CLI archive comparison.",
+    "The isolated host harness retains its existing disable-library-validation entitlement; no JIT, debugger or unsigned-executable-memory entitlement was added."
+  ],
+  "binary_sha256": {
+    "gen_snapshot_product": "bffb4b959d7782d98a67603aefc27785d525b9a357cf5299f6e9b5610ca92d80",
+    "product_full_ffi_test": "6ff1a231747787f150d22ecdefc7ecd26e91a87e35cd0f6da3297503805e9832",
+    "libdart_engine_aot_shared_product.dylib": "1c021e00e7e19530df8246aa03c182b5cbb580eee18262ff9a5075ef73e80b88"
+  }
+}

@@ -175,7 +175,8 @@ CachedKey ReadCachedKey(key_serial_t keyring, const std::string& description,
   if (serial < 0)
     return errno == ENOKEY ? CachedKey::kMissing : CachedKey::kInvalid;
   if (!RestrictedKey(serial, description)) return CachedKey::kInvalid;
-  const long size = keyctl_read(serial, key->bytes.data(), key->bytes.size());
+  const long size = keyctl_read(
+      serial, reinterpret_cast<char*>(key->bytes.data()), key->bytes.size());
   return size == static_cast<long>(kKeySize) ? CachedKey::kFound
                                              : CachedKey::kInvalid;
 }

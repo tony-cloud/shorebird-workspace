@@ -1,0 +1,25 @@
+{
+  "date": "2026-11-01",
+  "status": "passed locally; not yet run in hosted CI",
+  "scope": "Update-only Dart async/await through PRODUCT full replacement on macOS ARM64",
+  "runtime_sdk_commit": "ec6287baef0def9b34f66af7fa48931fff7b152f",
+  "harness_change": "working-tree regression added after runtime build",
+  "harness_sha256": "323eaeb94f3fd3372234d7336c697ded85230c29d1fbce4e00d9d0405ac7117d",
+  "command": "python3 scripts/verify_encrypted_aot_runtime.py --full-replacement --product --build-dir dart-sdk/xcodebuild/ReleaseARM64 --tooling-dart dart-sdk/xcodebuild/ReleaseARM64/dart-sdk/bin/dart --work-dir /private/tmp/shorebird-current-sdk-async-20261101",
+  "exit_code": 0,
+  "invariants": [
+    "Native application baseline remains synchronous.",
+    "Unchanged driver invokes updated async code after plain or encrypted installation.",
+    "Result and finally counter are pending before the event loop runs.",
+    "New-domain Existing and Mutable objects survive successful and exceptional await resumption; mutated fields retain their values.",
+    "Caught StateError preserves identity with the error created before suspension.",
+    "Result equals 89, finally runs exactly once, unexpected-error counter stays zero.",
+    "Existing bundled-base, profile/binding, malformed-payload and fresh-group fallback checks still pass."
+  ],
+  "limits": [
+    "SDK host test only; no physical iOS or FlutterEngine execution.",
+    "This fixture has one native snapshot route; source/from-dill routes belong to the separate FFI fixture.",
+    "No forced GC during suspension or performance benchmark is claimed."
+  ],
+  "log_sha256": "251c36cb46a67fe7d64196ec98dc2cfce3ffde32eafa6031a021e61ee31d985c"
+}

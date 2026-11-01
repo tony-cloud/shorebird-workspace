@@ -86,16 +86,19 @@ engine pin. Packaging now derives a coherent pair from the root Flutter gitlink
 and verifies the pair and manifest before archiving and after extraction. A
 separate fresh-cache CI failure exposed an unadvertised tracing dependency pin;
 the corrected published fork pin passes fresh dependency resolution and 56
-trace tests. Corrected hosted builds are pending. See the
+trace tests. The current hosted macOS x64 CLI artifact now has verified archive
+hashes and matching packaged Flutter/engine/source pins; its help commands run
+locally. Complete platform runtime acceptance remains pending. See the
 [toolchain packaging record](validation/public-toolchain-packaging-20261101.json).
 
 The new Android native lifecycle fixture uses an isolated non-debuggable app,
 early Java/JNI provider registration and AndroidKeyStore-wrapped per-patch keys.
 It implements real CLI/server delivery, cold offline recovery, missing/wrong-key
 fallback, signed rollback and unchanged baseline APK checks. Java compilation,
-arm64 NDK compilation and host protocol/ownership checks pass. Actual APK,
-Keystore and Android linker execution remain unrun; the prepared emulator image
-and verified artifact mirror do not establish runtime acceptance. See the
+arm64 NDK compilation and host protocol/ownership checks pass. A historical
+release APK also built and installed, but baseline startup exposed the MTE bug
+described below. The rebuilt engine and full Keystore-backed encrypted update
+lifecycle remain unverified. See the
 [Android fixture record](validation/android-native-lifecycle-fixture-20261101.json).
 
 In the shipping additive profile, existing signatures, inheritance and field definitions cannot change, and
@@ -172,6 +175,15 @@ required. See the [sealed-descriptor CI evidence](validation/native-cache-linux-
 [earlier Linux CI evidence](validation/native-cache-linux-engine-ci-20261101.json), and
 [native cache validation record](validation/encrypted-native-cache-host-20261101.json).
 
+The current Linux job built the engine and passed its prepared native-cache
+engine tests, then stopped at a keyring-provider compile error: `keyctl_read`
+requires a `char*` buffer. The provider now converts its byte buffer explicitly
+at that boundary. A local C++ signature check rejects the original call and
+accepts the fix; the Python driver suite passes 25 tests with one Linux-only
+test skipped. Actual Linux provider compilation and the encrypted app lifecycle
+still require the corrected hosted run. See the
+[keyutils compilation record](validation/linux-provider-keyutils-compile-20261101.json).
+
 The subsequent Windows memory-source changes pass 341 updater tests and strict
 lint checks on macOS. The actual SDK memory-loader target passes a separate
 macOS GN/Ninja build and runtime check, plus address/undefined-behavior sanitizer
@@ -183,6 +195,14 @@ after engine recreation, exact executed test inventories, and a separate
 process with executable-memory protection enabled. Those CI results and a
 complete encrypted offline Windows app lifecycle remain pending. See the
 [memory-source validation record](validation/verified-native-memory-host-20261101.json).
+
+The current Windows SDK job built the SDK and passed its shared FFI ABI tests,
+then failed the native-mapping provenance fixture because a Windows drive path
+was passed as a URI. The fixture now preserves the platform file URI. All 14
+tests pass locally using the actual current macOS ARM64 CI SDK artifact,
+including a Windows path containing spaces and `#`; the corrected Windows
+hosted run remains required. See the
+[platform URI regression record](validation/windows-sdk-platform-uri-20261101.json).
 
 The Windows CLI now compares decompressed EXE/DLL bytes with SHA-256 and
 rejects ambiguous or malformed native ZIP entries before patch creation.
@@ -263,8 +283,9 @@ non-debuggable manifest and installs the baseline on an owned ARM64 emulator.
 First startup exposed a VM MTE capability bug before Dart rendering. Exact engine
 symbols and a native syscall probe confirmed it; the corrected gate passes five
 focused cases on macOS and Android and preserves existing pointer tagging on
-unsupported hardware. Full rebuilt-engine startup and encrypted update lifecycle
-remain pending. See [Android startup evidence](validation/android-mte-startup-20261101.json).
+unsupported hardware. All six MTE regressions also pass in the rebuilt macOS
+ARM64 SDK VM executable. Rebuilt Android engine startup and encrypted update
+lifecycle remain pending. See [Android startup evidence](validation/android-mte-startup-20261101.json).
 
 Runtime-created listener and group-bound callbacks also pass the native ARM64
 PRODUCT host suite, including nested transitions, static-field isolation,
@@ -276,9 +297,12 @@ The full-profile FFI host suite now also passes on native macOS ARM64 PRODUCT:
 encrypted base/update installation against source and from-dill baselines,
 mutable plugin layouts and new bindings, callbacks and cleanup, a cleared-FFI-bit
 positive, and 60 precise malformed-payload rejection/recovery controls. The
-released native binary stays unchanged. Signed physical iOS FFI, broad real-plugin
-coverage and latest-source CI remain pending; this host result does not extend
-the earlier iPad proof. See the
+released native binary stays unchanged. A separate frozen-source signed iPad
+run now passes encrypted full-profile FFI activation, offline cold launch,
+server rollback/rollforward, and wrong-key fallback. See the
+[physical FFI record](validation/full-replacement-ffi-ios-20261101.json).
+Latest-source device acceptance, broad real-plugin coverage and latest-source CI
+remain pending. The host suite is documented in the
 [full-profile FFI validation record](validation/full-replacement-ffi-host-20261101.json).
 
 ## Prerequisites

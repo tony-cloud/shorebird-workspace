@@ -1,0 +1,25 @@
+{
+  "date": "2026-11-01",
+  "status": "source fix and local checks passed; not yet published",
+  "trigger": {
+    "ci_run_id": 41262099401,
+    "artifact_id": 13066090766,
+    "artifact_name": "cli-macos-x64",
+    "root_commit": "cdf7f74907b2d7f2e2d32400d36ed960904e3938",
+    "archive_zip_sha256": "356c3021922703d6669f3e23e87f4a0f9a3f45525f1bfce45c6d042ed78e9266",
+    "before": "Guarded extraction rejected standard root directory member dot with exit70.",
+    "after": "Verified inner tar sidecar, guarded extraction of all9 members, exact6-file manifest inventory and both packaged CLI help commands passed."
+  },
+  "fix": "Treat normalized dot directory markers as inert and skip them without applying root metadata; other canonicalized root aliases and root files/links/special entries remain rejected. Existing directory trailing slash normalization is retained.",
+  "validation": {
+    "worker_assemble_verifier": "passed, including2 root-directory positives and28 negative path/type/alias/collision cases",
+    "main_workflow_assembly_verifier": "passed",
+    "main_workflow_contract": "passed",
+    "actual_packaged_cli": "passed",
+    "independent_review": "no actionable security or extraction correctness findings"
+  },
+  "limits": [
+    "Root source edits are local and uncommitted.",
+    "This is archive compatibility and integrity evidence, not Android engine or app lifecycle execution."
+  ]
+}

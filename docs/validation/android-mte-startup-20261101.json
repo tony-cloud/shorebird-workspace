@@ -1,5 +1,5 @@
 {
-  "status": "root cause confirmed; source fix and direct helper tests passed; rebuilt engine startup pending",
+  "status": "source fix, host SDK regressions and current Android ARM64 engine build passed; rebuilt Android app startup pending",
   "historical_runtime": {
     "ci_run_id": 41237899850,
     "root_commit": "e0ef8e04a71cbfce87c21bd36809c8f0b8917a27",
@@ -52,14 +52,80 @@
       "get_calls": 0
     },
     "header_sha256": "df95ce560f2ecc6788ca0ef54f4402443ac17477e13b642801a9d3cd0f0593f3",
-    "limits": "Production helper and exact SDK test bodies compiled/run; rebuilt full VM/engine and rendered app restart remain pending."
+    "limits": "Production helper, exact SDK test bodies and rebuilt macOS ARM64 SDK VM regressions passed. Rebuilt Android engine startup and rendered app restart remain pending.",
+    "sdk_vm_tests": {
+      "platform": "macOS ARM64",
+      "dart_commit": "ec6287baef0def9b34f66af7fa48931fff7b152f",
+      "target": "dart-sdk/xcodebuild/ReleaseARM64/run_vm_tests",
+      "build": "PASS: ninja -j 4 run_vm_tests",
+      "tests": {
+        "ZoneMemoryTaggingUnsupportedPreservesTaggedPointers": "PASS",
+        "ZoneMemoryTaggingSetFailurePreservesTaggedPointers": "PASS",
+        "ZoneMemoryTaggingGetFailure": "PASS",
+        "ZoneMemoryTaggingIncompleteControl": "PASS",
+        "ZoneMemoryTaggingSupportedFaultModes": "PASS",
+        "ZoneWithMemoryTagging": "PASS"
+      },
+      "frozen_ios_and_host_engine_binaries_unchanged": true
+    }
   },
   "ci_gate": "All four SDK jobs require the five syscall-contract tests and runtime-aware ZoneWithMemoryTagging before packaging. The latter verifies safe allocations without MTE or a real child overflow fault when MTE is enabled.",
   "limits": [
-    "No rebuilt full VM/engine startup or encrypted update lifecycle success yet.",
+    "No rebuilt Android engine startup or encrypted update lifecycle success yet.",
     "Positive MTE hardware path not locally executed.",
     "This historical replay adjusted the old CLI Flutter pin and seeded its original public Git dependency; it is not unmodified package or latest-source acceptance."
   ],
   "reference": "https://docs.kernel.org/arch/arm64/memory-tagging-extension.html",
-  "cleanup": "owned fixture app, reverse mappings, servers, work directories, emulator and generated AVD removed; preexisting adb daemon and user AVD preserved"
+  "cleanup": "owned fixture app, reverse mappings, servers, work directories, emulator and generated AVD removed; preexisting adb daemon and user AVD preserved",
+  "current_engine_build": {
+    "artifact": {
+      "digest": "sha256:82b47686598434b83d3263ddc5203adcc65ca49a1bd9e38514e275f0ef6ac72c",
+      "id": 13067086599,
+      "name": "android-engine-arm64",
+      "size_in_bytes": 353386501,
+      "workflow_run": {
+        "head_branch": "tonycloud/linux-native-validation-20261101",
+        "head_repository_id": 1280110099,
+        "head_sha": "cdf7f74907b2d7f2e2d32400d36ed960904e3938",
+        "id": 41262099401,
+        "repository_id": 1280110099
+      }
+    },
+    "job_id": 124718471285,
+    "job_status": "success",
+    "manifest": {
+      "name": "android-engine-arm64",
+      "git_sha": "cdf7f74907b2d7f2e2d32400d36ed960904e3938",
+      "runner_os": "Linux",
+      "engine_revision": "8b48ad134fce16464d35f6ec7bd776f8297d0cd7",
+      "android_build_dir": "flutter/engine/src/out/android_release_arm64",
+      "runtime_mode": "release",
+      "target_os": "android",
+      "target_arch": "arm64",
+      "dart_dynamic_modules": false,
+      "dart_enable_aot_patching": true,
+      "dart_enable_shorebird_interpreter": false,
+      "shorebird_enable_aot_patching": true,
+      "shorebird_interpreter": false,
+      "included": [
+        "artifacts.zip",
+        "symbols.zip",
+        "flutter.jar",
+        "libflutter.so",
+        "shorebird_patch_encryption.h",
+        "gen_snapshot_arm64",
+        "analyze_snapshot_arm64",
+        "android_release_arm64.args.gn",
+        "mirror/shorebird/flutter_infra_release/flutter/8b48ad134fce16464d35f6ec7bd776f8297d0cd7/android-arm64-release/artifacts.zip",
+        "mirror/shorebird/flutter_infra_release/flutter/8b48ad134fce16464d35f6ec7bd776f8297d0cd7/android-arm64-release/symbols.zip",
+        "mirror/shorebird/flutter_infra_release/flutter/8b48ad134fce16464d35f6ec7bd776f8297d0cd7/android-arm64-release/linux-x64.zip"
+      ]
+    },
+    "libflutter_sha256": "25abd77ba4b3eb8a84b8759ee26f7f6a2804289905fe4b0a2e5ace490a70c47f",
+    "native_jar_contains_same_engine": true,
+    "embedded_sdk_revision_verified": true,
+    "build_args_sdk_revision_verified": true,
+    "archive_checksums_verified": true,
+    "installed_or_executed": false
+  }
 }

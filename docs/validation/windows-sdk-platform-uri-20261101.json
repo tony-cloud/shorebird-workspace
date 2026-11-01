@@ -1,0 +1,42 @@
+{
+  "date": "2026-11-01",
+  "scope": "Windows platform URI fixture correction; local macOS replay with actual hosted SDK artifact",
+  "failure": {
+    "run_id": 41262099401,
+    "job_id": 124718471257,
+    "url": "https://github.com/tony-cloud/shorebird-workspace/actions/runs/41262099401/job/124718471257",
+    "step": "Test native mapping compiler provenance",
+    "sdk_build_passed": true,
+    "ffi_abi_tests_passed": true,
+    "descriptor_tests_passed": 6,
+    "descriptor_tests_failed": 7,
+    "cause": "The fixture converted its platform file URI to a Windows drive path before passing --platform. FrontendCompiler resolves this option as a URI, producing unsupported scheme d:."
+  },
+  "fix": {
+    "file": "dart-sdk/pkg/frontend_server/test/shorebird_native_assets_descriptor_test.dart",
+    "sha256": "5971591307f68ddc030f07d968acec075e4f3d335b93e7240c1150584693434b",
+    "behavior": "Preserve the platform file URI through the existing argument parser and compiler URI resolution.",
+    "regression": "Explicit Windows drive path containing spaces and # retains file scheme and exact path.",
+    "production_compiler_changed": false,
+    "committed": true,
+    "integration_revision": "928a00195899056e8283df710a4028e2c20e291d"
+  },
+  "validation": {
+    "host": "macOS ARM64",
+    "artifact_id": 13068371198,
+    "artifact_zip_digest": "sha256:40d01842ea5ae6557ed9945167b3cd9bd79174a626d801ed970fed5a7dff4369",
+    "sdk_revision": "ec6287baef0def9b34f66af7fa48931fff7b152f",
+    "dart_executable_sha256": "6fd0f6fd1ea797f89e27df19076a112144e0e70703e91d9802a8480e085d9380",
+    "working_directory": "dart-sdk",
+    "command": "<verified-ci-sdk>/dart-sdk/bin/dart --packages=.dart_tool/package_config.json third_party/pkg/test/pkgs/test/bin/test.dart pkg/frontend_server/test/shorebird_native_assets_descriptor_test.dart --concurrency=1 --reporter=expanded",
+    "tests_passed": 14,
+    "exit_code": 0,
+    "log_sha256": "8849ae9d5d84141c3b5a12314e220b6138309331d073d3a05814a10262ed75ba",
+    "format_and_diff_checks": "passed",
+    "windows_rerun": "pending"
+  },
+  "limitations": [
+    "Local replay validates current test sources using the actual macOS ARM64 CI SDK artifact; it is not Windows execution.",
+    "The failing workflow commit predates this test-only correction; no hosted success is claimed for the change."
+  ]
+}

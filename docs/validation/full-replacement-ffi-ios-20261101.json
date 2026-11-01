@@ -1,0 +1,456 @@
+{
+  "date": "2026-11-01",
+  "scope": "Distribution-signed physical iPad full-replacement FFI lifecycle on frozen sources",
+  "release_version": "1.0.0+2",
+  "source_identity": {
+    "dart_sdk": "bdc30207c93e422dfd56d4260fa84c522cbf95b1",
+    "flutter_source": "c22367f64e674d59203818f2df586ea1669965b1",
+    "updater": "ea85ce31bd9ce57ac7518d0a8035a0e78518cd87",
+    "engine_artifact_identity": "0b65b0bea03ad4421928f0c0b7b8bebf97632a6b",
+    "material": "open-shorebird-toolchain-v1\nbdc30207c93e422dfd56d4260fa84c522cbf95b1\nc22367f64e674d59203818f2df586ea1669965b1\nea85ce31bd9ce57ac7518d0a8035a0e78518cd87\n"
+  },
+  "cli_revision": "40ce949eb1b2dc5473e178c05362a0167db52f78",
+  "flutter_revision": "41865d0ebfc6bb3814f2e796ceafb141993d4e6e",
+  "provenance": "Frozen bdc30207 SDK / 41865d0e Flutter / 0b65 engine; not current ec628 SDK / 8045 Flutter / 8b48 engine. Private CLI isolation and version pins retained. No rebuild or reinstall of the installed baseline app during the lifecycle; patch tooling built the replacement payload. Frozen engine binaries remained unchanged.",
+  "distribution_signed": true,
+  "get_task_allow": false,
+  "debugger_attached": false,
+  "dynamic_modules_enabled": false,
+  "jit_or_unsigned_executable_memory_entitlement": false,
+  "patch_verification": "strict",
+  "patch_response_verification": "required",
+  "encryption": {
+    "format": "open-aot-vmcode-encrypted-v1",
+    "algorithm": "AES-256-GCM",
+    "payload_kind": "full-snapshot"
+  },
+  "artifacts_sha256": {
+    "released_runner": "2567c62bbf33bbab6653153c86b38ef76f3cd24f1229fdb484217238a669274d",
+    "released_flutter": "3384ea456fe807101355fd0adc678eb8080a1dbef385521f43101a4c1b4a4ab0",
+    "released_app": "16a7b0f9def1bc3d594d73e1c1997e2b5e26d6d13e5d5dcd3d9ed3b387e849c9",
+    "base_wrapper": "579e5bd2e924b0026496ceb61d2a81ac2d1317a2f15108198cd653ee92304e4d",
+    "cached_encrypted_patch": "f33eb3da16dd38e9760c0e127401ad91e2201414d9ff99f65dc0911784366095",
+    "cached_authentication": "d169c074972b64fd77fbb9060072029c8be6954c2d8def726f7a4befc9bcec2a",
+    "final_xcode_project": "ac5d20d65aba0e222ab0f9ce1b9eac4b10d299739f5399abdff316efb9cfd39d",
+    "strict_route_log": "d882d8b6469ff3fa9b7480488dc24510baf92191daf6646813500f0750ceb5db"
+  },
+  "native_exports": {
+    "schema": "full-replacement-ffi-v1",
+    "binary_sha256": "2567c62bbf33bbab6653153c86b38ef76f3cd24f1229fdb484217238a669274d",
+    "verified_exports": [
+      "IosFullFfiRetain",
+      "IosFullFfiVersion",
+      "IosFullFfiScalarV1",
+      "IosFullFfiScalarV2",
+      "IosFullFfiChangeRecordV1",
+      "IosFullFfiChangeRecordV2",
+      "IosFullFfiUpdateOnly",
+      "IosFullFfiNegate",
+      "IosFullFfiEchoPointer",
+      "IosFullFfiCallScalar",
+      "IosFullFfiCallRecord",
+      "IosFullFfiStartWorkers",
+      "IosFullFfiWorkersDone",
+      "IosFullFfiJoinWorkers"
+    ],
+    "source": "dyld_info -exports"
+  },
+  "http_reports": [
+    {
+      "time_utc": "2026-11-01T02:44:18.168146+00:00",
+      "verification": {
+        "schema": "full-replacement-ffi-v1",
+        "phase": "base",
+        "license": "free",
+        "pro_feature_enabled": false,
+        "structural_verified": true,
+        "ffi_verified": true,
+        "rendered_text": "license:free full-replacement:verified value:10 full-ffi:v1-base",
+        "checks": [
+          "native-version",
+          "scalar-v1",
+          "struct-v1"
+        ],
+        "workers_started": 0,
+        "workers_joined": true,
+        "callbacks_closed": true,
+        "static_callbacks_retained": 0
+      }
+    },
+    {
+      "time_utc": "2026-11-01T02:50:39.966322+00:00",
+      "verification": {
+        "schema": "full-replacement-ffi-v1",
+        "phase": "base",
+        "license": "free",
+        "pro_feature_enabled": false,
+        "structural_verified": true,
+        "ffi_verified": true,
+        "rendered_text": "license:free full-replacement:verified value:10 full-ffi:v1-base",
+        "checks": [
+          "native-version",
+          "scalar-v1",
+          "struct-v1"
+        ],
+        "workers_started": 0,
+        "workers_joined": true,
+        "callbacks_closed": true,
+        "static_callbacks_retained": 0
+      }
+    },
+    {
+      "time_utc": "2026-11-01T02:50:59.182992+00:00",
+      "verification": {
+        "schema": "full-replacement-ffi-v1",
+        "phase": "update",
+        "license": "pro",
+        "pro_feature_enabled": true,
+        "structural_verified": true,
+        "ffi_verified": true,
+        "rendered_text": "license:pro full-replacement:verified value:28 full-ffi:v2-update",
+        "checks": [
+          "native-version",
+          "scalar-v2",
+          "struct-v2",
+          "new-binding",
+          "native-address-of",
+          "process-lookup",
+          "bool-pointer",
+          "static-callback",
+          "local-static",
+          "local-capture",
+          "local-aggregate",
+          "foreign-group",
+          "listener-scalar",
+          "listener-compound",
+          "quiescent-join",
+          "callbacks-closed"
+        ],
+        "workers_started": 2,
+        "workers_joined": true,
+        "callbacks_closed": true,
+        "static_callbacks_retained": 1
+      }
+    },
+    {
+      "time_utc": "2026-11-01T02:52:26.951120+00:00",
+      "verification": {
+        "schema": "full-replacement-ffi-v1",
+        "phase": "update",
+        "license": "pro",
+        "pro_feature_enabled": true,
+        "structural_verified": true,
+        "ffi_verified": true,
+        "rendered_text": "license:pro full-replacement:verified value:28 full-ffi:v2-update",
+        "checks": [
+          "native-version",
+          "scalar-v2",
+          "struct-v2",
+          "new-binding",
+          "native-address-of",
+          "process-lookup",
+          "bool-pointer",
+          "static-callback",
+          "local-static",
+          "local-capture",
+          "local-aggregate",
+          "foreign-group",
+          "listener-scalar",
+          "listener-compound",
+          "quiescent-join",
+          "callbacks-closed"
+        ],
+        "workers_started": 2,
+        "workers_joined": true,
+        "callbacks_closed": true,
+        "static_callbacks_retained": 1
+      }
+    },
+    {
+      "time_utc": "2026-11-01T02:52:35.896241+00:00",
+      "verification": {
+        "schema": "full-replacement-ffi-v1",
+        "phase": "base",
+        "license": "free",
+        "pro_feature_enabled": false,
+        "structural_verified": true,
+        "ffi_verified": true,
+        "rendered_text": "license:free full-replacement:verified value:10 full-ffi:v1-base",
+        "checks": [
+          "native-version",
+          "scalar-v1",
+          "struct-v1"
+        ],
+        "workers_started": 0,
+        "workers_joined": true,
+        "callbacks_closed": true,
+        "static_callbacks_retained": 0
+      }
+    },
+    {
+      "time_utc": "2026-11-01T02:52:58.779056+00:00",
+      "verification": {
+        "schema": "full-replacement-ffi-v1",
+        "phase": "base",
+        "license": "free",
+        "pro_feature_enabled": false,
+        "structural_verified": true,
+        "ffi_verified": true,
+        "rendered_text": "license:free full-replacement:verified value:10 full-ffi:v1-base",
+        "checks": [
+          "native-version",
+          "scalar-v1",
+          "struct-v1"
+        ],
+        "workers_started": 0,
+        "workers_joined": true,
+        "callbacks_closed": true,
+        "static_callbacks_retained": 0
+      }
+    },
+    {
+      "time_utc": "2026-11-01T02:53:08.572512+00:00",
+      "verification": {
+        "schema": "full-replacement-ffi-v1",
+        "phase": "update",
+        "license": "pro",
+        "pro_feature_enabled": true,
+        "structural_verified": true,
+        "ffi_verified": true,
+        "rendered_text": "license:pro full-replacement:verified value:28 full-ffi:v2-update",
+        "checks": [
+          "native-version",
+          "scalar-v2",
+          "struct-v2",
+          "new-binding",
+          "native-address-of",
+          "process-lookup",
+          "bool-pointer",
+          "static-callback",
+          "local-static",
+          "local-capture",
+          "local-aggregate",
+          "foreign-group",
+          "listener-scalar",
+          "listener-compound",
+          "quiescent-join",
+          "callbacks-closed"
+        ],
+        "workers_started": 2,
+        "workers_joined": true,
+        "callbacks_closed": true,
+        "static_callbacks_retained": 1
+      }
+    },
+    {
+      "time_utc": "2026-11-01T02:53:30.163501+00:00",
+      "verification": {
+        "schema": "full-replacement-ffi-v1",
+        "phase": "base",
+        "license": "free",
+        "pro_feature_enabled": false,
+        "structural_verified": true,
+        "ffi_verified": true,
+        "rendered_text": "license:free full-replacement:verified value:10 full-ffi:v1-base",
+        "checks": [
+          "native-version",
+          "scalar-v1",
+          "struct-v1"
+        ],
+        "workers_started": 0,
+        "workers_joined": true,
+        "callbacks_closed": true,
+        "static_callbacks_retained": 0
+      }
+    }
+  ],
+  "online_installed_pointers": {
+    "next_boot_patch": 1,
+    "last_booted_patch": 1,
+    "currently_booting_patch": null,
+    "boot_started_at": null
+  },
+  "offline_launch": {
+    "api_and_observer_ports_closed": true,
+    "key_supplied_to_launch": false,
+    "verification": {
+      "schema": "full-replacement-ffi-v1",
+      "phase": "update",
+      "license": "pro",
+      "pro_feature_enabled": true,
+      "structural_verified": true,
+      "ffi_verified": true,
+      "rendered_text": "license:pro full-replacement:verified value:28 full-ffi:v2-update",
+      "checks": [
+        "native-version",
+        "scalar-v2",
+        "struct-v2",
+        "new-binding",
+        "native-address-of",
+        "process-lookup",
+        "bool-pointer",
+        "static-callback",
+        "local-static",
+        "local-capture",
+        "local-aggregate",
+        "foreign-group",
+        "listener-scalar",
+        "listener-compound",
+        "quiescent-join",
+        "callbacks-closed"
+      ],
+      "workers_started": 2,
+      "workers_joined": true,
+      "callbacks_closed": true,
+      "static_callbacks_retained": 1
+    },
+    "scope": "Cold process launch with both local servers stopped; iPad networking itself remained enabled.",
+    "immediate_post_launch_metadata_probe_mtime": "2026-11-01T02:50:59.000Z",
+    "copied_report_preserved_mtime_utc": "2026-11-01T02:51:48+00:00",
+    "freshness_evidence": "Immediate info-files query still saw the preceding online report (02:50:59Z). The later devicectl copy preserved the new report mtime (02:51:48Z), after server shutdown and offline relaunch and before server restart. Baseline and online copies likewise preserve their device report times. The copied report passed the full update schema."
+  },
+  "rollback": {
+    "api": {
+      "time": 1793501545.4542139,
+      "http_status": 204,
+      "release_version": "1.0.0+2",
+      "patch_number": 1,
+      "operation": "release-scoped rollback"
+    },
+    "pointers_after_check": {
+      "next_boot_patch": null,
+      "last_booted_patch": null,
+      "currently_booting_patch": null,
+      "boot_started_at": null
+    },
+    "fresh_base_report": true
+  },
+  "rollforward": {
+    "api": {
+      "time": 1793501577.411825,
+      "http_status": 204,
+      "release_version": "1.0.0+2",
+      "patch_number": 1,
+      "operation": "release-scoped rollforward"
+    },
+    "fresh_update_report": true
+  },
+  "events": [
+    {
+      "patch_number": 0,
+      "event_type": "PatchCheck",
+      "failure_category": null,
+      "timestamp": 1793501058166
+    },
+    {
+      "patch_number": 0,
+      "event_type": "PatchCheck",
+      "failure_category": null,
+      "timestamp": 1793501439968
+    },
+    {
+      "patch_number": 1,
+      "event_type": "__patch_download__",
+      "failure_category": null,
+      "timestamp": 1793501440
+    },
+    {
+      "patch_number": 1,
+      "event_type": "PatchCheck",
+      "failure_category": null,
+      "timestamp": 1793501459181
+    },
+    {
+      "patch_number": 1,
+      "event_type": "__patch_install__",
+      "failure_category": null,
+      "timestamp": 1793501459
+    },
+    {
+      "patch_number": 1,
+      "event_type": "PatchCheck",
+      "failure_category": null,
+      "timestamp": 1793501546949
+    },
+    {
+      "patch_number": 0,
+      "event_type": "PatchCheck",
+      "failure_category": null,
+      "timestamp": 1793501555895
+    },
+    {
+      "patch_number": 0,
+      "event_type": "PatchCheck",
+      "failure_category": null,
+      "timestamp": 1793501578778
+    },
+    {
+      "patch_number": 1,
+      "event_type": "__patch_download__",
+      "failure_category": null,
+      "timestamp": 1793501579
+    },
+    {
+      "patch_number": 1,
+      "event_type": "__patch_install__",
+      "failure_category": null,
+      "timestamp": 1793501588
+    },
+    {
+      "patch_number": 1,
+      "event_type": "PatchCheck",
+      "failure_category": null,
+      "timestamp": 1793501588572
+    },
+    {
+      "patch_number": 1,
+      "event_type": "__patch_install_failure__",
+      "failure_category": null,
+      "timestamp": 1793501609
+    },
+    {
+      "patch_number": 0,
+      "event_type": "PatchCheck",
+      "failure_category": null,
+      "timestamp": 1793501610199
+    }
+  ],
+  "limitations": [
+    "Frozen-source physical acceptance; current-source iOS engine and all-platform CI are separate gates.",
+    "One synthetic native plugin with fixed released C exports; native binary changes still require a store release.",
+    "No transient executable-memory mapping audit, broad plugin compatibility, or launch/frame/RSS performance claim."
+  ],
+  "cleanup": {
+    "dedicated_app_uninstalled": true,
+    "disposable_key_replaced_with_zeros": true,
+    "servers_stopped_and_ports_released": true,
+    "private_build_and_diagnostic_artifacts_retained": true,
+    "frozen_engine_outputs_preserved": true,
+    "disposable_pub_cache_removed": true
+  },
+  "wrong_key_fallback": {
+    "started": 1793501608.70477,
+    "report_time": 1793501610.163501,
+    "launch_exit_code": 0,
+    "report": {
+      "schema": "full-replacement-ffi-v1",
+      "phase": "base",
+      "license": "free",
+      "pro_feature_enabled": false,
+      "structural_verified": true,
+      "ffi_verified": true,
+      "rendered_text": "license:free full-replacement:verified value:10 full-ffi:v1-base",
+      "checks": [
+        "native-version",
+        "scalar-v1",
+        "struct-v1"
+      ],
+      "workers_started": 0,
+      "workers_joined": true,
+      "callbacks_closed": true,
+      "static_callbacks_retained": 0
+    },
+    "purpose": "wrong-key rejection and disposable Keychain key overwrite before uninstall"
+  },
+  "event_timestamp_units": "Raw server event values: PatchCheck timestamps are Unix milliseconds; __patch_download__, __patch_install__, and __patch_install_failure__ timestamps are Unix seconds."
+}

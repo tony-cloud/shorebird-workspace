@@ -1,0 +1,37 @@
+{
+  "date": "2026-11-01",
+  "source_branch": "tonycloud/ffi-platform-validation-20261101",
+  "toolchain": {
+    "dart_sdk": "928a00195899056e8283df710a4028e2c20e291d",
+    "flutter_source": "e424530a02a52a57df30ec277dabdd56bc2e17cb",
+    "updater": "bb4224303d18baaacd1c2316e24336813517142d",
+    "engine_identity": "e15d73018ba8c6c9fdbc3a20faa7fbb2b877b3d8",
+    "identity_material": "open-shorebird-toolchain-v1\n928a00195899056e8283df710a4028e2c20e291d\ne424530a02a52a57df30ec277dabdd56bc2e17cb\nbb4224303d18baaacd1c2316e24336813517142d\n",
+    "flutter": "c9400c1bb031a3c29f668c7f51eb30d42c369870",
+    "shorebird": "2f1f5a164e2533e304e9402cdfa226bc96c00bd5"
+  },
+  "changes": [
+    "Preserve Windows compiler platform URI and cover drive paths with spaces and fragments.",
+    "Correct Linux keyutils buffer pointer type without changing key validation or erasure.",
+    "Accept inert root directory markers in guarded TAR extraction while preserving traversal, alias, collision and special-file rejection.",
+    "Cover replacement-only async/await, generic sync generators and gated async-generator cancellation in the real PRODUCT replacement harness."
+  ],
+  "prior_run": {
+    "id": 41262099401,
+    "root_revision": "cdf7f74907b2d7f2e2d32400d36ed960904e3938",
+    "known_failures": {
+      "windows_sdk": "Test fixture supplied raw Windows platform path",
+      "linux_engine": "Keyring provider byte-buffer conversion rejected by keyutils header"
+    },
+    "remaining_jobs": "Left running on its original branch; results are separate from this integration."
+  },
+  "validation": [
+    "Windows descriptor suite: 14 tests passed using actual ec628 macOS ARM64 CI SDK artifact; Windows rerun pending.",
+    "Linux exact production-call signature check: original rejected, corrected accepted; 25 Python driver tests passed with 1 Linux-only skip; native Linux compile/runtime rerun pending.",
+    "Guarded TAR assembler: existing positive and adversarial cases passed; real CLI/SDK/engine archives safely extracted; current mirror correctly rejects missing artifacts.",
+    "Async and generator PRODUCT plain/encrypted replacement and rejection/fallback matrices passed before integration.",
+    "Frozen-source signed iPad full-FFI update, offline, rollback/rollforward and wrong-key fallback passed; this is not latest-toolchain device validation."
+  ],
+  "hosted_corrected_run": "pending",
+  "frozen_ios_outputs_preserved": true
+}

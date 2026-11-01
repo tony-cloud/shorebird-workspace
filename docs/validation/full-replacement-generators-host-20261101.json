@@ -1,0 +1,28 @@
+{
+  "date": "2026-11-01",
+  "status": "passed locally with explicit cancellation completion gate; hosted CI pending",
+  "runtime_sdk_commit": "ec6287baef0def9b34f66af7fa48931fff7b152f",
+  "scope": "Update-only async, sync generator and async generator code after PRODUCT full-domain replacement on macOS ARM64",
+  "harness_change": "uncommitted SDK test extension; production SDK code unchanged",
+  "harness_sha256": "09c6e5033d76c474994384dfa6a7c3b8270ef67c4bb9ce4779df3df815c56e62",
+  "log_sha256": "251c36cb46a67fe7d64196ec98dc2cfce3ffde32eafa6031a021e61ee31d985c",
+  "command": "python3 scripts/verify_encrypted_aot_runtime.py --full-replacement --product --build-dir dart-sdk/xcodebuild/ReleaseARM64 --tooling-dart dart-sdk/xcodebuild/ReleaseARM64/dart-sdk/bin/dart --work-dir /private/tmp/shorebird-current-sdk-generator-gate-20261101",
+  "exit_code": 0,
+  "installation_routes": [
+    "plain full replacement",
+    "real Dart AES envelope -> native decryption -> full replacement -> plaintext release before execution"
+  ],
+  "invariants": {
+    "native_baseline": "No application async or generator function; unchanged driver entrypoints call synchronous baseline stubs.",
+    "async": "Pending before RunLoop, retained changed objects across successful and failing awaits, StateError identity preserved, result89, finally1, unexpected errors0.",
+    "sync_star": "Generic Iterable<Mutable>, yield then yield* delegation, exact identities and values44/45/46 despite object mutation, finally1 after exhaustion.",
+    "async_star": "Pending before RunLoop; exact44/45 sequence and cancellation at second yield; first RunLoop ends with finallyStarts1/finallyRuns0/consumerResult0. After explicit gate release and second RunLoop: consumerResult4445/finallyRuns1, post-cancel continuation0, unexpected errors0.",
+    "existing_suite": "Bundled baseline, profile/binding mismatch, malformed payload rejection and fresh-group fallback checks still pass."
+  },
+  "limits": [
+    "Host SDK proof only; physical iOS and FlutterEngine are not exercised.",
+    "No forced collection during suspension or timing/RSS benchmark.",
+    "Linux/x64 and other platforms not executed by this local run."
+  ],
+  "review_followup": "Resolved: replaced microtask-only finally with an explicit Completer gate. First RunLoop requires pending consumer and unfinished cleanup; a driver API releases the gate and a one-shot message drains scheduled microtasks. Second RunLoop requires cleanup and consumer completion. Focused re-review found no actionable issue."
+}

@@ -3,8 +3,11 @@
 The SDK has an opt-in full replacement profile intended to cover changes beyond
 body replacement and additive structural patches. Flutter/CLI integration has
 passed one distribution-signed physical iPad update and recovery lifecycle.
-Native macOS ARM64 PRODUCT full-profile FFI host acceptance also passes;
-physical iOS FFI, broader compatibility and release validation remain incomplete.
+Native macOS ARM64 PRODUCT full-profile FFI host acceptance also passes.
+A frozen-source distribution-signed iPad build now passes full-profile FFI,
+offline cold launch, server rollback and rollforward, and wrong-key fallback.
+Latest-source device acceptance, broader compatibility and release validation
+remain incomplete.
 Existing releases continue to use their existing profile. A new native release
 is required to enable the full profile.
 
@@ -253,7 +256,7 @@ non-shared/shared static-field access rules. The
 identifies SDK commits `1a3b24b` and `a2095cb` and its precise evidence limits.
 That milestone preceded full-profile FFI admission; the separate full-plugin
 acceptance below now covers installation plus real interpreted calls/callbacks.
-Physical-device FFI remains outstanding. Host checks do not audit transient
+The frozen-source iPad FFI lifecycle is recorded below. Host checks do not audit transient
 memory permissions or instruction writes. The earlier
 [callback validation record](validation/product-interpreter-callbacks-20261031.json)
 remains historical evidence for its tested tree.
@@ -307,6 +310,10 @@ That same `e0ef8e0` checkpoint has now completed the full 30-job build matrix an
 artifact-mirror validation. Its [completed CI record](validation/github-actions-full-build-20261101.json)
 preserves the exact source revisions and separates this result from subsequent
 source changes and outstanding physical-device runtime acceptance.
+A subsequent rebuild at SDK `ec6287ba` also passes all 12 encrypted FFI
+executions and 60 malformed-wrapper rejection checks on macOS ARM64; see the
+[current-source host record](validation/full-replacement-ffi-current-sdk-20261101.json).
+This does not extend the physical-device or cross-platform acceptance.
 
 Run the host acceptance with matching SDK artifacts:
 
@@ -324,6 +331,14 @@ The real Dart AES producer also passes through native decryption, replacement,
 and plaintext release before execution; wrong keys, altered ciphertext and
 expired envelopes are rejected. Non-PRODUCT replacement, ordinary PRODUCT
 startup and the existing PRODUCT additive suite also pass locally.
+The later [async host regression](validation/full-replacement-async-host-20261101.json)
+also passes plain and encrypted PRODUCT installation when only the update
+introduces application `async`/`await`. It checks fresh mutable objects across
+successful and exceptional resumption, expected error identity and exactly one
+`finally` execution. The subsequent [generator regression](validation/full-replacement-generators-host-20261101.json)
+passes generic `sync*`/`yield*` with retained mutable identity and `async*`
+cancellation that waits for asynchronous cleanup. These regressions are locally
+validated and await hosted CI.
 Tear-off access is normally rejected before installation, so that path does not
 claim a captured retired closure was executed by the test.
 
@@ -365,8 +380,23 @@ identifies the tested integration sources. That device result predates FFI
 admission; the later host acceptance above does not extend its physical-device
 proof.
 
-Remaining acceptance includes signed physical iOS full-profile FFI/callback
-execution, broader plugin/application coverage, and launch/RSS/frame benchmarks.
+The [2026-11-01 physical FFI record](validation/full-replacement-ffi-ios-20261101.json)
+covers a distribution-signed iPad app with no debugger, dynamic modules, or JIT
+entitlement. The real CLI uploaded an AES-256-GCM encrypted full replacement;
+the unchanged installed app downloaded and activated it under strict patch and
+required response verification. Validated device reports cover changed Dart
+structure and FFI bindings, scalar and aggregate calls, static/local/group/listener
+callbacks, two joined worker threads, and callback cleanup. Cold launch with
+both local servers stopped passed using the persisted Keychain key. Server
+rollback returned to the baseline, rollforward restored the update, and an
+incorrect key fell back to the baseline. The disposable key was overwritten
+and the test app and services were cleaned up.
+
+This device result uses frozen SDK `bdc30207`, Flutter `41865d0e`, and engine
+`0b65b0be`; it does not validate the later `ec6287ba` / `8045bf96` / `8b48ad13`
+toolchain. It covers one synthetic plugin with fixed released native exports.
+Remaining acceptance includes latest-source physical iOS validation, broader
+plugin/application coverage, and launch/RSS/frame benchmarks.
 This work does not establish complete Shorebird replacement. Native executable
 cache behavior and its platform validation remain separate; see
 [platform testing](PLATFORM_TESTING.md).

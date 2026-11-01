@@ -1,6 +1,6 @@
 {
   "date": "2026-11-01",
-  "status": "source fixes and local checks passed; corrected hosted packaging pending",
+  "status": "corrected hosted macOS x64 CLI artifact verified locally; complete current platform runtime acceptance pending",
   "packaging_defect": {
     "observed_ci_run": 41237899850,
     "observed_cli_flutter_revision": "ba8173de24116305c2dd2ef3b7bfe18b1ec537a3",
@@ -33,13 +33,58 @@
     }
   },
   "current_source_pins": {
+    "flutter": "8045bf964e0b8379ccefbf62a431d195c22a6852",
+    "shorebird": "bf55d3cfecb80ba0d235853d6e442697b16dfa53",
+    "engine": "8b48ad134fce16464d35f6ec7bd776f8297d0cd7"
+  },
+  "limits": [
+    "This verifies the downloaded current macOS x64 CLI artifact, not every published package or the pending complete runtime matrix.",
+    "Android harness rejects mismatched staged Flutter HEAD, engine pins and source-record metadata before any device operations.",
+    "Frozen iOS and host engine outputs were not rebuilt or modified."
+  ],
+  "source_pins_at_initial_fix": {
     "flutter": "a9777121a4913a9d8b7e471d600b56bf6678fcf6",
     "shorebird": "6ec939ac41ee734df001bc2eb147e591d11e8d72",
     "engine": "2d1d690c748864ec5adb34a96e4a62913a16c1de"
   },
-  "limits": [
-    "These source fixes require a new hosted CI run; earlier green builds do not prove corrected packaging.",
-    "Android harness rejects mismatched staged Flutter HEAD, engine pins and source-record metadata before any device operations.",
-    "Frozen iOS and host engine outputs were not rebuilt or modified."
-  ]
+  "hosted_artifact_verification": {
+    "ci_run_id": 41262099401,
+    "root_commit": "cdf7f74907b2d7f2e2d32400d36ed960904e3938",
+    "artifact": {
+      "digest": "sha256:356c3021922703d6669f3e23e87f4a0f9a3f45525f1bfce45c6d042ed78e9266",
+      "id": 13066090766,
+      "name": "cli-macos-x64",
+      "size_in_bytes": 12253513,
+      "workflow_run": {
+        "head_branch": "tonycloud/linux-native-validation-20261101",
+        "head_repository_id": 1280110099,
+        "head_sha": "cdf7f74907b2d7f2e2d32400d36ed960904e3938",
+        "id": 41262099401,
+        "repository_id": 1280110099
+      }
+    },
+    "github_zip_digest_verified": true,
+    "inner_tar_sidecar_verified": true,
+    "manifest": {
+      "name": "open-shorebird-cli-macos-x64",
+      "git_sha": "cdf7f74907b2d7f2e2d32400d36ed960904e3938",
+      "runner_os": "macOS",
+      "flutter_revision": "8045bf964e0b8379ccefbf62a431d195c22a6852",
+      "engine_revision": "8b48ad134fce16464d35f6ec7bd776f8297d0cd7",
+      "target_os": "macos",
+      "target_arch": "x64",
+      "included": [
+        "bin/shorebird",
+        "bin/open_aot_patch_tools",
+        "bin/artifact_proxy",
+        "bin/internal/flutter.version",
+        "bin/internal/engine.version"
+      ]
+    },
+    "packaged_cli_flutter_engine_pins_match_staged_source": true,
+    "source_record_matches_root_gitlinks": true,
+    "private_pin_adjustments": false,
+    "local_execution": "x64 packaged shorebird --help and open_aot_patch_tools --help both exited0 on macOS ARM64 under existing x64 execution support",
+    "limits": "Help startup and pinned source coherence only; no rebuilt Android app or latest-source engine lifecycle executed."
+  }
 }

@@ -1,0 +1,38 @@
+{
+  "date": "2026-11-01",
+  "scope": "Linux keyutils provider compilation correction",
+  "ci_run_id": 41262099401,
+  "job_id": 124718471202,
+  "failed_step": "Compile Linux session keyring provider contract",
+  "engine_build_passed": true,
+  "cause": "keyctl_read requires char*; SecretKey stores uint8_t bytes, so implicit conversion was rejected by the real Linux header.",
+  "fix": "Explicit char* view at the keyutils boundary; fixed-size buffer, exact returned length check and secret erasure are unchanged.",
+  "source": "testapps/license_flavor_patch_test/tool/linux_native/runner_patch_key_provider.cpp",
+  "source_sha256": "fab1862492d3eb8a1d0258f215b7a43adda8b38971360275b80ad39b57dbd1b9",
+  "local_validation": {
+    "host": "macOS ARM64",
+    "scope": "C++17 strict syntax check of the exact production keyctl_read call against the signature reported by the Linux compiler; not a keyring execution test.",
+    "compiler": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+    "results": {
+      "before": {
+        "exit_code": 1,
+        "source_sha256": "7a36bf40ea3b26c301c5a246bc39d7874afb2c2fe7da19744cd9826c53c45d8e"
+      },
+      "after": {
+        "exit_code": 0,
+        "source_sha256": "d53b564f09ad488bd42e02385f6a06126433d95553c0938ceb5a30f2bbb4afee"
+      }
+    },
+    "python_driver_tests": {
+      "tests": 26,
+      "passed": 25,
+      "skipped": 1,
+      "reason": "Linux-only keyring integration test unavailable on macOS",
+      "log_sha256": "40069486f532e31fe0caf63242da4238bd8ddf204514c3d1d63203fc594f9f3c"
+    }
+  },
+  "linux_native_compile_and_runtime_rerun": "pending",
+  "lifecycle_execution": "not_reached_in_failed_job",
+  "committed": true,
+  "prepared_native_cache_engine_tests": "passed in current Linux CI before provider compilation"
+}

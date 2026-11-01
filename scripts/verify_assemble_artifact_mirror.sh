@@ -46,7 +46,8 @@ engine_staging="$TMP_DIR/linux-engine"
 mkdir -p "$engine_staging/linux-engine/mirror/shorebird/flutter_infra_release/flutter/$ENGINE_REVISION/linux-x64-release"
 printf 'linux-engine-artifacts\n' \
   > "$engine_staging/linux-engine/mirror/shorebird/flutter_infra_release/flutter/$ENGINE_REVISION/linux-x64-release/artifacts.zip"
-tar -C "$engine_staging" -czf "$INPUT_DIR/linux-engine-x64.tar.gz" linux-engine
+# Standard tar packaging includes an inert root directory and ./-prefixed paths.
+tar -C "$engine_staging" -czf "$INPUT_DIR/linux-engine-x64.tar.gz" .
 
 "$ROOT/scripts/assemble_artifact_mirror.sh" "$INPUT_DIR" "$OUTPUT_DIR"
 
@@ -146,6 +147,84 @@ if "$ROOT/scripts/assemble_artifact_mirror.sh" \
   exit 70
 fi
 grep -q "duplicate archive member path" "$TMP_DIR/duplicate-tar.log"
+
+"$PYTHON_BIN" - "$ROOT/scripts/safe_extract_tar.py" "$TMP_DIR" <<'PY'
+import io
+from pathlib import Path
+import stat
+import subprocess
+import sys
+import tarfile
+
+extractor = Path(sys.argv[1])
+root = Path(sys.argv[2]) / "root-marker-cases"
+root.mkdir()
+
+
+def make_archive(name, entries):
+    path = root / f"{name}.tar.gz"
+    with tarfile.open(path, "w:gz") as archive:
+        for member_name, member_type in entries:
+            member = tarfile.TarInfo(member_name)
+            member.type = member_type
+            member.mode = 0 if member_type == tarfile.DIRTYPE else 0o751
+            if member_type in (tarfile.SYMTYPE, tarfile.LNKTYPE):
+                member.linkname = "outside.txt"
+            content = b"archive payload\n" if member_type == tarfile.REGTYPE else b""
+            member.size = len(content)
+            archive.addfile(member, io.BytesIO(content))
+    return path
+
+
+def extract(archive, output):
+    return subprocess.run(
+        [sys.executable, str(extractor), str(archive), str(output)],
+        capture_output=True, text=True,
+    )
+
+
+for index, marker in enumerate((".", "./")):
+    archive = make_archive(f"root-directory-{index}", [
+        (marker, tarfile.DIRTYPE),
+        ("./bin", tarfile.DIRTYPE),
+        ("./bin/tool", tarfile.REGTYPE),
+        ("./manifest.json", tarfile.REGTYPE),
+    ])
+    output = root / f"positive-{index}"
+    output.mkdir()
+    output.chmod(0o750)
+    result = extract(archive, output)
+    assert result.returncode == 0, result.stderr
+    assert stat.S_IMODE(output.stat().st_mode) == 0o750
+    assert (output / "bin/tool").read_bytes() == b"archive payload\n"
+    assert stat.S_IMODE((output / "bin/tool").stat().st_mode) == 0o751
+    assert (output / "manifest.json").read_bytes() == b"archive payload\n"
+
+cases = []
+for marker in (".", "./", "./."):
+    for member_type in (tarfile.REGTYPE, tarfile.SYMTYPE, tarfile.LNKTYPE,
+                        tarfile.FIFOTYPE, tarfile.CHRTYPE, tarfile.BLKTYPE):
+        cases.append(([(marker, member_type)], "unsafe archive member path"))
+for member_name in ("./.", "././", "../outside.txt", "./../outside.txt",
+                    "bin/../../outside.txt", "/outside.txt", "bin\\outside.txt"):
+    member_type = tarfile.DIRTYPE if member_name in ("./.", "././") else tarfile.REGTYPE
+    cases.append(([(".", tarfile.DIRTYPE), (member_name, member_type)],
+                  "unsafe archive member path"))
+cases.extend([
+    ([("./bin/tool", tarfile.REGTYPE), ("bin/tool", tarfile.REGTYPE)],
+     "duplicate archive member path"),
+    ([("bin", tarfile.REGTYPE), ("bin/tool", tarfile.REGTYPE)],
+     "file parent collides with file"),
+    ([("bin/tool", tarfile.REGTYPE), ("bin", tarfile.REGTYPE)],
+     "file collides with directory"),
+])
+for index, (entries, expected_error) in enumerate(cases):
+    archive = make_archive(f"unsafe-{index}", entries)
+    result = extract(archive, root / f"negative-{index}")
+    assert result.returncode == 70, (entries, result.returncode, result.stderr)
+    assert expected_error in result.stderr, (entries, result.stderr)
+assert not (root / "outside.txt").exists()
+PY
 
 BAD_ZIP_INPUT="$TMP_DIR/bad-zip"
 BAD_ZIP_OUTPUT="$TMP_DIR/bad-zip-output"

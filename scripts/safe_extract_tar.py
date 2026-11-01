@@ -17,7 +17,7 @@ def safe_member_name(member: tarfile.TarInfo) -> str | None:
     name = member.name
     if member.isdir():
         name = name.rstrip("/")
-    if not name or name == ".":
+    if not name:
         return None
     if "\\" in name or "\x00" in name:
         return None
@@ -27,6 +27,10 @@ def safe_member_name(member: tarfile.TarInfo) -> str | None:
     candidate = PurePosixPath(name)
     if candidate.is_absolute():
         return None
+    # Conventional tar root-directory markers are inert. Do not extend this
+    # allowance to other dot aliases, which PurePosixPath also normalizes away.
+    if not candidate.parts:
+        return "." if member.isdir() and name == "." else None
     if any(part in ("", ".", "..") for part in candidate.parts):
         return None
     if candidate.parts and ":" in candidate.parts[0]:
@@ -71,6 +75,9 @@ def extract_safe_tar_archive(archive_path: Path, extract_dir: Path) -> None:
             for member in members:
                 safe_name = safe_member_name(member)
                 assert safe_name is not None
+                if safe_name == ".":
+                    # Do not apply archive metadata to the extraction root.
+                    continue
                 target = (extract_root / safe_name).resolve()
                 ensure_within_root(archive_path, extract_root, target, member.name)
 
