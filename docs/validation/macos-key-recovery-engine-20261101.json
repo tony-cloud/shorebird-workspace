@@ -1,0 +1,48 @@
+{
+  "scope": "Native macOS ARM64 engine unit and adapter tests; not signed app acceptance",
+  "pins": {
+    "dart_sdk": "b17e766a7f25f22f31dcaeb313c55d40945a8c8a",
+    "flutter_source": "6dd7382ca9ce9b36d17d56d12d719f805ed110ad",
+    "updater": "92a7015bca749842de87131e354bfda626390128",
+    "server": "8cc3148fdcb489b20faa0a544d7a6690b6536da9",
+    "identity_material": "open-shorebird-toolchain-v1\nb17e766a7f25f22f31dcaeb313c55d40945a8c8a\n6dd7382ca9ce9b36d17d56d12d719f805ed110ad\n92a7015bca749842de87131e354bfda626390128\n",
+    "engine_identity": "29c8889bc81cec630a83b1e05416c0d588e6b2db",
+    "flutter": "dfd36cfc65621872864de714ba3948c7c2f5596c",
+    "shorebird": "ee0480819e9d61ddf84389d3cb6400e60fc07b1e"
+  },
+  "build_exit_code": 0,
+  "build_log_sha256": "8acf341de9a46fecb3c4eb13540654b2f48477b0e34da512bb19a7e1b6c88b53",
+  "tests_started_after_build_completed": true,
+  "test_suites": {
+    "shorebird": {
+      "executed": 105,
+      "failures": 0,
+      "disabled": 0,
+      "xml_sha256": "01be7988255a6c26868c21f340d3262182af31a48870130543d6929110586b18",
+      "binary_sha256": "5a0f7464b7e39b21bc1506ef1fbc74434d373b4c3ac81858ec749d307c7f8de1"
+    },
+    "embedder": {
+      "executed": 5,
+      "failures": 0,
+      "disabled": 0,
+      "xml_sha256": "d3194d7b0d8227530d7219b7b40d864d1f239caf223dbd2470ee38d6eca5c26a",
+      "binary_sha256": "1a3c5578f9586096536bfe327d93fbc1e29a188c7cf5d4ad78d8f4c7c5c43489"
+    },
+    "cocoa": {
+      "executed": 4,
+      "failures": 0,
+      "disabled": 0,
+      "xml_sha256": "bbdbdba74ee1155d25a4a028ba30f10f0baa85b43f91d392757d78d3fd4565f8",
+      "binary_sha256": "419c31d49716660468cfa99070df129e161a06c13b33d3246781e91ee7677f8c"
+    }
+  },
+  "artifacts": {
+    "FlutterMacOS.framework/Versions/A/FlutterMacOS": "e26afd45a3a9bd7dd3cf5e2b8145163af509fdbcd7b40313b1f3f588dc5b53c4",
+    "universal/gen_snapshot_arm64": "c64098238fa9a23ba63ade1c7508486441a9e47f7bd2e6aa11843f0dcdf6117a",
+    "dart-sdk/bin/dart": "2beddaa46c65d64b1cbf00adc0f2b0e5d7760508b878353250d12f303d845b0d",
+    "dartaotruntime": "6add99ca8534e36ec2138634980ba12974e1e5cda91c71f81a615efcad5de7b5",
+    "dart-sdk/bin/snapshots/dart2bytecode.dart.snapshot": "b9cce19f036fbe1b0f28af0c67bc625d8136b22ad1b636bebbf7803c140de7ac",
+    "args.gn": "a939b7cb7e7b2e4bfc7c911038784527dfb72e701855fdce465a96f7898a41a5"
+  },
+  "frozen_outputs_modified": false
+}

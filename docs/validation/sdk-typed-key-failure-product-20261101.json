@@ -1,0 +1,24 @@
+{
+  "scope": "Native macOS ARM64 PRODUCT SDK tests only; not app/device acceptance",
+  "sdk_revision": "b17e766a7f25f22f31dcaeb313c55d40945a8c8a",
+  "product": true,
+  "aot_patching": true,
+  "shorebird_interpreter": true,
+  "build_directory": "/Users/tonylu/git/shorebird-workspace/.agents/builds/sdk-product-key-recovery-20261101",
+  "executable_sha256": "5f9e2fc2054e922420bf0dc11fbf086b7556bba54be0e6c9e2b74249e4309feb",
+  "args_sha256": "87bfffc9d180c867490bc4b2f693f4d3724be92b691876b6b0f3fca58754d728",
+  "tests": [
+    {
+      "test": "DartAPI_AotPatchingConfiguration",
+      "exit_code": 0,
+      "log_sha256": "bfe446ea8af12b7ec560b18d4344699fcc9b067c5427ecdd84d1fad9f098acba"
+    },
+    {
+      "test": "DartAPI_BytecodePatchReloadConfiguration",
+      "exit_code": 0,
+      "log_sha256": "0dbeaa4b8dd5c6afbb5299464b5327f11d6c4fa464ef7e89bf89127c9a90e8c3"
+    }
+  ],
+  "disabled_configuration": "Syntax compilation previously passed; no disabled runtime result claimed",
+  "frozen_outputs_modified": false
+}

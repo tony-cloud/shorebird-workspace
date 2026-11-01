@@ -1,0 +1,13 @@
+{
+  "scope": "Updater Rust unit/integration tests; no native Flutter app acceptance",
+  "updater_revision": "92a7015bca749842de87131e354bfda626390128",
+  "rust_toolchain": "1.97.0",
+  "command": "cargo +1.97.0 test -p updater -- --test-threads=1",
+  "passed": 351,
+  "failed": 0,
+  "log_sha256": "9019bcef36a11df3aa83b4482ba32348ef5097be7e48e8b86487392e01066273",
+  "remaining": [
+    "Fresh signed macOS key failure/recovery lifecycle"
+  ],
+  "engine_ordering_tests": "macos-key-recovery-engine-20261101.json"
+}
