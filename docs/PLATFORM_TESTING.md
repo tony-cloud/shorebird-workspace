@@ -317,6 +317,57 @@ Latest-source device acceptance, broad real-plugin coverage and latest-source CI
 remain pending. The host suite is documented in the
 [full-profile FFI validation record](validation/full-replacement-ffi-host-20261101.json).
 
+The selected macOS security profile requires Hardened Runtime without
+executable-memory or library-validation exceptions. On 2026-11-01 the ARM64
+PRODUCT full-replacement FFI **host** passed with a private Developer ID-signed
+harness and same-team native images, all with empty entitlements: 12 positive
+fresh-group executions, 60 rejection/recovery checks, and callback cleanup.
+This is an additional strict signing result; the earlier isolated host harness
+used a library-validation exception. Compiler groundwork now accepts explicit
+macOS targets without selecting the iOS-only framework marker and binds native
+mapping descriptors to the actual compiler OS. See the
+[strict macOS host record](validation/macos-hardened-interpreter-host-20261101.json).
+That host test still uses iOS envelope metadata. The reviewed Flutter build and
+CLI release/patch routes now implement the explicit local ARM64 full profile
+with `--target-platform=darwin-arm64` and a matching verified local engine.
+Hosted, x64, universal, body-only and additive macOS interpreter configurations
+fail closed. The native macOS route remains available independently.
+
+The final isolated release-engine test inventory passed 96 Shorebird, 5
+embedder and 4 Cocoa tests with no failures or skips. The
+[engine record](validation/macos-interpreter-engine-20261101.json) preserves both
+the initial build evidence and the final committed pins, output versions and
+XML hashes. These unit controls cover signed-host routing, configuration
+lifetime, trusted target options, base recovery and the unchanged native route;
+their SDK/install and Cocoa seams do not establish app execution.
+
+`testapps/license_flavor_patch_test/tool/macos_interpreter_e2e.py` provides a
+separate private-copy preparation/build plan, loopback API and report observer,
+strict same-certificate Developer ID inspection, fresh container report checks,
+and scoped Keychain/resource cleanup. Source-check CI is configured to compile
+it and run its 18 pure/preparation tests. The app's released C exports and native sources stay
+fixed while the full update changes Dart structure, bindings and callbacks.
+The expected reports distinguish three baseline checks from all sixteen update
+checks. Signing and launching are left to the caller. Final cleanup must be
+armed with `cleanup --execute --begin`, followed by native key deletion and
+then `cleanup --execute`; an older copied receipt cannot override the latest
+native control. Cleanup preserves its validated receipt before removing app
+data. A protected, otherwise empty OS container metadata shell is reported
+explicitly as incomplete cleanup rather than silently ignored.
+
+The actual strict-signed ARM64 app passes baseline startup and an encrypted
+macOS-authenticated structural/FFI update. A fresh launch with both loopback
+servers stopped passed all sixteen update checks without changing the signed
+bundle. The real CLI release, archive comparison and patch publication also
+passed. See the [partial lifecycle record](validation/macos-full-replacement-ffi-20261101.json).
+
+The missing-key test exposed a recovery failure: baseline fallback marks the
+candidate as a boot crash and deletes it, preventing offline recovery after
+restoring the key. A typed retryable-key fix is in progress; no corrected
+recovery or wrong-key acceptance is claimed yet. Authenticated rollback and
+rollforward, broader plugins, Intel callbacks, universal full profiles and
+notarization remain pending.
+
 ## Prerequisites
 
 Linux:
@@ -425,7 +476,7 @@ The bootstrap scripts run:
 | --- | --- | --- |
 | iOS | Encrypted Dart bytecode interpreter artifact, `DART_DYNAMIC_MODULES=false` | Verified on a real iPad on June 25, 2026; the patched app displayed `license:pro`. |
 | Android | Public updater binary diff `patch-*.zip` artifact with native AOT patch runtime enabled | CI builds mirror-ready patch binaries and a manual `android-engine-arm64` artifact with `dart_enable_aot_patching=true`, `shorebird_enable_aot_patching=true`, and interpreter mode off; local arm64 release APK build passed. Runtime smoke script is available, but this macOS host currently has no Android device or AVD attached. |
-| macOS | Public updater binary diff `patch-*.zip` artifact with native AOT patch runtime enabled | Verified locally on June 25, 2026 with a native-AOT Flutter snapshot patch; the patched app displayed `license:pro`. CI builds macOS x64/arm64 patch binaries and a manual `macos-engine-arm64` artifact with native AOT patch runtime args verified. |
+| macOS | Legacy native-AOT updater patches; explicit local ARM64 signed-host interpreter full profile | June 25 native snapshot smoke remains historical evidence. The local full-profile Flutter/CLI route is implemented and reviewed, and the isolated engine unit suites pass. Strict-signed macOS app execution and authenticated update/recovery remain pending; hosted, x64 and universal full profiles fail closed. |
 | Linux | Public updater binary diff `patch-*.zip` artifact with native AOT patch runtime enabled | CI builds the Linux x64 patch binary and a manual `linux-engine-x64` artifact with native AOT patch runtime args verified. The runtime smoke defaults to `linux_release_x64`; local runtime validation requires a Linux runner. |
 | Windows | Public updater binary diff `patch-*.zip` artifact | Previously tested; CI still builds the Windows patch binary. |
 | Web | Not a Shorebird CodePush release platform in this CLI/protocol | Manual CI builds `flutter-web-sdk`; local release web build passed with the matching local engine, but it is not counted as a Shorebird runtime patch test. |

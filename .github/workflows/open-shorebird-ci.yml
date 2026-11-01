@@ -161,7 +161,7 @@ jobs:
           python3 -m py_compile scripts/write_cli_toolchain_pins.py scripts/test_cli_toolchain_pins.py
           python3 scripts/test_cli_toolchain_pins.py -v
           python3 -m py_compile scripts/verify_dart_sdk_tooling.py
-          python3 -m py_compile scripts/verify_native_cache_engine_tests.py
+          python3 -m py_compile scripts/verify_native_cache_engine_tests.py scripts/verify_macos_interpreter_engine_tests.py
           python3 scripts/verify_native_cache_engine_tests.py --self-test
           python3 -m py_compile dart-sdk/tools/test_aot_structural_patch.py
           python3 -m py_compile dart-sdk/tools/test_aot_full_replacement.py
@@ -172,8 +172,11 @@ jobs:
           python3 -m py_compile dart-sdk/tools/test_aot_product_ffi.py
           python3 -m py_compile dart-sdk/tools/test_aot_product_ffi_callbacks.py
           python3 -m py_compile dart-sdk/tools/test_aot_full_replacement_ffi.py
+          python3 dart-sdk/tools/test_aot_full_replacement_ffi_signing_test.py -v
           python3 -m py_compile testapps/license_flavor_patch_test/tool/ios_device_e2e.py
           python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p test_ios_device_e2e.py -v
+          python3 -m py_compile testapps/license_flavor_patch_test/tool/macos_interpreter_e2e.py testapps/license_flavor_patch_test/tool/test_macos_interpreter_e2e.py
+          python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p test_macos_interpreter_e2e.py -v
           python3 -m py_compile testapps/license_flavor_patch_test/tool/windows_native_cache_e2e.py
           python3 -m py_compile testapps/license_flavor_patch_test/tool/linux_native_cache_e2e.py
           python3 -m py_compile testapps/license_flavor_patch_test/tool/android_native_app.py
@@ -282,9 +285,14 @@ jobs:
             dart pub get
             dart test --reporter expanded \
               test/general.shard/shorebird/shorebird_native_assets_test.dart \
+              test/general.shard/shorebird/shorebird_interpreter_test.dart \
+              test/general.shard/shorebird/shorebird_replacement_host_test.dart \
+              test/general.shard/shorebird/shorebird_build_key_test.dart \
               test/general.shard/build_system/targets/assets_test.dart \
               test/general.shard/build_system/targets/common_test.dart \
-              test/general.shard/compile_batch_test.dart
+              test/general.shard/build_system/targets/macos_test.dart \
+              test/general.shard/compile_batch_test.dart \
+              test/commands.shard/hermetic/build_macos_test.dart
           } 2>&1 | tee "$results/tests.log"
 
       - name: Upload native mapping build test evidence
@@ -739,6 +747,9 @@ jobs:
           pkg/dart2bytecode/test/full_replacement_test.dart
           pkg/dart2bytecode/test/native_assets_profile_test.dart
           pkg/frontend_server/test/shorebird_native_assets_descriptor_test.dart
+          pkg/dart2bytecode/test/shorebird_ios_full_replacement_target_test.dart
+          pkg/frontend_server/test/shorebird_ios_full_replacement_target_test.dart
+          pkg/vm/test/shorebird_ios_full_replacement_target_test.dart
           pkg/vm/test/native_assets/synthesizer_test.dart --concurrency=1
 
       - name: Run encrypted no-JIT replacement regression
@@ -911,6 +922,9 @@ jobs:
           xcodebuild/ReleaseARM64/dart-sdk/bin/dart --packages=.dart_tool/package_config.json
           third_party/pkg/test/pkgs/test/bin/test.dart
           pkg/frontend_server/test/shorebird_native_assets_descriptor_test.dart
+          pkg/dart2bytecode/test/shorebird_ios_full_replacement_target_test.dart
+          pkg/frontend_server/test/shorebird_ios_full_replacement_target_test.dart
+          pkg/vm/test/shorebird_ios_full_replacement_target_test.dart
           --concurrency=1
 
       - name: Run focused patch API tests
@@ -1101,6 +1115,9 @@ jobs:
           xcodebuild/ReleaseX64/dart-sdk/bin/dart --packages=.dart_tool/package_config.json
           third_party/pkg/test/pkgs/test/bin/test.dart
           pkg/frontend_server/test/shorebird_native_assets_descriptor_test.dart
+          pkg/dart2bytecode/test/shorebird_ios_full_replacement_target_test.dart
+          pkg/frontend_server/test/shorebird_ios_full_replacement_target_test.dart
+          pkg/vm/test/shorebird_ios_full_replacement_target_test.dart
           --concurrency=1
 
       - name: Run focused patch API tests
@@ -1360,6 +1377,9 @@ jobs:
           out/ReleaseX64/dart-sdk/bin/dart.exe --packages=.dart_tool/package_config.json
           third_party/pkg/test/pkgs/test/bin/test.dart
           pkg/frontend_server/test/shorebird_native_assets_descriptor_test.dart
+          pkg/dart2bytecode/test/shorebird_ios_full_replacement_target_test.dart
+          pkg/frontend_server/test/shorebird_ios_full_replacement_target_test.dart
+          pkg/vm/test/shorebird_ios_full_replacement_target_test.dart
           --concurrency=1
 
       - name: Run focused patch API tests
@@ -2580,7 +2600,8 @@ jobs:
             --mac-cpu=${{ matrix.arch }} \
             --target-dir=macos_release_${{ matrix.arch }} \
             --no-prebuilt-dart-sdk \
-            --gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=false shorebird_enable_aot_patching=true shorebird_use_interpreter=false flutter_prebuilt_dart_sdk=false'
+            --enable-unittests \
+            --gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=true shorebird_enable_aot_patching=true shorebird_use_interpreter=false flutter_prebuilt_dart_sdk=false'
 
       - name: Build macOS engine
         working-directory: flutter/engine/src
@@ -2589,7 +2610,10 @@ jobs:
             flutter/shell/platform/darwin/macos:zip_macos_flutter_framework \
             flutter/build/archives:flutter_patched_sdk \
             create_macos_gen_snapshots create_macos_analyze_snapshots \
-            flutter/tools/font_subset:font_subset
+            flutter/tools/font_subset:font_subset \
+            flutter/shell/common/shorebird:shorebird_unittests \
+            flutter/shell/platform/embedder:embedder_unittests \
+            flutter/shell/platform/darwin/macos:flutter_desktop_darwin_unittests
 
       - name: Verify macOS engine args
         run: |
@@ -2597,10 +2621,34 @@ jobs:
             flutter/engine/src/out/macos_release_${{ matrix.arch }}/args.gn \
             dart_dynamic_modules=false \
             dart_enable_aot_patching=true \
-            dart_enable_shorebird_interpreter=false \
+            dart_enable_shorebird_interpreter=true \
             shorebird_enable_aot_patching=true \
             shorebird_use_interpreter=false \
             flutter_prebuilt_dart_sdk=false
+
+      - name: Test macOS interpreter integration
+        run: |
+          set -euo pipefail
+          out="$PWD/flutter/engine/src/out/macos_release_${{ matrix.arch }}"
+          results="$PWD/artifacts/macos-interpreter-tests"
+          mkdir -p "$results"
+          "$out/shorebird_unittests" --gtest_list_tests > "$results/shorebird-list.txt" 2> "$results/shorebird-list-stderr.log"
+          "$out/shorebird_unittests" --gtest_output="xml:$results/shorebird.xml" > "$results/shorebird-tests.log" 2>&1
+          embedder_filter='ShorebirdInterpreterEmbedderTest.*:EmbedderTest.InvalidAOTDataSourcesMustReturnError:EmbedderTest.CanCreateAndCollectAValidElfSource:EmbedderTest.CanLaunchAndShutdownWithAValidElfSource'
+          "$out/embedder_unittests" --gtest_filter="$embedder_filter" --gtest_list_tests > "$results/embedder-list.txt" 2> "$results/embedder-list-stderr.log"
+          "$out/embedder_unittests" --gtest_filter="$embedder_filter" --gtest_output="xml:$results/embedder.xml" > "$results/embedder-tests.log" 2>&1
+          cocoa_filter='FlutterEngineTest.FullInterpreterNeverUsesNativeOrElfRoute:FlutterEngineTest.LegacyProfileKeepsPublicInitializerAndElfRoute:FlutterDartProjectShorebirdTest.*'
+          "$out/flutter_desktop_darwin_unittests" --gtest_filter="$cocoa_filter" --gtest_list_tests > "$results/cocoa-list.txt" 2> "$results/cocoa-list-stderr.log"
+          "$out/flutter_desktop_darwin_unittests" --gtest_filter="$cocoa_filter" --gtest_output="xml:$results/cocoa.xml" > "$results/cocoa-tests.log" 2>&1
+          python3 scripts/verify_macos_interpreter_engine_tests.py "$results"
+
+      - name: Upload macOS interpreter test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-interpreter-engine-tests-${{ matrix.arch }}
+          path: artifacts/macos-interpreter-tests/
+          if-no-files-found: error
 
       - name: Package macOS engine artifacts
         run: |
@@ -2680,7 +2728,7 @@ jobs:
             "target_arch": "${{ matrix.arch }}",
             "dart_dynamic_modules": false,
             "dart_enable_aot_patching": true,
-            "dart_enable_shorebird_interpreter": false,
+            "dart_enable_shorebird_interpreter": true,
             "shorebird_enable_aot_patching": true,
             "shorebird_interpreter": false,
             "included": [

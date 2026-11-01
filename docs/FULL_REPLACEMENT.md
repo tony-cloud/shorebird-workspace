@@ -4,6 +4,8 @@ The SDK has an opt-in full replacement profile intended to cover changes beyond
 body replacement and additive structural patches. Flutter/CLI integration has
 passed one distribution-signed physical iPad update and recovery lifecycle.
 Native macOS ARM64 PRODUCT full-profile FFI host acceptance also passes.
+The explicit local ARM64 Flutter/CLI full-profile route is implemented and
+reviewed; its strict-signed macOS app lifecycle remains pending.
 A frozen-source distribution-signed iPad build now passes full-profile FFI,
 offline cold launch, server rollback and rollforward, and wrong-key fallback.
 Latest-source device acceptance, broader compatibility and release validation
@@ -400,3 +402,63 @@ plugin/application coverage, and launch/RSS/frame benchmarks.
 This work does not establish complete Shorebird replacement. Native executable
 cache behavior and its platform validation remain separate; see
 [platform testing](PLATFORM_TESTING.md).
+
+## Strict hardened macOS extension
+
+The required macOS profile uses the signed-host interpreter and permits no
+executable-memory or library-validation exceptions. The
+[2026-11-01 strict host record](validation/macos-hardened-interpreter-host-20261101.json)
+proves native ARM64 PRODUCT full-FFI execution with encrypted structural
+replacement, same-team Developer ID images, Hardened Runtime, and empty
+entitlements. Original build outputs were preserved. This proof covers the
+interpreter host; its envelope fixture still names iOS.
+
+All three compiler entrypoints admit explicit macOS full-profile targets,
+while preserving the iOS-only conditional-import marker. Compiler native-assets
+descriptors distinguish `macos_arm64` from `ios_arm64` and reject OS/target
+mismatches before retaining output. The reviewed Flutter build and CLI
+release/patch routes now support the explicit local
+`--target-platform=darwin-arm64` full profile with a matching verified local
+engine. Hosted toolchains, x64, universal, body-only and additive macOS
+interpreter routes fail closed; legacy native macOS releases keep their
+existing behavior.
+
+The engine preserves signed App.framework snapshot mappings, copies immutable
+interpreter settings through a private initializer before VM startup, and
+bypasses native ELF loading for full profiles. It retains the signed bundled
+base across updater failure and clean-group retry, rejects external snapshot
+overrides, and rejects invalid base configuration. The
+[engine validation record](validation/macos-interpreter-engine-20261101.json)
+records the committed toolchain pins, isolated release outputs and final
+96 Shorebird, 5 embedder and 4 Cocoa tests, all without failures or skips.
+The target-authentication unit test models the SDK API and the Cocoa routing
+tests override the private initializer; they do not execute a signed macOS app.
+
+The separate `tool/macos_interpreter_e2e.py` fixture under
+`testapps/license_flavor_patch_test` prepares a private app with early native
+key registration, unchanged released C exports, exact rendered structural/FFI
+reports, sandbox plus outbound-network entitlements, and same-certificate
+Developer ID inspection for every nested code image. Source-check CI now
+includes its 18 preparation and contract tests. Signing and app launching remain explicit
+caller operations; metadata inspection alone is not authentication evidence.
+Cleanup requires a new fence, a subsequent native key deletion, and the latest
+canonical container receipt before removing this session's resources. If macOS
+protects the sole remaining container-manager metadata file, the app, keys and
+container payload are still removed, and the retained OS shell is explicitly
+reported as incomplete cleanup.
+
+The actual Developer ID-signed ARM64 app now passes baseline startup and a
+macOS-authenticated AES-256-GCM structural/FFI update, including a fresh offline
+launch with all sixteen checks and an unchanged signed bundle. The real CLI
+release, native archive comparison and patch publication passed after fixing
+strict-profile entitlement validation and macOS `--no-codesign` forwarding.
+See the [partial app lifecycle record](validation/macos-full-replacement-ffi-20261101.json).
+
+Missing-key startup safely falls back to the baseline, but the test exposed a
+recovery bug: the interpreter reports the key failure as a boot crash, so the
+updater deletes the encrypted candidate. Restoring the correct key cannot
+recover offline. Typed retryable key failure handling is being implemented;
+post-fix recovery, wrong-key controls, server rollback/rollforward, broader
+plugin coverage and distribution acceptance remain pending. Intel also requires
+architecture-correct interpreted FFI callbacks before x64 or universal full
+replacement can be enabled. This work does not claim notarization.

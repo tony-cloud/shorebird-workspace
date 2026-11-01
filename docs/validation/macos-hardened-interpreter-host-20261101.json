@@ -1,0 +1,93 @@
+{
+  "date": "2026-11-01",
+  "status": "passed_host_only",
+  "scope": "Native ARM64 PRODUCT interpreter full replacement under strict hardened macOS signing",
+  "user_requirement": "Hardened macOS without executable-memory exceptions; full structural updates",
+  "runtime_source_revision": "ec6287baef0def9b34f66af7fa48931fff7b152f",
+  "runtime_provenance": "Existing ReleaseARM64 PRODUCT build; no SDK runtime rebuild. SDK928a001 later changes tests only. Current compiler/tooling modifications are recorded separately.",
+  "host_abi": "d1d5cd317eaee6c93164be23729fbe176cc838c0cf48408c2dc08e23d2e2ff4a",
+  "signed_images": [
+    {
+      "team_identifier": "43FN6K7B4C",
+      "entitlements": {},
+      "hardened_runtime": true,
+      "certificate_sha1": "CB505CEFDE0F13359AFC01406E1B27438065D257",
+      "sha256": "b8cf577553db820a5f28ef028f1a1e691d60e07e1167cc030181ffffac6f6236",
+      "name": "product_full_ffi_test"
+    },
+    {
+      "team_identifier": "43FN6K7B4C",
+      "entitlements": {},
+      "hardened_runtime": true,
+      "certificate_sha1": "CB505CEFDE0F13359AFC01406E1B27438065D257",
+      "sha256": "483b50d9d4d50592f1dbd38bb4cc6b444888f0e308eb914064d139f525e1a785",
+      "name": "libreleased_full_ffi.dylib"
+    },
+    {
+      "team_identifier": "43FN6K7B4C",
+      "entitlements": {},
+      "hardened_runtime": true,
+      "certificate_sha1": "CB505CEFDE0F13359AFC01406E1B27438065D257",
+      "sha256": "bd70f2f799a1cc4c345297b09b9f5f895406a9d48e961dea3ba9d6611fd35cb5",
+      "name": "native-source.snapshot"
+    },
+    {
+      "team_identifier": "43FN6K7B4C",
+      "entitlements": {},
+      "hardened_runtime": true,
+      "certificate_sha1": "CB505CEFDE0F13359AFC01406E1B27438065D257",
+      "sha256": "9dd75e3c38302eda693530c9a717a5784154bc36900dd3c8c87ce1c45fb990e3",
+      "name": "native-from-dill.snapshot"
+    }
+  ],
+  "original_build_inputs_unchanged": true,
+  "original_build_inputs_sha256": {
+    "dart": "dd62fc23f22364f6f27b2dba4c84873f8ec95fb11987312e7350813b81895e4f",
+    "vm_platform_product.dill": "f9a04ec5fba41b66c0d2fa1c128c8e66c269eb392bd9c8e6ad7ecaba31b28478",
+    "gen_snapshot_product": "bffb4b959d7782d98a67603aefc27785d525b9a357cf5299f6e9b5610ca92d80",
+    "product_full_ffi_test": "6ff1a231747787f150d22ecdefc7ecd26e91a87e35cd0f6da3297503805e9832"
+  },
+  "native_baselines": [
+    "source",
+    "from-dill"
+  ],
+  "base_sha256": "b1611198535e7d49f0e44051ecc25b076b1c83fb1c53cc4069b9254007eaecad",
+  "update_sha256": "149935ab483ed86adff2c7b35919f22ae2eb9cba99e9fb9b4ad929d0d96ed120",
+  "execution": {
+    "exit_code": 0,
+    "native_rejection_and_recovery_cases": 60,
+    "positive_fresh_groups": 12,
+    "callback_oracles": 8,
+    "cleanup_oracles": 8,
+    "encryption": "Real CLI AES-GCM producer; wrong-key, tampered, expired rejection before valid installation",
+    "structural_scope": "Changed plugin layouts and signatures, removed/added libraries and classes, newly introduced FFI bindings and callbacks against unchanged released native exports"
+  },
+  "compiler_groundwork": {
+    "native_test_sdk": "Packaged ec6287ba macOS ARM64 CI artifact13068371198",
+    "compiler_target_tests_passed": 19,
+    "frontend_descriptor_and_target_tests_passed": 26,
+    "semantics": "Explicit macOS accepted by all three compiler entrypoints; iOS-only conditional-import marker remains false for macOS; exact OS-to-native-assets descriptor target binding; cross-target/missing/unsupported rejection and stale deletion; source/from-dill parity"
+  },
+  "host_test_source_hashes_at_execution": {
+    "tools/test_aot_full_replacement_ffi.py": "12c518342c7a73fdefe96e4505c8ce69b7ca6895a3d6aa59af52b5802767d863",
+    "tools/test_aot_full_replacement_ffi/README.md": "cc0bc60a5460dee8743f27ce14eb6d19085341a79be28a244e26e992d06f83bc",
+    "tools/test_aot_full_replacement_ffi_signing_test.py": "a9bc54896747c87bafc37866254874d300949e0fb58a5e8588cb62d586db3859"
+  },
+  "host_test_source_hashes_current": {
+    "tools/test_aot_full_replacement_ffi.py": "7998db5e77239dabd7a49fd2d23c628ab37fe88394d643aa6ef1f96bb8154604",
+    "tools/test_aot_full_replacement_ffi/README.md": "1d0c2605c57e7a0e88801eb5db88f1f295feaf0adc4e037ae410ba2349e91af1",
+    "tools/test_aot_full_replacement_ffi_signing_test.py": "e0cc2d2dbb9d8f45e7a26056c31ce97ce69bec662a6a57690a955328a3033115"
+  },
+  "post_execution_validation": "Success-publication ordering tightened after native run; original-input guards now complete before publishing PASS. Seven focused Python controls passed; native/signing execution code unchanged and full native suite not repeated for that evidence-only fix.",
+  "runtime_log_sha256": "b776af839cb2627629a11c556ad2278664bd4938e512767c204b7512a69d7c10",
+  "limitations": [
+    "Actual macOS Flutter app integration and plugin/window lifecycle not exercised",
+    "Envelope fixture targets ios/arm64; macOS authenticated metadata not exercised",
+    "No native Intel/x64 or universal full-profile support proven",
+    "No notarization or distribution acceptance claimed",
+    "No server response/signature or CLI archive-differ proof in this host harness",
+    "No transient memory mapping, performance, RSS or frame-time audit",
+    "Existing isolated non-strict mode preserved but not rerun"
+  ],
+  "cleanup": "Only private copied host and fixture images were signed; original tools and frozen iOS engine outputs unchanged. No test process remains. Final private evidence retained."
+}

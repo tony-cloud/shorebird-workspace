@@ -68,7 +68,8 @@ EMBEDDER_TESTS = embedder_tests("linux")
 REQUIRED_SHOREBIRD_TESTS = required_shorebird_tests("linux")
 
 
-def listed_tests(path: Path, platform: str = "linux") -> set[str]:
+def listed_tests(path: Path, platform: str = "linux",
+                 required: frozenset[str] | None = None) -> set[str]:
     """Parse gtest inventory, including parameterized names and inline comments."""
     suite = None
     names = set()
@@ -88,7 +89,8 @@ def listed_tests(path: Path, platform: str = "linux") -> set[str]:
         if full_name in names or any(part.startswith("DISABLED_") for part in (suite, name)):
             raise ValueError(f"Duplicate or disabled listed test: {full_name}")
         names.add(full_name)
-    required = required_shorebird_tests(platform)
+    if required is None:
+        required = required_shorebird_tests(platform)
     if not required <= names:
         raise ValueError(f"Missing {platform} Shorebird controls in binary: {sorted(required - names)}")
     return names

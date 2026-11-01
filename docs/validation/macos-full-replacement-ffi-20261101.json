@@ -1,0 +1,269 @@
+{
+  "date": "2026-11-01",
+  "result": "partial; retryable key recovery failed",
+  "scope": "Actual local ARM64 macOS Developer ID signed full-interpreter CLI/server lifecycle; not full replacement completion",
+  "baseline_toolchain": {
+    "dart_sdk": "4aaa43dc3eb3ea8343ddbafc34153991850c708f",
+    "flutter_source": "990b1b42a14773b865a0d3ec8a1e36fd3598085b",
+    "updater": "bb4224303d18baaacd1c2316e24336813517142d",
+    "identity_material": "open-shorebird-toolchain-v1\n4aaa43dc3eb3ea8343ddbafc34153991850c708f\n990b1b42a14773b865a0d3ec8a1e36fd3598085b\nbb4224303d18baaacd1c2316e24336813517142d\n",
+    "engine_identity": "000c71b30b60503314d4ce3d5fa8b8b09bbd2cef",
+    "flutter": "453a9982fa84f70908856d5b3595339f4dd5fc40",
+    "shorebird": "d846e7eb86b4fe8838a393173848cb5683b13bb8"
+  },
+  "patch_toolchain": {
+    "dart_sdk": "4aaa43dc3eb3ea8343ddbafc34153991850c708f",
+    "flutter_source": "990b1b42a14773b865a0d3ec8a1e36fd3598085b",
+    "updater": "bb4224303d18baaacd1c2316e24336813517142d",
+    "identity_material": "open-shorebird-toolchain-v1\n4aaa43dc3eb3ea8343ddbafc34153991850c708f\n990b1b42a14773b865a0d3ec8a1e36fd3598085b\nbb4224303d18baaacd1c2316e24336813517142d\n",
+    "engine_identity": "000c71b30b60503314d4ce3d5fa8b8b09bbd2cef",
+    "flutter": "453a9982fa84f70908856d5b3595339f4dd5fc40",
+    "shorebird": "3758b0068a4c5fe07b980ee56959b03a7d9e389b"
+  },
+  "private_toolchain_changes": [
+    "CLI isolated config-directory override",
+    "Flutter direct developer launcher with matching built SDK",
+    "Selected host generated sky_engine staging"
+  ],
+  "local_work_directory": "/private/tmp/shorebird-macos-full-ffi-20261101",
+  "signing": {
+    "identity": "Developer ID Application",
+    "certificate_sha1": "CB505CEFDE0F13359AFC01406E1B27438065D257",
+    "team_id": "43FN6K7B4C",
+    "hardened_runtime": true,
+    "app_entitlements": {
+      "com.apple.security.app-sandbox": true,
+      "com.apple.security.network.client": true
+    },
+    "all_library_entitlements_empty": true,
+    "debugger_attached": false,
+    "notarization_tested": false,
+    "verified_native_exports": [
+      "IosFullFfiRetain",
+      "IosFullFfiVersion",
+      "IosFullFfiScalarV1",
+      "IosFullFfiScalarV2",
+      "IosFullFfiChangeRecordV1",
+      "IosFullFfiChangeRecordV2",
+      "IosFullFfiUpdateOnly",
+      "IosFullFfiNegate",
+      "IosFullFfiEchoPointer",
+      "IosFullFfiCallScalar",
+      "IosFullFfiCallRecord",
+      "IosFullFfiStartWorkers",
+      "IosFullFfiWorkersDone",
+      "IosFullFfiJoinWorkers"
+    ],
+    "code_sha256": {
+      "released/license_flavor_patch_test.app": "c64e2aad2416ff8e5f7814f7957094a32244e961d86a34dad701e7e2ac7e88a7",
+      "released/license_flavor_patch_test.app/Contents/Frameworks/App.framework/Versions/A/App": "97f626d73ccf4393533c79144de41aa9f2b348a3d9abb509a61e0b979e5c6286",
+      "released/license_flavor_patch_test.app/Contents/Frameworks/FlutterMacOS.framework/Versions/A/FlutterMacOS": "2f8b944ad9f6f7c3ba423ad0de6bedac5794c2e7fff9ec0522ad916c179a1657",
+      "released/license_flavor_patch_test.app/Contents/MacOS/license_flavor_patch_test": "c64e2aad2416ff8e5f7814f7957094a32244e961d86a34dad701e7e2ac7e88a7"
+    }
+  },
+  "encryption": {
+    "sha256": "5b017f3302ba6a35cb39b8867b2386c0de1304451ba09fcf7ec1bf3e812f7306",
+    "size": 11712645,
+    "metadata": {
+      "target_os": "macos",
+      "target_arch": "arm64",
+      "runtime_mode": "dart-bytecode-interpreter",
+      "app_id": "afc41dcb-5a67-472d-9965-7400187cc4f0",
+      "app_build_id": "1.0.0+1"
+    },
+    "format": "open-aot-vmcode-encrypted-v1",
+    "payload_kind": "full-snapshot",
+    "algorithm": "AES-256-GCM"
+  },
+  "cache_after_successful_offline_update": {
+    "files": {
+      "state.json": {
+        "sha256": "05d29b6c0c0eb47a3dae9827fd963e57cef12230dd2ecf8484781a360050fd2f",
+        "size": 501
+      },
+      "pointers.json": {
+        "sha256": "4d409eb9ae53577cc8d7e1397dc341195702d13efca4fab80f301b0a0adb6df8",
+        "size": 114
+      },
+      "patches/1/state.json": {
+        "sha256": "74f69e2adc7e4c02d40a4e0931ddf3d1525f1bd06cf65e2f5dab0010e7621692",
+        "size": 408
+      },
+      "patches/1/authentication.json": {
+        "sha256": "1168889fe6f3eaa7740541f319668f733a483bacb118fdd16afb23c11d4b2abc",
+        "size": 1618
+      },
+      "patches/1/dlc.vmcode": {
+        "sha256": "5b017f3302ba6a35cb39b8867b2386c0de1304451ba09fcf7ec1bf3e812f7306",
+        "size": 11712645
+      }
+    },
+    "pointers": {
+      "next_boot_patch": 1,
+      "last_booted_patch": 1,
+      "currently_booting_patch": null,
+      "boot_started_at": null
+    },
+    "cached_encrypted_artifact_matches_published_wrapper": true,
+    "raw_key_hex_key_plaintext_bytecode_absent": true
+  },
+  "accepted_launches": [
+    {
+      "stage": "base-provision",
+      "started_utc": "2026-11-01T04:50:42.323030+00:00",
+      "verification": {
+        "schema": "full-replacement-ffi-v1",
+        "phase": "base",
+        "license": "free",
+        "pro_feature_enabled": false,
+        "structural_verified": true,
+        "ffi_verified": true,
+        "rendered_text": "license:free full-replacement:verified value:10 full-ffi:v1-base",
+        "checks": [
+          "native-version",
+          "scalar-v1",
+          "struct-v1"
+        ],
+        "workers_started": 0,
+        "workers_joined": true,
+        "callbacks_closed": true,
+        "static_callbacks_retained": 0
+      },
+      "fresh_native_container_pid_matched": true,
+      "offline_endpoints_closed": false,
+      "signed_bundle_unchanged": null,
+      "report_sha256": "7f3f574604bce835bfe4531c5cba5451affd07173f5b603080eaece317523bd4",
+      "bundle_evidence": "Baseline launch preceded whole-tree guard; code signatures were verified before launch and again after the lifecycle."
+    },
+    {
+      "stage": "online-base-download",
+      "started_utc": "2026-11-01T04:55:01.606441+00:00",
+      "verification": {
+        "schema": "full-replacement-ffi-v1",
+        "phase": "base",
+        "license": "free",
+        "pro_feature_enabled": false,
+        "structural_verified": true,
+        "ffi_verified": true,
+        "rendered_text": "license:free full-replacement:verified value:10 full-ffi:v1-base",
+        "checks": [
+          "native-version",
+          "scalar-v1",
+          "struct-v1"
+        ],
+        "workers_started": 0,
+        "workers_joined": true,
+        "callbacks_closed": true,
+        "static_callbacks_retained": 0
+      },
+      "fresh_native_container_pid_matched": true,
+      "offline_endpoints_closed": false,
+      "signed_bundle_unchanged": true,
+      "report_sha256": "7f3f574604bce835bfe4531c5cba5451affd07173f5b603080eaece317523bd4"
+    },
+    {
+      "stage": "offline-update",
+      "started_utc": "2026-11-01T04:55:31.036486+00:00",
+      "verification": {
+        "schema": "full-replacement-ffi-v1",
+        "phase": "update",
+        "license": "pro",
+        "pro_feature_enabled": true,
+        "structural_verified": true,
+        "ffi_verified": true,
+        "rendered_text": "license:pro full-replacement:verified value:28 full-ffi:v2-update",
+        "checks": [
+          "native-version",
+          "scalar-v2",
+          "struct-v2",
+          "new-binding",
+          "native-address-of",
+          "process-lookup",
+          "bool-pointer",
+          "static-callback",
+          "local-static",
+          "local-capture",
+          "local-aggregate",
+          "foreign-group",
+          "listener-scalar",
+          "listener-compound",
+          "quiescent-join",
+          "callbacks-closed"
+        ],
+        "workers_started": 2,
+        "workers_joined": true,
+        "callbacks_closed": true,
+        "static_callbacks_retained": 1
+      },
+      "fresh_native_container_pid_matched": true,
+      "offline_endpoints_closed": true,
+      "signed_bundle_unchanged": true,
+      "report_sha256": "84621f04aa254c072a7d6445331b263f7598ad56b6e79bfa2502dd94b15ef808"
+    },
+    {
+      "stage": "offline-missing-key",
+      "started_utc": "2026-11-01T04:56:08.686981+00:00",
+      "verification": {
+        "schema": "full-replacement-ffi-v1",
+        "phase": "base",
+        "license": "free",
+        "pro_feature_enabled": false,
+        "structural_verified": true,
+        "ffi_verified": true,
+        "rendered_text": "license:free full-replacement:verified value:10 full-ffi:v1-base",
+        "checks": [
+          "native-version",
+          "scalar-v1",
+          "struct-v1"
+        ],
+        "workers_started": 0,
+        "workers_joined": true,
+        "callbacks_closed": true,
+        "static_callbacks_retained": 0
+      },
+      "fresh_native_container_pid_matched": true,
+      "offline_endpoints_closed": true,
+      "signed_bundle_unchanged": true,
+      "report_sha256": "7f3f574604bce835bfe4531c5cba5451affd07173f5b603080eaece317523bd4"
+    }
+  ],
+  "known_failure": {
+    "trigger": "Delete disposable Keychain key, launch BASE, restore correct key, then cold launch with API and observer stopped",
+    "observed": "Update was marked Bad/BootCrash; next_boot_patch cleared and ciphertext/authentication deleted. Restoring key did not recover cached update.",
+    "cause": "Interpreter key rejection incorrectly invokes permanent launch-failure callbacks in DartIsolate and RuntimeController.",
+    "status": "Typed SDK key-failure and retryable updater bookkeeping fix in progress; no post-fix runtime claim."
+  },
+  "excluded_attempts": [
+    "offline-missing-recovery failed expected UPDATE phase",
+    "Wrong-key control overlapped waiting failed-recovery process; wrong-key acceptance not claimed"
+  ],
+  "not_tested": [
+    "authenticated rollback/rollforward in this Mac session",
+    "Intel/x64 callbacks",
+    "universal full interpreter packaging",
+    "hosted Mac full-profile artifact admission",
+    "notarization or distribution"
+  ],
+  "cleanup": {
+    "time": 1793509528.560392,
+    "key_receipt_verified": true,
+    "key_deletion_evidence": "/private/tmp/shorebird-macos-full-ffi-20261101/cleanup-evidence/native-key-deletion.json",
+    "owned_app_removed": true,
+    "container_removed": false,
+    "container_payload_removed": true,
+    "os_metadata_shell_remaining": "/Users/tonylu/Library/Containers/org.tonycloud.shorebird-macos-ffi.b5aa0197dddb",
+    "os_metadata_file_remaining": "/Users/tonylu/Library/Containers/org.tonycloud.shorebird-macos-ffi.b5aa0197dddb/.com.apple.containermanagerd.metadata.plist",
+    "metadata_removal_errno": 1,
+    "owned_app_and_container_removed": false,
+    "cleanup_complete": false,
+    "bootstrap_secrets_removed": true,
+    "servers_stopped_externally": true,
+    "private_build_evidence_retained": true,
+    "native_key_deleted": true,
+    "api_and_observer_ports_closed": [
+      59518,
+      59519
+    ],
+    "all_owned_app_processes_stopped": true
+  }
+}

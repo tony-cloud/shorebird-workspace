@@ -1,0 +1,326 @@
+{
+  "date": "2026-11-01",
+  "scope": "Final committed macOS ARM64 release-engine/toolchain build and native unit controls; signed Flutter application lifecycle remains pending",
+  "status": "passed_engine_tests_only",
+  "toolchain": {
+    "dart_sdk": "4aaa43dc3eb3ea8343ddbafc34153991850c708f",
+    "flutter_source": "990b1b42a14773b865a0d3ec8a1e36fd3598085b",
+    "updater": "bb4224303d18baaacd1c2316e24336813517142d",
+    "identity_material": "open-shorebird-toolchain-v1\n4aaa43dc3eb3ea8343ddbafc34153991850c708f\n990b1b42a14773b865a0d3ec8a1e36fd3598085b\nbb4224303d18baaacd1c2316e24336813517142d\n",
+    "engine_identity": "000c71b30b60503314d4ce3d5fa8b8b09bbd2cef",
+    "flutter": "453a9982fa84f70908856d5b3595339f4dd5fc40",
+    "shorebird": "d846e7eb86b4fe8838a393173848cb5683b13bb8"
+  },
+  "source_state": "Final engine outputs rebuilt for the pinned Flutter and SDK revisions; initial working-tree build evidence is preserved separately below",
+  "source_sha256": {
+    "engine/src/flutter/runtime/dart_isolate.cc": "cab6bc796b8f480801786ed2fa832c61251db89019cfcf8afd27362400b9eb17",
+    "engine/src/flutter/runtime/runtime_controller.cc": "db9d0de8b869414759e5828ca53791344e6f85cbafd990661b80404165cafa9c",
+    "engine/src/flutter/runtime/shorebird/interpreter_patch.cc": "54144b9cfdc1a78d7b2fa1061094f9a388bdec95f6e1d3968b69ec2ef9a978b5",
+    "engine/src/flutter/runtime/shorebird/interpreter_patch.h": "689a3c95d923f3a2257ad3b176962c0f4d7d2147def382e65cc7853b2e37cfc3",
+    "engine/src/flutter/shell/common/shorebird/interpreter_patch_unittests.cc": "18c455f905e0a0af7b3e7e3f5f4d50ae916b7e32945ed68d599aaa85a44acf7c",
+    "engine/src/flutter/shell/common/shorebird/shorebird.cc": "e69cdfe0d5342f6f5c829747cf07abb90cac0a1943cc04efc4ac278f844de2c5",
+    "engine/src/flutter/shell/common/shorebird/shorebird.h": "347bb41750fbfef0bb60a626c4658c20b05e6c99a97571d2e281805c5f5c8570",
+    "engine/src/flutter/shell/common/shorebird/shorebird_config.cc": "c3566084461d69168d1e4c07ce39764f42fa1d9f949f21feac555b9cbe8b594e",
+    "engine/src/flutter/shell/common/shorebird/shorebird_unittests.cc": "7c3c03879d42d110b86ad780ad12be386328028a952405a3a62c4529b6054358",
+    "engine/src/flutter/shell/platform/darwin/common/framework/Headers/FlutterDartProject.h": "c1ed0c8098417f590e2d6694ab9af25201918f1fda30a043328b8ca27c111a7e",
+    "engine/src/flutter/shell/platform/darwin/macos/BUILD.gn": "69ec5f0a5919a872fe8c4905590bbac5ac1094fef035cf74997d5c7b3fd2f3dc",
+    "engine/src/flutter/shell/platform/darwin/macos/framework/Source/FlutterDartProject.mm": "bba2b380c05739edab825cce19a5d49d8b52148bf70835cadb9b797ae1d5c1e5",
+    "engine/src/flutter/shell/platform/darwin/macos/framework/Source/FlutterDartProject_Internal.h": "fc8b4313587067de261f03fd1e0a7bb41be0c2b0c45565ae4f12b9c6fdc8613c",
+    "engine/src/flutter/shell/platform/darwin/macos/framework/Source/FlutterEngine.mm": "a7dcf72e1e76fb2309b38a8ed6f2d49180f1395b9c492bfde2cabed678adc8da",
+    "engine/src/flutter/shell/platform/darwin/macos/framework/Source/FlutterEngineTest.mm": "b80c5ecee928d4635c46790cc410809496cc9e8b3ba4fd2237fadeb8c05b0bd3",
+    "engine/src/flutter/shell/platform/embedder/BUILD.gn": "247f2e2961e796d318f8e02dbdc151cc5b7e964312e053061f21e7c5fed18292",
+    "engine/src/flutter/shell/platform/embedder/embedder.cc": "9e91bb04ee57e6b8b3124b9b7cd801fb1ccce8422a851ad9e691f40d8609f84e",
+    "engine/src/flutter/shell/platform/embedder/shorebird_aot_data.h": "bce7ffe64a18aae93eab678cb249546ca08847b1cfd78f470e19b5661db8fc2f",
+    "engine/src/flutter/shell/platform/embedder/shorebird_interpreter.cc": "e43f70a5f22a8c8a2d7704bae195019a9e4b1411a6c9ce58e91b33896d72530e",
+    "engine/src/flutter/shell/platform/embedder/tests/shorebird_interpreter_unittests.cc": "c1eebb5914b6cc47f3ff67f70b39f2fb87e6732087fcd2853a8d217df14df5cc"
+  },
+  "build": {
+    "output": "/private/tmp/shorebird-macos-engine-20261101/out/macos_release_arm64",
+    "mode": "release",
+    "target": "mac ARM64",
+    "engine_version_from_args": "453a9982fa84f70908856d5b3595339f4dd5fc40",
+    "dart_revision_from_args": "4aaa43dc3eb3ea8343ddbafc34153991850c708f",
+    "dart_enable_shorebird_interpreter": true,
+    "shorebird_use_interpreter": false,
+    "dart_dynamic_modules": false,
+    "flutter_prebuilt_dart_sdk": false,
+    "final_rebuild_steps": 8,
+    "exit_code": 0,
+    "args_sha256": "db38b036b379f07d5903841d74117bba75e03b24b99412c42843a262e5ec081d",
+    "final_build_log_sha256": "11daa838dea739eb7362ceeb08c496011e42e8c724bd27aad181fe6c433ff99b",
+    "isolated_from_frozen_ios_outputs": true,
+    "final_build_log": ".agents/macos-hardened-20261101/unsigned-build-toolchain.log"
+  },
+  "local_output_versions": {
+    "dart_sdk_version_file": "3.14.0-edge.4aaa43dc3eb3ea8343ddbafc34153991850c708f",
+    "dart": "Dart SDK version: 3.14.0-edge.4aaa43dc3eb3ea8343ddbafc34153991850c708f (main) (Sun Nov 1 11:59:09 2026 +0800) on \"macos_arm64\"",
+    "gen_snapshot": "Dart SDK version: 3.14.0-edge.4aaa43dc3eb3ea8343ddbafc34153991850c708f (main) (Sun Nov 1 11:59:09 2026 +0800) on \"macos_arm64\"",
+    "gen_snapshot_product": "Dart SDK version: 3.14.0-edge.4aaa43dc3eb3ea8343ddbafc34153991850c708f (main) (Sun Nov 1 11:59:09 2026 +0800) on \"macos_arm64\"",
+    "runtime_snapshot_hash": "59bdb68d057696db407fc3fda7fb552a",
+    "runtime_sdk_hash": "4aaa43dc3e",
+    "framework_info": {
+      "CFBundleIdentifier": "io.flutter.flutter-macos",
+      "CFBundleShortVersionString": "1.0",
+      "CFBundleVersion": "1.0"
+    }
+  },
+  "artifact_sha256": {
+    "FlutterMacOS.framework/Versions/A/FlutterMacOS": "b799fd7536b20cea911de87c1368842c8979c0d58d93a8eab1418a1bbc3386b4",
+    "FlutterMacOS.xcframework/macos-arm64/FlutterMacOS.framework/Versions/A/FlutterMacOS": "b799fd7536b20cea911de87c1368842c8979c0d58d93a8eab1418a1bbc3386b4",
+    "gen_snapshot": "df9e4bce8c97977bccfe91fbaec5ec19fd0cf69c2e2ec23679334799508463f4",
+    "gen_snapshot_product": "7264aeed503b09085cc5df967966e9c0ced6d2fd9c3235c881cb5ad2fd222040",
+    "dart-sdk/bin/dart": "3902b990c5e4a95fdc00f153319089e1c349a85ff68875602ce18830f1fcd535",
+    "vm_platform_product.dill": "f9a04ec5fba41b66c0d2fa1c128c8e66c269eb392bd9c8e6ad7ecaba31b28478",
+    "frontend_server_aot.dart.snapshot": "5590fde5e69ad37f9d34f73608844054b63cfeaffc6283663a06e6704333f31f",
+    "gen/dart2bytecode.dart.snapshot": "1e6f9324bfc81003c75450b1eba35f8cd76551ad847f791e334c4e0a1f4e7bdb",
+    "gen/dart-pkg/sky_engine/pubspec.yaml": "f2586b596944addbe3ce5da7080af416b80227eca064c274a47d61dfa36180d0"
+  },
+  "tests": {
+    "shorebird": 96,
+    "embedder": 5,
+    "cocoa": 4,
+    "failures": 0,
+    "skipped": 0,
+    "evidence_directory": ".agents/macos-hardened-20261101/unsigned-build-engine-tests",
+    "validator": "scripts/verify_macos_interpreter_engine_tests.py",
+    "validation": "Final XML cases match each complete filtered binary inventory, including required configuration/routing/target/legacy controls"
+  },
+  "final_test_evidence_sha256": {
+    "cocoa-list-stderr.log": "a749a0d889e6014ea152bc3f0885033fb1d912330660585436bf7b429f9e4f0a",
+    "cocoa-list.txt": "c58024b7be8fb412003ecf64867b8eb334da6eee63e3e41d2781c88bba9c6651",
+    "cocoa-tests.log": "7ea6a55d2d174b953462bf4ad702bf67fe408b0345acdaf309183a842409993d",
+    "cocoa.xml": "5cd62b06bd576f21154d68769dbc10c87859317887191a9a65123865a92d867a",
+    "embedder-list-stderr.log": "a749a0d889e6014ea152bc3f0885033fb1d912330660585436bf7b429f9e4f0a",
+    "embedder-list.txt": "bca2c1121370772b3f606fbbf29041dcf8ef55539648576f095a44b1c446b0e0",
+    "embedder-tests.log": "465a111aa4a078649ab2e1f431bda524b3c3ee48a1a234a239b62f86e5dd14ee",
+    "embedder.xml": "cc3a3fda02a75606366a3c5de4be25cb69bdb2c25801e453f9bf6f192453dd61",
+    "shorebird-list-stderr.log": "a749a0d889e6014ea152bc3f0885033fb1d912330660585436bf7b429f9e4f0a",
+    "shorebird-list.txt": "a8a13dd770f9163a241732218cb8d34dfda0d79682c2f6f97e092c0d5a01b0d7",
+    "shorebird-tests.log": "9db61b8b5cc5e72895288556132ed1fc3d3a7de7572f46cf26407fee4f60a159",
+    "shorebird.xml": "e6ec47e0154e420c5ffa82f144ea75b5eb453eb647e3b11234cc433c0d8f6439",
+    "test-exits.json": "835f76cfbad9940fff6b4d880c4114893d4a9709b4bd83916720b193cf3b2b96"
+  },
+  "application_acceptance": {
+    "status": "pending",
+    "current_blocker": "The baseline attempt encountered the legacy CLI macOS entitlement validator; validating its correction, rebuilt baseline and actual strict-signed full application lifecycle are separate gates",
+    "fixture_source_controls": "15 pure/preparation tests; no signed app or authenticated runtime acceptance implied"
+  },
+  "limits": [
+    "Interpreter encrypted target tests use a modeled SDK API; real macOS envelope execution pending",
+    "Cocoa routing uses private initializer mocks; actual signed full Flutter startup pending",
+    "No Intel/universal full replacement claim",
+    "No app entitlements, provisioning or framework signing exercised by these unit tests",
+    "The separate strict Developer ID host harness uses ios/arm64 envelope metadata and is not macOS Flutter application evidence",
+    "Hosted, x64 and universal macOS full-profile routes remain fail closed; local ARM64 Flutter/CLI implementation is not distribution or notarization acceptance"
+  ],
+  "frozen_output_sha256": {
+    "host_release_arm64/gen_snapshot": "8d3db604321ad6b613c84d031d5f9dbb80b88723172557f71ec93fbb2a7e23e0",
+    "ios_release/Flutter.framework/Flutter": "6e3d41808382bd7fbf58c0758342e8222277f4b3ba8ac681e9af0f393ed996a6"
+  },
+  "frozen_control_artifacts_unchanged": true,
+  "initial_release_engine_proof": {
+    "date": "2026-11-01",
+    "scope": "macOS ARM64 release engine build and native unit tests; not a signed Flutter app lifecycle",
+    "status": "passed",
+    "sdk_revision": "4aaa43dc3eb3ea8343ddbafc34153991850c708f",
+    "flutter_base_revision": "c9400c1bb031a3c29f668c7f51eb30d42c369870",
+    "source_state": "Reviewed working-tree engine changes; source hashes recorded below",
+    "source_sha256": {
+      "engine/src/flutter/runtime/dart_isolate.cc": "cab6bc796b8f480801786ed2fa832c61251db89019cfcf8afd27362400b9eb17",
+      "engine/src/flutter/runtime/runtime_controller.cc": "db9d0de8b869414759e5828ca53791344e6f85cbafd990661b80404165cafa9c",
+      "engine/src/flutter/runtime/shorebird/interpreter_patch.cc": "54144b9cfdc1a78d7b2fa1061094f9a388bdec95f6e1d3968b69ec2ef9a978b5",
+      "engine/src/flutter/runtime/shorebird/interpreter_patch.h": "689a3c95d923f3a2257ad3b176962c0f4d7d2147def382e65cc7853b2e37cfc3",
+      "engine/src/flutter/shell/common/shorebird/interpreter_patch_unittests.cc": "18c455f905e0a0af7b3e7e3f5f4d50ae916b7e32945ed68d599aaa85a44acf7c",
+      "engine/src/flutter/shell/common/shorebird/shorebird.cc": "e69cdfe0d5342f6f5c829747cf07abb90cac0a1943cc04efc4ac278f844de2c5",
+      "engine/src/flutter/shell/common/shorebird/shorebird.h": "347bb41750fbfef0bb60a626c4658c20b05e6c99a97571d2e281805c5f5c8570",
+      "engine/src/flutter/shell/common/shorebird/shorebird_config.cc": "c3566084461d69168d1e4c07ce39764f42fa1d9f949f21feac555b9cbe8b594e",
+      "engine/src/flutter/shell/common/shorebird/shorebird_unittests.cc": "7c3c03879d42d110b86ad780ad12be386328028a952405a3a62c4529b6054358",
+      "engine/src/flutter/shell/platform/darwin/common/framework/Headers/FlutterDartProject.h": "c1ed0c8098417f590e2d6694ab9af25201918f1fda30a043328b8ca27c111a7e",
+      "engine/src/flutter/shell/platform/darwin/macos/BUILD.gn": "69ec5f0a5919a872fe8c4905590bbac5ac1094fef035cf74997d5c7b3fd2f3dc",
+      "engine/src/flutter/shell/platform/darwin/macos/framework/Source/FlutterDartProject.mm": "bba2b380c05739edab825cce19a5d49d8b52148bf70835cadb9b797ae1d5c1e5",
+      "engine/src/flutter/shell/platform/darwin/macos/framework/Source/FlutterDartProject_Internal.h": "fc8b4313587067de261f03fd1e0a7bb41be0c2b0c45565ae4f12b9c6fdc8613c",
+      "engine/src/flutter/shell/platform/darwin/macos/framework/Source/FlutterEngine.mm": "a7dcf72e1e76fb2309b38a8ed6f2d49180f1395b9c492bfde2cabed678adc8da",
+      "engine/src/flutter/shell/platform/darwin/macos/framework/Source/FlutterEngineTest.mm": "b80c5ecee928d4635c46790cc410809496cc9e8b3ba4fd2237fadeb8c05b0bd3",
+      "engine/src/flutter/shell/platform/embedder/BUILD.gn": "247f2e2961e796d318f8e02dbdc151cc5b7e964312e053061f21e7c5fed18292",
+      "engine/src/flutter/shell/platform/embedder/embedder.cc": "9e91bb04ee57e6b8b3124b9b7cd801fb1ccce8422a851ad9e691f40d8609f84e",
+      "engine/src/flutter/shell/platform/embedder/shorebird_aot_data.h": "bce7ffe64a18aae93eab678cb249546ca08847b1cfd78f470e19b5661db8fc2f",
+      "engine/src/flutter/shell/platform/embedder/shorebird_interpreter.cc": "e43f70a5f22a8c8a2d7704bae195019a9e4b1411a6c9ce58e91b33896d72530e",
+      "engine/src/flutter/shell/platform/embedder/tests/shorebird_interpreter_unittests.cc": "c1eebb5914b6cc47f3ff67f70b39f2fb87e6732087fcd2853a8d217df14df5cc"
+    },
+    "build": {
+      "output": "/private/tmp/shorebird-macos-engine-20261101/out/macos_release_arm64",
+      "steps": 4725,
+      "exit_code": 0,
+      "mode": "release",
+      "target": "mac ARM64",
+      "dart_enable_shorebird_interpreter": true,
+      "shorebird_use_interpreter": false,
+      "dart_dynamic_modules": false,
+      "isolated_from_frozen_ios_outputs": true,
+      "args_sha256": "eab894af9b261cf02e9f5d1fe5c94ee9e111c40dc9b960f07eec2397dcc36ea8"
+    },
+    "tests": {
+      "shorebird": 96,
+      "embedder": 5,
+      "cocoa": 4,
+      "failures": 0,
+      "skipped": 0,
+      "validation": "XML cases match each complete filtered binary inventory, with required configuration/routing/target/legacy controls"
+    },
+    "evidence_sha256": {
+      "engine-build.log": "90334b4e1828c5921a1fc3d7d44a5922860ef64d9f412346c55059c6eb041ee0",
+      "shorebird.xml": "6b9bc76a39ff0f872c684869e6f57684e3e3408ecd83d167f156b98952fb4df2",
+      "embedder.xml": "cf7ce6bd429ddd29d52d9d2f1aae6171963017a15faa50b9f128e8490c7455aa",
+      "cocoa.xml": "ed0101e638f9d7179205a4c488a5de9638a1089919f8b11acc792aa3e214a249",
+      "engine-test-exits.json": "835f76cfbad9940fff6b4d880c4114893d4a9709b4bd83916720b193cf3b2b96"
+    },
+    "limits": [
+      "Interpreter encrypted target tests use a modeled SDK API; real macOS envelope execution pending",
+      "Cocoa routing uses private initializer mocks; actual signed full Flutter startup pending",
+      "No Intel/universal full replacement claim",
+      "No app entitlements, provisioning or framework signing exercised by these unit tests"
+    ],
+    "frozen_output_sha256": {
+      "host_release_arm64/gen_snapshot": "8d3db604321ad6b613c84d031d5f9dbb80b88723172557f71ec93fbb2a7e23e0",
+      "ios_release/Flutter.framework/Flutter": "6e3d41808382bd7fbf58c0758342e8222277f4b3ba8ac681e9af0f393ed996a6"
+    }
+  },
+  "previous_toolchain_engine_proofs": [
+    {
+      "date": "2026-11-01",
+      "scope": "Final committed macOS ARM64 release-engine/toolchain build and native unit controls; signed Flutter application lifecycle remains pending",
+      "status": "passed_engine_tests_only",
+      "toolchain": {
+        "dart_sdk": "4aaa43dc3eb3ea8343ddbafc34153991850c708f",
+        "flutter_source": "c6e655228e1304ba5abfbd1cc54c4b8a61c17c45",
+        "updater": "bb4224303d18baaacd1c2316e24336813517142d",
+        "engine_identity": "c42bdd5f1c56bf985d215e2cbab936f8a7ddc732",
+        "identity_material": "open-shorebird-toolchain-v1\n4aaa43dc3eb3ea8343ddbafc34153991850c708f\nc6e655228e1304ba5abfbd1cc54c4b8a61c17c45\nbb4224303d18baaacd1c2316e24336813517142d\n",
+        "flutter": "20e3691dba984927b2bb733236de7a1d5dcc6045",
+        "shorebird": "e20c705efa830a2d187eefdd174f743f7570b3b4"
+      },
+      "source_state": "Final engine outputs rebuilt for the pinned Flutter and SDK revisions; initial working-tree build evidence is preserved separately below",
+      "source_sha256": {
+        "engine/src/flutter/runtime/dart_isolate.cc": "cab6bc796b8f480801786ed2fa832c61251db89019cfcf8afd27362400b9eb17",
+        "engine/src/flutter/runtime/runtime_controller.cc": "db9d0de8b869414759e5828ca53791344e6f85cbafd990661b80404165cafa9c",
+        "engine/src/flutter/runtime/shorebird/interpreter_patch.cc": "54144b9cfdc1a78d7b2fa1061094f9a388bdec95f6e1d3968b69ec2ef9a978b5",
+        "engine/src/flutter/runtime/shorebird/interpreter_patch.h": "689a3c95d923f3a2257ad3b176962c0f4d7d2147def382e65cc7853b2e37cfc3",
+        "engine/src/flutter/shell/common/shorebird/interpreter_patch_unittests.cc": "18c455f905e0a0af7b3e7e3f5f4d50ae916b7e32945ed68d599aaa85a44acf7c",
+        "engine/src/flutter/shell/common/shorebird/shorebird.cc": "e69cdfe0d5342f6f5c829747cf07abb90cac0a1943cc04efc4ac278f844de2c5",
+        "engine/src/flutter/shell/common/shorebird/shorebird.h": "347bb41750fbfef0bb60a626c4658c20b05e6c99a97571d2e281805c5f5c8570",
+        "engine/src/flutter/shell/common/shorebird/shorebird_config.cc": "c3566084461d69168d1e4c07ce39764f42fa1d9f949f21feac555b9cbe8b594e",
+        "engine/src/flutter/shell/common/shorebird/shorebird_unittests.cc": "7c3c03879d42d110b86ad780ad12be386328028a952405a3a62c4529b6054358",
+        "engine/src/flutter/shell/platform/darwin/common/framework/Headers/FlutterDartProject.h": "c1ed0c8098417f590e2d6694ab9af25201918f1fda30a043328b8ca27c111a7e",
+        "engine/src/flutter/shell/platform/darwin/macos/BUILD.gn": "69ec5f0a5919a872fe8c4905590bbac5ac1094fef035cf74997d5c7b3fd2f3dc",
+        "engine/src/flutter/shell/platform/darwin/macos/framework/Source/FlutterDartProject.mm": "bba2b380c05739edab825cce19a5d49d8b52148bf70835cadb9b797ae1d5c1e5",
+        "engine/src/flutter/shell/platform/darwin/macos/framework/Source/FlutterDartProject_Internal.h": "fc8b4313587067de261f03fd1e0a7bb41be0c2b0c45565ae4f12b9c6fdc8613c",
+        "engine/src/flutter/shell/platform/darwin/macos/framework/Source/FlutterEngine.mm": "a7dcf72e1e76fb2309b38a8ed6f2d49180f1395b9c492bfde2cabed678adc8da",
+        "engine/src/flutter/shell/platform/darwin/macos/framework/Source/FlutterEngineTest.mm": "b80c5ecee928d4635c46790cc410809496cc9e8b3ba4fd2237fadeb8c05b0bd3",
+        "engine/src/flutter/shell/platform/embedder/BUILD.gn": "247f2e2961e796d318f8e02dbdc151cc5b7e964312e053061f21e7c5fed18292",
+        "engine/src/flutter/shell/platform/embedder/embedder.cc": "9e91bb04ee57e6b8b3124b9b7cd801fb1ccce8422a851ad9e691f40d8609f84e",
+        "engine/src/flutter/shell/platform/embedder/shorebird_aot_data.h": "bce7ffe64a18aae93eab678cb249546ca08847b1cfd78f470e19b5661db8fc2f",
+        "engine/src/flutter/shell/platform/embedder/shorebird_interpreter.cc": "e43f70a5f22a8c8a2d7704bae195019a9e4b1411a6c9ce58e91b33896d72530e",
+        "engine/src/flutter/shell/platform/embedder/tests/shorebird_interpreter_unittests.cc": "c1eebb5914b6cc47f3ff67f70b39f2fb87e6732087fcd2853a8d217df14df5cc"
+      },
+      "build": {
+        "output": "/private/tmp/shorebird-macos-engine-20261101/out/macos_release_arm64",
+        "mode": "release",
+        "target": "mac ARM64",
+        "engine_version_from_args": "20e3691dba984927b2bb733236de7a1d5dcc6045",
+        "dart_revision_from_args": "4aaa43dc3eb3ea8343ddbafc34153991850c708f",
+        "dart_enable_shorebird_interpreter": true,
+        "shorebird_use_interpreter": false,
+        "dart_dynamic_modules": false,
+        "flutter_prebuilt_dart_sdk": false,
+        "final_rebuild_steps": 11,
+        "exit_code": 0,
+        "args_sha256": "017b6a7c1622276f5c2e1bbcb90d3f2991dbec4954d3dac054cc157fcf60721e",
+        "final_build_log_sha256": "9115f6eca9873fde05a6eb53fb82c45f29b694185e62a86de8c87d8a6cefe724",
+        "isolated_from_frozen_ios_outputs": true
+      },
+      "local_output_versions": {
+        "dart_sdk_version_file": "3.14.0-edge.4aaa43dc3eb3ea8343ddbafc34153991850c708f",
+        "dart": "Dart SDK version: 3.14.0-edge.4aaa43dc3eb3ea8343ddbafc34153991850c708f (main) (Sun Nov 1 11:59:09 2026 +0800) on \"macos_arm64\"",
+        "gen_snapshot": "Dart SDK version: 3.14.0-edge.4aaa43dc3eb3ea8343ddbafc34153991850c708f (main) (Sun Nov 1 11:59:09 2026 +0800) on \"macos_arm64\"",
+        "gen_snapshot_product": "Dart SDK version: 3.14.0-edge.4aaa43dc3eb3ea8343ddbafc34153991850c708f (main) (Sun Nov 1 11:59:09 2026 +0800) on \"macos_arm64\"",
+        "runtime_snapshot_hash": "59bdb68d057696db407fc3fda7fb552a",
+        "runtime_sdk_hash": "4aaa43dc3e",
+        "framework_info": {
+          "CFBundleIdentifier": "io.flutter.flutter-macos",
+          "CFBundleShortVersionString": "1.0",
+          "CFBundleVersion": "1.0"
+        }
+      },
+      "artifact_sha256": {
+        "FlutterMacOS.framework/Versions/A/FlutterMacOS": "c8ba4b61b6067a3449a0ca766315fd5d3c93fc2c1c14c5cf1d9f711c29389f0b",
+        "FlutterMacOS.xcframework/macos-arm64/FlutterMacOS.framework/Versions/A/FlutterMacOS": "c8ba4b61b6067a3449a0ca766315fd5d3c93fc2c1c14c5cf1d9f711c29389f0b",
+        "gen_snapshot": "df9e4bce8c97977bccfe91fbaec5ec19fd0cf69c2e2ec23679334799508463f4",
+        "gen_snapshot_product": "7264aeed503b09085cc5df967966e9c0ced6d2fd9c3235c881cb5ad2fd222040",
+        "dart-sdk/bin/dart": "3902b990c5e4a95fdc00f153319089e1c349a85ff68875602ce18830f1fcd535",
+        "vm_platform_product.dill": "f9a04ec5fba41b66c0d2fa1c128c8e66c269eb392bd9c8e6ad7ecaba31b28478",
+        "frontend_server_aot.dart.snapshot": "5590fde5e69ad37f9d34f73608844054b63cfeaffc6283663a06e6704333f31f",
+        "gen/dart2bytecode.dart.snapshot": "1e6f9324bfc81003c75450b1eba35f8cd76551ad847f791e334c4e0a1f4e7bdb",
+        "gen/dart-pkg/sky_engine/pubspec.yaml": "f2586b596944addbe3ce5da7080af416b80227eca064c274a47d61dfa36180d0"
+      },
+      "tests": {
+        "shorebird": 96,
+        "embedder": 5,
+        "cocoa": 4,
+        "failures": 0,
+        "skipped": 0,
+        "evidence_directory": ".agents/macos-hardened-20261101/final-engine-tests",
+        "validator": "scripts/verify_macos_interpreter_engine_tests.py",
+        "validation": "Final XML cases match each complete filtered binary inventory, including required configuration/routing/target/legacy controls"
+      },
+      "final_test_evidence_sha256": {
+        "cocoa-list-stderr.log": "a749a0d889e6014ea152bc3f0885033fb1d912330660585436bf7b429f9e4f0a",
+        "cocoa-list.txt": "c58024b7be8fb412003ecf64867b8eb334da6eee63e3e41d2781c88bba9c6651",
+        "cocoa-tests.log": "0f25c047050b6609a95e5d7eba0ec76c6a49deade517037e165b475e934ad0c9",
+        "cocoa.xml": "f6aee13b2356a2babf19e956c435ece55a6188526c5b91c988c42efa213c95c4",
+        "embedder-list-stderr.log": "a749a0d889e6014ea152bc3f0885033fb1d912330660585436bf7b429f9e4f0a",
+        "embedder-list.txt": "bca2c1121370772b3f606fbbf29041dcf8ef55539648576f095a44b1c446b0e0",
+        "embedder-tests.log": "a741dec7cee57f18c42d4bd0924cd1b6ac17499d1bab933767fb890952a4a491",
+        "embedder.xml": "2a3247817b37c0777932f7c2b3f3de1da3b6b497775aa7c6ab1f5bd6d64c004a",
+        "shorebird-list-stderr.log": "a749a0d889e6014ea152bc3f0885033fb1d912330660585436bf7b429f9e4f0a",
+        "shorebird-list.txt": "a8a13dd770f9163a241732218cb8d34dfda0d79682c2f6f97e092c0d5a01b0d7",
+        "shorebird-tests.log": "c2bf1e1d1e817078e5658ced7b701eb73e29b53adf6c22efe34f58c61071b54c",
+        "shorebird.xml": "ca92228d6984db3278c9d7e50eb4d9a9ee7bc2756330d4a1b479a462b103a388"
+      },
+      "application_acceptance": {
+        "status": "pending",
+        "current_blocker": "The baseline attempt encountered the legacy CLI macOS entitlement validator; validating its correction, rebuilt baseline and actual strict-signed full application lifecycle are separate gates",
+        "fixture_source_controls": "15 pure/preparation tests; no signed app or authenticated runtime acceptance implied"
+      },
+      "limits": [
+        "Interpreter encrypted target tests use a modeled SDK API; real macOS envelope execution pending",
+        "Cocoa routing uses private initializer mocks; actual signed full Flutter startup pending",
+        "No Intel/universal full replacement claim",
+        "No app entitlements, provisioning or framework signing exercised by these unit tests",
+        "The separate strict Developer ID host harness uses ios/arm64 envelope metadata and is not macOS Flutter application evidence",
+        "Hosted, x64 and universal macOS full-profile routes remain fail closed; local ARM64 Flutter/CLI implementation is not distribution or notarization acceptance"
+      ],
+      "frozen_output_sha256": {
+        "host_release_arm64/gen_snapshot": "8d3db604321ad6b613c84d031d5f9dbb80b88723172557f71ec93fbb2a7e23e0",
+        "ios_release/Flutter.framework/Flutter": "6e3d41808382bd7fbf58c0758342e8222277f4b3ba8ac681e9af0f393ed996a6"
+      },
+      "frozen_control_artifacts_unchanged": true
+    }
+  ],
+  "historical_proof_repair": {
+    "reason": "A shallow in-memory history snapshot shared mutable build/test dictionaries with the subsequent update; the historical fields below were restored without changing the current or initial proof",
+    "restored_fields": [
+      "previous_toolchain_engine_proofs[0].build.engine_version_from_args",
+      "previous_toolchain_engine_proofs[0].build.final_rebuild_steps",
+      "previous_toolchain_engine_proofs[0].build.args_sha256",
+      "previous_toolchain_engine_proofs[0].build.final_build_log_sha256",
+      "previous_toolchain_engine_proofs[0].tests.evidence_directory"
+    ],
+    "sources": "Exact prior JSON snapshot recorded before the unsigned-build update; retained final-toolchain-build.log and final-engine-tests files",
+    "historical_args_note": "The historical args hash is restored from that prior JSON snapshot; the shared output args.gn has since been overwritten and is not used to recompute the historical hash",
+    "initial_proof_check": "Initial nested proof is unchanged; all five retained evidence_sha256 files match its recorded hashes",
+    "history_copy_method": "deepcopy used for this repair; subsequent history snapshots must be deep copies before any nested update",
+    "removed_leaked_fields": [
+      "previous_toolchain_engine_proofs[0].build.final_build_log"
+    ]
+  }
+}

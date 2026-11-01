@@ -1,0 +1,101 @@
+import Cocoa
+import Darwin
+import FlutterMacOS
+import Security
+
+// Disposable acceptance credentials only. This is not a production licensing
+// or provisioning API. No secret is bundled, logged, or included in a receipt.
+enum MacosInterpreterFixture {
+  static let service = "__SERVICE__"
+  static let account = "__KEY_ID__"
+  static let bundleID = "__BUNDLE_ID__"
+
+  static var evidenceDirectory: URL {
+    URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)
+      .appendingPathComponent("Library/Application Support/shorebird-macos-fixture", isDirectory: true)
+  }
+
+  static func query() -> [String: Any] {
+    [kSecClass as String: kSecClassGenericPassword,
+     kSecAttrService as String: service, kSecAttrAccount as String: account]
+  }
+
+  static func evidence(_ value: [String: Any], name: String) {
+    do {
+      try FileManager.default.createDirectory(at: evidenceDirectory,
+                                             withIntermediateDirectories: true)
+      let data = try JSONSerialization.data(withJSONObject: value, options: [.sortedKeys])
+      try data.write(to: evidenceDirectory.appendingPathComponent(name), options: [.atomic])
+      print("[shorebird-macos-fixture] " + String(decoding: data, as: UTF8.self))
+    } catch { preconditionFailure("Could not write disposable fixture receipt") }
+  }
+
+  static func read(_ keyID: String) -> Data? {
+    guard keyID == account else { return nil }
+    var request = query()
+    request[kSecReturnData as String] = true
+    request[kSecMatchLimit as String] = kSecMatchLimitOne
+    var value: CFTypeRef?
+    guard SecItemCopyMatching(request as CFDictionary, &value) == errSecSuccess,
+          let data = value as? Data, data.count == 32 else { return nil }
+    return data
+  }
+
+  // Called before the first FlutterViewController/FlutterDartProject exists.
+  static func beforeEngine() {
+    precondition(Bundle.main.bundleIdentifier == bundleID, "Wrong disposable bundle")
+    let env = ProcessInfo.processInfo.environment
+    if let action = env["OPEN_SHOREBIRD_TEST_KEY_ACTION"] {
+      precondition(env["OPEN_SHOREBIRD_TEST_KEY_ID"] == account,
+                   "Refusing another Keychain account")
+      var result = ""
+      switch action {
+      case "provision", "overwrite":
+        guard let hex = env["OPEN_SHOREBIRD_TEST_KEY_HEX"], hex.count == 64 else {
+          preconditionFailure("Invalid disposable key provisioning")
+        }
+        var bytes = [UInt8]()
+        var index = hex.startIndex
+        while index < hex.endIndex {
+          let end = hex.index(index, offsetBy: 2)
+          guard let byte = UInt8(hex[index..<end], radix: 16) else {
+            preconditionFailure("Invalid disposable key provisioning")
+          }
+          bytes.append(byte)
+          index = end
+        }
+        let removed = SecItemDelete(query() as CFDictionary)
+        precondition(removed == errSecSuccess || removed == errSecItemNotFound,
+                     "Could not replace disposable key")
+        var item = query()
+        item[kSecValueData as String] = Data(bytes)
+        precondition(SecItemAdd(item as CFDictionary, nil) == errSecSuccess,
+                     "Could not store disposable key")
+        _ = bytes.withUnsafeMutableBytes { $0.initializeMemory(as: UInt8.self, repeating: 0) }
+        result = "stored"
+      case "delete":
+        let removed = SecItemDelete(query() as CFDictionary)
+        precondition(removed == errSecSuccess || removed == errSecItemNotFound,
+                     "Could not delete disposable key")
+        result = removed == errSecSuccess ? "deleted" : "absent"
+      default:
+        preconditionFailure("Unsupported disposable key action")
+      }
+      evidence(["schema": "macos-interpreter-key-control-v1", "action": action,
+                "result": result, "bundle_id": bundleID, "service": service,
+                "account": account, "time": Date().timeIntervalSince1970,
+                "pid": ProcessInfo.processInfo.processIdentifier], name: "key-control.json")
+      if action == "delete" || env["OPEN_SHOREBIRD_TEST_KEY_CONTROL_ONLY"] == "1" {
+        exit(0)
+      }
+    }
+    precondition(IosFullFfiRetain() == 13, "Released native exports missing")
+    precondition(FlutterDartProject.setShorebirdAotPatchKeyProvider { read($0) },
+                 "Key provider must precede the first Flutter project")
+    evidence(["schema": "macos-interpreter-container-v1", "bundle_id": bundleID,
+              "home": NSHomeDirectory(), "temp": NSTemporaryDirectory(),
+              "status_path": evidenceDirectory.appendingPathComponent("ffi-status.json").path,
+              "time": Date().timeIntervalSince1970,
+              "pid": ProcessInfo.processInfo.processIdentifier], name: "container.json")
+  }
+}

@@ -221,6 +221,7 @@ required_files = %w[
   scripts/verify_dart_tool_sdk_validator.sh
   scripts/verify_dart_sdk_tooling.py
   scripts/verify_native_cache_engine_tests.py
+  scripts/verify_macos_interpreter_engine_tests.py
   scripts/run_native_archive_tests.sh
   shorebird/packages/shorebird_cli/lib/src/archive_analysis/portable_zip_namespace_validator.dart
   shorebird/packages/shorebird_cli/test/src/archive_analysis/portable_zip_namespace_validator_test.dart
@@ -1851,8 +1852,18 @@ mapping_evidence_index = cli_steps.index { |step| step['name'] == 'Upload native
 assert!([mapping_test_index, mapping_evidence_index].all? && mapping_test_index < mapping_evidence_index && mapping_evidence_index < cli_compile_index, 'Native mapping build tests and evidence must precede CLI packaging')
 mapping_test = cli_steps.fetch(mapping_test_index)
 assert!(!mapping_test.key?('if') && !mapping_test['continue-on-error'] && mapping_test.dig('env', 'FLUTTER_ROOT') == '${{ github.workspace }}/flutter', 'Native mapping tests must run on every CLI host with an explicit Flutter root')
-%w[shorebird_native_assets_test.dart assets_test.dart common_test.dart compile_batch_test.dart].each do |suite|
-  assert!(mapping_test.fetch('run').include?(suite), "Native mapping build gate must run #{suite}")
+%w[
+  test/general.shard/shorebird/shorebird_native_assets_test.dart
+  test/general.shard/shorebird/shorebird_interpreter_test.dart
+  test/general.shard/shorebird/shorebird_replacement_host_test.dart
+  test/general.shard/shorebird/shorebird_build_key_test.dart
+  test/general.shard/build_system/targets/assets_test.dart
+  test/general.shard/build_system/targets/common_test.dart
+  test/general.shard/build_system/targets/macos_test.dart
+  test/general.shard/compile_batch_test.dart
+  test/commands.shard/hermetic/build_macos_test.dart
+].each do |suite|
+  assert!(mapping_test.fetch('run').split.include?(suite), "Native mapping build gate must run #{suite}")
 end
 assert!(mapping_test.fetch('run').include?('set -euo pipefail') && mapping_test.fetch('run').include?('dart test --reporter expanded'), 'Native mapping build gate must execute tests and propagate failure')
 mapping_upload = cli_steps.fetch(mapping_evidence_index)
@@ -2064,6 +2075,7 @@ native_test_evidence_uploads = {
   'cli-artifacts' => ['native-archive-tests-${{ matrix.artifact_os }}-${{ matrix.artifact_arch }}', 'native-mapping-build-tests-${{ matrix.artifact_os }}-${{ matrix.artifact_arch }}'],
   'linux-engine' => %w[linux-native-cache-engine-tests linux-native-provider-tests linux-native-cache-e2e],
   'windows-engine' => %w[windows-native-cache-engine-tests windows-native-provider-tests windows-native-cache-e2e],
+  'macos-engine' => ['macos-interpreter-engine-tests-${{ matrix.arch }}'],
   'custom-dart-sdk' => ['linux-elf-memory-loader-tests'],
   'custom-dart-sdk-windows' => ['windows-elf-memory-loader-tests'],
 }
@@ -2092,6 +2104,10 @@ run_text_by_job = jobs.transform_values { |job| job_runs(job).join("\n") }
   test_index = steps.index { |step| step['run'].to_s.include?('pkg/frontend_server/test/shorebird_native_assets_descriptor_test.dart') }
   package_index = steps.index { |step| step['name'] == 'Package Dart SDK artifact' }
   assert!([test_index, package_index].all? && test_index < package_index && !steps.fetch(test_index).key?('if') && !steps.fetch(test_index)['continue-on-error'], "#{job_name} must require native mapping compiler provenance tests before SDK packaging")
+  %w[dart2bytecode frontend_server vm].each do |compiler|
+    path = "pkg/#{compiler}/test/shorebird_ios_full_replacement_target_test.dart"
+    assert!(steps.fetch(test_index).fetch('run').split.include?(path), "#{job_name} must test #{compiler} Apple target admission and iOS-only marker semantics")
+  end
   tagging_index = steps.index { |step| step['name'] == 'Run zone memory tagging capability tests' }
   assert!(tagging_index && tagging_index < package_index, "#{job_name} must test MTE capability handling before SDK packaging")
   tagging = steps.fetch(tagging_index)
@@ -2104,6 +2120,19 @@ run_text_by_job = jobs.transform_values { |job| job_runs(job).join("\n") }
   end
 end
 assert!(run_text_by_job.fetch('custom-dart-sdk').include?('pkg/dart2bytecode/test/native_assets_profile_test.dart'), 'Linux SDK must test native-assets carrier profile and imported-component contracts')
+macos_steps = jobs.fetch('macos-engine').fetch('steps')
+macos_tests = macos_steps.index { |step| step['name'] == 'Test macOS interpreter integration' }
+macos_package = macos_steps.index { |step| step['name'] == 'Package macOS engine artifacts' }
+assert!(macos_tests && macos_package && macos_tests < macos_package, 'macOS interpreter integration tests must precede packaging')
+macos_test_step = macos_steps.fetch(macos_tests)
+assert!(!macos_test_step.key?('if') && !macos_test_step['continue-on-error'], 'macOS interpreter tests must be unconditional and required')
+macos_run = macos_test_step.fetch('run')
+assert!(macos_run.include?('set -euo pipefail') && macos_run.include?('scripts/verify_macos_interpreter_engine_tests.py'), 'macOS tests must propagate failures and validate executed inventories')
+%w[shorebird_unittests embedder_unittests flutter_desktop_darwin_unittests].each do |binary|
+  assert!(macos_run.include?(binary) && run_text_by_job.fetch('macos-engine').include?(":#{binary}"), "macOS engine must build and execute #{binary}")
+end
+macos_upload = macos_steps.find { |step| step['name'] == 'Upload macOS interpreter test evidence' }
+assert!(macos_upload && macos_upload['if'].to_s.include?('always()') && macos_upload.dig('with', 'name') == 'macos-interpreter-engine-tests-${{ matrix.arch }}' && macos_upload.dig('with', 'path') == 'artifacts/macos-interpreter-tests/', 'macOS interpreter test logs and XML must survive test failure')
 {
   'custom-dart-sdk' => 'x64',
   'custom-dart-sdk-macos' => 'arm64',
@@ -2640,14 +2669,14 @@ assert!(
     run_text_by_job.fetch('macos-engine').include?('--no-prebuilt-dart-sdk') &&
     run_text_by_job.fetch('macos-engine').include?('flutter/engine/src/out/macos_release_arm64/args.gn') &&
     run_text_by_job.fetch('macos-engine').include?('dart_enable_aot_patching=true') &&
-    run_text_by_job.fetch('macos-engine').include?('dart_enable_shorebird_interpreter=false') &&
+    run_text_by_job.fetch('macos-engine').include?('dart_enable_shorebird_interpreter=true') &&
     run_text_by_job.fetch('macos-engine').include?('shorebird_enable_aot_patching=true') &&
     run_text_by_job.fetch('macos-engine').include?('shorebird_use_interpreter=false') &&
     run_text_by_job.fetch('macos-engine').include?('flutter_prebuilt_dart_sdk=false') &&
     run_text_by_job.fetch('macos-engine').include?('FlutterMacOS.framework.zip') &&
     run_text_by_job.fetch('macos-engine').include?('flutter_patched_sdk_product.zip') &&
     run_text_by_job.fetch('macos-engine').include?('mirror/shorebird/flutter_infra_release/flutter/${engine_revision}/darwin-arm64-release/FlutterMacOS.framework.zip'),
-  'macOS engine artifact must build and verify the native AOT patch runtime without DDM or interpreter mode, while leaving the shared patched SDK mirror path to linux-engine'
+  'macOS engine artifact must include the bytecode interpreter without enabling DDM or the legacy native interpreter route, while leaving the shared patched SDK mirror path to linux-engine'
 )
 assert!(
   run_text_by_job.fetch('linux-runtime-smoke').include?('test -d flutter/engine/src/out/linux_release_x64') &&
