@@ -84,19 +84,21 @@ Future<void> writeVariantStatus() async {
       'provider': provider?['nonce'] == nonce ? provider : null,
       'variant': fixtureVariant, 'new_code_result': variantSpecificCode(),
       'installation_id': installation, 'pid': pid, 'started': started,
+      'completed': DateTime.now().millisecondsSinceEpoch / 1000,
       'stage': stage, 'update_status': updateStatus, 'error': error,
       'data': data, 'selection': selectionStatus(status),
     });
-    File('${directory.path}/variant-status.json').writeAsStringSync(contents, flush: true);
     // Observe only after FFI, UI, status and data readback finish. Transport is
     // asynchronous and cannot hold up the native update/status lock or UI.
-    if (route == 'native') {
-      final pointer = contents.toNativeUtf8();
-      try { _submitNativeReport(pointer); } finally { malloc.free(pointer); }
-    } else if (route == 'dart') {
-      unawaited(_submitDartReport(contents));
-    } else if (route != 'file') {
+    if (!const ['native', 'dart', 'file'].contains(route)) {
       throw StateError('Unknown evidence route');
+    }
+    // Every route obtains the same native cache observations and local report.
+    // The existing native callback only starts HTTP for the native route.
+    final pointer = contents.toNativeUtf8();
+    try { _submitNativeReport(pointer); } finally { malloc.free(pointer); }
+    if (route == 'dart') {
+      unawaited(_submitDartReport(File('${directory.path}/variant-status.json').readAsStringSync()));
     }
   }
   await report('boot');

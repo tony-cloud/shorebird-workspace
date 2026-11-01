@@ -36,6 +36,77 @@ def scaffold(root):
 
 
 class GeneratorTest(unittest.TestCase):
+    @unittest.skipUnless(os.environ.get('ANDROID_VARIANT_ANDROID_JAR') and
+                         os.environ.get('ANDROID_VARIANT_JSON_JAR') and os.environ.get('JAVA_HOME'),
+                         'Explicit installed host-JVM/Android/org.json inputs are required')
+    def test_real_java_cache_controls_enforce_cas_containment_and_never_touch_journal(self):
+        java_home = Path(os.environ['JAVA_HOME'])
+        classpath = os.pathsep.join((os.environ['ANDROID_VARIANT_JSON_JAR'], os.environ['ANDROID_VARIANT_ANDROID_JAR']))
+        with tempfile.TemporaryDirectory(prefix='android-variant-cache-jvm-') as directory:
+            root = Path(directory).resolve(); app = scaffold(root)
+            wiring.inject_app(app, 'dev.shorebird.e2e.compilecheck', 'a' * 64, HEADER,
+                app_id=APP_ID, release_version='1.0.0+1', session=SESSION)
+            java = next(app.rglob('ControlActivity.java')).parent
+            (root/'MainActivity.java').write_text('package dev.shorebird.e2e.compilecheck; public final class MainActivity extends android.app.Activity {}')
+            (root/'CacheCheck.java').write_text(r'''
+package dev.shorebird.e2e.compilecheck;
+import java.io.*; import java.nio.file.*; import java.security.*; import java.util.*; import org.json.*;
+public final class CacheCheck {
+  interface Action { void run() throws Exception; }
+  static int checked;
+  static void require(boolean value) { if(!value) throw new AssertionError(); checked++; }
+  static void rejects(Action action) throws Exception { try { action.run(); } catch(IOException error) { checked++; return; } throw new AssertionError("Accepted unsafe mutation"); }
+  static String hash(Path path) throws Exception { return PatchKeyProvider.hex(MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(path))); }
+  public static void main(String[] args) throws Exception {
+    Path work=Paths.get(args[0]),files=work.resolve("files"),code=work.resolve("code");
+    Path patch=files.resolve("shorebird_updater/patches/2"),journal=files.resolve("shorebird_updater/selections-v2/"+"a".repeat(64)+".json");
+    Files.createDirectories(patch); Files.createDirectories(journal.getParent());
+    Path downloads=code.resolve("shorebird_updater/downloads"); Files.createDirectories(downloads);
+    Path state=patch.resolve("state.json"),cipher=patch.resolve("transport.aesgcm");
+    Files.writeString(state,"{\"kind\":\"InstalledEncryptedTransportV1\",\"signature\":\"AbCdEfGh\",\"size\":17,\"ciphertext_size\":32}");
+    Files.write(cipher,new byte[32]); Files.writeString(journal,"original signed authority, never rewritten");
+    ControlActivity.CacheControls cache=new ControlActivity.CacheControls(files.toFile(),code.toFile(),file->{
+      Path path=file.toPath(); return Files.isSymbolicLink(path)?'x':Files.isDirectory(path)?'d':Files.isRegularFile(path)&&((Number)Files.getAttribute(path,"unix:nlink")).longValue()==1?'f':'x';
+    });
+    String authority=hash(journal),before=hash(cipher),metadata=hash(state);
+    require(cache.snapshot().getString("scope").equals("hashes-only-no-key-reads"));
+    Path unfinished=downloads.resolve("2"); Files.write(unfinished,new byte[32]); rejects(()->cache.snapshot()); Files.delete(unfinished);
+    rejects(()->cache.tamper("tamper-ciphertext","2","f".repeat(64))); require(hash(cipher).equals(before));
+    rejects(()->cache.tamper("tamper-ciphertext","../2",before));
+    rejects(()->cache.tamper("restore","2",before));
+    rejects(()->cache.tamper("tamper-ciphertext","3",before));
+    JSONObject changed=cache.tamper("tamper-ciphertext","2",before);
+    require(changed.getString("before_sha256").equals(before)); require(!hash(cipher).equals(before));
+    require(hash(state).equals(metadata)); require(hash(journal).equals(authority));
+    rejects(()->cache.tamper("tamper-ciphertext","2",before));
+    JSONObject original=new JSONObject(Files.readString(state));
+    cache.tamper("tamper-signature-metadata","2",metadata);
+    JSONObject after=new JSONObject(Files.readString(state));
+    require(!original.getString("signature").equals(after.getString("signature")));
+    after.put("signature",original.getString("signature")); require(after.similar(original)); require(hash(journal).equals(authority));
+    Path outside=work.resolve("outside"); Files.write(outside,new byte[32]);
+    Files.delete(cipher); Files.createSymbolicLink(cipher,outside);
+    rejects(()->cache.snapshot()); rejects(()->cache.tamper("tamper-ciphertext","2",hash(outside)));
+    require(Files.readAllBytes(outside)[16]==0); Files.delete(cipher); Files.write(cipher,new byte[32]);
+    Path link=work.resolve("hardlink"); Files.createLink(link,cipher); rejects(()->cache.snapshot()); Files.delete(link);
+    Path unknown=patch.resolve("unexpected"); Files.writeString(unknown,"refuse unknown cache entry"); rejects(()->cache.snapshot()); Files.delete(unknown);
+    Path duplicate=code.resolve("shorebird_updater/patches/2/transport.aesgcm"); Files.createDirectories(duplicate.getParent()); Files.write(duplicate,new byte[32]);
+    rejects(()->cache.tamper("tamper-ciphertext","2",hash(cipher))); require(hash(journal).equals(authority));
+    System.out.println("PASS "+checked+" actual cache CAS/containment controls; Android runtime unrun");
+  }
+}
+''')
+            classes = root/'classes'; classes.mkdir()
+            compiled = subprocess.run([str(java_home/'bin/javac'), '--release', '17', '-cp', classpath, '-d', str(classes),
+                str(java/'PatchKeyProvider.java'), str(java/'ControlActivity.java'), str(root/'MainActivity.java'),
+                str(root/'CacheCheck.java')], timeout=60, capture_output=True, text=True)
+            self.assertEqual(compiled.returncode,0,compiled.stdout+compiled.stderr)
+            result = subprocess.run([str(java_home/'bin/java'), '-cp', str(classes)+os.pathsep+classpath,
+                'dev.shorebird.e2e.compilecheck.CacheCheck', str(root/'cache')], timeout=30,
+                capture_output=True, text=True)
+            self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+            self.assertIn('actual cache CAS/containment controls; Android runtime unrun', result.stdout)
+
     def test_all_native_architectures_use_opt_in_v2_callback_and_owned_paths(self):
         original = {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
                     for p in wiring.v1.TEMPLATES.iterdir() if p.is_file()}

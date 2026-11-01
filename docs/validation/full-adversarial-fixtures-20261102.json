@@ -1,0 +1,439 @@
+{
+  "schema": "full-adversarial-fixtures-source-validation-v1",
+  "date": "2026-11-02",
+  "status": "reviewed_source_and_focused_checks_passed_runtime_pending",
+  "runtime_acceptance": false,
+  "scope": "Frozen Mac, iOS, Android, native Linux/Windows V2 fixture and CI source enhancements; retained focused evidence only.",
+  "current_toolchain": {
+    "dart_sdk": "dbef3f1e9ade0e74b190c3a91e45aaffce056b19",
+    "flutter_source": "61e4422447053bece99a6457ec004d7eeab70401",
+    "updater": "9d79a58bf49014af9f358cfa0d30d38d881dba2b",
+    "server": "3479ee0445a4db67eb223d8abbbaaf65202a909b",
+    "identity_material": "open-shorebird-toolchain-v1\ndbef3f1e9ade0e74b190c3a91e45aaffce056b19\n61e4422447053bece99a6457ec004d7eeab70401\n9d79a58bf49014af9f358cfa0d30d38d881dba2b\n",
+    "engine_identity": "d0343086cd8f2c6d752ea96c4b862e8532c514a1",
+    "flutter": "3a453a2d63cc95485e3abdf8cbdaa7505801c105",
+    "shorebird": "01015c74206767b5a3ecea17cf44effb976a8eae"
+  },
+  "source_review": {
+    "status": "clear",
+    "basis": "Parent coordination reports independent rereviews clear for all scoped changes, including both iOS P1 fixes and the Mac required event-write failure fix.",
+    "ios_p1_fixes": [
+      "Cleanup composition and restored-scene/bootstrap guards prevent Flutter delegate/controller construction before the native cleanup-only branch, including corrupt-cache recovery.",
+      "A rejected-check launch requires an armed owned replay endpoint; only a complete matching response write and flush can satisfy its nonce-bound delivery receipt."
+    ],
+    "mac_required_write_fix": "Both provider refusal paths and the release path terminate the fixture on an event persistence failure, so a stale empty ledger cannot certify zero attempts."
+  },
+  "source_identity": {
+    "retained_source_hash_count": 15,
+    "all_retained_hashes_match_current_files": true,
+    "matched_source_sha256": {
+      "testapps/license_flavor_patch_test/tool/ios_variant_e2e.py": "cf6094a0096b9cc0372f78f95f02e75fa514b27ab0c3911b85dbb5562e1e18d6",
+      "testapps/license_flavor_patch_test/tool/ios_variant_adversarial.py": "379b781a341d34cc7ba0be535a11f11d56757c18d576a229f04c78391ab1cb76",
+      "testapps/license_flavor_patch_test/tool/test_ios_variant_e2e.py": "a8329667a98303078e77779305ff73df5eeb74ad55b4f64edf3ce07f4e253ffb",
+      "testapps/license_flavor_patch_test/tool/test_ios_variant_adversarial.py": "e961da15f3f69d11a6f6ab24add87a18922ab8c810dbc64e9099bdf0594a86a7",
+      "testapps/license_flavor_patch_test/tool/ios_variant/variant_status.dart.template": "ed34f600a6c3c9c0bf4272079e5f26951dc27661364bd99025b7a54e0b30e62d",
+      "testapps/license_flavor_patch_test/tool/ios_variant/AppDelegate.swift.template": "c638694406baa628eb7bf8f159d2412ef190efdb1bf2fa0e9195557c7e96f533",
+      "testapps/license_flavor_patch_test/tool/ios_variant/CacheControls.swift.template": "64c24644c17a981b27088cf499f54ac178eaa8045d6ff0cd6b922822b42baf0f",
+      "testapps/license_flavor_patch_test/tool/macos_variant_lifecycle.py": "4c78496f9fb556e1a398381dbb3b62d5f1e57d86f168767588a111797caa7c22",
+      "testapps/license_flavor_patch_test/tool/test_macos_variant_lifecycle.py": "7ca430a7f6386e221ee359a3b78a3f3e1a539b6ec3b1e615d889a4af55c9de1e",
+      "testapps/license_flavor_patch_test/tool/macos_interpreter/PatchTestKeysV2.swift.template": "ac551f9364e9ddadf2ee036c42ac80787d940c4b3974e33798a2aaaa6d796c94",
+      "testapps/license_flavor_patch_test/tool/test_macos_variant_e2e.py": "8fb4738644b0d070f80db0fabfa6eaa50c1a4ff0f2eeeb4cbe7eba03f45e62c6",
+      "testapps/license_flavor_patch_test/tool/native_variant_adversarial.py": "df633fbdfd6500ee13616e2e05058be67b8a4df4e924a94353ee7f5b747eedbd",
+      "testapps/license_flavor_patch_test/tool/native_variant_desktop.py": "0127d891b3be5700d3e318e6d9fc8d4cc1bf9c1ea747f7a5a732cdf9650f77de",
+      "testapps/license_flavor_patch_test/tool/native_variant_status.dart.template": "d620eb474d7f9d7eda8259d8e535481ce2a9e079828d216f9957549ea5537b9c",
+      "testapps/license_flavor_patch_test/tool/native_variant_test.py": "d188fc0bd110a9c204f17d7bd4cf1c04181c159bb522d9d9d3c5f676040a222b"
+    },
+    "additional_current_snapshot_sha256": {
+      "testapps/license_flavor_patch_test/tool/android_variant_e2e.py": "4d39d3a56dfdfa97968b6c67faefe8e7bda25947fdd5e8ea14be77f7cf4d6eae",
+      "testapps/license_flavor_patch_test/tool/android_variant/ControlActivity.java.template": "0db0b63b828afd1f69fe3fc043678a4a489c8d992d4bad2857a83dd12e7a72a4",
+      "testapps/license_flavor_patch_test/tool/test_android_variant_app.py": "9963b111284803349db1ac81827f63583e5dd81199c8fef5941eef080e0c121d",
+      "testapps/license_flavor_patch_test/tool/test_android_variant_e2e.py": "4e682a0f37603f4b484cda5245f6774780783bcd3644a899211173e6ea5d2d6d",
+      ".github/workflows/open-shorebird-ci.yml": "157d14c915dc1aefd953e2db8c5b36769f90bb881d2a85d18dedf4014b899e23",
+      "scripts/verify_ci_workflow.rb": "dbafb8d2b6324e3ab2de3b5ba41978dc756f10d97bebc41f5122618e29791fc1"
+    },
+    "saved_ci_job_snapshot_matches_current": {
+      "linux-engine": true,
+      "ios-engine": true,
+      "macos-engine": true,
+      "windows-engine": true,
+      "linux-engine-arm64": true,
+      "windows-engine-arm64": true
+    },
+    "hash_scope": "Retained Mac/iOS/desktop source hash records were rechecked for this document. Additional Android/workflow/verifier hashes identify the current reviewed snapshot; they are not invented historical log hashes."
+  },
+  "platforms": {
+    "macos": {
+      "enhancements": [
+        "Replay listener applies accepted-socket timeouts before HTTP header parsing, closes owned connections during bounded cleanup, and records only complete response writes and flushes.",
+        "Replay acceptance requires a fresh UUID nonce, exact actual installation/scope/accepted epoch and digest, request and response body hashes, the fresh launch time window, unchanged journal, and existing Dart/FFI/data/bundle checks.",
+        "Before first engine creation, a new per-process provider ledger records session/PID/start/runner nonce with a manual UUID fallback; atomic locked events are bounded by count and size.",
+        "Refused and released callbacks retain only public validated identity. Event persistence is required before returning key bytes; persistence failure is fatal.",
+        "Every full Dart launch validates and retains provider.json as a fifth raw report. Normal paid releases match process-current identity; effective free requires zero attempts; missing keys require refusals; a wrong 32-byte key may be released before the VM rejects it."
+      ],
+      "checks": [
+        {
+          "path": ".agents/macos-variant-provider-tests.log",
+          "sha256": "edf60f7cc289895347c44d998af9d13388fb89362f4e0775e918decaf1119ddf",
+          "bytes": 3240,
+          "result": "PASS",
+          "kind": "Python fixture contracts plus actual extracted Foundation Swift helper and fatal-write child controls",
+          "count": 17,
+          "seconds": 3.611
+        },
+        {
+          "path": ".agents/macos-variant-replay-hardening-tests.log",
+          "sha256": "5d9f67b188af2947cc5c116cf1b8c957d83e34b244cbe6084d17ec1352c2b06a",
+          "bytes": 2882,
+          "result": "PASS",
+          "kind": "Python lifecycle oracles and bounded actual HTTP socket controls",
+          "count": 15,
+          "seconds": 2.08
+        }
+      ],
+      "static_checks": [
+        "py_compile passed",
+        "git diff --check passed"
+      ],
+      "runtime_acceptance": false,
+      "remaining": "Current-pin full native application rerun with the new provider template and delivery oracles; build/signing status is tracked separately."
+    },
+    "ios": {
+      "enhancements": [
+        "Contained native cache snapshots and hash-fenced one-byte ciphertext/signature controls preserve authorization journal bytes and reject stale hashes, foreign patches, links and hardlinks.",
+        "Nonce-bound mutation, key, replay and cleanup receipts retain uncertainty fences across lost command responses; cleanup can delete both owned keys and uninstall without resolving or replaying a failed runtime control.",
+        "Restored UIKit scenes and delegate forwarding enter the native cleanup branch before any Flutter construction.",
+        "Private captured responses and successfully flushed replay deliveries bind the actual fresh launch, request, accepted high-water identity and exact body hash; exported diagnostics omit authentication bytes and signed download URLs."
+      ],
+      "checks": {
+        "combined_suite": {
+          "result": "PASS",
+          "count": 59,
+          "native_cache_controls": 3,
+          "command": "python3 -m unittest test_ios_variant_adversarial.py test_ios_variant_e2e.py test_ios_device_e2e.py test_macos_variant_e2e.py",
+          "py_compile": "PASS",
+          "diff_check": "PASS",
+          "kind": "Focused Python suites plus standalone native Swift cache-helper controls",
+          "overlaps_other_counts": true
+        },
+        "source_subset": {
+          "path": ".agents/full-adversarial-ios-source.log",
+          "sha256": "8ee46a88aa26a5cfd2f908fff2ab816a1d2b63e79fb6a790949823e3d1afb6db",
+          "bytes": 1994,
+          "result": "PASS",
+          "kind": "Python adversarial source/control subset",
+          "count": 9,
+          "seconds": 1.438
+        },
+        "native_cache_helper_subset": {
+          "path": ".agents/full-adversarial-ios-swift.log",
+          "sha256": "215f1548775ed82f4e3657a7d1603bf14279ae98d12a12188eef1fc1f093643c",
+          "bytes": 773,
+          "result": "PASS",
+          "kind": "Three actual standalone Swift cache-helper controls; required CI host inventory",
+          "count": 3,
+          "seconds": 2.475
+        }
+      },
+      "swift_typecheck": {
+        "returncode": 0,
+        "sdk": "iPhoneOS27.0",
+        "language": "Swift5",
+        "target": "arm64-apple-ios15.0",
+        "framework_sha256": "b59ee35b94f244ae63ebc2d2bbc617814b50d2cbd8cda3c674979eaddf3db8b7",
+        "header_overlay": false
+      },
+      "dart_cfe_kernel_only": [
+        {
+          "phase": "base",
+          "returncode": 0,
+          "kernel_bytes": 55420552,
+          "kernel_sha256": "e940bb4678ce849332cb4a0aeb66a490009374f4bab16e48e96c4d0f5dc9d11e"
+        },
+        {
+          "phase": "pro_seed",
+          "returncode": 0,
+          "kernel_bytes": 55445416,
+          "kernel_sha256": "657c6ea573b83406cf1d37884e8e65f96929716f4b87fb1160e654b132c6f2ce"
+        },
+        {
+          "phase": "pro",
+          "returncode": 0,
+          "kernel_bytes": 55445520,
+          "kernel_sha256": "2a51f46f8e13d49d2e3376a2d9bc80f0d703037eaee518aa777fcdf963163e4e"
+        },
+        {
+          "phase": "enterprise",
+          "returncode": 0,
+          "kernel_bytes": 55446128,
+          "kernel_sha256": "df6903c35e9d14e16cf2ea50a08c7a56d00b165ee9c46a8793319d77d8210519"
+        }
+      ],
+      "runtime_acceptance": false,
+      "remaining": "Current-pin signed app and physical-device validation of restored scenes, native providers, full adversarial transitions, receipts and cleanup."
+    },
+    "android": {
+      "enhancements": [
+        "Native V2 harness uses staged/finalized real CLI scopes, actual packaged native identities and authenticated server selections, with exact cold/online public status and persistent-data gates.",
+        "Java cache controls perform contained compare-and-set mutations and snapshots without journal writes; production Java context gating runs before even a cached key source.",
+        "Adversarial flow covers ciphertext repair, native cached-signature tolerance, actual device wall-clock lease expiry, combined old/corrupted response replay, rollback/rollforward and explicit paid reauthorization.",
+        "Provider receipts bind fresh native control nonce/PID/process token and exact authenticated selection/AAD-derived material; exported replay evidence contains hashes and counts."
+      ],
+      "checks": {
+        "path": ".agents/android-variant-adversarial-tests.log",
+        "sha256": "f1e96d45afcbd17424f954f50c101f3f032662b4885561fbc8c2fba3136add92",
+        "bytes": 13746,
+        "result": "PASS",
+        "kind": "73 focused V1/V2 tests including two actual host JVM gates; no device application execution",
+        "count": 73,
+        "seconds": 3.504
+      },
+      "runtime_acceptance": false,
+      "remaining": "Actual native Android application/device validation with the current pinned toolchain."
+    },
+    "native_linux_windows": {
+      "architectures": [
+        "x64",
+        "arm64"
+      ],
+      "enhancements": [
+        "Preserved staged CLI producer/publication and native binary identity gates, exact current/cold selection status, structural variant code, application data, immutable bundle and owned cleanup.",
+        "Owned ciphertext corruption requires offline content_unavailable/free with no successful key releases, then explicit signed free and the same Pro content through a real outdated/download path.",
+        "Cached state.signature mutation preserves valid Pro under the independently signed journal/content hash; it does not require a meaningless redownload.",
+        "A genuine finite paid lease is observed valid, then expiry is checked against native platform wall clock with unchanged accepted authority/journal and no successful key releases.",
+        "Replay has a separate owned listener while the real API/provisioning services remain stopped. Exported capture/request evidence is allowlisted hashes/public identity/counts.",
+        "Authenticated enterprise rollback yields signed free; rollforward alone stays free, explicit enterprise authorization restores it, and final signed free boots offline."
+      ],
+      "checks": {
+        "path": ".agents/native-variant-adversarial-tests.log",
+        "sha256": "650c1329db16fc7dc63904eb9d2dec3d216966c300ba32dd92882768d200bc8a",
+        "bytes": 4699,
+        "result": "PASS",
+        "kind": "Python oracles/actual wrapper flow, contained mutations, actual bounded replay sockets and C++ adapters using stub caches",
+        "count": 25,
+        "seconds": 3.604
+      },
+      "generated_dart_profile_parse_count": 4,
+      "static_checks": [
+        "py_compile passed",
+        "git diff --check passed"
+      ],
+      "runtime_acceptance": false,
+      "remaining": "Actual Linux keyring/Windows DPAPI and native windowed application lifecycles on x64 and ARM64; no such acceptance follows from stub-cache controls."
+    }
+  },
+  "ci_source_checks": {
+    "desktop_jobs": {
+      "count": 4,
+      "jobs": [
+        "linux-engine",
+        "windows-engine",
+        "linux-engine-arm64",
+        "windows-engine-arm64"
+      ],
+      "required_stage_count_per_job": 61,
+      "synthetic_positive_controls_per_job": 1,
+      "synthetic_rejection_controls_per_job": 51,
+      "full_adversarial_completion_required": true,
+      "real_redownload_required": true,
+      "observed_clock_boundary_required": true,
+      "successful_replay_delivery_with_real_services_stopped_required": true
+    },
+    "apple_host_gates": {
+      "macos_required_swift_test_count": 1,
+      "ios_required_swift_test_count": 3,
+      "missing_failed_or_skipped_rejected": true,
+      "macos_execution": {
+        "path": ".agents/full-adversarial-macos-swift.log",
+        "sha256": "33a077b55f5d8759a7b2ce0fb6edcacf359d49bdbf62ed71cb6030dddf66d1dc",
+        "bytes": 351,
+        "result": "PASS",
+        "kind": "Exact standalone Swift ledger host test inventory",
+        "count": 1,
+        "seconds": 1.973
+      },
+      "ios_execution": {
+        "path": ".agents/full-adversarial-ios-swift.log",
+        "sha256": "215f1548775ed82f4e3657a7d1603bf14279ae98d12a12188eef1fc1f093643c",
+        "bytes": 773,
+        "result": "PASS",
+        "kind": "Exact standalone Swift cache host test inventory",
+        "count": 3,
+        "seconds": 2.475
+      },
+      "runner_negative_controls": 6
+    },
+    "workflow_negative_controls": 8,
+    "preserved_arm64_contract": {
+      "suite": {
+        "path": ".agents/full-adversarial-ci-arm64-controls.log",
+        "sha256": "71e4426c3cdb97eff2e4581404d587a1901952c0e7a2ab9c4fa33c28f5f679b9",
+        "bytes": 228,
+        "result": "PASS",
+        "kind": "Existing native ARM64 workflow contract suite",
+        "count": 1,
+        "seconds": 27.023
+      },
+      "negative_controls": 18
+    },
+    "preservation": "Existing producers, V1 lifecycles, build inputs/targets and packaging gates are preserved; reviewed changes add V2 receipt checks and required Apple host Swift controls.",
+    "full_workflow_verifier": {
+      "result": "PASS",
+      "bash_blocks": 320,
+      "real_powershell_parser_enabled": true,
+      "yaml_and_artifact_contracts": "PASS",
+      "successful_log": ".agents/pwsh-diagnosis-20261102/full-workflow-verifier.log"
+    },
+    "powershell_diagnosis": {
+      "initial_log": ".agents/full-adversarial-ci-verifier.log",
+      "initial_result": "Homebrew PowerShell 7.6.1/.NET 10.0.7 failed before command output with an assembly-name parser SIGABRT.",
+      "resolution": "Same PowerShell version from the official self-contained ARM64 archive passed three minimal parser controls and the full verifier; no global installation/settings change.",
+      "official_archive_sha256": "9e1078f70b11c40e10f4bad1354db1cdcaf38cd6775fcf40e0738e3f5ac6807e",
+      "digest_verified": true,
+      "official_dotnet_runtime": "10.0.6",
+      "limit": "The controls isolate the local distribution/runtime pair; they do not establish a general .NET 10.0.7 defect."
+    },
+    "runtime_acceptance": false,
+    "execution_scope": "Local parser, structural/synthetic receipt and focused host-helper checks; no new CI native job execution is certified."
+  },
+  "prior_typecheck_provenance": {
+    "record": ".agents/ios-variant-final-source-20261102/source-validation.json",
+    "toolchain": {
+      "dart_sdk": "dbef3f1e9ade0e74b190c3a91e45aaffce056b19",
+      "flutter_source": "f60c2b044c437e0d5f67370dfb25910c6afec093",
+      "updater": "9d79a58bf49014af9f358cfa0d30d38d881dba2b",
+      "server": "3479ee0445a4db67eb223d8abbbaaf65202a909b",
+      "identity_material": "open-shorebird-toolchain-v1\ndbef3f1e9ade0e74b190c3a91e45aaffce056b19\nf60c2b044c437e0d5f67370dfb25910c6afec093\n9d79a58bf49014af9f358cfa0d30d38d881dba2b\n",
+      "engine_identity": "134dc122dee913f2677e9a08e5466034c4d191d4",
+      "flutter": "4f720edf68d125a545f0fdcfcf8bdaf273e424d2",
+      "shorebird": "2072d03c00eca7b34f719c963d3f35e925474e96"
+    },
+    "current_engine_identity": "d0343086cd8f2c6d752ea96c4b862e8532c514a1",
+    "prior_engine_identity": "134dc122dee913f2677e9a08e5466034c4d191d4",
+    "flutter_source_files_changed_to_current": [
+      "bin/internal/engine.version",
+      "engine/src/flutter/shell/common/shorebird/shorebird_config_unittests.cc"
+    ],
+    "interpretation": "The retained real-framework Swift typecheck and CFE kernels are bound to prior engine 134dc122, not current d0343086. The inspected Flutter source difference is engine.version plus a unit-test assertion; this does not convert earlier compile evidence into current-pin runtime acceptance."
+  },
+  "limitations": [
+    "All platform runtime_acceptance fields are false. Focused unit/helper execution, kernel generation and typechecking do not certify a signed native application lifecycle.",
+    "The earlier 62-launch Mac run predates complete-write replay evidence and the fresh provider ledger; it cannot retrospectively prove the new delivery or zero/release oracles.",
+    "Old response captures use an independent nonce and an older accepted epoch. Rejection of an additional corrupted signature remains a combined control, not isolated epoch or signature verification; capture consistency is not local RSA verification.",
+    "The 59-test iOS combined suite overlaps the Mac fixture suite and iOS subsets. Test counts here are not a sum of unique checks.",
+    "No current-pin Android/iOS/desktop device, VM, native windowed app, or full CI acceptance is claimed by this source record."
+  ],
+  "sanitization": "Public record contains source/artifact/log hashes, toolchain revisions, counts and result summaries only; no keys, tokens, raw client IDs, signed download URLs, context bodies or authentication payloads.",
+  "evidence": [
+    {
+      "path": ".agents/macos-variant-provider-tests.log",
+      "sha256": "edf60f7cc289895347c44d998af9d13388fb89362f4e0775e918decaf1119ddf",
+      "bytes": 3240
+    },
+    {
+      "path": ".agents/macos-variant-replay-hardening-tests.log",
+      "sha256": "5d9f67b188af2947cc5c116cf1b8c957d83e34b244cbe6084d17ec1352c2b06a",
+      "bytes": 2882
+    },
+    {
+      "path": ".agents/macos-variant-replay-provider-source-checks.log",
+      "sha256": "d84abbe652ce3610f258755da4ec9bc7f51f236ecbfaa53fd23b332e458b62c3",
+      "bytes": 720
+    },
+    {
+      "path": ".agents/ios-variant-final-source-20261102/source-validation.json",
+      "sha256": "1ae905a5b86d73ce13078a4961bcc65862d884a3c5d649482b344a4abc746453",
+      "bytes": 9108
+    },
+    {
+      "path": ".agents/android-variant-adversarial-tests.log",
+      "sha256": "f1e96d45afcbd17424f954f50c101f3f032662b4885561fbc8c2fba3136add92",
+      "bytes": 13746
+    },
+    {
+      "path": ".agents/native-variant-adversarial-tests.log",
+      "sha256": "650c1329db16fc7dc63904eb9d2dec3d216966c300ba32dd92882768d200bc8a",
+      "bytes": 4699
+    },
+    {
+      "path": ".agents/native-variant-adversarial-source-checks.log",
+      "sha256": "1f00bd2b7eb24f4e443a96345f287c0c6351552ba405768c76545242cdc17dfb",
+      "bytes": 1238
+    },
+    {
+      "path": ".agents/full-adversarial-ci-arm64-controls.log",
+      "sha256": "71e4426c3cdb97eff2e4581404d587a1901952c0e7a2ab9c4fa33c28f5f679b9",
+      "bytes": 228
+    },
+    {
+      "path": ".agents/full-adversarial-ci-jobs.json",
+      "sha256": "43833e993343b3286bd3118df4f91bf0f1a10fc18f64734370927563a770e61c",
+      "bytes": 126136
+    },
+    {
+      "path": ".agents/full-adversarial-ci-negative.log",
+      "sha256": "2467d3e5f0b1a82bc34f0d368e8c233f0171992f6493333e6f394b01006881ce",
+      "bytes": 865
+    },
+    {
+      "path": ".agents/full-adversarial-ci-preserved.log",
+      "sha256": "cb42260b0bc2bbd77d63bd82121629ce91dc8775c899637aeb18fe61916611bc",
+      "bytes": 153
+    },
+    {
+      "path": ".agents/full-adversarial-ci-receipts.log",
+      "sha256": "502add00a77d969bcbedd46b5b0bb0a01b2a18f6c0cee4c69192f0d9bd38658a",
+      "bytes": 425
+    },
+    {
+      "path": ".agents/full-adversarial-ci-verifier.log",
+      "sha256": "ab49c4e53ab168b201f3a089f7d7e149dbebb7b55792b01541a37fc0e3d30461",
+      "bytes": 1538
+    },
+    {
+      "path": ".agents/full-adversarial-ios-source.log",
+      "sha256": "8ee46a88aa26a5cfd2f908fff2ab816a1d2b63e79fb6a790949823e3d1afb6db",
+      "bytes": 1994
+    },
+    {
+      "path": ".agents/full-adversarial-ios-swift.log",
+      "sha256": "215f1548775ed82f4e3657a7d1603bf14279ae98d12a12188eef1fc1f093643c",
+      "bytes": 773
+    },
+    {
+      "path": ".agents/full-adversarial-ios-swift.sh",
+      "sha256": "8f03b31b9c71cd52aaecfffb2dce5e43e51c4f000d9e26f54fd12bec9e69eab7",
+      "bytes": 731
+    },
+    {
+      "path": ".agents/full-adversarial-macos-swift.log",
+      "sha256": "33a077b55f5d8759a7b2ce0fb6edcacf359d49bdbf62ed71cb6030dddf66d1dc",
+      "bytes": 351
+    },
+    {
+      "path": ".agents/full-adversarial-macos-swift.sh",
+      "sha256": "93e552e183919dd6d283de70508dfd4fad6b488a466de3b6c29c950556c7de37",
+      "bytes": 806
+    },
+    {
+      "path": ".agents/full-adversarial-swift-runner-controls.log",
+      "sha256": "f166c8a9e6f8a79ca65be3bd3f3b09bf8ce17d4659bef7dbb7532848b27cd04e",
+      "bytes": 274
+    },
+    {
+      "path": ".agents/pwsh-diagnosis-20261102/diagnosis.json",
+      "sha256": "21d22c453f404d3553a4c381936ce2ad5ab05cb41d919bb6aa6ab484d798f310",
+      "bytes": 2423
+    },
+    {
+      "path": ".agents/pwsh-diagnosis-20261102/full-workflow-verifier.log",
+      "sha256": "0f074589ccf71f46def0ab668ca240eaf13f6ca80e46eab391d95316e5853304",
+      "bytes": 162
+    },
+    {
+      "path": ".agents/ci-unicode-path-integration-20261102/toolchain.json",
+      "sha256": "812b2e369d1631515f8085c4523cc289b98380c8668ca77b3c26d1c3f5f7a5eb",
+      "bytes": 601
+    }
+  ],
+  "current_build_status": "Current-pin engine build results are tracked separately by the parent; this ledger records source checks and does not assert pending engine builds."
+}

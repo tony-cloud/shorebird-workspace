@@ -1,0 +1,416 @@
+{
+  "schema": "native-encrypted-opt-in-engine-evidence-v1",
+  "recorded_at_utc": "2026-11-01T19:10:58.654419+00:00",
+  "root_commit_at_ledger_assembly": "a519585ce69bb6d009c332334531ea3fd1fda792",
+  "scope": "Integrated native V2 encrypted-delivery opt-in: source/request-contract tests, coherent macOS ARM64 engine rebuild and host tests, and physical-target iOS ARM64 interpreter engine rebuild. App lifecycle validation for these pins is pending.",
+  "pins": {
+    "dart_sdk": "dbef3f1e9ade0e74b190c3a91e45aaffce056b19",
+    "flutter_source": "f60c2b044c437e0d5f67370dfb25910c6afec093",
+    "updater": "9d79a58bf49014af9f358cfa0d30d38d881dba2b",
+    "server": "3479ee0445a4db67eb223d8abbbaaf65202a909b",
+    "identity_material": "open-shorebird-toolchain-v1\ndbef3f1e9ade0e74b190c3a91e45aaffce056b19\nf60c2b044c437e0d5f67370dfb25910c6afec093\n9d79a58bf49014af9f358cfa0d30d38d881dba2b\n",
+    "engine_identity": "134dc122dee913f2677e9a08e5466034c4d191d4",
+    "flutter": "4f720edf68d125a545f0fdcfcf8bdaf273e424d2",
+    "shorebird": "2072d03c00eca7b34f719c963d3f35e925474e96"
+  },
+  "pin_evidence": {
+    "path": ".agents/native-encrypted-integration-20261102/toolchain.json",
+    "sha256": "d66f10975526278494572eaed44664d210ca2cefeab66ad2ac4c6af9f37508eb"
+  },
+  "engine_identity_sha1_verified": true,
+  "production_fix": {
+    "cause": "V2 network serialization only emitted signed RequestContext fields, client_id, protocol and current patch. Native Go delivery requires the separate accept_encrypted_patch transport opt-in; every native paid check omitted it.",
+    "commit": "9d79a58bf49014af9f358cfa0d30d38d881dba2b",
+    "tested_diff_base": "45034c2f47405c76428bb66a57c79bfe1b26c2bd",
+    "reviewed_diff_exactly_matches_committed_change": true,
+    "reviewed_diff": {
+      "path": ".agents/native-v2-encryption-opt-in-20261102/review.patch",
+      "sha256": "8ed4d7f9a6331d08e0e2159888b2152ef3ba637f5fba842e37430ca9b031a35b"
+    },
+    "gate": [
+      "installed native-aot runtime profile",
+      "registered selection-aware V2 provider",
+      "NativeOptions.encrypted(config): sealed-FD/verified-memory capability"
+    ],
+    "preserved_contracts": [
+      "RequestContext signed wire schema and equality check",
+      "journal schema/high-water/replay behavior",
+      "V1 requests and provider semantics",
+      "interpreter request field inventory",
+      "key resolver authorization and actual key callback policy"
+    ],
+    "source_references": [
+      "updater/library/src/network.rs:83",
+      "updater/library/src/selection_v2.rs:1421",
+      "updater/library/src/config.rs:325",
+      "shorebird-server/internal/api/handlers/selection_device.go:225"
+    ],
+    "diagnosis": {
+      "path": ".agents/native-v2-encryption-opt-in-20261102/diagnosis.json",
+      "sha256": "9abafed31c6002edb1812f062507bf2e541f33844c8a1324663186d56d38710c"
+    },
+    "red_regression": {
+      "observation": "native_v2_patch_check_advertises_capability_and_accepts_bound_delivery failed before fix with unmatched HTTP request status 501; provider/source negative regression passed",
+      "evidence": {
+        "path": ".agents/native-v2-encryption-opt-in-20261102/regression-red.log",
+        "sha256": "5bf50509275e01b9abdd628aa9067323baa5563ea273cd0782ab3ca917209529"
+      }
+    },
+    "focused_host_tests": {
+      "selection-v2-green": {
+        "passed": 22,
+        "evidence": {
+          "path": ".agents/native-v2-encryption-opt-in-20261102/selection-v2-green.log",
+          "sha256": "305751af7b17d0d6dd6c53ea349629a33877bb77d68deaa760065a661a5dd92b"
+        }
+      },
+      "network-v1-green": {
+        "passed": 21,
+        "evidence": {
+          "path": ".agents/native-v2-encryption-opt-in-20261102/network-v1-green.log",
+          "sha256": "4bb6039edfc1ea2c4a2f2c43e36ace222747a24d5059d0e4770bbd3306f38393"
+        }
+      },
+      "response-auth-v1-green": {
+        "passed": 5,
+        "evidence": {
+          "path": ".agents/native-v2-encryption-opt-in-20261102/response-auth-v1-green.log",
+          "sha256": "f50c68559c91ae7300ab7028f7773b5b88a0e270f9a6452ddb20712654fccabd"
+        }
+      },
+      "encrypted-transport-v1-green": {
+        "passed": 7,
+        "evidence": {
+          "path": ".agents/native-v2-encryption-opt-in-20261102/encrypted-transport-v1-green.log",
+          "sha256": "b0598b51f0cb4fdd2abde1d4226f5ef58c5de89be685b2443d044c2f79db6712"
+        }
+      }
+    },
+    "focused_host_tests_total": 55,
+    "cross_language_contract": {
+      "result": "passed",
+      "procedure": "Temporary Go test with actual SQLite/router/object storage/signing and ephemeral httptest server invoked a temporary compiled Rust test using production network::patch_check_v2 and verify_response. Both temporary source insertions were removed; copies retained as evidence.",
+      "assertions": [
+        "omitted capability -> Go 409",
+        "explicit false -> Go 409",
+        "Rust capability false -> Go 409",
+        "Rust capability true -> signed native encrypted pro delivery, verified by Rust",
+        "altered nonce and installed scope -> ContextMismatch",
+        "capability absent from signed server RequestContext",
+        "no key callback/download/runtime activation"
+      ],
+      "evidence": {
+        "path": ".agents/native-v2-encryption-opt-in-20261102/real-go-endpoint.log",
+        "sha256": "b7a12a63bf65554395ce618cfecf1424f2b92a25c71747f751954fca141bef69"
+      },
+      "temporary_harness_sources": [
+        {
+          "path": ".agents/native-v2-encryption-opt-in-20261102/disposable-rust-contract.rs.txt",
+          "sha256": "d27bd1b20bacc02e9d6115cb5f3b28b311c00c84e084cdcaba362bedb438b7fe"
+        },
+        {
+          "path": ".agents/native-v2-encryption-opt-in-20261102/disposable-go-contract_test.go.txt",
+          "sha256": "981aba1e75223bc4f40be7c986270b14eddfa52db4f32c1cb4eabd903a86afd7"
+        }
+      ],
+      "scope": "Actual Go SQLite/router/storage/signing endpoint and production Rust HTTP serialization/signature/context verification on ephemeral localhost; no patch download, provider key release, or app activation."
+    }
+  },
+  "macos_arm64": {
+    "classification": "engine build and executed host tests",
+    "output": "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-native-encrypted-20261102/out/macos_release_arm64",
+    "clone_provenance": {
+      "source": "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-cache-recovery-20261102",
+      "destination": "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-native-encrypted-20261102",
+      "method": "Independent APFS clone of frozen engine proof; matching depot_tools Ninja1.11.1 retained"
+    },
+    "build_exit_code": 0,
+    "completed_incremental_actions": 50,
+    "build_command": [
+      "ninja",
+      "-C",
+      "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-native-encrypted-20261102/out/macos_release_arm64",
+      "-j8",
+      "shorebird_unittests",
+      "embedder_unittests",
+      "runtime_unittests",
+      "flutter_desktop_darwin_unittests",
+      "flutter_framework",
+      "zip_macos_flutter_framework",
+      "universal/gen_snapshot_arm64",
+      "flutter/third_party/dart:create_sdk",
+      "dartaotruntime",
+      "flutter/build/archives:flutter_patched_sdk",
+      "font_subset",
+      "sky_engine"
+    ],
+    "gn_command_evidence": {
+      "path": ".agents/native-encrypted-integration-20261102/gn-command.json",
+      "sha256": "ec4a164e43c6431eb06f2fc69cb58e1484dd8e11af6d84f810efa090fe00199f"
+    },
+    "args_gn": {
+      "path": ".agents/builds/engine-native-encrypted-20261102/out/macos_release_arm64/args.gn",
+      "sha256": "105a87cb88747003e480685c8ce4ff4c37fd4375fcea2bf7ef6e557668f61951"
+    },
+    "build_log": {
+      "path": ".agents/native-encrypted-integration-20261102/engine-build.log",
+      "sha256": "2febbbc13c2b1084e050d1039edebb08282188e853eadf269dc153229be5362d"
+    },
+    "build_exit_evidence": {
+      "path": ".agents/native-encrypted-integration-20261102/build-exit.json",
+      "sha256": "df4d721d233a2334088d2d2e0110346ae9e509ff46bf0b379fbcfa85c715af4d"
+    },
+    "host_tests": {
+      "shorebird": {
+        "executed": 146,
+        "failures": 0,
+        "errors": 0,
+        "disabled": 0,
+        "skipped": 0,
+        "exit_codes": {
+          "list": 0,
+          "test": 0
+        },
+        "xml": {
+          "path": ".agents/native-encrypted-integration-20261102/integrated-engine-tests/shorebird.xml",
+          "sha256": "ea4f0531992e7e9d73da1f0c5b0c235683cf51d9be07be72c93d2e2197b61366"
+        },
+        "log": {
+          "path": ".agents/native-encrypted-integration-20261102/integrated-engine-tests/shorebird-tests.log",
+          "sha256": "c88ea4a3ab12f263fbe1a79062a7fa362ee4819aca02daf2d82c14d0d4a1ef4a"
+        }
+      },
+      "embedder": {
+        "executed": 5,
+        "failures": 0,
+        "errors": 0,
+        "disabled": 0,
+        "skipped": 0,
+        "exit_codes": {
+          "list": 0,
+          "test": 0
+        },
+        "xml": {
+          "path": ".agents/native-encrypted-integration-20261102/integrated-engine-tests/embedder.xml",
+          "sha256": "4d03b155b92ee4aa3b68d581d60ddc6724470a9c1a732aa9b27d86571e4234f7"
+        },
+        "log": {
+          "path": ".agents/native-encrypted-integration-20261102/integrated-engine-tests/embedder-tests.log",
+          "sha256": "be9611db39bbc3e9af4f533d9000d0a5c9869c63a47f40760609d2e9663953dc"
+        }
+      },
+      "runtime": {
+        "executed": 2,
+        "failures": 0,
+        "errors": 0,
+        "disabled": 0,
+        "skipped": 0,
+        "exit_codes": {
+          "list": 0,
+          "test": 0
+        },
+        "xml": {
+          "path": ".agents/native-encrypted-integration-20261102/integrated-engine-tests/runtime.xml",
+          "sha256": "3260617efae55bcb4075f0ae83c3d832a3378431efbbfbe455be1a52d612bfd9"
+        },
+        "log": {
+          "path": ".agents/native-encrypted-integration-20261102/integrated-engine-tests/runtime-tests.log",
+          "sha256": "c9a5d1f91349d8c943e72c8c2ad1038f80cacfa8ed3dfea6b4a2d0ccd4466a9b"
+        }
+      },
+      "cocoa": {
+        "executed": 5,
+        "failures": 0,
+        "errors": 0,
+        "disabled": 0,
+        "skipped": 0,
+        "exit_codes": {
+          "list": 0,
+          "test": 0
+        },
+        "xml": {
+          "path": ".agents/native-encrypted-integration-20261102/integrated-engine-tests/cocoa.xml",
+          "sha256": "5fd10262f10e2be582b0dd2e6c4e624f0716dedd70f371ed7ec62235cd693261"
+        },
+        "log": {
+          "path": ".agents/native-encrypted-integration-20261102/integrated-engine-tests/cocoa-tests.log",
+          "sha256": "cb3180e216cb5c70bda27a4eacead46b4e86e24b6df49969dc83dcd57870ef76"
+        }
+      }
+    },
+    "host_tests_total_executed": 158,
+    "inventory_validator_log": {
+      "path": ".agents/native-encrypted-integration-20261102/engine-tests-control.log",
+      "sha256": "e0d39e044931fd6677e316cdd1dd698315174df792d4d08a66364821ce6d284b"
+    },
+    "artifacts": {
+      "shorebird_unittests": {
+        "sha256": "345bb118fce8c92ede47c26232eac5b036b5b0616e8f7b0e737e47df870be8b2",
+        "bytes": 9460160,
+        "machine": "Mach-O 64-bit executable arm64"
+      },
+      "embedder_unittests": {
+        "sha256": "b4c8a873a5889b8d2c0c0b781e404b5a2433829d67efd7a9dd041ba3058ecd1b",
+        "bytes": 38078016,
+        "machine": "Mach-O 64-bit executable arm64"
+      },
+      "runtime_unittests": {
+        "sha256": "b9df7fdcb0d8b4f1c6ced18a74750783b6b28d52293d6be66dc4bd7bbb331725",
+        "bytes": 36566768,
+        "machine": "Mach-O 64-bit executable arm64"
+      },
+      "flutter_desktop_darwin_unittests": {
+        "sha256": "ea6797c0f1385620510949f0e9ad7e9fea19ce2af188f8c52458bb7a2fec1cd0",
+        "bytes": 28325808,
+        "machine": "Mach-O 64-bit executable arm64"
+      },
+      "FlutterMacOS.framework/Versions/A/FlutterMacOS": {
+        "sha256": "4be7f6a28a459569172be6f5af556a53976e3b0444e659832ab3817f06b71d74",
+        "bytes": 28226032,
+        "machine": "Mach-O 64-bit dynamically linked shared library arm64"
+      },
+      "gen_snapshot": {
+        "sha256": "67a258fa268786180924d0e761809755df4584673c7cf9b19d5e51eb989c3696",
+        "bytes": 7286304,
+        "machine": "Mach-O 64-bit executable arm64"
+      },
+      "universal/gen_snapshot_arm64": {
+        "sha256": "48b0f58e8e71b43460724b4ec709c820a17566a48041bfbcb3278bf41ffd635f",
+        "bytes": 14615056,
+        "machine": "Mach-O universal binary with 2 architectures: [x86_64:Mach-O 64-bit executable x86_64] [arm64]\n/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-native-encrypted-20261102/out/macos_release_arm64/universal/gen_snapshot_arm64 (for architecture x86_64):\tMach-O 64-bit executable x86_64\n/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-native-encrypted-20261102/out/macos_release_arm64/universal/gen_snapshot_arm64 (for architecture arm64):\tMach-O 64-bit executable arm64"
+      },
+      "dart-sdk/bin/dart": {
+        "sha256": "618615581d8a650ca345a1801deb635ba4ec80dcd2f161c3c3519440a6b67873",
+        "bytes": 6405472,
+        "machine": "Mach-O 64-bit executable arm64"
+      }
+    },
+    "runtime_acceptance": false
+  },
+  "ios_arm64": {
+    "classification": "physical-target engine build only",
+    "route": "iOS ARM64 release with Dart bytecode interpreter; not simulator or native-AOT patch activation evidence",
+    "output": "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-ios-native-encrypted-20261102/out/ios_release",
+    "clone_provenance": {
+      "source": "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-ios-cache-recovery-20261102",
+      "destination": "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-ios-native-encrypted-20261102",
+      "method": "Independent APFS clone; original frozen build untouched; new owned marker and toolchain regeneration",
+      "ninja": "/opt/homebrew/bin/ninja1.13.0, matching original iOS build"
+    },
+    "build_complete": true,
+    "completed_incremental_actions": 25,
+    "build_command": [
+      "/opt/homebrew/bin/ninja",
+      "-C",
+      "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-ios-native-encrypted-20261102/out/ios_release",
+      "-j6",
+      "flutter/shell/platform/darwin/ios:flutter_framework",
+      "flutter/lib/snapshot:generate_snapshot_bins",
+      "flutter_patched_sdk/platform_strong.dill"
+    ],
+    "build_marker": {
+      "path": ".agents/ios-native-encrypted-20261102/built.json",
+      "sha256": "4f755591171c5506b369f8d6a93531e0c24469c85c8b37aab88f6b1d661a7b7a"
+    },
+    "verified_marker": {
+      "path": ".agents/ios-native-encrypted-20261102/verified.json",
+      "sha256": "f22ad46062e0fce89ed5b2df405a345edfb6a298175127d1d05dcf225f0d5eaf"
+    },
+    "gn_command_evidence": {
+      "path": ".agents/ios-native-encrypted-20261102/gn-command.json",
+      "sha256": "da5ca62c02a47fd0d02cc1975831685a21f68b67ab1f95818a7d078eeea8541c"
+    },
+    "args_gn": {
+      "path": ".agents/builds/engine-ios-native-encrypted-20261102/out/ios_release/args.gn",
+      "sha256": "2a33cb44c1ba07295199dab3c7954231eca1f923f3352d1e2d821eaeddc4ef17"
+    },
+    "build_log": {
+      "path": ".agents/ios-native-encrypted-20261102/build.log",
+      "sha256": "b57378c5c8be6b0bbadc691c524b962952c7832c940661a601fca6486e8ea0f9"
+    },
+    "artifacts": {
+      "Flutter.framework/Flutter": {
+        "sha256": "b59ee35b94f244ae63ebc2d2bbc617814b50d2cbd8cda3c674979eaddf3db8b7",
+        "bytes": 25098584,
+        "machine": "Mach-O 64-bit dynamically linked shared library arm64"
+      },
+      "libFlutter.dylib": {
+        "sha256": "b59ee35b94f244ae63ebc2d2bbc617814b50d2cbd8cda3c674979eaddf3db8b7",
+        "bytes": 25098584,
+        "machine": "Mach-O 64-bit dynamically linked shared library arm64"
+      },
+      "universal/gen_snapshot_arm64": {
+        "sha256": "51fd10c3847a39acdf00415dae1ae600a9c2445fa2385f24575ffc04efa79007",
+        "bytes": 14611184,
+        "machine": "Mach-O universal binary with 2 architectures: [x86_64:Mach-O 64-bit executable x86_64] [arm64]\n/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-ios-native-encrypted-20261102/out/ios_release/universal/gen_snapshot_arm64 (for architecture x86_64):\tMach-O 64-bit executable x86_64\n/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-ios-native-encrypted-20261102/out/ios_release/universal/gen_snapshot_arm64 (for architecture arm64):\tMach-O 64-bit executable arm64"
+      },
+      "flutter_patched_sdk/platform_strong.dill": {
+        "sha256": "0d8d6b0e6b5d29c4ca89964e8a4da0eebc011d22bdac0c1ed0b5394c2e5d6c97",
+        "bytes": 10433824,
+        "machine": "data"
+      }
+    },
+    "recorded_artifact_hashes_rechecked": true,
+    "linker": {
+      "scope": "Installed Apple linker selected only in this owned generated iOS solink rule; evidence records the local generated-rule deviation.",
+      "path": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld",
+      "generated_toolchain_seal": {
+        "path": "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-ios-native-encrypted-20261102/out/ios_release/toolchain.ninja",
+        "sha256": "cf5b3d21f808e69bc8e86db1e759a0e0f9ddd3bf8e1e5abd167def85f41a57ac"
+      },
+      "seal_rechecked": true,
+      "diff": {
+        "path": ".agents/ios-native-encrypted-20261102/ios-apple-linker.diff",
+        "sha256": "b9ca52bcdba550e88628650eed27d98dc4973866f82788d7aed96cdaaf22ea3a"
+      }
+    },
+    "host_tools": {
+      "source": "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-native-encrypted-20261102/out/macos_release_arm64",
+      "destination": "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-ios-native-encrypted-20261102/out/host_release_arm64",
+      "method": "Independent APFS clone of new matching host; only owned not-yet-frozen copied oldhost removed",
+      "pins_match": true,
+      "source_and_staged_hashes_rechecked": true,
+      "sha256": {
+        "args.gn": "105a87cb88747003e480685c8ce4ff4c37fd4375fcea2bf7ef6e557668f61951",
+        "dart-sdk/bin/dart": "618615581d8a650ca345a1801deb635ba4ec80dcd2f161c3c3519440a6b67873",
+        "dart-sdk/bin/dartaotruntime": "d8751164acee2efed201f9ee27973a2498c7318f51d66927267c85eead5d964f",
+        "dart-sdk/bin/snapshots/frontend_server_aot.dart.snapshot": "a6f5610707f76e90ddda035afddb14538fe6e1389b6106b815827a82a6f2c08c",
+        "dart-sdk/bin/snapshots/dart2bytecode.dart.snapshot": "7d4640be06465a257da07b43e969767c2be346c4ba8b9730dc89489ced62d6f4",
+        "gen/const_finder.dart.snapshot": "67d79b8ff4862114871f6a34f6df65edb8f33e0db7d13cce24feaa63bfc69c16",
+        "font-subset": "7ce3b9c1540a312cb62f951295fc767793de0a79352d898c2cba8a5114cd8eb7",
+        "gen/dart-pkg/sky_engine/lib/ui/ui.dart": "d225c09776d8d0e373523b3f237f2b6b7882c5b73ff8537ab88c88ab6294366f"
+      },
+      "evidence": {
+        "path": ".agents/ios-native-encrypted-20261102/host-tool-staging.json",
+        "sha256": "014f9ece7f48bae331a3b8f0453a7fc37d3ddb724626145df2396f7af1d82a58"
+      }
+    },
+    "v2_provider_header": {
+      "symbol": "setShorebirdAotPatchKeyProviderV2",
+      "present": true,
+      "evidence": {
+        "path": ".agents/builds/engine-ios-native-encrypted-20261102/out/ios_release/Flutter.framework/Headers/FlutterDartProject.h",
+        "sha256": "c8deda55708d87a81d2d4d5a2721dc6a8ba87dae1b308fa6905d80a8b9efa258"
+      }
+    },
+    "interpreter_route_validation": {
+      "result": "passed",
+      "evidence": {
+        "path": ".agents/ios-native-encrypted-20261102/route-check.log",
+        "sha256": "52956f7819c5d238289887341db9df3ed28ab23437059f40480500a3334cb455"
+      },
+      "note": "Actual iOS route comes from is_ios; shorebird_use_interpreter and shorebird_enable_aot_patching are legacy metadata arguments, not declared current Flutter GN capabilities."
+    },
+    "runtime_acceptance": false
+  },
+  "limits": [
+    "Component pins identify the evidence; the root HEAD is the checkout at assembly time, not a claim that its committed gitlinks already contain this integration.",
+    "Both engines were rebuilt in independent clones of prior completed outputs; completed action counts describe these incremental builds, not clean builds.",
+    "macOS results are engine host tests. iOS evidence is build, route, artifact and host-tool verification only.",
+    "No signed app lifecycle, physical iOS execution, Android/Linux/Windows encrypted native activation, hosted CI completion, or distribution acceptance is established by this ledger.",
+    "Private app fixtures were in progress at assembly time and are deliberately not counted. Separate terminal runtime receipts are required.",
+    "No build, application launch, test rerun, pin mutation, or commit was performed while assembling this ledger."
+  ],
+  "runtime_acceptance": false,
+  "app_runtime_status": "pending; in-progress private fixtures excluded"
+}

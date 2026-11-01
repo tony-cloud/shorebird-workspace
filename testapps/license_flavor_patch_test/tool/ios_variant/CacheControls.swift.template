@@ -1,0 +1,102 @@
+import Foundation
+import CryptoKit
+import Darwin
+
+// Test-app-only filesystem controls. The caller supplies its fixed app-owned
+// updater root; no environment variable, URL or receipt selects a path.
+enum IosVariantCache {
+  enum Failure: String, Error { case request, redirected, missing, fingerprint, format, io, oversized }
+  static let limit = 512 * 1024 * 1024
+  static let fixedPaths = ["state.json", "pointers.json", "patches/2/state.json", "patches/2/dlc.vmcode",
+                           "patches/3/state.json", "patches/3/dlc.vmcode", "downloads/2", "downloads/3"]
+  static func regularURL(_ root: URL, _ relative: String) throws -> URL {
+    guard root.standardizedFileURL.path == root.resolvingSymlinksInPath().path,
+          fixedPaths.contains(relative) || relative.range(of: "^selections-v2/[a-f0-9]{64}\\.json$", options: .regularExpression) != nil else {
+      throw Failure.redirected
+    }
+    var current = root
+    for component in relative.split(separator: "/") {
+      current.appendPathComponent(String(component))
+      let attributes = try FileManager.default.attributesOfItem(atPath: current.path)
+      guard attributes[.type] as? FileAttributeType != .typeSymbolicLink else { throw Failure.redirected }
+    }
+    let attributes = try FileManager.default.attributesOfItem(atPath: current.path)
+    guard attributes[.type] as? FileAttributeType == .typeRegular,
+          (attributes[.referenceCount] as? NSNumber)?.intValue == 1 else { throw Failure.redirected }
+    guard let size = attributes[.size] as? NSNumber, size.intValue <= limit else { throw Failure.oversized }
+    return current
+  }
+  static func hash(_ url: URL) throws -> String {
+    let handle = try FileHandle(forReadingFrom: url)
+    defer { try? handle.close() }
+    var hash = SHA256()
+    while let data = try handle.read(upToCount: 65536), !data.isEmpty { hash.update(data: data) }
+    return hash.finalize().map { String(format: "%02x", $0) }.joined()
+  }
+  static func snapshot(_ root: URL) throws -> [String: Any] {
+    var paths = fixedPaths
+    let journals = root.appendingPathComponent("selections-v2")
+    if FileManager.default.fileExists(atPath: journals.path) {
+      guard journals.standardizedFileURL.path == journals.resolvingSymlinksInPath().path else { throw Failure.redirected }
+      let names = try FileManager.default.contentsOfDirectory(atPath: journals.path)
+      guard names.count <= 32 else { throw Failure.oversized }
+      paths += names.filter { $0.range(of: "^[a-f0-9]{64}\\.json$", options: .regularExpression) != nil }.map { "selections-v2/" + $0 }
+    }
+    var files: [String: Any] = [:]
+    for relative in paths.sorted() {
+      let candidate = root.appendingPathComponent(relative)
+      // lstat distinguishes absent entries from redirected/broken symlinks.
+      var metadata = stat()
+      if lstat(candidate.path, &metadata) != 0 {
+        if errno == ENOENT { continue }
+        throw Failure.io
+      }
+      let url = try regularURL(root, relative)
+      var entry: [String: Any] = ["size": Int(metadata.st_size), "sha256": try hash(url)]
+      if relative.hasPrefix("selections-v2/") || relative.hasPrefix("patches/") && relative.hasSuffix("/state.json") {
+        guard metadata.st_size <= 65536 else { throw Failure.oversized }
+        let value = try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any]
+        if relative.hasPrefix("selections-v2/") {
+          // Diagnostic projection only. Updater status/signatures remain the
+          // authority; never export raw authentication payloads or URLs.
+          for key in ["version", "epoch", "digest", "time_floor"] { entry[key] = value?[key] }
+        } else { entry["kind"] = value?["kind"] }
+      }
+      files[relative] = entry
+    }
+    return ["schema": "ios-variant-cache-v1", "files": files]
+  }
+  static func tamper(_ root: URL, action: String, number: String, expected: String) throws -> [String: Any] {
+    guard ["2", "3"].contains(number), ["tamper-ciphertext", "tamper-signature"].contains(action),
+          expected.range(of: "^[a-f0-9]{64}$", options: .regularExpression) != nil else { throw Failure.request }
+    let relative = "patches/" + number + (action == "tamper-ciphertext" ? "/dlc.vmcode" : "/state.json")
+    let url = try regularURL(root, relative)
+    guard try hash(url) == expected else { throw Failure.fingerprint }
+    let data = try Data(contentsOf: url, options: [.mappedIfSafe])
+    let field = Data((action == "tamper-ciphertext" ? "\"encrypted_payload_base64\"" : "\"signature\"").utf8)
+    guard let range = data.range(of: field), data.range(of: field, in: range.upperBound..<data.endIndex) == nil else { throw Failure.format }
+    var index = range.upperBound
+    let whitespace: Set<UInt8> = [9, 10, 13, 32]
+    while index < data.endIndex && whitespace.contains(data[index]) { index += 1 }
+    guard index < data.endIndex, data[index] == 58 else { throw Failure.format }
+    index += 1
+    while index < data.endIndex && whitespace.contains(data[index]) { index += 1 }
+    guard index + 1 < data.endIndex, data[index] == 34 else { throw Failure.format }
+    index += 1
+    guard Data("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/".utf8).contains(data[index]) else { throw Failure.format }
+    let descriptor = open(url.path, O_RDWR | O_NOFOLLOW)
+    guard descriptor >= 0 else { throw Failure.io }
+    defer { close(descriptor) }
+    var metadata = stat()
+    let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+    guard fstat(descriptor, &metadata) == 0, metadata.st_mode & S_IFMT == S_IFREG, metadata.st_nlink == 1,
+          metadata.st_size == data.count,
+          (attributes[.systemFileNumber] as? NSNumber)?.uint64Value == UInt64(metadata.st_ino),
+          try hash(url) == expected else { throw Failure.fingerprint }
+    var byte: UInt8 = data[index] == 65 ? 66 : 65
+    guard pwrite(descriptor, &byte, 1, off_t(index)) == 1, fsync(descriptor) == 0 else { throw Failure.io }
+    return ["result": "mutated", "path": relative, "patch_number": number,
+            "expected_sha256": expected, "before_sha256": expected, "after_sha256": try hash(url),
+            "changed_bytes": 1, "size": data.count]
+  }
+}

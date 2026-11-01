@@ -15,6 +15,7 @@ import base64
 import hashlib
 import http.server
 import json
+import math
 import os
 from pathlib import Path
 import plistlib
@@ -22,12 +23,14 @@ import re
 import secrets
 import shutil
 import signal
+import sys
 import threading
 import time
 from urllib.parse import urlparse
 import uuid
 
 import ios_device_e2e as ios
+import ios_variant_adversarial as adversarial
 import macos_variant_e2e as selection
 from owned_host_processes import OwnedHostProcesses
 
@@ -66,11 +69,12 @@ def require_open(work, state, *, deletion=False):
 
 
 def fixture_sources():
-    return [Path(__file__), TEMPLATES / 'AppDelegate.swift.template', TEMPLATES / 'variant_status.dart.template',
+    return [Path(__file__), Path(adversarial.__file__), TEMPLATES / 'AppDelegate.swift.template', TEMPLATES / 'CacheControls.swift.template', TEMPLATES / 'variant_status.dart.template',
         Path(ios.__file__), Path(selection.__file__), Path(selection.v1.__file__),
         Path(__file__).with_name('owned_host_processes.py'),
         ios.FIXTURE / 'ios/Runner/FullFfiFixture.c', ios.FIXTURE / 'ios/Runner/FullFfiFixture.h',
-        ios.FIXTURE / 'ios/Runner.xcodeproj/project.pbxproj',
+        ios.FIXTURE / 'ios/Runner.xcodeproj/project.pbxproj', ios.FIXTURE / 'ios/Runner/Info.plist',
+        ios.FIXTURE / 'ios/Runner/SceneDelegate.swift',
         *sorted((ios.FIXTURE / 'tool/full_replacement_ffi').rglob('*.template'))]
 
 
@@ -103,7 +107,12 @@ def require_seals(work, state):
 
 
 def require_key_launch_reconciled(work):
-    if load(work).get('pending_key_launch'):
+    current = load(work)
+    if current.get('native_cleanup_mode'):
+        raise ValueError('Native-only cleanup has closed all normal application launches')
+    if current.get('pending_cache_launch'):
+        raise ValueError('Native cache-control launch unresolved; validate its original nonce-bound receipt')
+    if current.get('pending_key_launch'):
         raise ValueError('Native key-control launch unresolved; read the original nonce-bound receipt before another launch')
 
 
@@ -219,11 +228,26 @@ def configure_native(work, state):
             raise ValueError('Released native sources changed')
         return
     source = (TEMPLATES / 'AppDelegate.swift.template').read_text()
+    source = source.replace('__CACHE_CONTROLS__', (TEMPLATES / 'CacheControls.swift.template').read_text())
     for key, value in {'__SERVICE__': state['key_service'], '__BUNDLE_ID__': state['bundle_id'],
             '__SESSION__': state['session'], '__APP_ID__': state['app_id'], '__RELEASE__': state['release_version'],
             '__PRO_KEY_ID__': state['key_ids']['pro'], '__ENTERPRISE_KEY_ID__': state['key_ids']['enterprise']}.items():
         source = source.replace(key, value)
     ios.private_write(work / 'app/ios/Runner/AppDelegate.swift', source)
+    # A fresh unique bundle can only save this UIKit bootstrap configuration;
+    # neither initial startup nor restored sessions may auto-load Flutter Main.
+    info_path = work / 'app/ios/Runner/Info.plist'
+    info = plistlib.loads(info_path.read_bytes())
+    info.pop('UIMainStoryboardFile', None)
+    info['UIApplicationSceneManifest']['UISceneConfigurations'] = {
+        'UIWindowSceneSessionRoleApplication': [dict(UISceneClassName='UIWindowScene',
+            UISceneConfigurationName='fixture-bootstrap',
+            UISceneDelegateClassName='$(PRODUCT_MODULE_NAME).IosVariantSceneDelegate')]}
+    ios.private_write(info_path, plistlib.dumps(info))
+    # The copied project still builds this source. Keep even the old class name
+    # cleanup-safe; it never subclasses/initializes a Flutter delegate.
+    ios.private_write(work / 'app/ios/Runner/SceneDelegate.swift',
+        'import UIKit\nclass SceneDelegate: IosVariantSceneDelegate {}\n')
     state['native_source_hashes'] = native_hashes(work)
     ios.private_write(work / 'app/shorebird.yaml', selection.yaml_source(state))
 
@@ -359,7 +383,8 @@ def build_phase(work, state, phase):
     save(work, state)
 
 
-def validate_report(state, report, *, nonce, after, variant, previous_data=None, checked=False, accepted_variant=None, fallback=False, cold=False):
+def validate_report(state, report, *, nonce, after, variant, previous_data=None, checked=False, accepted_variant=None, fallback=False, cold=False,
+                    rejected_check=False, expired_after=None, cache_action=None, cache_patch=None, cache_sha256=None):
     if fallback and not cold:
         raise ValueError('Fallback acceptance requires cold activation')
     if report.get('schema') != SCHEMA or report.get('nonce') != nonce or not re.fullmatch('[a-f0-9]{48}', nonce):
@@ -367,8 +392,15 @@ def validate_report(state, report, *, nonce, after, variant, previous_data=None,
     # Reuse the independently exercised v2 data/epoch rules; this adaptation is
     # explicit and cannot make a historical Mac report satisfy the iOS schema.
     adapted = {**report, 'schema': selection.SCHEMA}
+    if rejected_check and (not checked or accepted_variant is not None):
+        raise ValueError('Rejected-check mode requires an explicit checked launch without a new accepted target')
     selection.validate_report(state, adapted, after=after, variant=variant, previous_data=previous_data,
-        checked=checked, accepted_variant=accepted_variant)
+        checked=checked and not rejected_check, accepted_variant=accepted_variant)
+    if rejected_check:
+        if (report.get('stage') != 'checked' or report.get('update_status') != 'upToDate' or report.get('error') is not None or
+                selection.selection_identity(report['selection']['accepted']) != selection.latest_selection(state)):
+            raise ValueError('Rejected response must preserve exact accepted authority without a public check error')
+        adversarial.assert_journal_preserved(report.get('cache_before'), report.get('cache_after'))
     installation = report.get('installation_id')
     if not isinstance(installation, str) or not 0 < len(installation.encode()) <= 1024:
         raise ValueError('Real public installation ID required')
@@ -381,6 +413,13 @@ def validate_report(state, report, *, nonce, after, variant, previous_data=None,
         raise ValueError('Distinct completed full FFI/render assertion required')
     if report.get('status_route') not in ('public', 'native-ffi') or report.get('report_route') not in ('native', 'dart', 'file'):
         raise ValueError('Missing explicit native/public status and observer route')
+    adversarial.validate_native(state, report, after=after, cache_action=cache_action, cache_patch=cache_patch, cache_sha256=cache_sha256)
+    if cache_action in ('tamper-ciphertext', 'tamper-signature') and (not cold or not fallback or variant != 'free' or checked):
+        raise ValueError('Cache tamper requires an unchecked cold bundled-free fallback report')
+    if expired_after is not None:
+        if not cold or not fallback:
+            raise ValueError('Expiry evidence requires cold fallback validation')
+        adversarial.validate_expiry(state, report, expired_after)
     if cold:
         selection.validate_cold_activation(state, adapted, fallback=fallback)
         if variant != 'free':
@@ -395,13 +434,16 @@ def validate_report(state, report, *, nonce, after, variant, previous_data=None,
     return report
 
 
-def launch_environment(work, state, *, check=False, action=None, variant=None, wrong_key=False, nonce=None, report_route='native', status_route='public'):
+def launch_environment(work, state, *, check=False, action=None, variant=None, wrong_key=False, nonce=None, report_route='native', status_route='public',
+                       cache_action=None, cache_patch=None, cache_sha256=None, rejected_check=False):
     require_open(work, state, deletion=action == 'delete')
     require_key_launch_reconciled(work)
     env = {k: v for k, v in os.environ.items() if not k.startswith(('DYLD_', 'OPEN_SHOREBIRD_TEST_', 'DEVICECTL_CHILD_'))}
     nonce = nonce or secrets.token_hex(24)
     values = dict(NONCE=nonce, CHECK='1' if check else '0', OBSERVER=state['report_url'],
         REPORT_ROUTE=report_route, STATUS_ROUTE=status_route)
+    if rejected_check and not check:
+        raise ValueError('Rejected response observation requires a real online check')
     if not re.fullmatch('[a-f0-9]{48}', nonce) or report_route not in ('native', 'dart', 'file') or status_route not in ('public', 'native-ffi'):
         raise ValueError('Invalid launch nonce or evidence route')
     if action is not None:
@@ -412,6 +454,23 @@ def launch_environment(work, state, *, check=False, action=None, variant=None, w
         values.update(KEY_ACTION=action, KEY_ID=state['key_ids'][variant])
         if action != 'delete':
             values['KEY_HEX'] = '00' * 32 if wrong_key else json.loads((work / 'secrets.json').read_text())['variant_keys'][variant]
+    if cache_action is not None:
+        if action is not None or check or cache_action not in ('inspect', 'tamper-ciphertext', 'tamper-signature'):
+            raise ValueError('One fixed native cache control per unchecked launch')
+        values['CACHE_ACTION'] = cache_action
+        if cache_action != 'inspect':
+            if cache_patch not in ('2', '3') or not isinstance(cache_sha256, str) or not re.fullmatch('[a-f0-9]{64}', cache_sha256):
+                raise ValueError('Native mutation requires patch 2/3 and exact observed SHA256')
+            if selection.latest_selection(state)['patch_number'] != cache_patch:
+                raise ValueError('Tamper only the currently accepted paid artifact')
+            name = 'patches/' + cache_patch + ('/dlc.vmcode' if cache_action == 'tamper-ciphertext' else '/state.json')
+            if state.get('previous_cache', {}).get('files', {}).get(name, {}).get('sha256') != cache_sha256:
+                raise ValueError('Mutation CAS does not match the last validated native cache observation')
+            values.update(CACHE_PATCH=cache_patch, CACHE_SHA256=cache_sha256)
+        elif cache_patch is not None or cache_sha256 is not None:
+            raise ValueError('Inspection takes no patch/path/hash input')
+    elif cache_patch is not None or cache_sha256 is not None:
+        raise ValueError('No unrequested cache parameters')
     env.update({'DEVICECTL_CHILD_OPEN_SHOREBIRD_TEST_' + k: v for k, v in values.items()})
     return env, nonce
 
@@ -420,26 +479,35 @@ def launch(work, state, **options):
     if not state.get('installed_app_sha256'):
         raise ValueError('Inspect and install the signed original app exactly once first')
     env, nonce = launch_environment(work, state, **options)
+    replay = adversarial.replay_launch(sys.modules[__name__], work, state) if options.get('rejected_check') else None
     record = dict(nonce=nonce, after=time.time(), check=options.get('check', False),
         action=options.get('action'), variant=options.get('variant'),
+        cache_action=options.get('cache_action'), cache_patch=options.get('cache_patch'), cache_sha256=options.get('cache_sha256'),
+        rejected_check=options.get('rejected_check', False),
         report_route=options.get('report_route', 'native'), status_route=options.get('status_route', 'public'))
+    if replay is not None:
+        record['replay'] = replay
     state['launches'].append(record)
     if record['action'] is not None:
         # A successful host command also cannot prove the native mutation ran.
         # Keep this fence through command errors/restarts until its exact
         # nonce-bound native receipt passes read_report's acceptance gates.
         state['pending_key_launch'] = dict(record)
+    if record['cache_action']:
+        state['pending_cache_launch'] = dict(record)
     save(work, state)  # Lost device response never loses the freshness fence.
     ios.run(['xcrun', 'devicectl', 'device', 'process', 'launch', '--quiet', '--device', state['device'],
         '--terminate-existing', state['bundle_id']], env=env, log=work / f'launch-{nonce}.log')
     return record
 
 
-def read_report(work, state, *, variant, path=None, checked=False, accepted_variant=None, cold=False, fallback=False):
+def read_report(work, state, *, variant, path=None, checked=False, accepted_variant=None, cold=False, fallback=False, rejected_check=False, expired_after=None):
     require_seals(work, state)
     current = load(work)
-    if current.get('pending_key_launch') != state.get('pending_key_launch'):
-        raise ValueError('Reload the unresolved native key-control launch before receipt reconciliation')
+    if current.get('native_cleanup_mode'):
+        raise ValueError('Runtime acceptance is closed during independent native cleanup')
+    if any(current.get(name) != state.get(name) for name in ('pending_key_launch', 'pending_cache_launch')):
+        raise ValueError('Reload unresolved native controls before receipt reconciliation')
     if not state['launches']:
         raise ValueError('No owned launch exists')
     launch = state['launches'][-1]
@@ -447,9 +515,15 @@ def read_report(work, state, *, variant, path=None, checked=False, accepted_vari
     if path.is_symlink() or path.stat().st_size > MAX_REPORT or path.stat().st_mtime < launch['after']:
         raise ValueError('Redirected, stale, or oversized report')
     report = validate_report(state, json.loads(path.read_text()), nonce=launch['nonce'], after=launch['after'], variant=variant,
-        previous_data=state.get('previous_data'), checked=checked, accepted_variant=accepted_variant, cold=cold, fallback=fallback)
+        previous_data=state.get('previous_data'), checked=checked, accepted_variant=accepted_variant, cold=cold, fallback=fallback,
+        rejected_check=rejected_check, expired_after=expired_after, cache_action=launch.get('cache_action'),
+        cache_patch=launch.get('cache_patch'), cache_sha256=launch.get('cache_sha256'))
     if report['status_route'] != launch['status_route'] or report['report_route'] != launch['report_route'] or checked != launch['check']:
         raise ValueError('Launch/report evidence route or check mode changed')
+    if rejected_check != launch.get('rejected_check', False):
+        raise ValueError('Rejected-check expectation changed after launch')
+    if rejected_check:
+        adversarial.validate_replay_delivery(sys.modules[__name__], work, state, launch, report)
     if launch['action']:
         validate_key_receipt(state, report.get('key_control'), launch)
         if report['key_control']['pid'] != report['pid']:
@@ -459,12 +533,16 @@ def read_report(work, state, *, variant, path=None, checked=False, accepted_vari
             raise ValueError('Receipt does not reconcile the unresolved native key-control launch')
     if state.get('validated_nonce') == launch['nonce']:
         raise ValueError('Launch already consumed; cold activation requires another process')
+    if launch.get('cache_action') and state.get('pending_cache_launch') != launch:
+        raise ValueError('Cache receipt did not reconcile the persisted native control')
     state.update(installation_id=report['installation_id'], observed_selection=selection.selection_identity(report['selection']['accepted']),
-        previous_data=report['data'], validated_nonce=launch['nonce'])
+        previous_data=report['data'], previous_cache=report['cache_after'], validated_nonce=launch['nonce'])
     if launch['action'] == 'delete' and state.get('cleanup_fence'):
         state.setdefault('deleted_keys', {})[launch['variant']] = report['key_control']
     if launch['action']:
         state.pop('pending_key_launch', None)
+    if launch.get('cache_action'):
+        state.pop('pending_cache_launch', None)
     save(work, state)
     return report
 
@@ -490,6 +568,15 @@ def receive_report(work, body):
     value = json.loads(body)
     if not isinstance(value, dict):
         raise ValueError('Object report required')
+    if value.get('schema') == 'ios-variant-native-cleanup-v1':
+        launch = current.get('pending_cleanup_launch')
+        if not launch or value.get('nonce') != launch['nonce'] or value.get('session') != current['session']:
+            raise ValueError('Unrequested native cleanup receipt')
+        target = work / 'native-cleanup' / (launch['nonce'] + '.json')
+        temporary = target.with_suffix('.next.json')
+        ios.private_write(temporary, body)
+        temporary.replace(target)
+        return
     launch = current['launches'][-1]
     if value.get('nonce') != launch['nonce'] or value.get('session') != current['session'] or value.get('schema') != SCHEMA:
         raise ValueError('Foreign nonce/session/schema')
@@ -503,12 +590,7 @@ def receive_report(work, body):
     temporary.replace(target)
 
 
-def serve(work, state):
-    require_open(work, state)
-    ports = [urlparse(state[x]).port for x in ('api_url', 'report_url')]
-    if any(selection.v1.port_open(p) for p in ports):
-        raise ValueError('Session port occupied; no process stopped')
-    credentials = json.loads((work / 'secrets.json').read_text())
+def report_observer(work, state):
     report_path = urlparse(state['report_url']).path
     report_lock = threading.Lock()
     class Reports(http.server.BaseHTTPRequestHandler):
@@ -530,7 +612,52 @@ def serve(work, state):
             self.end_headers()
         def log_message(self, *_):
             pass
-    observer = http.server.ThreadingHTTPServer((state['bind_address'], ports[1]), Reports)
+    return http.server.ThreadingHTTPServer((state['bind_address'], urlparse(state['report_url']).port), Reports)
+
+
+def observe(work, state):
+    """Observe device evidence while the separately owned update API is off."""
+    require_open(work, state, deletion=True)
+    if selection.v1.port_open(urlparse(state['report_url']).port):
+        raise ValueError('Observer port occupied; no process stopped')
+    observer = report_observer(work, state)
+    handlers = {}
+    def stop(*_): raise KeyboardInterrupt
+    try:
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            handlers[sig] = signal.signal(sig, stop)
+        print('Owned nonce observer only; update API lifecycle is independent.', flush=True)
+        observer.serve_forever(poll_interval=.2)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        observer.server_close()
+        for sig, handler in handlers.items(): signal.signal(sig, handler)
+
+
+def replay(work, state):
+    capture = json.loads((work / 'latest-response-capture.json').read_text())
+    handlers = {}
+    def stop(*_): raise KeyboardInterrupt
+    try:
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            handlers[sig] = signal.signal(sig, stop)
+        with adversarial.replay_endpoint(sys.modules[__name__], work, state, capture):
+            print('Owned authentic older-response replay endpoint ready; nonce observer is separate.', flush=True)
+            threading.Event().wait()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        for sig, handler in handlers.items(): signal.signal(sig, handler)
+
+
+def serve(work, state, *, api_only=False):
+    require_open(work, state)
+    ports = [urlparse(state[x]).port for x in ('api_url', 'report_url')]
+    if any(selection.v1.port_open(p) for p in (ports[:1] if api_only else ports)):
+        raise ValueError('Session port occupied; no process stopped')
+    credentials = json.loads((work / 'secrets.json').read_text())
+    observer = None if api_only else report_observer(work, state)
     owned = OwnedHostProcesses()
     handlers = {}
     observing = False
@@ -569,19 +696,33 @@ def serve(work, state):
                 state['app_id'] = ios.request(state, 'POST', '/api/v1/apps', dict(organization_id=org['id'], display_name='Physical iOS protocol 2 variants'), token)['id']
             configure_native(work, state)
             save(work, state)
-            threading.Thread(target=observer.serve_forever, daemon=True).start()
-            observing = True
-            print('Owned API and nonce observer ready; device acceptance still required.', flush=True)
+            if observer is not None:
+                threading.Thread(target=observer.serve_forever, daemon=True).start()
+                observing = True
+            print('Owned API ready; device acceptance still required.', flush=True)
             child.wait()
     except KeyboardInterrupt:
         pass
     finally:
         if observing:
             observer.shutdown()
-        observer.server_close()
+        if observer is not None:
+            observer.server_close()
         owned.close()
         for sig, handler in handlers.items():
             signal.signal(sig, handler)
+
+
+def validate_scene_bootstrap(info):
+    configurations = info.get('UIApplicationSceneManifest', {}).get('UISceneConfigurations', {})
+    sessions = configurations.get('UIWindowSceneSessionRoleApplication')
+    if (any(key.startswith('UIMainStoryboardFile') for key in info) or
+            set(configurations) != {'UIWindowSceneSessionRoleApplication'} or not isinstance(sessions, list) or len(sessions) != 1 or
+            not isinstance(sessions[0], dict) or set(sessions[0]) != {'UISceneClassName', 'UISceneConfigurationName', 'UISceneDelegateClassName'} or
+            sessions[0]['UISceneClassName'] != 'UIWindowScene' or sessions[0]['UISceneConfigurationName'] != 'fixture-bootstrap' or
+            not isinstance(sessions[0].get('UISceneDelegateClassName'), str) or
+            not sessions[0]['UISceneDelegateClassName'].endswith('.IosVariantSceneDelegate')):
+        raise ValueError('Distribution app must use only the UIKit bootstrap without automatic Flutter storyboard loading')
 
 
 def inspect_app(work, state, app):
@@ -594,6 +735,7 @@ def inspect_app(work, state, app):
         raise ValueError('Distribution Mach-O lacks the native observer FFI export')
     validate_compiled_scope(state, app)
     info = plistlib.loads((app / 'Info.plist').read_bytes())
+    validate_scene_bootstrap(info)
     return app, hashlib.sha256((app / info['CFBundleExecutable']).read_bytes()).hexdigest()
 
 
@@ -621,14 +763,72 @@ def begin_cleanup(work, state):
     save(work, state)
 
 
+def cleanup_keys(work, state, *, resend=False):
+    """Narrow failure cleanup; never repeats or clears a pending test mutation."""
+    current = load(work)
+    if current['session'] != state['session'] or current.get('cleanup'):
+        raise ValueError('Cleanup session changed or completed')
+    require_seals(work, current)
+    state.clear()
+    state.update(current)
+    if not state.get('installed_app_sha256'):
+        raise ValueError('Native cleanup targets only the already installed fixture')
+    if state.get('native_cleanup'):
+        raise ValueError('Native deletion already validated; stop observers and finish scoped uninstall')
+    if resend:
+        launch = state.get('pending_cleanup_launch')
+        if not launch:
+            raise ValueError('No original native cleanup receipt to resend')
+    else:
+        if state.get('pending_cleanup_launch'):
+            raise ValueError('Cleanup outcome uncertain; resend original receipt without repeating deletion')
+        state.setdefault('cleanup_fence', time.time())
+        state['native_cleanup_mode'] = True
+        launch = dict(nonce=secrets.token_hex(24), after=time.time(), action='native-cleanup-only')
+        state['pending_cleanup_launch'] = launch
+        save(work, state)
+    env = {k: v for k, v in os.environ.items() if not k.startswith(('DYLD_', 'OPEN_SHOREBIRD_TEST_', 'DEVICECTL_CHILD_'))}
+    env.update(DEVICECTL_CHILD_OPEN_SHOREBIRD_TEST_NONCE=launch['nonce'],
+        DEVICECTL_CHILD_OPEN_SHOREBIRD_TEST_OBSERVER=state['report_url'])
+    env['DEVICECTL_CHILD_OPEN_SHOREBIRD_TEST_' + ('CLEANUP_RECEIPT_ONLY' if resend else 'CLEANUP_KEYS_ONLY')] = '1'
+    ios.run(['xcrun', 'devicectl', 'device', 'process', 'launch', '--quiet', '--device', state['device'],
+        '--terminate-existing', state['bundle_id']], env=env, log=work / ('native-cleanup-' + launch['nonce'] + '.log'))
+    return launch
+
+
+def read_cleanup(work, state):
+    current = load(work)
+    if current['session'] != state['session']:
+        raise ValueError('Cleanup session changed')
+    state.clear()
+    state.update(current)
+    require_seals(work, state)
+    launch = state.get('pending_cleanup_launch')
+    if not launch:
+        raise ValueError('No pending independent native cleanup')
+    path = work / 'native-cleanup' / (launch['nonce'] + '.json')
+    if path.is_symlink() or path.stat().st_size > 16384 or path.stat().st_mtime < launch['after']:
+        raise ValueError('Stale or redirected native cleanup receipt')
+    receipt = json.loads(path.read_text())
+    adversarial.validate_cleanup_receipt(state, receipt)
+    state.update(native_cleanup=receipt, native_cleanup_launch=launch)
+    state.pop('pending_cleanup_launch')
+    # Pending runtime/key/cache controls deliberately remain unresolved.
+    save(work, state)
+    return receipt
+
+
 def cleanup(work, state):
     require_seals(work, state)
-    require_key_launch_reconciled(work)
-    if not state.get('cleanup_fence') or set(state.get('deleted_keys', {})) != set(state['key_ids']):
-        raise ValueError('Begin cleanup then validate native deletion of both independent keys')
-    for variant, receipt in state['deleted_keys'].items():
-        launch = next(x for x in state['launches'] if x['nonce'] == receipt['nonce'])
-        validate_key_receipt(state, receipt, launch)
+    if state.get('native_cleanup'):
+        adversarial.validate_cleanup_receipt(state, state['native_cleanup'])
+    else:
+        require_key_launch_reconciled(work)
+        if not state.get('cleanup_fence') or set(state.get('deleted_keys', {})) != set(state['key_ids']):
+            raise ValueError('Begin cleanup then validate native deletion of both independent keys')
+        for variant, receipt in state['deleted_keys'].items():
+            launch = next(x for x in state['launches'] if x['nonce'] == receipt['nonce'])
+            validate_key_receipt(state, receipt, launch)
     if any(selection.v1.port_open(urlparse(state[x]).port) for x in ('api_url', 'report_url')):
         raise ValueError('Stop owned server and observer before cleanup')
     if not state.get('owned_app_uninstalled'):
@@ -642,7 +842,8 @@ def cleanup(work, state):
     (work / 'secrets.json').unlink(missing_ok=True)
     if (work / 'config').exists():
         shutil.rmtree(work / 'config')
-    state['cleanup'] = dict(all_variant_keys_deleted=True, owned_app_uninstalled=True, secrets_removed=True)
+    state['cleanup'] = dict(all_variant_keys_deleted=True, owned_app_uninstalled=True, secrets_removed=True,
+        unresolved_runtime_controls_preserved=bool(state.get('pending_cache_launch') or state.get('pending_key_launch')))
     save(work, state)
     return state['cleanup']
 
@@ -651,16 +852,18 @@ def plan():
     return dict(schema=SCHEMA, runtime_acceptance=False, build_order=list(BUILD_ORDER), cold_lifecycle=list(LIFECYCLE),
         automatic_runtime_injection=False, device_route='physical distribution, get-task-allow=false, no debugger',
         default_observer='asynchronous native URLSession; optional Dart HTTP or exported container file',
-        key_control_reconciliation='validate the original nonce-bound native receipt through read-report before another launch; host command success is insufficient',
+        key_control_reconciliation='validate original nonce-bound receipt and full runtime report; independent cleanup-only receipt can permit key teardown/uninstall without resolving or replaying a failed test',
+        native_cache_controls=['inspect', 'tamper-ciphertext', 'tamper-signature'],
+        offline_observation='observe plus separately owned serve --api-only; stop API for offline cases',
         required_runtime_cases=selection.plan()['required_runtime_cases'],
         caller_owned=['private pinned toolchain and Xcode/signing/provisioning', 'serial build/device operations',
-            'offline endpoint closure, cache tamper/older signed response injection and evidence',
+            'live matrix sequencing, real API endpoint closure, request evidence and post-case cache/journal assertions',
             'native-ffi status route is explicit diagnostic evidence; public API route must also run'])
 
 
 def parser():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument('phase', choices=('plan', 'prepare', 'serve', *BUILD_ORDER, 'map-free', 'assign', 'inspect-app', 'install', 'launch', 'read-report', 'begin-cleanup', 'cleanup'))
+    p.add_argument('phase', choices=('plan', 'prepare', 'serve', 'observe', 'capture-response', 'replay', 'rollback', 'rollforward', *BUILD_ORDER, 'map-free', 'assign', 'inspect-app', 'install', 'launch', 'read-report', 'begin-cleanup', 'cleanup-keys', 'resend-cleanup', 'read-cleanup', 'cleanup'))
     p.add_argument('--work-dir', required=True, type=Path)
     p.add_argument('--execute', action='store_true')
     for name in ('cli', 'flutter-root', 'engine-src', 'server', 'updater-package', 'app', 'report-file'):
@@ -679,6 +882,12 @@ def parser():
     p.add_argument('--check', action='store_true')
     p.add_argument('--cold', action='store_true')
     p.add_argument('--fallback', action='store_true')
+    p.add_argument('--api-only', action='store_true')
+    p.add_argument('--cache-action', choices=('inspect', 'tamper-ciphertext', 'tamper-signature'))
+    p.add_argument('--cache-patch', choices=('2', '3'))
+    p.add_argument('--cache-sha256')
+    p.add_argument('--rejected-check', action='store_true')
+    p.add_argument('--expired-after')
     p.add_argument('--report-route', choices=('native', 'dart', 'file'), default='native')
     p.add_argument('--status-route', choices=('public', 'native-ffi'), default='public')
     return p
@@ -697,15 +906,23 @@ def main():
         prepare(args, work)
         return
     state = load(work)
-    if args.phase == 'serve': serve(work, state)
+    if args.phase == 'serve': serve(work, state, api_only=args.api_only)
+    elif args.phase == 'observe': observe(work, state)
+    elif args.phase == 'capture-response': adversarial.capture_response(sys.modules[__name__], work, state)
+    elif args.phase in ('rollback', 'rollforward'): adversarial.patch_control(sys.modules[__name__], work, state, args.variant, args.phase)
+    elif args.phase == 'replay': replay(work, state)
     elif args.phase in BUILD_ORDER: build_phase(work, state, args.phase)
     elif args.phase == 'map-free': map_free(work, state)
     elif args.phase == 'assign': assign(work, state, args.variant, offline_valid_until=args.offline_valid_until, not_before=args.not_before)
     elif args.phase == 'inspect-app': inspect_app(work, state, args.app)
     elif args.phase == 'install': install(work, state, args.app)
-    elif args.phase == 'launch': print(json.dumps(launch(work, state, check=args.check, action=args.action, variant=args.variant, wrong_key=args.wrong_key, report_route=args.report_route, status_route=args.status_route)))
-    elif args.phase == 'read-report': read_report(work, state, variant=args.variant, path=args.report_file, checked=args.check, accepted_variant=args.accepted_variant, cold=args.cold, fallback=args.fallback)
+    elif args.phase == 'launch': print(json.dumps(launch(work, state, check=args.check, action=args.action, variant=args.variant, wrong_key=args.wrong_key, report_route=args.report_route, status_route=args.status_route,
+        cache_action=args.cache_action, cache_patch=args.cache_patch, cache_sha256=args.cache_sha256, rejected_check=args.rejected_check)))
+    elif args.phase == 'read-report': read_report(work, state, variant=args.variant, path=args.report_file, checked=args.check, accepted_variant=args.accepted_variant, cold=args.cold, fallback=args.fallback,
+        rejected_check=args.rejected_check, expired_after=args.expired_after)
     elif args.phase == 'begin-cleanup': begin_cleanup(work, state)
+    elif args.phase in ('cleanup-keys', 'resend-cleanup'): cleanup_keys(work, state, resend=args.phase == 'resend-cleanup')
+    elif args.phase == 'read-cleanup': read_cleanup(work, state)
     elif args.phase == 'cleanup': print(json.dumps(cleanup(work, state)))
 
 

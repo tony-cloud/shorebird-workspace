@@ -3,6 +3,69 @@ import Darwin
 import FlutterMacOS
 import Security
 
+// BEGIN PROVIDER LEDGER: Foundation-only helper exercised without an app build.
+final class MacosVariantProviderLedger {
+  private let lock = NSLock()
+  private let directory: URL
+  private let metadata: [String: Any]
+  private var events = [[String: Any]]()
+  private var failed = false
+  private var overflow = false
+  init(directory: URL, session: String, bundleID: String, pid: Int, nonce: String,
+       started: TimeInterval = Date().timeIntervalSince1970) throws {
+    guard nonce.range(of: "^[A-Za-z0-9_-]{1,128}$", options: .regularExpression) != nil,
+          pid > 0, started.isFinite else {
+      throw NSError(domain: "FixtureProviderLedger", code: 1)
+    }
+    self.directory = directory
+    metadata = ["schema": "macos-variant-provider-ledger-v2", "session": session,
+                "bundle_id": bundleID, "pid": pid, "nonce": nonce, "started": started]
+    try writeLocked()
+  }
+  private func writeLocked() throws {
+    var value = metadata
+    value["events"] = events
+    value["overflow"] = overflow
+    value["time"] = Date().timeIntervalSince1970
+    let data = try JSONSerialization.data(withJSONObject: value, options: [.sortedKeys])
+    guard data.count <= 65536 else { throw NSError(domain: "FixtureProviderLedger", code: 2) }
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    try data.write(to: directory.appendingPathComponent("provider.json"), options: [.atomic])
+  }
+  func record(outcome: String, reason: String, identity: [String: Any]? = nil) -> Bool {
+    lock.lock()
+    defer { lock.unlock() }
+    guard !failed, ["refused", "released"].contains(outcome),
+          ["context_rejected", "key_unavailable", "key_available"].contains(reason) else { return false }
+    guard events.count < 128 else {
+      overflow = true
+      try? writeLocked()
+      failed = true
+      return false
+    }
+    var event: [String: Any] = ["sequence": events.count + 1, "outcome": outcome,
+                              "reason": reason, "time": Date().timeIntervalSince1970]
+    if let identity = identity {
+      // The caller constructs these fields only after the native context gate.
+      // Raw context bytes, arbitrary fields and key material are never retained.
+      for field in ["scope", "epoch", "selection_digest", "variant_id", "license_type", "patch_number", "key_id"] {
+        if let value = identity[field] { event[field] = value }
+      }
+    }
+    events.append(event)
+    do { try writeLocked(); return true }
+    catch { events.removeLast(); failed = true; return false }
+  }
+  func recordRequired(outcome: String, reason: String, identity: [String: Any]? = nil) {
+    guard record(outcome: outcome, reason: reason, identity: identity) else {
+      // A BASE process may not turn a failed refusal write into apparent zero
+      // attempts. Missing diagnostic storage invalidates this fixture launch.
+      preconditionFailure("Could not persist native fixture provider event")
+    }
+  }
+}
+// END PROVIDER LEDGER
+
 // Disposable independently authenticated provisioning control. Keys arrive only
 // in a private child environment, never assets, output, receipts or Dart code.
 enum MacosInterpreterFixture {
@@ -12,6 +75,11 @@ enum MacosInterpreterFixture {
   static let appID = "__APP_ID__"
   static let release = "__RELEASE__"
   static let allowed = ["pro": "__PRO_KEY_ID__", "enterprise": "__ENTERPRISE_KEY_ID__"]
+  static var providerLedger: MacosVariantProviderLedger?
+  static func recordProviderEvent(outcome: String, reason: String, identity: [String: Any]? = nil) {
+    guard let ledger = providerLedger else { preconditionFailure("Native provider ledger unavailable") }
+    ledger.recordRequired(outcome: outcome, reason: reason, identity: identity)
+  }
   static var evidenceDirectory: URL {
     URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)
       .appendingPathComponent("Library/Application Support/shorebird-macos-fixture", isDirectory: true)
@@ -28,7 +96,8 @@ enum MacosInterpreterFixture {
     } catch { preconditionFailure("Could not write native fixture receipt") }
   }
   static func read(_ keyID: String, _ context: Data) -> Data? {
-    guard let root = try? JSONSerialization.jsonObject(with: context) as? [String: Any],
+    guard context.count <= 32768,
+          let root = try? JSONSerialization.jsonObject(with: context) as? [String: Any],
           root["version"] as? Int == 2,
           let digest = root["selection_digest"] as? String,
           digest.range(of: "^[a-f0-9]{64}$", options: .regularExpression) != nil,
@@ -47,21 +116,33 @@ enum MacosInterpreterFixture {
           descriptor["license_type"] as? String == variant,
           allowed[variant] == keyID,
           descriptor["channel"] as? String == "stable",
+          let epoch = descriptor["epoch"] as? String,
+          epoch.range(of: "^[1-9][0-9]{0,18}$", options: .regularExpression) != nil,
+          Int64(epoch) != nil,
           let target = descriptor["target"] as? [String: Any],
           target["kind"] as? String == "patch",
           target["encryption"] as? String == "artifact-aes-256-gcm",
-          target["artifact_key_id"] as? String == keyID else { return nil }
+          target["artifact_key_id"] as? String == keyID,
+          let number = target["patch_number"] as? String,
+          number.range(of: "^[1-9][0-9]{0,18}$", options: .regularExpression) != nil,
+          Int64(number) != nil else {
+      recordProviderEvent(outcome: "refused", reason: "context_rejected")
+      return nil
+    }
+    let identity: [String: Any] = ["scope": ["app_id": appID, "release_version": release,
+      "platform": "macos", "arch": "aarch64", "runtime_profile": "interpreter-full", "client_id_hash": clientHash],
+      "epoch": epoch, "selection_digest": digest, "variant_id": variant, "license_type": variant,
+      "patch_number": number, "key_id": keyID]
     var request = query(keyID)
     request[kSecReturnData as String] = true
     request[kSecMatchLimit as String] = kSecMatchLimitOne
     var value: CFTypeRef?
     guard SecItemCopyMatching(request as CFDictionary, &value) == errSecSuccess,
-          let data = value as? Data, data.count == 32 else { return nil }
-    evidence(["schema": "macos-variant-provider-v2", "session": session,
-              "variant": variant, "account": keyID, "selection_digest": digest,
-              "epoch": descriptor["epoch"] ?? NSNull(),
-              "pid": ProcessInfo.processInfo.processIdentifier,
-              "time": Date().timeIntervalSince1970], name: "provider.json")
+          let data = value as? Data, data.count == 32 else {
+      recordProviderEvent(outcome: "refused", reason: "key_unavailable", identity: identity)
+      return nil
+    }
+    recordProviderEvent(outcome: "released", reason: "key_available", identity: identity)
     return data
   }
   static func beforeEngine() {
@@ -106,6 +187,11 @@ enum MacosInterpreterFixture {
                 "pid": ProcessInfo.processInfo.processIdentifier], name: "key-control-" + account + ".json")
       if action == "delete" || env["OPEN_SHOREBIRD_TEST_KEY_CONTROL_ONLY"] == "1" { exit(0) }
     }
+    do {
+      providerLedger = try MacosVariantProviderLedger(directory: evidenceDirectory, session: session,
+        bundleID: bundleID, pid: Int(ProcessInfo.processInfo.processIdentifier),
+        nonce: env["OPEN_SHOREBIRD_TEST_PROVIDER_NONCE"] ?? UUID().uuidString)
+    } catch { preconditionFailure("Could not initialize native fixture provider ledger") }
     precondition(IosFullFfiRetain() == 13, "Released native exports missing")
     precondition(FlutterDartProject.setShorebirdAotPatchKeyProviderV2 { read($0, $1) },
                  "V2 provider must precede first engine")

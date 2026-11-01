@@ -57,11 +57,15 @@ class IosVariantFixtureTest(unittest.TestCase):
         if data['schema'] >= 2: data['pro_note'] = 'pro-preserved'
         if data['schema'] >= 3: data['enterprise_note'] = 'enterprise-preserved'
         identity = self.identity(variant, epoch, digest)
+        started = time.time()
+        empty = dict(schema='ios-variant-cache-v1', files={})
         return dict(schema=runner.SCHEMA, session=self.state['session'], nonce=self.nonce,
             variant=variant, new_code_result={'free': 'free:base', 'pro': 'pro:42', 'enterprise': 'enterprise:24'}[variant],
-            installation_id='real-installation', pid=12, started=time.time(), stage='boot', error=None,
+            installation_id='real-installation', pid=12, started=started, completed=started, stage='boot', error=None,
             update_status=None, data=data, post_frame=True, status_route='public', report_route='native',
-            ffi=self.ffi(variant), key_control=None, provider=None,
+            ffi=self.ffi(variant), key_control=None, provider=None, cache_control=None,
+            native_boot=dict(session=self.state['session'], nonce=self.nonce, pid=12, time=started),
+            cache_before=copy.deepcopy(empty), cache_after_control=copy.deepcopy(empty), cache_after=copy.deepcopy(empty),
             selection=dict(version=2, current=copy.deepcopy(identity), accepted=copy.deepcopy(identity),
                 next_boot=dict(variant_id=variant), restart_required=False))
 

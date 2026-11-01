@@ -1,0 +1,49 @@
+{
+  "pins": {
+    "dart_sdk": "dbef3f1e9ade0e74b190c3a91e45aaffce056b19",
+    "flutter_source": "81fc0f1b5d9de5f92f17d22ac7e6869d57400bcc",
+    "updater": "45034c2f47405c76428bb66a57c79bfe1b26c2bd",
+    "server": "3479ee0445a4db67eb223d8abbbaaf65202a909b",
+    "identity_material": "open-shorebird-toolchain-v1\ndbef3f1e9ade0e74b190c3a91e45aaffce056b19\n81fc0f1b5d9de5f92f17d22ac7e6869d57400bcc\n45034c2f47405c76428bb66a57c79bfe1b26c2bd\n",
+    "engine_identity": "51a8b2c5be363a2dab9042e0369da0ee90c5fab1",
+    "flutter": "7808b2699d06383e789023bd653dc572a31dd23c",
+    "shorebird": "260e3b19eef52f8ae7aeb518177c66d295a8670f"
+  },
+  "scope": "Fresh physical-target iOS ARM64 engine build only, not application/device acceptance",
+  "build_complete": true,
+  "actions": 7959,
+  "output": "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-ios-cache-recovery-20261102/out/ios_release",
+  "args_sha256": "2334976219345410f3e7800bb445dfbd24084c9d67aa949556dee2ddcdb50c6d",
+  "artifacts": {
+    "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-ios-cache-recovery-20261102/out/ios_release/Flutter.framework/Flutter": "8625a16adfec8559cb1c64614e9e7bc574ec532896945a7d0ff1b4f649708487",
+    "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-ios-cache-recovery-20261102/out/ios_release/libFlutter.dylib": "8625a16adfec8559cb1c64614e9e7bc574ec532896945a7d0ff1b4f649708487",
+    "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-ios-cache-recovery-20261102/out/ios_release/universal/gen_snapshot_arm64": "51fd10c3847a39acdf00415dae1ae600a9c2445fa2385f24575ffc04efa79007",
+    "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-ios-cache-recovery-20261102/out/ios_release/flutter_patched_sdk/platform_strong.dill": "0d8d6b0e6b5d29c4ca89964e8a4da0eebc011d22bdac0c1ed0b5394c2e5d6c97"
+  },
+  "machine_inspection": {
+    "Flutter.framework/Flutter": "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-ios-cache-recovery-20261102/out/ios_release/Flutter.framework/Flutter: Mach-O 64-bit dynamically linked shared library arm64",
+    "libFlutter.dylib": "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-ios-cache-recovery-20261102/out/ios_release/libFlutter.dylib: Mach-O 64-bit dynamically linked shared library arm64",
+    "universal/gen_snapshot_arm64": "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-ios-cache-recovery-20261102/out/ios_release/universal/gen_snapshot_arm64: Mach-O universal binary with 2 architectures: [x86_64:Mach-O 64-bit executable x86_64] [arm64]\n/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-ios-cache-recovery-20261102/out/ios_release/universal/gen_snapshot_arm64 (for architecture x86_64):\tMach-O 64-bit executable x86_64\n/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-ios-cache-recovery-20261102/out/ios_release/universal/gen_snapshot_arm64 (for architecture arm64):\tMach-O 64-bit executable arm64"
+  },
+  "host_tools": {
+    "source": "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-cache-recovery-20261102/out/macos_release_arm64",
+    "destination": "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-ios-cache-recovery-20261102/out/host_release_arm64",
+    "method": "Independent APFS clone of frozen matching host output for fixed local-engine-host name; no host rebuild or source output mutation",
+    "sha256": {
+      "args.gn": "0c77b198e37527677856f37a2033c6e1236bc3150c36d137be132660012583fb",
+      "dart-sdk/bin/dart": "618615581d8a650ca345a1801deb635ba4ec80dcd2f161c3c3519440a6b67873",
+      "dart-sdk/bin/dartaotruntime": "d8751164acee2efed201f9ee27973a2498c7318f51d66927267c85eead5d964f",
+      "dart-sdk/bin/snapshots/frontend_server_aot.dart.snapshot": "a6f5610707f76e90ddda035afddb14538fe6e1389b6106b815827a82a6f2c08c",
+      "dart-sdk/bin/snapshots/dart2bytecode.dart.snapshot": "7d4640be06465a257da07b43e969767c2be346c4ba8b9730dc89489ced62d6f4",
+      "gen/const_finder.dart.snapshot": "67d79b8ff4862114871f6a34f6df65edb8f33e0db7d13cce24feaa63bfc69c16",
+      "font-subset": "7ce3b9c1540a312cb62f951295fc767793de0a79352d898c2cba8a5114cd8eb7",
+      "gen/dart-pkg/sky_engine/lib/ui/ui.dart": "d225c09776d8d0e373523b3f237f2b6b7882c5b73ff8537ab88c88ab6294366f"
+    }
+  },
+  "linker": "Installed Apple linker used only in this owned generated solink rule; guarded diff/hash retained, source and frozen outputs unchanged",
+  "initial_attempt": "No actions ran: requested desktop-only flutter_patched_sdk archive alias absent for iOS; corrected to actual flutter_patched_sdk/platform_strong.dill file target",
+  "v2_provider_header_present": true,
+  "route_validator_passed": true,
+  "runtime_acceptance": false,
+  "evidence": "/Users/tonylu/git/shorebird-workspace/.agents/ios-cache-recovery-20261102"
+}

@@ -54,8 +54,18 @@ Future<void> report() async {
   if (!updater.isAvailable || installation == null || installation.isEmpty) throw StateError('Public installation API unavailable');
   final data = persistData();
   var stage = 'boot';
+  String? checkStatus;
+  String? checkError;
   if (Platform.environment['SHOREBIRD_VARIANT_CHECK'] == '1') {
-    if (await updater.checkForUpdate() == UpdateStatus.outdated) await updater.update();
+    try {
+      final result = await updater.checkForUpdate();
+      checkStatus = result.name;
+      if (result == UpdateStatus.outdated) await updater.update();
+    } catch (error) {
+      // Public status must still be observed after rejection. Never send error
+      // text, URLs, credentials or payload bytes to the observer.
+      checkError = error.runtimeType.toString();
+    }
     stage = 'checked';
   }
   final selection = await updater.readSelectionStatus();
@@ -63,6 +73,7 @@ Future<void> report() async {
   final receipt = jsonEncode({'schema': 'native-variant-e2e-v2', 'nonce': Platform.environment['SHOREBIRD_E2E_RECEIPT'],
     'pid': pid, 'post_frame': true, 'rendered': [text], 'variant': fixtureVariant,
     'new_code_result': variantSpecificCode(), 'installation_id': installation, 'stage': stage,
+    'check_status': checkStatus, 'check_error': checkError,
     'data': data, 'selection': status(selection)});
   for (var attempt = 0; attempt < 50; attempt++) {
     final client = HttpClient()..findProxy = (_) => 'DIRECT';

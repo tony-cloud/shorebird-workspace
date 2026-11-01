@@ -22,7 +22,8 @@ checks final AAB/APK native bytes and packaged scope, reads the authenticated
 scope API, runs `release-finalize`, and verifies published scope state. It then
 builds structural Pro seed, Pro, and Enterprise native patches. It assigns the
 actual Pro patch 2 and Enterprise patch 3 through the authenticated server API;
-it never writes updater state or constructs a replacement selection response.
+it never seeds authorization state or constructs a grant. Adversarial controls
+change only the two specifically described cached-content files below.
 Only the original uniquely named base APK is installed, once. Subsequent checks
 preserve that APK and application data while observing the rendered new Dart
 functions, installation ID, and public selection-status APIs.
@@ -44,6 +45,45 @@ grant while downloading the newly accepted grant. Missing/wrong-key tests must
 run base code while retaining the authorized pending selection, then recover
 from the unchanged wrapped-key store.
 
+The adversarial extension uses fresh pre-engine control processes. Capability
+and nonce checks protect hash-only cache snapshots and compare-and-swap tamper
+operations for fixed patch 2/3 targets. Canonical paths, `lstat`, single-link
+regular files, file/count/size limits, and the expected SHA-256 bind each change.
+The normal code-cache `downloads` directory is allowed only when empty; pending
+downloads, unknown entries, links, and ambiguous duplicated targets fail closed.
+Controls never read provider keys or modify a selection journal, pointer,
+installation ID, user-data file, or arbitrary caller-supplied path.
+
+Changing cached ciphertext must produce free code with the same accepted paid
+epoch/digest, `content_unavailable`, no key release, and an unchanged journal.
+Recovery requires authenticated free selection, retirement of the damaged cache,
+and explicit paid reassignment. The public check must report `outdated`, and the
+recovered ciphertext must match an actual encrypted server delivery. The fixture
+does not restore saved cache bytes. Changing only redundant cached
+`state.json.signature` must continue running independently authenticated paid
+code, preserving the journal and ciphertext; this field is not native V2 boot
+authority, and valid native content is not required to download again.
+
+Lease tests use `--lease-seconds` (default 90; range 30–3600). They reject excessive
+device/server clock skew, observe a valid paid boot, then wait for the actual
+Android wall clock to pass the lease deadline before requiring free code with
+`expired`, retained high-water, and zero key release. Historical expired contexts
+do not invalidate unrelated current-launch receipt checks.
+
+Replay checks stop the real API and provisioning before a separate owned
+listener serves an actual captured signed response, or its corrupted signature.
+Capture provenance is the owned real Go API; Python does not independently
+certify its signature.
+The launch performs a real public update check without provisioning credentials;
+rejection must report `upToDate` with no exception and preserve authorization
+journal bytes. The capture nonce differs from the subsequent updater request:
+these are complete old-response/signature-and-nonce rejection tests, not isolated
+epoch or signature tests. Automatic server free selection after expiry or
+rollback must advance exactly one epoch. Rollforward alone must remain free;
+only explicit paid reassignment may restore Enterprise. Every launch retains
+the same installation and additive application data, then the lifecycle finishes
+with signed free selection and a cold offline free boot.
+
 Cleanup writes `cleanup-ledger.json` in results before mutations. It records the
 owned package, serial, reverse mappings, and removal certainty. A successful
 package-manager query must confirm absence before private work is deleted.
@@ -61,5 +101,7 @@ JVM when `JAVA_HOME`, `ANDROID_VARIANT_ANDROID_JAR`, and
 `ANDROID_VARIANT_JSON_JAR` identify existing JDK/Android API/org.json inputs.
 This proves the tested gate rejects invalid contexts before its cached-key
 source is called. It does not execute AndroidKeyStore, JNI, an APK, or the Dart
-runtime. Real device results require an explicit successful `run --execute` and
+runtime. A second host JVM test executes the production cache-control logic with
+a filesystem-type guard, covering CAS failures, symlinks/hardlinks, fixed targets,
+and journal preservation. Real device results require an explicit successful `run --execute` and
 its retained receipts; source and host tests alone are not native runtime proof.

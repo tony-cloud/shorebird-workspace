@@ -1,0 +1,80 @@
+{
+  "root_commit": "6b06278724f97a9b3294d32454f29abc2cc62a32",
+  "pins": {
+    "dart_sdk": "dbef3f1e9ade0e74b190c3a91e45aaffce056b19",
+    "flutter_source": "81fc0f1b5d9de5f92f17d22ac7e6869d57400bcc",
+    "updater": "45034c2f47405c76428bb66a57c79bfe1b26c2bd",
+    "server": "3479ee0445a4db67eb223d8abbbaaf65202a909b",
+    "identity_material": "open-shorebird-toolchain-v1\ndbef3f1e9ade0e74b190c3a91e45aaffce056b19\n81fc0f1b5d9de5f92f17d22ac7e6869d57400bcc\n45034c2f47405c76428bb66a57c79bfe1b26c2bd\n",
+    "engine_identity": "51a8b2c5be363a2dab9042e0369da0ee90c5fab1",
+    "flutter": "7808b2699d06383e789023bd653dc572a31dd23c",
+    "shorebird": "260e3b19eef52f8ae7aeb518177c66d295a8670f"
+  },
+  "scope": "Native ARM64 engine build and executed tests; signed app lifecycle pending",
+  "build": {
+    "exit_code": 0,
+    "actions": 10152,
+    "output": "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-cache-recovery-20261102/out/macos_release_arm64",
+    "args_sha256": "0c77b198e37527677856f37a2033c6e1236bc3150c36d137be132660012583fb",
+    "log_sha256": "41a031ebd92f5bfa6982011827d5007ea9e8286385e33eb2e7033ae0a25e4fd6",
+    "copy_on_write_source": "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-native-x64-20261102",
+    "source_outputs_unchanged": true
+  },
+  "tests": {
+    "runtime": {
+      "tests": 2,
+      "failures": 0,
+      "disabled": 0,
+      "sha256": "9d285a7c9465325ea87d4960e7c44e99eb81ef394c8bce215891677e6e95daef"
+    },
+    "embedder": {
+      "tests": 5,
+      "failures": 0,
+      "disabled": 0,
+      "sha256": "ead864f1a9e815927d49de9061e286919f01280dcbab8f7ecc5cc0c881e6cf6d"
+    },
+    "cocoa": {
+      "tests": 5,
+      "failures": 0,
+      "disabled": 0,
+      "sha256": "1a3dd9eb93cc03a0b69e9288fc67b06bb8398c8275124d224b903a3ed714431a"
+    },
+    "shorebird": {
+      "tests": 146,
+      "failures": 0,
+      "disabled": 0,
+      "sha256": "ba7192e83af4b9846282aec67f7f5dffaa3c0be368c73c74630e392496a78e4c"
+    }
+  },
+  "artifacts": {
+    "shorebird_unittests": {
+      "sha256": "b72ec2e24fd6d6e83a9227ad5b8f348067a4220215d1600cd07045430cba767a",
+      "file": "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-cache-recovery-20261102/out/macos_release_arm64/shorebird_unittests: Mach-O 64-bit executable arm64"
+    },
+    "embedder_unittests": {
+      "sha256": "d1b93c10587dcf5372dfcf0e1793e251371d5c2eed318e0601b5e321246c201f",
+      "file": "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-cache-recovery-20261102/out/macos_release_arm64/embedder_unittests: Mach-O 64-bit executable arm64"
+    },
+    "runtime_unittests": {
+      "sha256": "a0e5281581c4ce91c6f9cba5e6b1b4b9d5915630f08e66a44ae93ee80df8a03a",
+      "file": "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-cache-recovery-20261102/out/macos_release_arm64/runtime_unittests: Mach-O 64-bit executable arm64"
+    },
+    "flutter_desktop_darwin_unittests": {
+      "sha256": "254820f25d22e8e70c31d7e6e6f5686f549bf6b4591ba4796dc80ca7e0984a66",
+      "file": "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-cache-recovery-20261102/out/macos_release_arm64/flutter_desktop_darwin_unittests: Mach-O 64-bit executable arm64"
+    },
+    "FlutterMacOS.framework/Versions/A/FlutterMacOS": {
+      "sha256": "82c15e7af5658ee8cbe8abd9ae70bba8df7b25e76d2654f85e538ceabf3dc357",
+      "file": "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-cache-recovery-20261102/out/macos_release_arm64/FlutterMacOS.framework/Versions/A/FlutterMacOS: Mach-O 64-bit dynamically linked shared library arm64"
+    },
+    "gen_snapshot": {
+      "sha256": "67a258fa268786180924d0e761809755df4584673c7cf9b19d5e51eb989c3696",
+      "file": "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-cache-recovery-20261102/out/macos_release_arm64/gen_snapshot: Mach-O 64-bit executable arm64"
+    },
+    "dart-sdk/bin/dart": {
+      "sha256": "618615581d8a650ca345a1801deb635ba4ec80dcd2f161c3c3519440a6b67873",
+      "file": "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-cache-recovery-20261102/out/macos_release_arm64/dart-sdk/bin/dart: Mach-O 64-bit executable arm64"
+    }
+  },
+  "incremental_check": "Matching Ninja1.11.1 dry-run reports two version generators and122 cascading actions. Read-only diagnosis confirms both version.cc exactly match freshly generated current content; phony generated_file/restat mtime bookkeeping causes conservative dry-run scheduling. No literal no-pending-work claim."
+}

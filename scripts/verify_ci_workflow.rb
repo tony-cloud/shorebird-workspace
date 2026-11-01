@@ -273,15 +273,20 @@ required_files = %w[
   testapps/license_flavor_patch_test/tool/android_variant/CMakeLists.txt
   testapps/license_flavor_patch_test/tool/android_variant/VariantContractCheck.java
   testapps/license_flavor_patch_test/tool/ios_variant_e2e.py
+  testapps/license_flavor_patch_test/tool/ios_variant_adversarial.py
   testapps/license_flavor_patch_test/tool/test_ios_variant_e2e.py
+  testapps/license_flavor_patch_test/tool/test_ios_variant_adversarial.py
   testapps/license_flavor_patch_test/tool/ios_variant/AppDelegate.swift.template
+  testapps/license_flavor_patch_test/tool/ios_variant/CacheControls.swift.template
   testapps/license_flavor_patch_test/tool/ios_variant/variant_status.dart.template
   testapps/license_flavor_patch_test/tool/macos_variant_e2e.py
   testapps/license_flavor_patch_test/tool/macos_variant_lifecycle.py
   testapps/license_flavor_patch_test/tool/test_macos_variant_e2e.py
   testapps/license_flavor_patch_test/tool/test_macos_variant_lifecycle.py
   testapps/license_flavor_patch_test/tool/macos_variant/variant_status.dart.template
+  testapps/license_flavor_patch_test/tool/macos_interpreter/PatchTestKeysV2.swift.template
   testapps/license_flavor_patch_test/tool/native_variant_e2e.py
+  testapps/license_flavor_patch_test/tool/native_variant_adversarial.py
   testapps/license_flavor_patch_test/tool/native_variant_desktop.py
   testapps/license_flavor_patch_test/tool/native_variant_test.py
   testapps/license_flavor_patch_test/tool/native_variant_status.dart.template
@@ -1885,14 +1890,14 @@ assert!(workflow.fetch('env').fetch('JAVA_VERSION') == '17' && java_index && and
         java_index < android_index && android_index < variant_index,
         'Variant Java controls must provision Java 17 and Android API 35 before testing')
 variant_run = variant_step.fetch('run')
-%w[macos_variant_e2e.py macos_variant_lifecycle.py ios_variant_e2e.py
+%w[macos_variant_e2e.py macos_variant_lifecycle.py ios_variant_e2e.py ios_variant_adversarial.py
    android_variant_app.py android_variant_e2e.py native_variant_e2e.py
-   native_variant_desktop.py linux_variant_e2e.py windows_variant_e2e.py].each do |path|
+   native_variant_adversarial.py native_variant_desktop.py linux_variant_e2e.py windows_variant_e2e.py].each do |path|
   assert!(variant_run.lines.any? { |line| line.strip.start_with?('python3 -m py_compile ') &&
           line.split.include?("testapps/license_flavor_patch_test/tool/#{path}") },
           "Required variant source gate must syntax-check #{path}")
 end
-%w[test_macos_variant_e2e.py test_macos_variant_lifecycle.py test_ios_variant_e2e.py
+%w[test_macos_variant_e2e.py test_macos_variant_lifecycle.py test_ios_variant_e2e.py test_ios_variant_adversarial.py
    test_android_variant_app.py test_android_variant_e2e.py native_variant_test.py].each do |suite|
   assert!(variant_run.include?("python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p #{suite} -v"),
           "Required variant source gate must run #{suite}")
@@ -1914,6 +1919,28 @@ end
 assert!(variant_run.include?(%q{printf '%s  %s\n' 518080049ba83181914419d11a25d9bc9833a2d729b6a6e7469fa52851356da8 "$ANDROID_VARIANT_JSON_JAR" | sha256sum --check --strict}) &&
         variant_run.index('sha256sum --check --strict') < variant_run.index('-p test_android_variant_app.py -v') &&
         !variant_run.include?('|| true'), 'The production Java context-before-cache authorization test must run after mandatory checksum verification')
+{
+  'macos-engine' => ['macOS provider ledger', 'test_macos_variant_e2e.VariantFixtureTest.test_actual_swift_provider_ledger_is_fresh_bounded_atomic_thread_safe_and_fail_closed', 1],
+  'ios-engine' => ['iOS cache controls', 'test_ios_variant_adversarial.NativeCacheControlsTest', 3],
+}.each do |job_name, (title, suite, count)|
+  steps = jobs.fetch(job_name).fetch('steps')
+  index = steps.index { |step| step['name'] == "Require #{title} Swift controls" }
+  configure = steps.index { |step| step['name'].to_s.start_with?('Configure ') }
+  assert!(index && configure && index < configure, "#{job_name} must require actual host Swift controls before engine configuration")
+  step = steps.fetch(index)
+  run = step.fetch('run')
+  assert!(step['if'].nil? && !step['continue-on-error'] && step['timeout-minutes'] == 10,
+          "#{job_name} host Swift controls must be required and bounded")
+  %w[set\ -euo\ pipefail command\ -v\ swiftc command\ -v\ xcrun].each do |control|
+    assert!(run.include?(control), "#{job_name} Swift control must retain #{control}")
+  end
+  assert!(run.include?('test "$(uname -s)" = Darwin') && run.include?('test -x "$(xcrun --find swiftc)"') &&
+          run.include?('export PYTHONPATH="$GITHUB_WORKSPACE/testapps/license_flavor_patch_test/tool${PYTHONPATH:+:$PYTHONPATH}"') &&
+          run.include?("suite = unittest.defaultTestLoader.loadTestsFromNames(['#{suite}'])") &&
+          run.include?("expected = #{count}\n") && run.include?('if suite.countTestCases() != expected:') &&
+          run.include?('if not result.wasSuccessful() or result.skipped or result.testsRun != expected:'),
+          "#{job_name} must execute the exact real Swift inventory and reject missing, failed, or skipped controls")
+end
 archive_gate = cli_steps.fetch(archive_test_index)
 assert!(
   archive_gate['run'] == './scripts/run_native_archive_tests.sh' &&
@@ -2747,6 +2774,24 @@ assert!(run_text_by_job.fetch('source-checks').include?('python3 -m py_compile t
 # V2 execution complements the preserved V1 gate. Every native producer must
 # publish real scopes, run all grant transitions and retain failure receipts.
 variant_receipt_sources = []
+native_adversarial_stages = %w[
+  adversarial-select-pro-check adversarial-select-pro-cold owned-ciphertext-flip ciphertext-offline-free
+  ciphertext-signed-free-check ciphertext-signed-free-cold ciphertext-same-pro-redownload-check ciphertext-same-pro-redownload-cold
+  ciphertext-real-redownload untrusted-cached-signature-flip cached-signature-still-valid-pro server-returned-old-response-capture
+  actual-leased-pro-check actual-leased-pro-cold platform-clock-expired-free platform-lease-expiry
+  old-signed-response-rejected old-signed-response-requests corrupt-stale-response-combined-rejected corrupt-stale-response-combined-requests
+  expired-server-signed-free expired-server-free-cold before-enterprise-rollback-check before-enterprise-rollback-cold
+  rollback-enterprise rollback-server-signed-free rollback-cold-free rollforward-enterprise rollforward-alone-still-free rollforward-cold-free
+  explicit-enterprise-restored-check explicit-enterprise-restored-cold adversarial-final-signed-free-check adversarial-final-signed-free-cold adversarial-final-offline-free
+]
+native_adversarial_cases = %w[
+  owned-ciphertext-offline-content-unavailable signed-free-same-pro-real-redownload cached-signature-keeps-valid-pro
+  actual-paid-lease-platform-clock-expiry server-returned-older-response-rejected-independent-nonce corrupt-stale-response-combined-rejection
+  enterprise-rollback-signed-free rollforward-alone-stays-free explicit-enterprise-reauthorization final-offline-free
+]
+adversarial_source = read_repo_file(repo_root, 'testapps/license_flavor_patch_test/tool/native_variant_adversarial.py')
+source_cases = adversarial_source[/^CASES = \((.*?)\)\n/m, 1].to_s.scan(/'([^']+)'/).flatten
+assert!(source_cases == native_adversarial_cases, 'Required native adversarial completion cases must match the frozen shared fixture contract')
 %w[linux windows].product(%w[x64 arm64]).each do |platform, arch|
   title = platform.capitalize
   suffix = arch == 'arm64' ? '-arm64' : ''
@@ -2817,6 +2862,22 @@ variant_receipt_sources = []
           validator.include?("report.get('provisioning', {}).get('accepted', 0) < 1") &&
           validator.include?("not report.get('final_application_data')"),
           "#{job_name} must require every real online/cold grant transition, authenticated provisioning and preserved app data")
+  native_adversarial_stages.each do |stage|
+    assert!(validator.include?("'#{stage}'"), "#{job_name} must require adversarial execution stage #{stage}")
+  end
+  native_adversarial_cases.each do |label|
+    assert!(validator.include?("'#{label}'"), "#{job_name} must require completed adversarial case #{label}")
+  end
+  assert!(validator.include?('required.update(adversarial_required)') &&
+          validator.include?("if report.get('adversarial_cases') != list(expected_cases):") &&
+          validator.include?("stages['ciphertext-real-redownload'].get('check_status') != 'outdated'") &&
+          validator.include?("lease = stages['platform-lease-expiry']") &&
+          validator.include?("lease['wait_completed'] <= lease['deadline'] or lease['launch_started'] <= lease['deadline']") &&
+          validator.include?("for label in ('old-signed-response', 'corrupt-stale-response-combined'):") &&
+          validator.include?("delivered['delivered_check_responses'] < 1") &&
+          validator.include?("len(checks) != delivered['delivered_check_responses']") &&
+          validator.include?("delivered.get('real_api_and_provisioning_stopped') is not True"),
+          "#{job_name} must gate full adversarial completion, real redownload, platform expiry and successfully delivered replay responses")
   variant_receipt_sources << validator
   assert!(upload['if'].to_s.include?('always()') && upload['uses'] == 'actions/upload-artifact@v4' &&
           upload.dig('with', 'name') == "#{platform}-native-variant-e2e#{suffix}" &&

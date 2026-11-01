@@ -9,8 +9,10 @@ import re
 import secrets
 import shutil
 import sys
+import time
 
 import native_variant_e2e as protocol
+import native_variant_adversarial as adversarial
 
 TOOL = Path(__file__).resolve().parent
 
@@ -199,11 +201,19 @@ class NativeDesktopVariant:
             SHOREBIRD_E2E_KEY_CACHE_DIR=str(self.key_cache),SHOREBIRD_E2E_KEY_MODE=mode)
         return env
 
-    def launch_variant(self,label,variant,*,check=False,online=False,mode='correct',cold=False,fallback=False):
+    def launch_variant(self,label,variant,*,check=False,online=False,mode='correct',cold=False,fallback=False,
+                       fallback_reason=None,replay=False,automatic_free=False):
         if self.module.tree_hashes(self.bundle) != self.bundle_hashes:
             raise self.module.FixtureError('Released native application bundle changed')
         if cold and not online and (self.api is not None or self.provision is not None):
             raise self.module.FixtureError('Offline cold proof requires stopped owned services')
+        if replay and (online or self.api is not None or self.provision is not None or not check):
+            raise self.module.FixtureError('Replay check requires stopped real API and provisioning services')
+        if fallback_reason is not None and (not fallback or not cold):
+            raise self.module.FixtureError('Content/lease fallback requires a cold BASE proof')
+        if automatic_free and (not check or not online or replay):
+            raise self.module.FixtureError('Automatic signed free requires a real online check')
+        accepted_before = dict(self.protocol.latest)
         prior_current = getattr(self,'last_current_identity',None)
         if check and prior_current is None:
             if variant != 'free':
@@ -224,7 +234,7 @@ class NativeDesktopVariant:
         if online:
             env.update(SHOREBIRD_E2E_PROVISION_URL=self.provision.url,SHOREBIRD_E2E_PROVISION_TOKEN=self.secrets['provision'])
         if check:
-            if not online: raise self.module.FixtureError('Online check requires owned online services')
+            if not online and not replay: raise self.module.FixtureError('Online check requires owned online services')
             env['SHOREBIRD_VARIANT_CHECK'] = '1'
         else:
             env.pop('SHOREBIRD_VARIANT_CHECK',None)
@@ -235,16 +245,23 @@ class NativeDesktopVariant:
             if self.app.poll() is not None: raise self.module.FixtureError('Native variant app exited before public status receipt')
             with self.receipt_lock: report = self.receipts.get(nonce)
             if report is None: return None
-            protocol.validate_report(report,nonce,self.app.pid,variant,self.previous_data,self.protocol.latest)
+            expected = adversarial.validate_automatic_free(report,accepted_before) if automatic_free else self.protocol.latest
+            protocol.validate_report(report,nonce,self.app.pid,variant,self.previous_data,expected)
             if report['stage'] != ('checked' if check else 'boot'):
                 raise self.module.FixtureError('Wrong public check receipt stage')
             if report['data'].get('session') != self.session_id or report['data'].get('sentinel') != self.sentinel:
                 raise self.module.FixtureError('App-owned session data differs from fixture')
             if check and protocol.selection_identity(report['selection']['current']) != prior_current:
                 raise self.module.FixtureError('Online check rewrote the process-pinned current authorization')
+            if check and report.get('check_error') is not None:
+                raise self.module.FixtureError('Public native check/update failed')
+            if replay:
+                adversarial.validate_rejected_check(report,accepted_before)
             if cold:
                 protocol.validate_cold_activation(report,self.protocol.latest,fallback=fallback)
-                if fallback:
+                if fallback_reason is not None:
+                    adversarial.validate_fallback(report,accepted_before,fallback_reason)
+                elif fallback:
                     expected = self.protocol.latest
                     next_boot = {key:expected[key] for key in ('variant_id','license_type','patch_number')}
                     next_boot['reason'] = 'ready'
@@ -264,10 +281,13 @@ class NativeDesktopVariant:
             expected = self.protocol.latest
             if not any(all(row.get(key) == value for key,value in expected.items()) for row in callbacks):
                 raise self.module.FixtureError('No actual app-owned v2 provider callback for cold selected variant')
-        if cold and variant == 'free' and not fallback and callbacks:
+        if cold and variant == 'free' and (not fallback or fallback_reason is not None) and callbacks:
             raise self.module.FixtureError('Signed free selection attempted paid key release')
         self.stage(label, {'variant':variant,'selection':report['selection'],'data':report['data'],
-                           'provider_callbacks':callbacks,'fresh_native_process':True,'rendered':report['rendered']})
+                           'provider_callbacks':callbacks,'fresh_native_process':True,'rendered':report['rendered'],
+                           'successful_provider_releases':len(callbacks),
+                           'check_status':report.get('check_status'),'check_error':report.get('check_error'),
+                           'real_api_online':online,'replay_listener':replay})
         return report
 
     def online(self):
@@ -276,8 +296,8 @@ class NativeDesktopVariant:
             self.provision = self.module.LocalService(self.authority.provision,'/key')
             self.provision_url = self.provision.url
 
-    def authorize(self,variant):
-        result = self.protocol.assign(variant)
+    def authorize(self,variant,**lease):
+        result = self.protocol.assign(variant,**lease)
         descriptor = result['selection']
         scope = {key:value for key,value in descriptor['scope'].items() if key != 'client_id_hash'}
         if scope != self.scope:
@@ -293,6 +313,7 @@ class NativeDesktopVariant:
         elif descriptor['target'] != {'kind':'base','patch_number':None,'artifact_hash':None,'encryption':'none','artifact_key_id':None}:
             raise self.module.FixtureError('Signed free assignment does not select original bundled base')
         self.stage('authenticated-assignment-' + variant,{'selection':result['selection'],'selection_digest':result['selection_digest']})
+        return result
 
     def ciphertext(self,variant):
         artifact = self.artifacts[variant]
@@ -330,6 +351,111 @@ class NativeDesktopVariant:
                             patch_hash=next(iter(images)),forbidden_secrets=forbidden)
         self.stage('native-v2-final-cache',inventory)
 
+    def switch_variant(self,label,target,current,**lease):
+        self.online(); self.authorize(target,**lease)
+        report = self.launch_variant(label + '-check',current,check=True,online=True)
+        if target != 'free': self.ciphertext(target)
+        self.stop_app(); self.go_offline()
+        self.launch_variant(label + '-cold',target,cold=True)
+        self.stop_app()
+        return report
+
+    def patch_control(self,variant,action):
+        if self.api is None or action not in ('rollback','rollforward'):
+            raise self.module.FixtureError('Patch control requires an authenticated owned API')
+        patches = self.request('GET',self.protocol.path('/patches'))['patches']
+        matches = [row for row in patches if str(row['patch_number']) == protocol.EXPECTED_NUMBERS[variant]]
+        if len(matches) != 1:
+            raise self.module.FixtureError('Missing unique actual CLI patch for control')
+        result = self.request('POST',self.protocol.path(f'/patches/{matches[0]["patch_id"]}/{action}'))
+        self.stage(action + '-' + variant,{'patch_id':matches[0]['patch_id'],'response':result})
+
+    def adversarial_cases(self):
+        """Real cache/clock/server failures; no journal writes or cache resets."""
+        self.switch_variant('adversarial-select-pro','pro','free')
+        mutation = adversarial.mutate_cache(self.cache,self.artifacts['pro']['number'],'ciphertext')
+        self.stage('owned-ciphertext-flip',mutation)
+        before = adversarial.cache_snapshot(self.cache)
+        self.launch_variant('ciphertext-offline-free','free',cold=True,fallback=True,fallback_reason='content_unavailable')
+        self.stop_app()
+        adversarial.assert_journal_preserved(before,adversarial.cache_snapshot(self.cache))
+        # Explicit signed free and then the same immutable Pro content. The
+        # updater must actually request/download it; restoring bytes is forbidden.
+        self.switch_variant('ciphertext-signed-free','free','free')
+        repaired = self.switch_variant('ciphertext-same-pro-redownload','pro','free')
+        if repaired.get('check_status') != 'outdated' or self.module.file_hash(
+                self.cache / mutation['path']) == mutation['after']['sha256']:
+            raise self.module.FixtureError('Corrupted transport was not repaired by a real update/download')
+        self.stage('ciphertext-real-redownload',{'patch_number':self.artifacts['pro']['number'],
+            'sha256':self.module.file_hash(self.cache / mutation['path']),'check_status':repaired['check_status']})
+
+        mutation = adversarial.mutate_cache(self.cache,self.artifacts['pro']['number'],'signature')
+        self.stage('untrusted-cached-signature-flip',mutation)
+        before = adversarial.cache_snapshot(self.cache)
+        self.launch_variant('cached-signature-still-valid-pro','pro',cold=True)
+        self.stop_app()
+        after = adversarial.cache_snapshot(self.cache)
+        adversarial.assert_journal_preserved(before,after)
+        transport = f'patches/{self.artifacts["pro"]["number"]}/transport.aesgcm'
+        if before['files'][transport] != after['files'].get(transport):
+            raise self.module.FixtureError('Untrusted cached signature changed valid transport')
+
+        self.online()
+        old_response,old_selection,capture = adversarial.capture_response(self.request,self.protocol,self.scope)
+        self.stage('server-returned-old-response-capture',adversarial.capture_summary(old_response,old_selection,capture))
+        deadline = int(time.time()) + getattr(self.args,'lease_seconds',90)
+        self.switch_variant('actual-leased-pro','pro','pro',offline_valid_until=str(deadline))
+        if time.time() >= deadline:
+            raise self.module.FixtureError('Paid lease expired before valid offline proof')
+        before = adversarial.cache_snapshot(self.cache)
+        waited = adversarial.wait_past_deadline(deadline)
+        started = time.time()
+        self.launch_variant('platform-clock-expired-free','free',cold=True,fallback=True,fallback_reason='expired')
+        self.stop_app()
+        if started <= deadline or waited <= deadline:
+            raise self.module.FixtureError('Expiry proof did not follow actual platform wall-clock deadline')
+        adversarial.assert_journal_preserved(before,adversarial.cache_snapshot(self.cache))
+        self.stage('platform-lease-expiry',{'deadline':deadline,'wait_completed':waited,'launch_started':started,
+            'accepted':dict(self.protocol.latest),'clock':'native platform time.time; no clock override'})
+
+        for label,body in (('old-signed-response',old_response),
+                           ('corrupt-stale-response-combined',adversarial.corrupt_response_signature(old_response))):
+            if self.api is not None or self.provision is not None:
+                raise self.module.FixtureError('Replay may not overlap real online services')
+            before = adversarial.cache_snapshot(self.cache)
+            requests = []
+            with adversarial.replay_endpoint(self.api_url,body,requests):
+                self.launch_variant(label + '-rejected','free',check=True,replay=True,
+                    cold=True,fallback=True,fallback_reason='expired')
+                self.stop_app()
+            accepted = self.protocol.latest
+            if (not requests or int(old_selection['epoch']) >= int(accepted['epoch']) or
+                any(row.get('accepted_selection_epoch') != accepted['epoch'] or
+                    row.get('accepted_selection_digest') != accepted['digest'] or
+                    row.get('nonce') == capture['request']['nonce'] for row in requests)):
+                raise self.module.FixtureError('Replay did not exercise fresh requests against newer accepted authority')
+            adversarial.assert_journal_preserved(before,adversarial.cache_snapshot(self.cache))
+            self.stage(label + '-requests',{'requests':adversarial.replay_requests_summary(requests),
+                'delivered_check_responses':len(requests),'real_api_and_provisioning_stopped':True,
+                'limitation':capture['limitation'],'journals':before['journals']})
+
+        self.online()
+        self.launch_variant('expired-server-signed-free','free',check=True,online=True,automatic_free=True)
+        self.stop_app(); self.go_offline()
+        self.launch_variant('expired-server-free-cold','free',cold=True); self.stop_app()
+        self.switch_variant('before-enterprise-rollback','enterprise','free')
+        self.online(); self.patch_control('enterprise','rollback')
+        self.launch_variant('rollback-server-signed-free','enterprise',check=True,online=True,automatic_free=True)
+        self.stop_app(); self.go_offline()
+        self.launch_variant('rollback-cold-free','free',cold=True); self.stop_app()
+        self.online(); self.patch_control('enterprise','rollforward')
+        self.launch_variant('rollforward-alone-still-free','free',check=True,online=True)
+        self.stop_app(); self.go_offline()
+        self.launch_variant('rollforward-cold-free','free',cold=True); self.stop_app()
+        self.switch_variant('explicit-enterprise-restored','enterprise','free')
+        self.switch_variant('adversarial-final-signed-free','free','enterprise')
+        self.launch_variant('adversarial-final-offline-free','free',cold=True); self.stop_app()
+
     def execute(self):
         self.prepare(); self.start_api(); self.bootstrap(); self.make_observer(); self.online()
         self.build_variant('base')
@@ -357,6 +483,8 @@ class NativeDesktopVariant:
                     self.stop_app()
                     self.launch_variant('offline-' + mode + '-key-recovery-pro','pro',cold=True)
                     self.stop_app()
+        self.adversarial_cases()
+        self.manifest['adversarial_cases'] = list(adversarial.CASES)
         if self.module.tree_hashes(self.bundle) != self.bundle_hashes:
             raise self.module.FixtureError('Released bundle changed during variant transitions')
         # Public journal/ciphertext inventories are evidence only; never seed or
@@ -369,10 +497,16 @@ class NativeDesktopVariant:
 
 
 def run_driver(module, lifecycle_type, argv=None):
-    args = module.parser().parse_args(argv)
+    parser = module.parser()
+    parser.add_argument('--lease-seconds',type=int,default=90)
+    args = parser.parse_args(argv)
+    if not 30 <= getattr(args,'lease_seconds',90) <= 3600:
+        raise SystemExit('Use a lease duration between 30 and 3600 seconds')
     if args.phase == 'plan':
         print(json.dumps({'schema':protocol.SCHEMA,'runtime_acceptance':False,'platform':lifecycle_type.target_os,
-            'build_order':protocol.BUILD_ORDER,'cold_lifecycle':protocol.LIFECYCLE,'arch':args.arch}))
+            'build_order':protocol.BUILD_ORDER,'cold_lifecycle':protocol.LIFECYCLE,'arch':args.arch,
+            'adversarial_cases':adversarial.CASES,'lease_seconds':getattr(args,'lease_seconds',90),
+            'replay_limitation':'Independent capture nonce and stale epoch; combined response rejection, not isolated epoch or signature verification'}))
         return 0
     if not args.execute: raise SystemExit('Native v2 run requires --execute')
     if args.work is None or args.results is None: raise SystemExit('Use new --work and --results directories')

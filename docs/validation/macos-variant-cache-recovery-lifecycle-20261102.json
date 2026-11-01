@@ -1,0 +1,645 @@
+{
+  "root_commit": "6b06278724f97a9b3294d32454f29abc2cc62a32",
+  "pins": {
+    "dart_sdk": "dbef3f1e9ade0e74b190c3a91e45aaffce056b19",
+    "flutter_source": "81fc0f1b5d9de5f92f17d22ac7e6869d57400bcc",
+    "updater": "45034c2f47405c76428bb66a57c79bfe1b26c2bd",
+    "server": "3479ee0445a4db67eb223d8abbbaaf65202a909b",
+    "identity_material": "open-shorebird-toolchain-v1\ndbef3f1e9ade0e74b190c3a91e45aaffce056b19\n81fc0f1b5d9de5f92f17d22ac7e6869d57400bcc\n45034c2f47405c76428bb66a57c79bfe1b26c2bd\n",
+    "engine_identity": "51a8b2c5be363a2dab9042e0369da0ee90c5fab1",
+    "flutter": "7808b2699d06383e789023bd653dc572a31dd23c",
+    "shorebird": "260e3b19eef52f8ae7aeb518177c66d295a8670f"
+  },
+  "runtime_acceptance": true,
+  "scope": "Actual Developer ID signed hardened macOS ARM64 full-interpreter app; no executable-memory or library-validation exceptions; same installed bundle/data",
+  "launches": {
+    "total": 62,
+    "full_dart_ffi_data_reports": 54,
+    "native_key_control_receipts": 8,
+    "unique_pids": 62,
+    "all_validated": true
+  },
+  "signing": [
+    {
+      "team_identifier": "43FN6K7B4C",
+      "hardened_runtime": true,
+      "entitlements": {
+        "com.apple.security.app-sandbox": true,
+        "com.apple.security.network.client": true
+      },
+      "certificate_sha1": "CB505CEFDE0F13359AFC01406E1B27438065D257",
+      "sha256": "ebab143854fa8f34c382f528d398974dd355061e227db622e2b293bb3136922d"
+    },
+    {
+      "team_identifier": "43FN6K7B4C",
+      "hardened_runtime": true,
+      "entitlements": {},
+      "certificate_sha1": "CB505CEFDE0F13359AFC01406E1B27438065D257",
+      "sha256": "d40a706717d1ce79c103a7bdb56c8b2cc44173849f44a7f1e63c02dfbda1ef35"
+    },
+    {
+      "team_identifier": "43FN6K7B4C",
+      "hardened_runtime": true,
+      "entitlements": {},
+      "certificate_sha1": "CB505CEFDE0F13359AFC01406E1B27438065D257",
+      "sha256": "e3c729eb020d3ad5e0fcdf9d3ff7a0909006b5fd3de8af653c904aab101c17cf"
+    },
+    {
+      "team_identifier": "43FN6K7B4C",
+      "hardened_runtime": true,
+      "entitlements": {
+        "com.apple.security.app-sandbox": true,
+        "com.apple.security.network.client": true
+      },
+      "certificate_sha1": "CB505CEFDE0F13359AFC01406E1B27438065D257",
+      "sha256": "ebab143854fa8f34c382f528d398974dd355061e227db622e2b293bb3136922d"
+    }
+  ],
+  "same_signed_bundle_every_launch": true,
+  "cases": {
+    "variant_switches": "Free->Pro(P2)->Enterprise(P3)->Pro(P2)->Free->Enterprise->Free; independent signed epochs, same-content higher-epoch restart",
+    "key_recovery": "Missing/wrong Keychain keys select free; restoring correct key recovers Pro offline with byte-identical ciphertext/metadata/journal",
+    "ciphertext_repair": "Same-size ciphertext corruption selects free and discards invalid P2 cache, retains journal; explicit signed free E10 then Pro E11 redownloads same original bytes and boots Pro offline",
+    "signature_repair": "Cached signature corruption selects free and discards invalid P2 cache, retains journal; explicit signed free E12 then Pro E13 redownloads same original bytes and boots Pro offline",
+    "no_cache_restoration": true,
+    "repair_downloads": "Exactly one successful HTTP200 P2 download in each reauthorization-check window",
+    "lease_expiry": {
+      "deadline": 1793557359,
+      "wait_completed": 1793557360.015052,
+      "launch_started": 1793557360.0169752
+    },
+    "response_replay": "Owned replay endpoint observed a fresh check against retained E14 while configured with an independently authenticated signed E13 response; process remained expired BASE and journal unchanged. No successful-response-body receipt was retained, so this run does not independently prove response receipt/authentication rejection. The nonce was also old; isolated epoch/signature rejection is not established.",
+    "rollback": "Authenticated Enterprise rollback triggers signed free E17; rollforward availability alone stays free; explicit Enterprise E18 required, then final free E19 offline"
+  },
+  "ffi": {
+    "baseline_checks": 3,
+    "paid_checks": 16,
+    "raw_reports_retained_for_each_full_launch": true,
+    "native_exports_pre_shipped": true
+  },
+  "data": {
+    "final_schema": 3,
+    "full_launch_counter": 54,
+    "pro_note": "pro-preserved",
+    "enterprise_note": "enterprise-preserved",
+    "same_sentinel_all_full_launches": true,
+    "final_selection": {
+      "version": 2,
+      "current": {
+        "epoch": "19",
+        "digest": "eea7524b972aa9aa6fb9068d883812c41eeea9a6517f4f44c3443964d4328eeb",
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null
+      },
+      "accepted": {
+        "epoch": "19",
+        "digest": "eea7524b972aa9aa6fb9068d883812c41eeea9a6517f4f44c3443964d4328eeb",
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null
+      },
+      "next_boot": {
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null,
+        "reason": "selected_base"
+      },
+      "restart_required": false
+    }
+  },
+  "cleanup": {
+    "container_removed": false,
+    "container_payload_removed": true,
+    "os_metadata_shell_remaining": "/Users/tonylu/Library/Containers/org.tonycloud.shorebird-macos-ffi.5e64dd4d25bb",
+    "os_metadata_file_remaining": "/Users/tonylu/Library/Containers/org.tonycloud.shorebird-macos-ffi.5e64dd4d25bb/.com.apple.containermanagerd.metadata.plist",
+    "metadata_removal_errno": 1,
+    "all_variant_keys_deleted": true,
+    "cleanup_complete": false,
+    "bootstrap_secrets_removed": true,
+    "owned_app_removed": true
+  },
+  "limits": [
+    "Native Intel/iOS/Android/Windows/Linux acceptance is separate.",
+    "No migration of old ambiguous Bad ValidationFailed tombstones; this fixes classification for new corruption events.",
+    "Per-launch Swift provider.json is not retained; no direct zero-provider-callback runtime claim. Native key-control receipts and successful paid decryption are retained.",
+    "Cache scan proves no plaintext key in observed final files, not absence of transient plaintext writes.",
+    "The runner-reported runtime_acceptance=true predates the replay delivery-evidence hardening; do not treat it as complete replay acceptance."
+  ],
+  "evidence": "/Users/tonylu/Library/Caches/shorebird-fixtures/macos-cache-recovery-20261102/lifecycle",
+  "result_sha256": "b40cd43e886c6a54905ec5319e0c4ff46c696ddf132d44397714e7648c6f51e3",
+  "stage_index": [
+    {
+      "label": "initial-free",
+      "pid": 53799,
+      "validated": true,
+      "variant": "free",
+      "epoch": "0",
+      "raw_reports_sha256": "77df2f5d9240fccea57a386b4f3bb660de30774470545b63ff7f89fd87a7fb89"
+    },
+    {
+      "label": "initial-signed-free",
+      "pid": 54076,
+      "validated": true,
+      "variant": "free",
+      "epoch": "1",
+      "raw_reports_sha256": "1de0123f9f70e28f0961afcddf4719828f428911b30855851711391f74434363"
+    },
+    {
+      "label": "initial-cold-free",
+      "pid": 54338,
+      "validated": true,
+      "variant": "free",
+      "epoch": "1",
+      "raw_reports_sha256": "5776bcbf012ac6a8b6506268c31d8418d1aabbdb823c9892331249d3970baeca"
+    },
+    {
+      "label": "key-provision-pro-3",
+      "pid": 54459,
+      "validated": true,
+      "variant": null,
+      "epoch": null,
+      "raw_reports_sha256": "5776bcbf012ac6a8b6506268c31d8418d1aabbdb823c9892331249d3970baeca"
+    },
+    {
+      "label": "key-provision-enterprise-4",
+      "pid": 54496,
+      "validated": true,
+      "variant": null,
+      "epoch": null,
+      "raw_reports_sha256": "5776bcbf012ac6a8b6506268c31d8418d1aabbdb823c9892331249d3970baeca"
+    },
+    {
+      "label": "switch-pro-e2-check",
+      "pid": 54662,
+      "validated": true,
+      "variant": "free",
+      "epoch": "2",
+      "raw_reports_sha256": "fac2bbd2166619ebf46b6247c23652750e486d2f784094c0e5c206d5f6a7973a"
+    },
+    {
+      "label": "switch-pro-e2-cold",
+      "pid": 54823,
+      "validated": true,
+      "variant": "pro",
+      "epoch": "2",
+      "raw_reports_sha256": "c555d1143f60b5b57fd142ad9f06728066dc3a2c9e921e6272173b6a6041705a"
+    },
+    {
+      "label": "switch-enterprise-e3-check",
+      "pid": 54964,
+      "validated": true,
+      "variant": "pro",
+      "epoch": "3",
+      "raw_reports_sha256": "2b8b8ead43a0026033fb7f7446e425e3587717a44c9f9caf39958da90b8f7156"
+    },
+    {
+      "label": "switch-enterprise-e3-cold",
+      "pid": 55092,
+      "validated": true,
+      "variant": "enterprise",
+      "epoch": "3",
+      "raw_reports_sha256": "e3a8dc94e962bb984c5beb1584c465b3eb50c9d333e3e8032758801da515bec5"
+    },
+    {
+      "label": "switch-pro-e4-check",
+      "pid": 55256,
+      "validated": true,
+      "variant": "enterprise",
+      "epoch": "4",
+      "raw_reports_sha256": "ec278de786e8321d8f3432ac4ccee710ac2eade42b83183b4035859cf49d36e5"
+    },
+    {
+      "label": "switch-pro-e4-cold",
+      "pid": 55394,
+      "validated": true,
+      "variant": "pro",
+      "epoch": "4",
+      "raw_reports_sha256": "5c6f6687ce3b2b8398dd0d4a42ecd6ef8c41630cf86ca7ccff8c7acc1223c4f7"
+    },
+    {
+      "label": "switch-free-e5-check",
+      "pid": 55527,
+      "validated": true,
+      "variant": "pro",
+      "epoch": "5",
+      "raw_reports_sha256": "0deaa59390ebc98ea00b7ee4da3e0e364935cea2e05befeaac3280ba33247659"
+    },
+    {
+      "label": "switch-free-e5-cold",
+      "pid": 55639,
+      "validated": true,
+      "variant": "free",
+      "epoch": "5",
+      "raw_reports_sha256": "b6bbfcaf9297214e5beb5040a85077497bfcc4709e7ca40d33750d23e1f9a700"
+    },
+    {
+      "label": "switch-enterprise-e6-check",
+      "pid": 56035,
+      "validated": true,
+      "variant": "free",
+      "epoch": "6",
+      "raw_reports_sha256": "a1e8cadebc2e5e767fad01b27ff54f22acc18e219f3a15a812142deac08e3a91"
+    },
+    {
+      "label": "switch-enterprise-e6-cold",
+      "pid": 56239,
+      "validated": true,
+      "variant": "enterprise",
+      "epoch": "6",
+      "raw_reports_sha256": "1e536065c7d54b8803a26b400d97858b2a89b302cea4fc97d85a5c3d77ac8260"
+    },
+    {
+      "label": "switch-free-e7-check",
+      "pid": 56522,
+      "validated": true,
+      "variant": "enterprise",
+      "epoch": "7",
+      "raw_reports_sha256": "52ffc1ade3ef42fa5a781ed9d16b7c543e8879427d06c6cc56908b44465bf7e2"
+    },
+    {
+      "label": "switch-free-e7-cold",
+      "pid": 56795,
+      "validated": true,
+      "variant": "free",
+      "epoch": "7",
+      "raw_reports_sha256": "1e9692708798b925f26edb8407b7fac60ce2d14af46af0cacc58588d1cc2344c"
+    },
+    {
+      "label": "same-content-first-check",
+      "pid": 56918,
+      "validated": true,
+      "variant": "free",
+      "epoch": "8",
+      "raw_reports_sha256": "a03080fb32b38f808b2150d2243fe53614c6d39356fd41dc04ff7ab6b32043b6"
+    },
+    {
+      "label": "same-content-first-cold",
+      "pid": 57104,
+      "validated": true,
+      "variant": "pro",
+      "epoch": "8",
+      "raw_reports_sha256": "7850edad860c1ad54366a6b40b008b1454b4a8064eb3641f02632a7148137bcb"
+    },
+    {
+      "label": "same-content-higher-epoch-check",
+      "pid": 57497,
+      "validated": true,
+      "variant": "pro",
+      "epoch": "9",
+      "raw_reports_sha256": "3c476bb25c9d7724f13541525041b27169815774fcb1b603a4cd937759c936b7"
+    },
+    {
+      "label": "same-content-higher-epoch-cold",
+      "pid": 57737,
+      "validated": true,
+      "variant": "pro",
+      "epoch": "9",
+      "raw_reports_sha256": "693d348b2a68ffefce2cab69c4391d767a9cf8725fd4841659792de5a2cd8ae0"
+    },
+    {
+      "label": "offline-paid",
+      "pid": 57922,
+      "validated": true,
+      "variant": "pro",
+      "epoch": "9",
+      "raw_reports_sha256": "0725d2a993a422bd16d44c2bb7d8ae7fa34fd5a3bebe2d5552f59780df65bc56"
+    },
+    {
+      "label": "missing-key-control",
+      "pid": 58072,
+      "validated": true,
+      "variant": null,
+      "epoch": null,
+      "raw_reports_sha256": "0725d2a993a422bd16d44c2bb7d8ae7fa34fd5a3bebe2d5552f59780df65bc56"
+    },
+    {
+      "label": "missing-key-free",
+      "pid": 58164,
+      "validated": true,
+      "variant": "free",
+      "epoch": "9",
+      "raw_reports_sha256": "aa11b8803367a48271d8514416fef745124b6c0a49f1eed54cea1ac4dcf6c519"
+    },
+    {
+      "label": "missing-key-restore",
+      "pid": 58318,
+      "validated": true,
+      "variant": null,
+      "epoch": null,
+      "raw_reports_sha256": "aa11b8803367a48271d8514416fef745124b6c0a49f1eed54cea1ac4dcf6c519"
+    },
+    {
+      "label": "missing-key-recovered-pro",
+      "pid": 58443,
+      "validated": true,
+      "variant": "pro",
+      "epoch": "9",
+      "raw_reports_sha256": "0ecec6eaf1c46bc15e5c7cb7c9bb4b575c0b03a4e86a9a140bfdda8bbedbed26"
+    },
+    {
+      "label": "wrong-key-control",
+      "pid": 58951,
+      "validated": true,
+      "variant": null,
+      "epoch": null,
+      "raw_reports_sha256": "0ecec6eaf1c46bc15e5c7cb7c9bb4b575c0b03a4e86a9a140bfdda8bbedbed26"
+    },
+    {
+      "label": "wrong-key-free",
+      "pid": 59359,
+      "validated": true,
+      "variant": "free",
+      "epoch": "9",
+      "raw_reports_sha256": "40364cfead5d3aafc0e77a5f1b8ce7dbaf51aead9f88680b2d79191ccf4982c1"
+    },
+    {
+      "label": "wrong-key-restore",
+      "pid": 59934,
+      "validated": true,
+      "variant": null,
+      "epoch": null,
+      "raw_reports_sha256": "40364cfead5d3aafc0e77a5f1b8ce7dbaf51aead9f88680b2d79191ccf4982c1"
+    },
+    {
+      "label": "wrong-key-recovered-pro",
+      "pid": 60219,
+      "validated": true,
+      "variant": "pro",
+      "epoch": "9",
+      "raw_reports_sha256": "284c0a747469742752ccd0f266c7a6ff2380fcbf49358a984759bb5f7fa5520b"
+    },
+    {
+      "label": "ciphertext-tamper-fallback",
+      "pid": 60645,
+      "validated": true,
+      "variant": "free",
+      "epoch": "9",
+      "raw_reports_sha256": "7fa89c66aa8fda09223b71367943e80c0b4e6f822b8ad33e91c15957de2ddce9"
+    },
+    {
+      "label": "ciphertext-explicit-free-check",
+      "pid": 61142,
+      "validated": true,
+      "variant": "free",
+      "epoch": "10",
+      "raw_reports_sha256": "636a1deb8d2c652602f135bcb74b8aabc27618868fd70d5b2e74a107a0296d92"
+    },
+    {
+      "label": "ciphertext-explicit-free-cold",
+      "pid": 61428,
+      "validated": true,
+      "variant": "free",
+      "epoch": "10",
+      "raw_reports_sha256": "77ed3731932209f16e06fe21a266c3ae0249624d370092a3e6a5984939475958"
+    },
+    {
+      "label": "ciphertext-reauthorized-pro-check",
+      "pid": 61841,
+      "validated": true,
+      "variant": "free",
+      "epoch": "11",
+      "raw_reports_sha256": "ff268cb0cb2977c3e2d2742acb6692ad9d8c6b2c80cf780c1a0bc494b5b94712"
+    },
+    {
+      "label": "ciphertext-reauthorized-pro-cold",
+      "pid": 62060,
+      "validated": true,
+      "variant": "pro",
+      "epoch": "11",
+      "raw_reports_sha256": "bcff76f707fef0b97a79dae7493f2a06e15c3ccea180d78ac9053592a52f6b1a"
+    },
+    {
+      "label": "ciphertext-repaired-offline-pro",
+      "pid": 62293,
+      "validated": true,
+      "variant": "pro",
+      "epoch": "11",
+      "raw_reports_sha256": "d396714e85d7765e7066f81459d4ed9c686a9fb80f753eb90410df478ecbb3db"
+    },
+    {
+      "label": "signature-tamper-fallback",
+      "pid": 62458,
+      "validated": true,
+      "variant": "free",
+      "epoch": "11",
+      "raw_reports_sha256": "a758053aae0446c097522e29fbe603fb5b4427c835b17c12437035f37736a980"
+    },
+    {
+      "label": "signature-explicit-free-check",
+      "pid": 62576,
+      "validated": true,
+      "variant": "free",
+      "epoch": "12",
+      "raw_reports_sha256": "e1a6ab6492e78c86e61901ebdf247458ecf95d872d54873eef936d5d82770bd3"
+    },
+    {
+      "label": "signature-explicit-free-cold",
+      "pid": 62797,
+      "validated": true,
+      "variant": "free",
+      "epoch": "12",
+      "raw_reports_sha256": "28c97c210f7bf5df6443dff40e861e81546ea2b16a91a1f08a497189c71009db"
+    },
+    {
+      "label": "signature-reauthorized-pro-check",
+      "pid": 63213,
+      "validated": true,
+      "variant": "free",
+      "epoch": "13",
+      "raw_reports_sha256": "83fd7128af0970823976758505c2bd624cb814bb8be112aeec26a13067832cd3"
+    },
+    {
+      "label": "signature-reauthorized-pro-cold",
+      "pid": 63449,
+      "validated": true,
+      "variant": "pro",
+      "epoch": "13",
+      "raw_reports_sha256": "bde1cd95ee4a613d9a4548b22f3f77c76461fb31ef83dbaf8c38d5b9e580f0e4"
+    },
+    {
+      "label": "signature-repaired-offline-pro",
+      "pid": 63618,
+      "validated": true,
+      "variant": "pro",
+      "epoch": "13",
+      "raw_reports_sha256": "8043d5f6ff541dda4715fee2da8ff624c5a0e72c8a0ea6ad47efbc4e9e048f76"
+    },
+    {
+      "label": "leased-pro-check",
+      "pid": 63784,
+      "validated": true,
+      "variant": "pro",
+      "epoch": "14",
+      "raw_reports_sha256": "e59f6ae2ce6f1cf97546221f718f5c37fa9ed441737d621e5a3ec80e78db017b"
+    },
+    {
+      "label": "leased-pro-cold",
+      "pid": 63907,
+      "validated": true,
+      "variant": "pro",
+      "epoch": "14",
+      "raw_reports_sha256": "a1197be79e0c4b1eba37b1aaa30b0fde2837625da7ea0024f6869c72225a526c"
+    },
+    {
+      "label": "lease-valid-offline-pro",
+      "pid": 64299,
+      "validated": true,
+      "variant": "pro",
+      "epoch": "14",
+      "raw_reports_sha256": "b4cd534604fe5c848175bcff1a04c6f4c3dc88b89bdb91d6fad310384a3dbb8f"
+    },
+    {
+      "label": "lease-expired-offline-free",
+      "pid": 67955,
+      "validated": true,
+      "variant": "free",
+      "epoch": "14",
+      "raw_reports_sha256": "3ef0d3e4b317c7f968d9d02f662cb1f5f0768a086f259105f9b5f035f09fd4ee"
+    },
+    {
+      "label": "old-response-rejected",
+      "pid": 68076,
+      "validated": true,
+      "variant": "free",
+      "epoch": "14",
+      "raw_reports_sha256": "0929760e023d60776a201e2d9b7bfbcaf5c13970272c1ff5a82126470ce576df"
+    },
+    {
+      "label": "online-expired-server-free",
+      "pid": 68233,
+      "validated": true,
+      "variant": "free",
+      "epoch": "15",
+      "raw_reports_sha256": "b8616311c4ba2d3f62ab517213d166ca55a4cdafb6314fe8967a8521334a3d4f"
+    },
+    {
+      "label": "cold-server-free",
+      "pid": 68355,
+      "validated": true,
+      "variant": "free",
+      "epoch": "15",
+      "raw_reports_sha256": "bba154bbfc8dcb6357a472a3bb3cd9d89e74d0a0762090b69d7fe90f09689124"
+    },
+    {
+      "label": "before-rollback-enterprise-check",
+      "pid": 68517,
+      "validated": true,
+      "variant": "free",
+      "epoch": "16",
+      "raw_reports_sha256": "c696d7707cd7239efcfa6ddb2094933edd7cf3467f3d4ce253e0c0c7620f8048"
+    },
+    {
+      "label": "before-rollback-enterprise-cold",
+      "pid": 68714,
+      "validated": true,
+      "variant": "enterprise",
+      "epoch": "16",
+      "raw_reports_sha256": "1d8f1682cd60cb3969d8540d1a357cf1ceafef9a21718377534c7bb3e2de37fa"
+    },
+    {
+      "label": "rollback-accept-free",
+      "pid": 69196,
+      "validated": true,
+      "variant": "enterprise",
+      "epoch": "17",
+      "raw_reports_sha256": "25065c44492e76dafb28ca7f33db6dfa136329f081719df62368de1e89148eac"
+    },
+    {
+      "label": "rollback-cold-free",
+      "pid": 69328,
+      "validated": true,
+      "variant": "free",
+      "epoch": "17",
+      "raw_reports_sha256": "e98b3c8afe24ca1ac75311232ca3632533d3a95618644a0e8db827021c96a684"
+    },
+    {
+      "label": "rollforward-no-implicit-paid",
+      "pid": 69431,
+      "validated": true,
+      "variant": "free",
+      "epoch": "17",
+      "raw_reports_sha256": "97e960351a1135aca8c820e4bacc67bfd90ca4218e589cceb91ad7efe7c88bf4"
+    },
+    {
+      "label": "rollforward-still-free",
+      "pid": 69529,
+      "validated": true,
+      "variant": "free",
+      "epoch": "17",
+      "raw_reports_sha256": "f3e6de32afc4965ca3c99874cb659919025df2348f073c909a8dea100fdb32fc"
+    },
+    {
+      "label": "explicit-reauthorization-check",
+      "pid": 69629,
+      "validated": true,
+      "variant": "free",
+      "epoch": "18",
+      "raw_reports_sha256": "fc132c981e06da3ef64ef6c46d74f5bdb5d738a3c992c17f4e1ca3212dc957f8"
+    },
+    {
+      "label": "explicit-reauthorization-cold",
+      "pid": 69769,
+      "validated": true,
+      "variant": "enterprise",
+      "epoch": "18",
+      "raw_reports_sha256": "6bde8fbded187f8945abbe4eb32b9a0d075a7407f193e49845eb515d6544eefa"
+    },
+    {
+      "label": "final-free-check",
+      "pid": 70057,
+      "validated": true,
+      "variant": "enterprise",
+      "epoch": "19",
+      "raw_reports_sha256": "1898cecac33df6e781b905c502919f65f01780b1b480e37ea363b0948f996d6c"
+    },
+    {
+      "label": "final-free-cold",
+      "pid": 70382,
+      "validated": true,
+      "variant": "free",
+      "epoch": "19",
+      "raw_reports_sha256": "e1ad5c5a37f920e3499dd8ed04a8d477617c02dcb216422f8031865402bb23eb"
+    },
+    {
+      "label": "final-offline-free",
+      "pid": 70516,
+      "validated": true,
+      "variant": "free",
+      "epoch": "19",
+      "raw_reports_sha256": "8a032a971849eb6f00eabd19850a7737a1ed0560cfc66e4713c5d78084069e50"
+    },
+    {
+      "label": "final-delete-pro",
+      "pid": 70621,
+      "validated": true,
+      "variant": null,
+      "epoch": null,
+      "raw_reports_sha256": "8a032a971849eb6f00eabd19850a7737a1ed0560cfc66e4713c5d78084069e50"
+    },
+    {
+      "label": "final-delete-enterprise",
+      "pid": 70690,
+      "validated": true,
+      "variant": null,
+      "epoch": null,
+      "raw_reports_sha256": "8a032a971849eb6f00eabd19850a7737a1ed0560cfc66e4713c5d78084069e50"
+    }
+  ],
+  "independent_audit": {
+    "result": "qualified pass",
+    "verified_signed_journal_snapshots": 61,
+    "distinct_signed_epochs": 19,
+    "signature_verification": "Independent RSA-PKCS1-v1.5/SHA256 checks against the consistent managed key from packaged YAML; journal/replay payloads and artifact hash signatures verified",
+    "native_machine": "All retained lipo inspections arm64",
+    "repair_http_200_downloads_per_case": 1,
+    "limits_reconciled": [
+      "Native Intel/iOS/Android/Windows/Linux acceptance is separate.",
+      "No migration of old ambiguous Bad ValidationFailed tombstones; this fixes classification for new corruption events.",
+      "Per-launch Swift provider.json is not retained; no direct zero-provider-callback runtime claim. Native key-control receipts and successful paid decryption are retained.",
+      "Cache scan proves no plaintext key in observed final files, not absence of transient plaintext writes."
+    ]
+  },
+  "replay_acceptance_complete": false,
+  "full_adversarial_matrix_acceptance": "Pending rerun with successful replay-body receipt; other recorded lifecycle cases pass"
+}

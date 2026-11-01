@@ -17,6 +17,7 @@ import math
 import os
 from pathlib import Path
 import re
+import socket
 import sys
 import threading
 import time
@@ -93,6 +94,84 @@ def validate_rejected_check(report, accepted):
             'Rejected response changed authorization')
 
 
+def validate_replay_delivery(state, records, body, old_selection, accepted, *, after, before):
+    """Bind completed HTTP writes to fresh actual requests and authority."""
+    require(bool(records) and int(old_selection['epoch']) < int(accepted['epoch']),
+            'Replay did not target a newer accepted authorization')
+    old = json.loads(body)
+    old_payload = json.loads(base64.b64decode(old['authentication']['payload'], validate=True))
+    captured_nonce = old_payload['request']['nonce']
+    scope = state['release_scope']
+    expected = dict(selection_protocol=2, app_id=state['app_id'], release_version=state['release_version'],
+        platform='macos', arch='aarch64', channel='stable', client_id=state['installation_id'],
+        base_artifact_hash=scope['base_artifact_hash'], host_abi_hash=scope['host_abi_hash'],
+        runtime_profile=scope['runtime_profile'], accepted_selection_epoch=accepted['epoch'],
+        accepted_selection_digest=accepted['digest'])
+    nonces = set()
+    for record in records:
+        request = record['request']
+        nonce = request['nonce']
+        require(isinstance(nonce, str) and str(uuid.UUID(nonce)) == nonce and uuid.UUID(nonce).version == 4 and
+                nonce != captured_nonce and nonce not in nonces, 'Replay request did not use a fresh updater nonce')
+        nonces.add(nonce)
+        raw = base64.b64decode(record['request_body_base64'], validate=True)
+        require(json.loads(raw) == request and hashlib.sha256(raw).hexdigest() == record['request_body_sha256'] and
+                record['response_body_sha256'] == hashlib.sha256(body).hexdigest(),
+                'Replay evidence does not match actual request/response body bytes')
+        require(all(request.get(key) == value for key, value in expected.items()),
+                'Replay request differs from actual installation/scope/accepted high-water mark')
+        received, completed = record['received_at'], record['completed_at']
+        require(type(received) in (int, float) and type(completed) in (int, float) and
+                math.isfinite(received) and math.isfinite(completed) and after <= received <= completed <= before,
+                'Replay response was not completed during this fresh app launch')
+    return records
+
+
+def validate_provider_ledger(state, report, ledger, *, pid, nonce, after, key_failure=None):
+    require(key_failure in (None, 'missing', 'wrong'), 'Invalid provider failure control')
+    require(type(ledger) is dict and set(ledger) == {'schema','session','bundle_id','pid','nonce','started','time','events','overflow'} and
+            ledger['schema'] == 'macos-variant-provider-ledger-v2' and ledger['session'] == state['session'] and
+            ledger['bundle_id'] == state['bundle_id'] and ledger['pid'] == pid and type(ledger['pid']) is int and
+            ledger['nonce'] == nonce and ledger['overflow'] is False, 'Stale or foreign provider ledger')
+    require(all(type(ledger[key]) in (int,float) and math.isfinite(ledger[key]) for key in ('started','time')) and
+            after <= ledger['started'] <= ledger['time'] <= time.time()+2, 'Invalid provider ledger launch fence')
+    events = ledger['events']
+    require(type(events) is list and len(events) <= 128, 'Unbounded provider ledger')
+    current = fixture.selection_identity(report['selection']['current'])
+    accepted = fixture.selection_identity(report['selection']['accepted'])
+    expected = accepted if key_failure else current
+    scope = dict(app_id=state['app_id'],release_version=state['release_version'],platform='macos',arch='aarch64',
+        runtime_profile='interpreter-full',client_id_hash=hashlib.sha256(report['installation_id'].encode()).hexdigest())
+    for index,event in enumerate(events):
+        require(type(event) is dict and event.get('sequence') == index+1 and type(event['sequence']) is int and
+                event.get('outcome') in ('released','refused') and
+                event.get('reason') in ('key_available','key_unavailable','context_rejected') and
+                type(event.get('time')) in (int,float) and math.isfinite(event['time']) and
+                ledger['started'] <= event['time'] <= ledger['time'], 'Invalid provider event')
+        base = {'sequence','outcome','reason','time'}
+        if event['reason'] == 'context_rejected':
+            require(set(event) == base and event['outcome'] == 'refused', 'Rejected context leaked unvalidated identity')
+        else:
+            require(set(event) == base | {'scope','epoch','selection_digest','variant_id','license_type','patch_number','key_id'} and
+                    event['scope'] == scope and event['key_id'] == state['key_ids'].get(expected['variant_id']) and
+                    fixture.selection_identity(dict(epoch=event['epoch'],digest=event['selection_digest'],
+                        variant_id=event['variant_id'],license_type=event['license_type'],patch_number=event['patch_number'])) == expected and
+                    event['outcome'] == ('released' if event['reason'] == 'key_available' else 'refused'),
+                    'Provider event differs from actual process-current authorization')
+    releases = [event for event in events if event['outcome'] == 'released']
+    if key_failure == 'missing':
+        require(current['variant_id'] == 'free' and accepted['variant_id'] != 'free' and bool(events) and
+                all(event['reason'] == 'key_unavailable' for event in events), 'Missing key did not produce native refusals')
+    elif key_failure == 'wrong':
+        require(current['variant_id'] == 'free' and accepted['variant_id'] != 'free' and bool(releases) and
+                len(releases) == len(events), 'Wrong-key fallback did not exercise actual 32-byte key release')
+    elif current['variant_id'] == 'free':
+        require(not events, 'Effective BASE attempted paid provider key access')
+    else:
+        require(bool(releases) and len(releases) == len(events), 'Paid process lacks matching native provider releases')
+    return {'attempts':len(events),'successful_releases':len(releases),'refused':len(events)-len(releases)}
+
+
 def wait_past_deadline(deadline, *, now=time.time, sleep=time.sleep):
     require(type(deadline) in (int, float) and math.isfinite(deadline), 'Invalid lease deadline')
     # Use wall clock, because authorization expiry uses wall clock. A monotonic
@@ -113,7 +192,7 @@ def require_fresh_fixture(work, state):
     require(not (work / 'lifecycle').exists() and not list(work.glob('runtime-*.json')),
             'Lifecycle evidence already exists; use a fresh fixture')
     require(not cache_root(state).exists(), 'Updater cache already exists; use a fresh fixture')
-    for name in ('variant-status.json', 'ffi-status.json', 'user-data.json', 'container.json'):
+    for name in ('variant-status.json', 'ffi-status.json', 'user-data.json', 'container.json', 'provider.json'):
         require(not v1.container_file(state, name).exists(), 'Existing runtime evidence; use a fresh fixture')
     app = v1.contained(work, state['released_app'])
     require(app.is_dir() and not app.is_symlink(), 'Missing private released app')
@@ -193,7 +272,7 @@ class Lifecycle:
     def raw_reports(self, directory):
         """Keep diagnostics even when validation fails; never reset app data."""
         captured = {}
-        for name in ('variant-status.json', 'ffi-status.json', 'container.json', 'user-data.json'):
+        for name in ('variant-status.json', 'ffi-status.json', 'container.json', 'user-data.json', 'provider.json'):
             path = v1.container_file(self.state, name)
             if path.exists():
                 require(not path.is_symlink() and path.stat().st_size <= 1024 * 1024, 'Unsafe report snapshot')
@@ -204,7 +283,7 @@ class Lifecycle:
 
     def launch(self, label, variant=None, *, check=False, cold=False, fallback=False,
                offline=False, accepted_variant=None, rejected=False, key=None,
-               key_variant=None, wrong=False):
+               key_variant=None, wrong=False, key_failure=None):
         require(re.fullmatch(r'[A-Za-z0-9_-]+', label) is not None, 'Unsafe launch label')
         self.reload()
         fixture.require_open(self.work, self.state, deletion=key == 'delete')
@@ -213,6 +292,9 @@ class Lifecycle:
         entry = {'label': label, 'started': time.time(), 'expected_variant': variant,
                  'offline_endpoints_closed': offline, 'validated': False}
         self.launches.append(entry)
+        nonce = uuid.uuid4().hex
+        if key is None:
+            entry['provider_nonce'] = nonce
         process = None
         error = None
         try:
@@ -223,9 +305,12 @@ class Lifecycle:
             if offline:
                 self.require_offline()
             with (directory / 'app.log').open('wb') as log:
+                environment = fixture.app_environment(self.work, self.state, variant=key_variant, action=key,
+                    control_only=key is not None, wrong_key=wrong, check=check)
+                if key is None:
+                    environment['OPEN_SHOREBIRD_TEST_PROVIDER_NONCE'] = nonce
                 process = self.owner.spawn(fixture.app_launch_command(self.work, self.state, deletion=key == 'delete'),
-                    env=fixture.app_environment(self.work, self.state, variant=key_variant, action=key,
-                        control_only=key is not None, wrong_key=wrong, check=check), stdout=log, stderr=log)
+                    env=environment, stdout=log, stderr=log)
                 entry['pid'] = process.pid
                 if key is not None:
                     require(process.wait(timeout=30) == 0, 'Native key control failed')
@@ -265,11 +350,18 @@ class Lifecycle:
                                 entry['started'], 'base' if variant == 'free' else 'update')
                             if cold:
                                 fixture.validate_cold_activation(self.state, report, fallback=fallback)
+                            provider_path = v1.container_file(self.state, 'provider.json')
+                            require(not provider_path.is_symlink() and provider_path.stat().st_size <= 65536 and
+                                    provider_path.stat().st_mtime >= entry['started'], 'Stale or unsafe provider ledger')
+                            provider = json.loads(provider_path.read_text())
+                            provider_counts = validate_provider_ledger(self.state,report,provider,pid=process.pid,
+                                nonce=nonce,after=entry['started'],key_failure=key_failure)
                             fixture.remember_installation(self.work, self.state, report)
                             self.state['observed_selection'] = fixture.selection_identity(report['selection']['accepted'])
                             v1.save(self.work, self.state)
                             self.previous_data = report['data']
-                            entry.update(report=report, container=container, ffi=ffi)
+                            entry.update(report=report, container=container, ffi=ffi,provider=provider,
+                                         provider_counts=provider_counts)
                             break
                         except (ValueError, FileNotFoundError, json.JSONDecodeError, KeyError) as invalid:
                             if time.monotonic() >= deadline:
@@ -351,35 +443,84 @@ class Lifecycle:
     @contextmanager
     def replay_endpoint(self, body, requests):
         self.require_offline()
+        class Server(ThreadingHTTPServer):
+            daemon_threads = True
+            block_on_close = False
+
+            def __init__(self, *args):
+                self.connections = set()
+                self.connections_lock = threading.Lock()
+                super().__init__(*args)
+
+            def get_request(self):
+                connection, address = super().get_request()
+                connection.settimeout(5)  # Before request-line/header parsing.
+                with self.connections_lock:
+                    self.connections.add(connection)
+                return connection, address
+
+            def shutdown_request(self, connection):
+                with self.connections_lock:
+                    self.connections.discard(connection)
+                super().shutdown_request(connection)
+
+            def close_connections(self):
+                with self.connections_lock:
+                    connections = tuple(self.connections)
+                    self.connections.clear()
+                for connection in connections:
+                    try:
+                        connection.shutdown(socket.SHUT_RDWR)
+                    except OSError:
+                        pass
+                    connection.close()
+
         class Handler(BaseHTTPRequestHandler):
             def log_message(self, *_):
                 pass
             def do_POST(self):
-                length = int(self.headers.get('Content-Length', '0'))
-                if not 0 < length < 65536:
-                    self.send_error(400)
-                    return
-                request = json.loads(self.rfile.read(length))
-                if self.path == '/api/v1/patches/check':
-                    requests.append(request)
-                    response = body
-                elif self.path == '/api/v1/patches/events':
-                    response = b'{}'
-                else:
-                    self.send_error(404)
-                    return
-                self.send_response(200)
-                self.send_header('Content-Type', 'application/json')
-                self.send_header('Content-Length', str(len(response)))
-                self.end_headers()
-                self.wfile.write(response)
-        server = ThreadingHTTPServer(('127.0.0.1', self.ports()[0]), Handler)
+                try:
+                    received = time.time()
+                    length = int(self.headers.get('Content-Length', '0'))
+                    require(0 < length < 65536, 'Invalid replay request length')
+                    raw = self.rfile.read(length)
+                    require(len(raw) == length, 'Incomplete replay request body')
+                    request = json.loads(raw)
+                    if self.path == '/api/v1/patches/check':
+                        require(type(request) is dict and request.get('selection_protocol') == 2,
+                                'Replay request is not protocol 2')
+                        response = body
+                    elif self.path == '/api/v1/patches/events':
+                        response = b'{}'
+                    else:
+                        self.send_error(404)
+                        return
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/json')
+                    self.send_header('Content-Length', str(len(response)))
+                    self.end_headers()
+                    self.wfile.write(response)
+                    self.wfile.flush()
+                    if self.path == '/api/v1/patches/check':
+                        requests.append({'request': request, 'request_body_base64': base64.b64encode(raw).decode(),
+                            'request_body_sha256': hashlib.sha256(raw).hexdigest(),
+                            'response_body_sha256': hashlib.sha256(response).hexdigest(),
+                            'received_at': received, 'completed_at': time.time()})
+                except (ValueError, KeyError, TypeError):
+                    try:
+                        self.send_error(400)
+                    except OSError:
+                        pass
+                except OSError:
+                    pass  # A failed body write/flush is not delivery evidence.
+        server = Server(('127.0.0.1', self.ports()[0]), Handler)
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         try:
             yield
         finally:
             server.shutdown()
+            server.close_connections()
             server.server_close()
             thread.join(timeout=5)
             require(not thread.is_alive(), 'Owned replay endpoint thread did not stop')
@@ -446,7 +587,7 @@ class Lifecycle:
         for case, action, wrong in (('missing', 'delete', False), ('wrong', 'overwrite', True)):
             before = cache_snapshot(self.state, self.keys)
             self.key(action, wrong=wrong, label=case + '-key-control')
-            self.launch(case + '-key-free', 'free', cold=True, fallback=True, offline=True)
+            self.launch(case + '-key-free', 'free', cold=True, fallback=True, offline=True,key_failure=case)
             assert_cache_preserved(before, cache_snapshot(self.state, self.keys))
             self.key('provision' if case == 'missing' else 'overwrite', label=case + '-key-restore')
             self.launch(case + '-key-recovered-pro', 'pro', cold=True, offline=True)
@@ -469,12 +610,10 @@ class Lifecycle:
         requests = []
         try:
             with self.replay_endpoint(old_response, requests):
-                self.launch('old-response-rejected', 'free', check=True, cold=True, fallback=True, rejected=True)
-            require(requests, 'Replay endpoint received no updater request')
+                replayed = self.launch('old-response-rejected', 'free', check=True, cold=True, fallback=True, rejected=True)
             accepted = fixture.latest_selection(self.state)
-            require(int(old_selection['epoch']) < int(accepted['epoch']) and
-                    all(item['accepted_selection_epoch'] == accepted['epoch'] for item in requests),
-                    'Replay did not target a newer accepted authorization')
+            validate_replay_delivery(self.state, requests, old_response, old_selection, accepted,
+                                     after=replayed['started'], before=time.time())
             assert_journal_preserved(before, cache_snapshot(self.state, self.keys))
         finally:
             self.write('replay-requests.json', requests)

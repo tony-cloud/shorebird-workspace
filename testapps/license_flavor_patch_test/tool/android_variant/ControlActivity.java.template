@@ -4,16 +4,17 @@ import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Process;
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.*;
 import java.util.concurrent.*;
 import org.json.*;
+import android.system.Os;
+import android.system.OsConstants;
 
-/** Explicit opt-in disposable control; never writes updater state. */
+/** Disposable controls; only two explicit CAS tamper operations may alter cache content. */
 public final class ControlActivity extends Activity {
   private static final String CAPABILITY_DIGEST="__CONTROL_SHA256__";
   private static final String PROCESS_TOKEN;
@@ -55,7 +56,10 @@ public final class ControlActivity extends Activity {
       if(!(parsed instanceof JSONArray) || ((JSONArray)parsed).length()>32) throw new IOException();
       if(fields.containsKey("provision_url")!=fields.containsKey("provision_token")) throw new IOException();
       if(fields.containsKey("provision_url")) { PatchKeyProvider.endpoint(fields.get("provision_url"),"key"); if(!PatchKeyProvider.validToken(fields.get("provision_token"))) throw new IOException(); }
-    } else if(!"read-provider".equals(operation) && !"clear-provider".equals(operation)) throw new IOException();
+    } else if("tamper-ciphertext".equals(operation) || "tamper-signature-metadata".equals(operation)) {
+      allowed.addAll(Arrays.asList("patch_number","expected_sha256"));
+      CacheControls.validateTarget(fields.get("patch_number"),fields.get("expected_sha256"));
+    } else if(!"read-provider".equals(operation) && !"clear-provider".equals(operation) && !"cache-snapshot".equals(operation)) throw new IOException();
     if(!allowed.equals(fields.keySet()) && !(operation.equals("launch") && allowed.containsAll(fields.keySet()) &&
         fields.keySet().containsAll(Arrays.asList("operation","nonce","observer","mode","receipt_url","contexts","release_id","check")))) throw new IOException();
   }
@@ -63,7 +67,15 @@ public final class ControlActivity extends Activity {
     boolean launched=false;
     try {
       validate(fields); String operation=fields.get("operation"); JSONObject payload;
-      if(operation.equals("read-provider")) {
+      if(operation.equals("cache-snapshot") || operation.startsWith("tamper-")) {
+        // Fresh pre-engine control process only: no provider construction/key reads.
+        if(configured || flutterAllowed || provider!=null) throw new IOException(); configured=true;
+        CacheControls cache=new CacheControls(getFilesDir().getCanonicalFile(),getCodeCacheDir().getCanonicalFile(),file->{
+          android.system.StructStat stat=Os.lstat(file.getPath());
+          return OsConstants.S_ISDIR(stat.st_mode)?'d':OsConstants.S_ISREG(stat.st_mode)&&stat.st_nlink==1?'f':'x';
+        });
+        payload=operation.equals("cache-snapshot")?cache.snapshot():cache.tamper(operation,fields.get("patch_number"),fields.get("expected_sha256"));
+      } else if(operation.equals("read-provider")) {
         if(provider==null) throw new IOException(); payload=provider.receipts();
       } else if(operation.equals("clear-provider")) {
         // No engine and no key release; this control removes only V2 fixture keys.
@@ -87,6 +99,103 @@ public final class ControlActivity extends Activity {
     } catch(Throwable ignored) {
       try { report(fields,"error",new JSONObject().put("reason","operation-failed")); } catch(Exception unavailable) { }
     } finally { fields.clear(); if(!launched) runOnUiThread(this::finish); }
+  }
+  interface FileKind { char kind(File file) throws Exception; }
+  /** Same bounded implementation runs in host JVM controls; it never sees key storage. */
+  static final class CacheControls {
+    private final File[] roots; private final FileKind guard;
+    private int entries; private long bytes;
+    CacheControls(File files,File codeCache,FileKind guard) throws Exception {
+      this.guard=guard; roots=new File[]{new File(files,"shorebird_updater"),new File(codeCache,"shorebird_updater")};
+      for(File root:roots) contained(root);
+    }
+    static void validateTarget(String patch,String hash) throws Exception {
+      if(!Arrays.asList("2","3").contains(patch) || !PatchKeyProvider.lowerHex(hash,64)) throw new IOException();
+    }
+    private void contained(File file) throws Exception {
+      if(!file.getCanonicalFile().equals(file.getAbsoluteFile())) throw new IOException();
+    }
+    private void regular(File file) throws Exception { contained(file); if(guard.kind(file)!='f') throw new IOException(); }
+    private String hash(File file) throws Exception {
+      regular(file); long size=file.length(); if(size<1 || size>268435456L) throw new IOException();
+      MessageDigest digest=MessageDigest.getInstance("SHA-256"); byte[] buffer=new byte[65536]; long count=0;
+      try(FileInputStream input=new FileInputStream(file)) {
+        for(int n;(n=input.read(buffer))!=-1;) { count+=n; if(count>size) throw new IOException(); digest.update(buffer,0,n); }
+      } finally { Arrays.fill(buffer,(byte)0); }
+      regular(file); if(count!=size || file.length()!=size) throw new IOException();
+      return PatchKeyProvider.hex(digest.digest());
+    }
+    JSONObject snapshot() throws Exception {
+      entries=0; bytes=0; JSONArray result=new JSONArray(); String[] labels={"files","code-cache"};
+      for(int i=0;i<roots.length;i++) {
+        JSONArray files=new JSONArray(); boolean present=roots[i].exists();
+        if(present) walk(roots[i],"",files,0);
+        result.put(new JSONObject().put("label",labels[i]).put("present",present).put("files",files));
+      }
+      return new JSONObject().put("roots",result).put("scope","hashes-only-no-key-reads");
+    }
+    private void walk(File directory,String prefix,JSONArray result,int depth) throws Exception {
+      contained(directory); if(depth>3 || guard.kind(directory)!='d') throw new IOException();
+      File[] children=directory.listFiles(); if(children==null || children.length>1024) throw new IOException();
+      Arrays.sort(children,Comparator.comparing(File::getName));
+      for(File file:children) {
+        if(++entries>1024) throw new IOException(); contained(file); String path=prefix+file.getName(); char kind=guard.kind(file);
+        if(kind=='d') {
+          // A completed install leaves the owned downloads directory present.
+          // No download file is a permitted inspection/mutation input here.
+          if(!path.matches("patches|patches/[1-9][0-9]{0,9}|selections-v2|downloads")) throw new IOException();
+          walk(file,path+"/",result,depth+1);
+        } else {
+          if(kind!='f' || !path.matches("state\\.json|pointers\\.json|patches/[1-9][0-9]{0,9}/(?:state\\.json|transport\\.aesgcm)|selections-v2/[a-f0-9]{64}\\.json")) throw new IOException();
+          long size=file.length(); bytes+=size; if(bytes>536870912L) throw new IOException();
+          result.put(new JSONObject().put("path",path).put("size",size).put("sha256",hash(file)));
+        }
+      }
+    }
+    JSONObject tamper(String operation,String patch,String expected) throws Exception {
+      validateTarget(patch,expected);
+      if(!Arrays.asList("tamper-ciphertext","tamper-signature-metadata").contains(operation)) throw new IOException();
+      // Reject unknown files/links and ambiguous duplicated targets before any mutation.
+      JSONObject before=snapshot(); String relative="patches/"+patch+"/"+(operation.equals("tamper-ciphertext")?"transport.aesgcm":"state.json");
+      File target=null; String label=null;
+      for(int i=0;i<roots.length;i++) {
+        File candidate=new File(roots[i],relative);
+        if(candidate.exists()) { if(target!=null) throw new IOException(); target=candidate; label=i==0?"files":"code-cache"; }
+      }
+      if(target==null || !hash(target).equals(expected)) throw new IOException();
+      File metadata=null;
+      for(File root:roots) {
+        File candidate=new File(root,"patches/"+patch+"/state.json");
+        if(candidate.exists()) { if(metadata!=null) throw new IOException(); metadata=candidate; }
+      }
+      if(metadata==null) throw new IOException(); regular(metadata);
+      if(metadata.length()>1048576) throw new IOException(); byte[] value=new byte[(int)metadata.length()];
+      try(DataInputStream input=new DataInputStream(new FileInputStream(metadata))) { input.readFully(value); if(input.read()!=-1) throw new IOException(); }
+      JSONObject state;
+      try {
+        Object decoded=new PatchKeyProvider.StrictJson(PatchKeyProvider.decodeBounded(value,1048576)).parse();
+        if(!(decoded instanceof JSONObject)) throw new IOException(); state=(JSONObject)decoded;
+      } finally { Arrays.fill(value,(byte)0); }
+      if(!state.getString("kind").equals("InstalledEncryptedTransportV1")) throw new IOException();
+      if(operation.equals("tamper-ciphertext")) {
+        try(RandomAccessFile file=new RandomAccessFile(target,"rw")) {
+          long offset=file.length()/2; file.seek(offset); int octet=file.read(); if(octet<0) throw new IOException();
+          file.seek(offset); file.write(octet^1); file.getFD().sync();
+        }
+      } else {
+        Object signature=state.get("signature");
+        if(!(signature instanceof String) || ((String)signature).isEmpty() || ((String)signature).length()>16384) throw new IOException();
+        String text=(String)signature; state.put("signature",(text.charAt(0)=='A'?"B":"A")+text.substring(1));
+        File temporary=File.createTempFile("state-tamper-",".tmp",target.getParentFile());
+        try {
+          try(FileOutputStream output=new FileOutputStream(temporary)) { output.write(state.toString().getBytes(StandardCharsets.UTF_8)); output.getFD().sync(); }
+          if(!hash(target).equals(expected) || !temporary.renameTo(target)) throw new IOException();
+        } finally { if(temporary.exists() && !temporary.delete()) throw new IOException(); }
+      }
+      String changed=hash(target); if(changed.equals(expected)) throw new IOException();
+      return new JSONObject().put("root",label).put("path",relative).put("before_sha256",expected).put("after_sha256",changed)
+          .put("before",before).put("after",snapshot());
+    }
   }
   private static void report(Map<String,String> fields,String operation,JSONObject payload) throws Exception {
     JSONObject report=new JSONObject().put("schema","android-variant-control-v2").put("nonce",fields.get("nonce"))

@@ -1,0 +1,119 @@
+{
+  "recorded_at_utc": "2026-11-01T19:17:52.983117+00:00",
+  "run_id": 41329799721,
+  "run_url": "https://github.com/tony-cloud/shorebird-workspace/actions/runs/41329799721",
+  "ci_root_revision": "1086bd0bb0061efe39bcebbf603fc5091d0f9d40",
+  "ci_components": {
+    "flutter": "2302b277ba014e06f2d200d3e7edb13026ae4144",
+    "dart_sdk": "dbef3f1e9ade0e74b190c3a91e45aaffce056b19",
+    "updater": "e482b8093890d46031d6496fc5426db56d133660",
+    "shorebird": "0e939b2fe44ed80a3d86c60a7ba8a972e8db6ca6",
+    "server": "3479ee0445a4db67eb223d8abbbaaf65202a909b"
+  },
+  "jobs": [
+    {
+      "job_id": 124919697158,
+      "arch": "x64",
+      "first_failed_step": "Build Linux engine",
+      "step_number": 16,
+      "full_connector_log_lines": 11014,
+      "failure_at_utc": "2026-11-01T18:04:13.1814893Z",
+      "excerpt": "linux-engine-124919697158-failure-excerpt.log",
+      "steps": "linux-engine-124919697158-steps.json"
+    },
+    {
+      "job_id": 124919697330,
+      "arch": "ARM64",
+      "first_failed_step": "Build Linux engine",
+      "step_number": 19,
+      "full_connector_log_lines": 12004,
+      "failure_at_utc": "2026-11-01T18:34:27.5053589Z",
+      "excerpt": "linux-engine-124919697330-failure-excerpt.log",
+      "steps": "linux-engine-124919697330-steps.json"
+    }
+  ],
+  "classification": "shared source compile failure; not runner infrastructure or native V2 transport opt-in",
+  "primary_cause": "The Unicode Windows-assets test calls deprecated std::filesystem::u8path twice at shorebird_config_unittests.cc:273-274. Both Linux native compilers use libc++ and -std=c++20 with -Werror; both overload instantiations fail -Wdeprecated-declarations while compiling shorebird_unittests.shorebird_config_unittests.o.",
+  "secondary_failures": "Upload provider/lifecycle evidence fails because those steps are skipped after compile failure and their files do not exist. Neither V1 nor V2 lifecycle was executed by these jobs.",
+  "current_source_assessment": {
+    "reviewed_flutter": "4f720edf68d125a545f0fdcfcf8bdaf273e424d2",
+    "reviewed_updater": "9d79a58bf49014af9f358cfa0d30d38d881dba2b",
+    "affected_file_identical_to_ci_before_fix": true,
+    "pre_fix_file_sha256": "917aac496198717bfe306e398bc2e9b42c41c1a54350a762085aa0549ded9091",
+    "native_opt_in_fix_supersedes_failure": false,
+    "required_before_next_ci": true
+  },
+  "why_existing_macos_build_passed": "Its generated compile command includes -Wno-deprecated-declarations via allow_deprecated_api_calls; Linux failure commands lack that suppression.",
+  "bounded_fix": {
+    "file": "flutter/engine/src/flutter/shell/common/shorebird/shorebird_config_unittests.cc",
+    "description": "Replace deprecated u8path with std::filesystem::path constructed from std::u8string UTF-8 temporary-path bytes; append explicit u8 Unicode literal. Preserve UTF-8 decoding on Windows; no std::string native narrow encoding fallback or warning suppression. Only test setup changes.",
+    "diff": "linux-u8path-fix-review.patch",
+    "source_sha256": "739cea968ac519f5996faf47eb363c86a9ff9f9bd1dacc514dd937ce2211f63c"
+  },
+  "validation": {
+    "strict_red": {
+      "exit_code": 1,
+      "result": "Actual unchanged TU reproduces exact two CI deprecation diagnostics using local matching engine Clang/libc++ with C++20, original Mac suppression removed and -Werror=deprecated-declarations added. Object output redirected privately; dependency-file generation removed.",
+      "log": "u8path-strict-red.log",
+      "command": "u8path-strict-command.json"
+    },
+    "strict_green": {
+      "exit_code": 0,
+      "log": "u8path-strict-green.log",
+      "command": "u8path-strict-green-command.json"
+    },
+    "private_relink": {
+      "exit_code": 0,
+      "result": "Private executable linked using3278 existing read-only object inputs, replacing exactly the config test object with the newly compiled object.",
+      "command": "u8path-private-link-command.json",
+      "log": "u8path-private-link.log"
+    },
+    "exact_test": {
+      "filter": "Shorebird.NativeScopeFileReaderSupportsUnicodeWindowsAssetsPath",
+      "executed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "log": "u8path-unicode-test.log",
+      "xml": "u8path-unicode-test.xml",
+      "command": "u8path-unicode-test-command.json"
+    },
+    "frozen_outputs_preserved": {
+      "hashes_and_mtimes_unchanged": true,
+      "checked": [
+        "original config test object",
+        "original shorebird_unittests executable",
+        "args.gn",
+        "toolchain.ninja",
+        ".ninja_log"
+      ],
+      "before": "u8path-protected-outputs-before.json",
+      "after": "u8path-protected-outputs-after.json"
+    },
+    "format": "Final changed lines pass repository clang-format dry-run; only formatting whitespace changed after private executable test.",
+    "diff_check": "passed"
+  },
+  "limits": [
+    "No Linux or Windows binary executed locally. Strict compile proof uses local ARM64 macOS engine clang/libc++ with Linux deprecation policy; host/SDK flags otherwise remain macOS.",
+    "No CI rerun, full engine rebuild, VM/device activity, production logic change, commit or pin update performed by this worker."
+  ],
+  "evidence_provenance": "Both complete decoded job logs fetched through GitHub connector; retained causal extracts with original line numbers and step summaries. No gh fallback required.",
+  "integration": {
+    "by": "parent agent",
+    "pins": {
+      "dart_sdk": "dbef3f1e9ade0e74b190c3a91e45aaffce056b19",
+      "flutter_source": "61e4422447053bece99a6457ec004d7eeab70401",
+      "updater": "9d79a58bf49014af9f358cfa0d30d38d881dba2b",
+      "server": "3479ee0445a4db67eb223d8abbbaaf65202a909b",
+      "identity_material": "open-shorebird-toolchain-v1\ndbef3f1e9ade0e74b190c3a91e45aaffce056b19\n61e4422447053bece99a6457ec004d7eeab70401\n9d79a58bf49014af9f358cfa0d30d38d881dba2b\n",
+      "engine_identity": "d0343086cd8f2c6d752ea96c4b862e8532c514a1",
+      "flutter": "3a453a2d63cc95485e3abdf8cbdaa7505801c105",
+      "shorebird": "01015c74206767b5a3ecea17cf44effb976a8eae"
+    },
+    "toolchain_evidence": ".agents/ci-unicode-path-integration-20261102/toolchain.json",
+    "committed_diff_exactly_matches_reviewed_fix": true,
+    "committed_source_hash_matches": true,
+    "new_engine_and_app_runtime_validation": "pending; separate parent-owned work"
+  },
+  "local_evidence_directory": "/Users/tonylu/git/shorebird-workspace/.agents/ci-native-x64-20261102",
+  "runtime_acceptance": false
+}

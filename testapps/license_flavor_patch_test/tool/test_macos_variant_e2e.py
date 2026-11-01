@@ -1,8 +1,10 @@
-"""Source/preparation contract tests only. No signing, native build or runtime."""
+"""Preparation contracts and standalone Swift ledger unit; no app build/signing."""
 import copy
 import hashlib
 import json
 from pathlib import Path
+import shutil
+import subprocess
 import tempfile
 import time
 import types
@@ -62,6 +64,80 @@ class VariantFixtureTest(unittest.TestCase):
         self.args.updater_package = runner.v1.ROOT / 'updater/shorebird_code_push'
         with self.assertRaisesRegex(ValueError, 'private v2 updater clone'):
             runner.prepare(self.args, self.root / 'bad')
+
+    def test_actual_swift_provider_ledger_is_fresh_bounded_atomic_thread_safe_and_fail_closed(self):
+        swiftc=shutil.which('swiftc')
+        if swiftc is None: self.skipTest('Foundation Swift compiler unavailable for standalone ledger unit')
+        template=(Path(runner.__file__).parent/'macos_interpreter/PatchTestKeysV2.swift.template').read_text()
+        helper=template.split('// BEGIN PROVIDER LEDGER:',1)[1].split('\n',1)[1].split('// END PROVIDER LEDGER',1)[0]
+        source=self.root/'ledger-main.swift'; binary=self.root/'ledger-unit'
+        source.write_text('import Foundation\nimport Dispatch\n'+helper+'''
+let directory=URL(fileURLWithPath: CommandLine.arguments[1], isDirectory: true)
+let path=directory.appendingPathComponent("provider.json")
+func readLedger() throws -> [String: Any] {
+  try JSONSerialization.jsonObject(with: Data(contentsOf: path)) as! [String: Any]
+}
+let ledger=try MacosVariantProviderLedger(directory: directory, session: "session", bundleID: "fixture",
+  pid: 42, nonce: "first-launch")
+if CommandLine.arguments.count == 3 {
+  try FileManager.default.removeItem(at: path)
+  try FileManager.default.createDirectory(at: path, withIntermediateDirectories: false)
+  ledger.recordRequired(outcome: CommandLine.arguments[2],
+    reason: CommandLine.arguments[2] == "released" ? "key_available" : "context_rejected")
+  fatalError("Unreachable: failed event write must terminate the fixture")
+}
+let initial=try readLedger()
+precondition((initial["events"] as! [[String: Any]]).isEmpty)
+DispatchQueue.concurrentPerform(iterations: 16) { index in
+  precondition(ledger.record(outcome: index % 2 == 0 ? "released" : "refused",
+    reason: index % 2 == 0 ? "key_available" : "key_unavailable",
+    identity: ["epoch":"2", "private_key":"must-never-persist"]))
+}
+var value=try readLedger()
+let events=value["events"] as! [[String: Any]]
+precondition(events.count == 16)
+precondition(events.enumerated().allSatisfy { $0.element["sequence"] as? Int == $0.offset + 1 })
+precondition(events.filter { $0["outcome"] as? String == "released" }.count == 8)
+let recorded=try Data(contentsOf: path)
+precondition(!String(data: recorded, encoding: .utf8)!.contains("must-never-persist"))
+for _ in 16..<128 { precondition(ledger.record(outcome: "refused", reason: "context_rejected")) }
+precondition(!ledger.record(outcome: "released", reason: "key_available"))
+value=try readLedger()
+precondition(value["overflow"] as? Bool == true)
+precondition((value["events"] as! [[String: Any]]).count == 128)
+let next=try MacosVariantProviderLedger(directory: directory, session: "session", bundleID: "fixture",
+  pid: 43, nonce: "second-launch")
+value=try readLedger()
+precondition(value["pid"] as? Int == 43 && value["nonce"] as? String == "second-launch")
+precondition((value["events"] as! [[String: Any]]).isEmpty && value["overflow"] as? Bool == false)
+try FileManager.default.removeItem(at: path)
+try FileManager.default.createDirectory(at: path, withIntermediateDirectories: false)
+precondition(!next.record(outcome: "released", reason: "key_available"))
+precondition(!next.record(outcome: "released", reason: "key_available"))
+print("PASS: fresh, concurrent, bounded, allowlisted, atomic, fail-closed ledger")
+''')
+        compiled=subprocess.run([swiftc,'-swift-version','5',str(source),'-o',str(binary)],
+            stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,timeout=60)
+        self.assertEqual(compiled.returncode,0,compiled.stdout)
+        result=subprocess.run([str(binary),str(self.root/'ledger-output')],
+            stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,timeout=15)
+        self.assertEqual(result.returncode,0,result.stdout)
+        self.assertIn('fail-closed ledger',result.stdout)
+        for outcome in ('refused','released'):
+            failed=subprocess.run([str(binary),str(self.root/('fatal-'+outcome)),outcome],
+                stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,timeout=15)
+            self.assertNotEqual(failed.returncode,0)
+            self.assertIn('Could not persist native fixture provider event',failed.stdout)
+            self.assertNotIn('Unreachable',failed.stdout)
+        # This compiles/runs only the exact Foundation helper, never Flutter,
+        # Security.framework, a Runner, an engine, signing or an app fixture.
+        swift=(self.work/'app/macos/Runner/PatchTestKeys.swift').read_text()
+        self.assertLess(swift.index('providerLedger = try'),swift.index('setShorebirdAotPatchKeyProviderV2'))
+        self.assertLess(swift.index('recordProviderEvent(outcome: "released"'),swift.index('return data'))
+        self.assertIn('ledger.recordRequired(outcome: outcome, reason: reason, identity: identity)',swift)
+        self.assertEqual(swift.count('recordProviderEvent(outcome: "refused"'),2)
+        self.assertNotIn('_ = providerLedger?.record',swift)
+        self.assertIn('env["OPEN_SHOREBIRD_TEST_PROVIDER_NONCE"] ?? UUID().uuidString',swift)
 
     def test_paid_profiles_retain_full_ffi_before_new_code_data_and_public_apis(self):
         for phase, marker in (('pro', 'class ProVariantFeature'), ('enterprise', 'class EnterpriseVariantFeature')):

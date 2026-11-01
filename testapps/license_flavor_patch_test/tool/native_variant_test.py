@@ -15,6 +15,8 @@ from types import SimpleNamespace
 from unittest import mock
 
 import native_variant_e2e as v2
+import native_variant_adversarial as adversarial
+import native_variant_desktop as desktop
 from native_variant_desktop import NativeDesktopVariant, run_driver
 import linux_variant_e2e
 import windows_variant_e2e
@@ -401,6 +403,336 @@ class DesktopTest(unittest.TestCase):
                     self.assertEqual(value['runtime_arch'],'aarch64')
                     instance.cleanup.assert_called_once()
                     self.assertNotIn('authored fixture failure',json.dumps(value))
+
+
+class AdversarialTest(unittest.TestCase):
+    def make_cache(self,root):
+        root=Path(root).resolve()
+        root.mkdir()
+        patch=root/'patches/2'; patch.mkdir(parents=True)
+        (patch/'transport.aesgcm').write_bytes(b'ciphertext-that-must-be-downloaded')
+        (patch/'state.json').write_text(json.dumps({'kind':'InstalledEncryptedTransportV1',
+            'signature':'AbCd','ciphertext_size':33,'other':'preserve'}))
+        journal=root/'selections-v2'; journal.mkdir()
+        (journal/('a'*64+'.json')).write_bytes(b'independent-signed-journal-do-not-rewrite')
+        return root
+
+    def test_contained_cache_controls_change_one_file_and_never_journal(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=self.make_cache(Path(temp)/'cache')
+            before=adversarial.cache_snapshot(root)
+            changed=adversarial.mutate_cache(root,2,'ciphertext')
+            old=b'ciphertext-that-must-be-downloaded'
+            new=(root/changed['path']).read_bytes()
+            self.assertEqual(sum(a!=b for a,b in zip(old,new)),1)
+            self.assertEqual(len(old),len(new))
+            self.assertNotEqual(changed['before']['sha256'],changed['after']['sha256'])
+            changed=adversarial.mutate_cache(root,2,'signature')
+            state=json.loads((root/changed['path']).read_text())
+            self.assertEqual(state['other'],'preserve')
+            self.assertEqual(state['signature'],'BbCd')
+            adversarial.assert_journal_preserved(before,adversarial.cache_snapshot(root))
+            for number,kind in (('../selections-v2','signature'),('02','ciphertext'),(2,'journal')):
+                with self.subTest(number=number,kind=kind),self.assertRaises(ValueError):
+                    adversarial.mutate_cache(root,number,kind)
+            damaged=copy.deepcopy(before); damaged['journals']['new']={'sha256':'bad'}
+            with self.assertRaisesRegex(ValueError,'journal bytes'):
+                adversarial.assert_journal_preserved(before,damaged)
+
+    def test_cache_controls_reject_symlink_and_hardlink_inputs(self):
+        for link in ('symbolic','hard','directory'):
+            with self.subTest(link=link),tempfile.TemporaryDirectory() as temp:
+                parent=Path(temp); root=self.make_cache(parent/'cache')
+                outside=parent/'outside'; outside.write_bytes(b'untouched')
+                path=root/'patches/2/transport.aesgcm'
+                if link=='directory':
+                    moved=parent/'patch'; (root/'patches/2').rename(moved)
+                    (root/'patches/2').symlink_to(moved,target_is_directory=True)
+                else:
+                    path.unlink()
+                    if link=='symbolic': path.symlink_to(outside)
+                    else: os.link(outside,path)
+                with self.assertRaises(ValueError): adversarial.mutate_cache(root,2,'ciphertext')
+                self.assertEqual(outside.read_bytes(),b'untouched')
+
+    def test_effective_fallback_and_signed_free_oracles_reject_adjacent_states(self):
+        paid=identity(grant(epoch='4'))
+        current=dict(paid,variant_id='free',license_type='free',patch_number=None)
+        for reason in ('expired','content_unavailable'):
+            value=report('free',current,paid)
+            value['selection']['next_boot']=dict(current,reason=reason)
+            for key in ('epoch','digest'): value['selection']['next_boot'].pop(key)
+            value['selection']['restart_required']=False
+            adversarial.validate_fallback(value,paid,reason)
+            for fault in ('accepted','current','reason','restart'):
+                bad=copy.deepcopy(value)
+                if fault=='accepted': bad['selection']['accepted']['epoch']='3'
+                elif fault=='current': bad['selection']['current']['digest']='f'*64
+                elif fault=='reason': bad['selection']['next_boot']['reason']='quarantined'
+                else: bad['selection']['restart_required']=True
+                with self.subTest(reason=reason,fault=fault),self.assertRaises(ValueError):
+                    adversarial.validate_fallback(bad,paid,reason)
+        free=identity(grant('free','5'))
+        value=report('free',current,free)
+        self.assertEqual(adversarial.validate_automatic_free(value,paid),free)
+        for epoch in ('3','4','6'):
+            bad=copy.deepcopy(value); bad['selection']['accepted']=identity(grant('free',epoch))
+            with self.subTest(epoch=epoch),self.assertRaises(ValueError):
+                adversarial.validate_automatic_free(bad,paid)
+        value.update(stage='checked',check_status='upToDate',check_error=None)
+        adversarial.validate_rejected_check(value,free)
+        for field,item in (('check_error','Exception'),('check_status','outdated'),('stage','boot')):
+            bad=copy.deepcopy(value); bad[field]=item
+            with self.subTest(field=field),self.assertRaises(ValueError):
+                adversarial.validate_rejected_check(bad,free)
+
+    def test_capture_preserves_server_response_and_exports_only_hashes_with_limitations(self):
+        session=v2.NativeVariantSession(APP,17,'1.0.0+1','linux','x86_64','session',mock.Mock())
+        session.installation_id=INSTALLATION; session.observed=identity(grant(epoch='7'))
+        def request(method,path,body):
+            self.assertEqual((method,path),('POST','/api/v1/patches/check'))
+            self.assertIs(body['accept_encrypted_patch'],True)
+            result=grant(epoch='7')
+            result['delivery']={'download_url':'https://private.invalid/artifact?token=bearer-secret'}
+            payload={'request':{'nonce':body['nonce']},'selection_digest':result['selection_digest'],
+                     'selection':result['selection'],'delivery':result['delivery']}
+            import base64
+            result['authentication']={'payload':base64.b64encode(json.dumps(payload).encode()).decode(),
+                                      'signature':'AuthenticSignature'}
+            return result
+        body,accepted,evidence=adversarial.capture_response(request,session,{'base_artifact_hash':'a'*64,
+            'host_abi_hash':None,'runtime_profile':'native-aot'})
+        self.assertEqual(accepted,session.latest)
+        self.assertEqual(json.loads(body),evidence['response'])
+        self.assertIn('not isolated epoch',evidence['limitation'])
+        self.assertIn('not locally RSA-verified',evidence['limitation'])
+        summary=adversarial.capture_summary(body,accepted,evidence)
+        requests=[dict(evidence['request'])]
+        exported=json.dumps([summary,adversarial.replay_requests_summary(requests)])
+        for private in (INSTALLATION,'bearer-secret','private.invalid',evidence['request']['nonce'],
+                        evidence['response']['authentication']['payload'],'AuthenticSignature'):
+            self.assertNotIn(private,exported)
+        self.assertEqual(summary['response_sha256'],hashlib.sha256(body).hexdigest())
+        corrupt=json.loads(adversarial.corrupt_response_signature(body))
+        original=json.loads(body)
+        self.assertNotEqual(corrupt['authentication']['signature'],original['authentication']['signature'])
+        corrupt['authentication']['signature']=original['authentication']['signature']
+        self.assertEqual(corrupt,original)
+
+    def test_replay_listener_is_bounded_to_check_events_and_closes(self):
+        import socket
+        import urllib.error
+        import urllib.request
+        with socket.socket() as probe:
+            probe.bind(('127.0.0.1',0)); port=probe.getsockname()[1]
+        url=f'http://127.0.0.1:{port}'; requests=[]
+        opener=urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        def post(path,value):
+            return opener.open(urllib.request.Request(url+path,json.dumps(value).encode(),method='POST'),timeout=2)
+        with adversarial.replay_endpoint(url,b'{"signed":"original"}',requests):
+            with post('/api/v1/patches/check',{'selection_protocol':2,'nonce':'fresh'}) as response:
+                self.assertEqual(response.read(),b'{"signed":"original"}')
+            with post('/api/v1/patches/events',{}) as response: self.assertEqual(response.read(),b'{}')
+            with self.assertRaises(urllib.error.HTTPError) as error: post('/api/v1/apps/app/selections',{})
+            error.exception.close()
+        self.assertEqual(requests,[{'selection_protocol':2,'nonce':'fresh'}])
+        with socket.socket() as probe: self.assertNotEqual(probe.connect_ex(('127.0.0.1',port)),0)
+        for unsafe in ('https://127.0.0.1:12','http://example.com:12','http://127.0.0.1:12/path'):
+            with self.subTest(url=unsafe),self.assertRaises(ValueError):
+                with adversarial.replay_endpoint(unsafe,b'{}',[]): pass
+
+    def test_replay_cleanup_closes_stalled_headers_without_unbounded_handler_join(self):
+        import socket
+        with socket.socket() as probe:
+            probe.bind(('127.0.0.1',0)); port=probe.getsockname()[1]
+        ready=threading.Event(); release=threading.Event(); done=threading.Event(); errors=[]; requests=[]
+        def listen():
+            try:
+                with adversarial.replay_endpoint(f'http://127.0.0.1:{port}',b'{}',requests):
+                    ready.set(); release.wait(3)
+            except Exception as error:
+                errors.append(error)
+            finally:
+                done.set()
+        worker=threading.Thread(target=listen,daemon=True); worker.start()
+        connection=None
+        try:
+            self.assertTrue(ready.wait(2))
+            connection=socket.create_connection(('127.0.0.1',port),timeout=1)
+            connection.sendall(b'POST /api/v1/patches/check HTTP/1.1\r\nHost: localhost\r\n')
+            connection.settimeout(.1)
+            with self.assertRaises(TimeoutError): connection.recv(1)
+            release.set()
+            # Keep the stalled peer open: cleanup must actively close it, rather
+            # than wait indefinitely for BaseHTTPRequestHandler header parsing.
+            self.assertTrue(done.wait(2),'Replay cleanup waited for an incomplete HTTP header')
+            self.assertEqual(errors,[]); self.assertEqual(requests,[])
+        finally:
+            release.set()
+            if connection: connection.close()
+            worker.join(timeout=3)
+        self.assertFalse(worker.is_alive())
+
+    def test_replay_failed_body_send_cannot_satisfy_response_delivery_evidence(self):
+        import http.client
+        import socket
+        import socketserver
+        import urllib.request
+        with socket.socket() as probe:
+            probe.bind(('127.0.0.1',0)); port=probe.getsockname()[1]
+        url=f'http://127.0.0.1:{port}'; requests=[]; attempted=threading.Event()
+        body=b'{"signed":"response-not-delivered"}'
+        original=socketserver._SocketWriter.write
+        def write(stream,data):
+            if data==body:
+                attempted.set()
+                raise BrokenPipeError('Injected replay response body failure')
+            return original(stream,data)
+        opener=urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        with mock.patch.object(socketserver._SocketWriter,'write',write):
+            with adversarial.replay_endpoint(url,body,requests):
+                request=urllib.request.Request(url+'/api/v1/patches/check',
+                    b'{"selection_protocol":2}',method='POST')
+                with opener.open(request,timeout=2) as response:
+                    with self.assertRaises(http.client.IncompleteRead): response.read()
+                self.assertTrue(attempted.wait(1))
+        self.assertEqual(requests,[],'Failed response send was accepted as successful replay evidence')
+
+    def test_deadline_uses_platform_clock_until_actually_past_deadline(self):
+        readings=iter((100,99,100,101,101.02)); sleeps=[]
+        self.assertEqual(adversarial.wait_past_deadline(100,now=lambda:next(readings),sleep=sleeps.append),101.02)
+        self.assertEqual(len(sleeps),4)
+        for value in (float('nan'),float('inf'),'100',True):
+            with self.subTest(value=value),self.assertRaises(ValueError):
+                adversarial.wait_past_deadline(value)
+            with self.subTest(clock=value),self.assertRaises(ValueError):
+                adversarial.wait_past_deadline(100,now=lambda:value)
+
+    def test_actual_windows_launch_replay_fallback_zero_keys_and_automatic_free(self):
+        native=windows_variant_e2e.native
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp); bundle=root/'released'; bundle.mkdir(); (bundle/'app.exe').write_bytes(b'app')
+            lifecycle=windows_variant_e2e.Lifecycle.__new__(windows_variant_e2e.Lifecycle)
+            lifecycle.work=root; lifecycle.bundle=bundle; lifecycle.bundle_hashes=native.tree_hashes(bundle)
+            lifecycle.runner=bundle/'app.exe'; lifecycle.key_cache=root/'dpapi'; lifecycle.data_directory=root/'data'
+            lifecycle.provider_receipt=root/'provider.jsonl'; lifecycle.session_id='session'; lifecycle.sentinel='sentinel'
+            paid=identity(grant(epoch='4',platform='windows'))
+            free_current=dict(paid,variant_id='free',license_type='free',patch_number=None)
+            lifecycle.last_current_identity=free_current; lifecycle.previous_data=None
+            lifecycle.protocol=v2.NativeVariantSession(APP,17,'1.0.0+1','windows','x86_64','session',mock.Mock())
+            lifecycle.protocol.installation_id=INSTALLATION; lifecycle.protocol.observed=paid
+            lifecycle.protocol.contexts=[v2.context_for(grant(epoch='4',platform='windows'))]
+            lifecycle.observer=SimpleNamespace(url='http://127.0.0.1:12345/frame')
+            lifecycle.api=lifecycle.provision=None; lifecycle.secrets={'provision':'private-token'}
+            lifecycle.logs=[]; lifecycle.receipts={}; lifecycle.receipt_lock=threading.Lock()
+            lifecycle.args=SimpleNamespace(runtime_timeout=1); lifecycle.stage=mock.Mock()
+            release_key=[False]; automatic=[False]
+            def spawn(argv,**kwargs):
+                env=kwargs['env']; nonce=env['SHOREBIRD_E2E_RECEIPT']
+                self.assertEqual(env['SHOREBIRD_VARIANT_CHECK'],'1')
+                if not automatic[0]: self.assertNotIn('SHOREBIRD_E2E_PROVISION_URL',env)
+                accepted=identity(grant('free','5',platform='windows')) if automatic[0] else paid
+                value=report('free',free_current,accepted,previous=lifecycle.previous_data,nonce=nonce,pid=130)
+                value.update(stage='checked',check_status='upToDate',check_error=None)
+                if not automatic[0]:
+                    value['selection']['next_boot']={'variant_id':'free','license_type':'free','patch_number':None,'reason':'expired'}
+                    value['selection']['restart_required']=False
+                lifecycle.receipts[nonce]=value
+                if release_key[0]: lifecycle.provider_receipt.write_text(json.dumps(dict(paid,nonce=nonce,pid=130))+'\n')
+                return mock.Mock(pid=130,poll=mock.Mock(return_value=None))
+            lifecycle.job=mock.Mock(spawn=mock.Mock(side_effect=spawn))
+            try:
+                lifecycle.launch_variant('rejected','free',check=True,replay=True,cold=True,fallback=True,fallback_reason='expired')
+                self.assertEqual(lifecycle.protocol.latest,paid)
+                release_key[0]=True
+                with self.assertRaisesRegex(native.FixtureError,'paid key release'):
+                    lifecycle.launch_variant('bad-key-release','free',check=True,replay=True,cold=True,fallback=True,fallback_reason='expired')
+                lifecycle.provider_receipt.unlink(); release_key[0]=False
+                lifecycle.api=object(); lifecycle.provision=SimpleNamespace(url='http://127.0.0.1:23456/key')
+                with self.assertRaisesRegex(native.FixtureError,'stopped real API'):
+                    lifecycle.launch_variant('bad-overlap','free',check=True,replay=True)
+                automatic[0]=True
+                lifecycle.launch_variant('expired-server-free','free',check=True,online=True,automatic_free=True)
+                self.assertEqual(lifecycle.protocol.latest,identity(grant('free','5',platform='windows')))
+                self.assertEqual(lifecycle.last_current_identity,free_current)
+            finally:
+                for log in lifecycle.logs: log.close()
+
+    def test_actual_adversarial_wrapper_flow_uses_real_controls_without_journal_restore(self):
+        from contextlib import contextmanager
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp).resolve()
+            lifecycle=windows_variant_e2e.Lifecycle.__new__(windows_variant_e2e.Lifecycle)
+            lifecycle.cache=self.make_cache(root/'cache'); lifecycle.artifacts={'pro':{'number':2}}
+            lifecycle.api_url='http://127.0.0.1:12345'; lifecycle.api=lifecycle.provision=None
+            lifecycle.scope={'base_artifact_hash':'a'*64,'host_abi_hash':None,'runtime_profile':'native-aot'}
+            lifecycle.protocol=v2.NativeVariantSession(APP,17,'1.0.0+1','windows','x86_64','session',mock.Mock())
+            lifecycle.protocol.installation_id=INSTALLATION
+            lifecycle.args=SimpleNamespace(lease_seconds=90); lifecycle.stage=mock.Mock()
+            clock=[1000]; calls=[]; saved_cipher=(lifecycle.cache/'patches/2/transport.aesgcm').read_bytes()
+            journal=adversarial.cache_snapshot(lifecycle.cache)['journals']
+            def assign(variant):
+                lifecycle.protocol.observed=identity(grant(variant,str(int(lifecycle.protocol.latest['epoch'])+1)))
+            def switch(label,target,current,**lease):
+                calls.append(('switch',label,target,current,lease)); assign(target)
+                # This models a real server update only at the explicit repair.
+                # No runtime/cache primitive in the fixture restores these bytes.
+                if label=='ciphertext-same-pro-redownload':
+                    (lifecycle.cache/'patches/2/transport.aesgcm').write_bytes(saved_cipher)
+                lifecycle.api=lifecycle.provision=None
+                return {'check_status':'outdated'}
+            lifecycle.switch_variant=mock.Mock(side_effect=switch)
+            def online(): lifecycle.api=lifecycle.provision=object()
+            def offline(): lifecycle.api=lifecycle.provision=None
+            lifecycle.online=mock.Mock(side_effect=online); lifecycle.go_offline=mock.Mock(side_effect=offline)
+            lifecycle.stop_app=mock.Mock()
+            def launch(label,variant,**kwargs):
+                calls.append(('launch',label,variant,kwargs))
+                if kwargs.get('automatic_free'): assign('free')
+                if kwargs.get('replay'):
+                    self.assertIsNone(lifecycle.api); self.assertIsNone(lifecycle.provision)
+                if label=='platform-clock-expired-free': self.assertGreater(clock[0],1090)
+                return {}
+            lifecycle.launch_variant=mock.Mock(side_effect=launch)
+            def request(method,path,body=None):
+                if path.endswith('/patches'): return {'patches':[{'patch_number':3,'patch_id':42}]}
+                if method=='POST' and path.endswith(('/rollback','/rollforward')):
+                    calls.append(('patch-control',path)); return {'changed':True}
+                result=grant(epoch=lifecycle.protocol.latest['epoch'])
+                result['delivery']={'download_url':'https://private.invalid/blob?token=bearer-secret'}
+                import base64
+                result['authentication']={'signature':'ActualServerTestDouble',
+                    'payload':base64.b64encode(json.dumps({'request':{'nonce':body['nonce']},
+                        'selection_digest':result['selection_digest'],'selection':result['selection'],
+                        'delivery':result['delivery']}).encode()).decode()}
+                return result
+            lifecycle.request=mock.Mock(side_effect=request)
+            @contextmanager
+            def replay(url,body,requests):
+                self.assertIsNone(lifecycle.api); self.assertIsNone(lifecycle.provision)
+                requests.append({'nonce':'fresh-request','accepted_selection_epoch':lifecycle.protocol.latest['epoch'],
+                    'accepted_selection_digest':lifecycle.protocol.latest['digest']})
+                yield
+            def wait(deadline): clock[0]=deadline+2; return clock[0]
+            with mock.patch.object(desktop,'time',SimpleNamespace(time=lambda:clock[0])), \
+                 mock.patch.object(adversarial,'wait_past_deadline',side_effect=wait), \
+                 mock.patch.object(adversarial,'replay_endpoint',side_effect=replay):
+                lifecycle.adversarial_cases()
+            self.assertEqual(adversarial.cache_snapshot(lifecycle.cache)['journals'],journal)
+            labels=[row[1] for row in calls]
+            for required in ('ciphertext-offline-free','ciphertext-signed-free','ciphertext-same-pro-redownload',
+                'cached-signature-still-valid-pro','platform-clock-expired-free','old-signed-response-rejected',
+                'corrupt-stale-response-combined-rejected','expired-server-signed-free','rollback-server-signed-free',
+                'rollforward-alone-still-free','explicit-enterprise-restored','adversarial-final-offline-free'):
+                self.assertIn(required,labels)
+            self.assertLess(labels.index('rollforward-alone-still-free'),labels.index('explicit-enterprise-restored'))
+            self.assertEqual(calls[-1][1],'adversarial-final-offline-free')
+            lease=next(row[4] for row in calls if row[1]=='actual-leased-pro')
+            self.assertEqual(lease,{'offline_valid_until':'1090'})
+            self.assertEqual(sum(row[0]=='patch-control' for row in calls),2)
+            exported=repr(lifecycle.stage.call_args_list)
+            for private in (INSTALLATION,'bearer-secret','private.invalid','ActualServerTestDouble','fresh-request'):
+                self.assertNotIn(private,exported)
 
 
 class ProviderAdapterTest(unittest.TestCase):

@@ -28,6 +28,7 @@ class CommandsTest(unittest.TestCase):
         self.assertEqual(result['schema'], shared.SCHEMA)
         self.assertEqual(result['lifecycle'], list(shared.LIFECYCLE))
         self.assertEqual(result['build_order'], list(shared.BUILD_ORDER))
+        self.assertEqual(result['adversarial_cases'],list(e2e.adversarial.CASES))
         self.assertTrue(result['read_only'])
         self.assertIn('UNRUN', result['runtime_validation'])
         with self.assertRaises(SystemExit):
@@ -311,6 +312,148 @@ class CleanupTest(unittest.TestCase):
             self.assertFalse(ledger['retained_work'])
             self.assertFalse(lifecycle.work.exists())
             self.assertEqual(len([action for action in ledger['actions'] if action['action']=='uninstall-owned-package']),1)
+
+
+class AdversarialOracleTest(unittest.TestCase):
+    identity=ColdOracleTest.identity
+    report=ColdOracleTest.report
+    def test_expired_historical_context_cannot_fail_zero_or_current_valid_receipts(self):
+        import copy
+        live=fixture_context(); expired=copy.deepcopy(live)
+        expired['selection']['epoch']='1'; expired['selection_digest']='e'*64
+        expired['selection']['offline_valid_until']='2'
+        aad=shared.canonical_aad(aad_context()); key,_=shared.delivery_material(b'secret',aad)
+        with patch.object(shared.time,'time',return_value=1000):
+            identity=shared.validate_context(key,aad,live,[live])
+            self.assertEqual(e2e.provider_identities([], [expired,live], {}, b'secret',17),[])
+            self.assertEqual(e2e.provider_identities([identity],[expired,live],{'pro':{'hash':'a'*64,'transport_hash':'b'*64}},b'secret',17),[identity])
+            with self.assertRaises(ValueError):
+                e2e.provider_identities([dict(identity,epoch='1',digest='e'*64)],[expired,live],{'pro':{'hash':'a'*64,'transport_hash':'b'*64}},b'secret',17)
+
+    def test_failed_content_and_expiry_are_base_without_retryable_key_restart_or_release(self):
+        latest=self.identity(); free=dict(latest,variant_id='free',license_type='free',patch_number=None)
+        for reason in ('expired','content_unavailable'):
+            report=self.report(latest,current=free,variant='free',restart=False)
+            report['selection']['next_boot']=dict(variant_id='free',license_type='free',patch_number=None,reason=reason)
+            self.assertIs(e2e.validate_launch_state(report,latest,online=False,mode='correct',fallback_reason=reason),report)
+            self.assertEqual(e2e.validate_launch_releases([],latest,free,online=False,mode='correct',fallback_reason=reason),[])
+            with self.assertRaises(ValueError):
+                e2e.validate_launch_releases([dict(latest,key_id='AbCdEfGhIjKlMnOp')],latest,free,online=False,mode='correct',fallback_reason=reason)
+            with self.assertRaises(ValueError):
+                e2e.validate_launch_state(report,latest,online=False,mode='missing')
+            report['selection']['restart_required']=True
+            with self.assertRaises(ValueError):
+                e2e.validate_launch_state(report,latest,online=False,mode='correct',fallback_reason=reason)
+
+
+class CacheControlReceiptTest(unittest.TestCase):
+    def payload(self):
+        return {'scope':'hashes-only-no-key-reads','roots':[
+            {'label':'files','present':True,'files':[
+                {'path':'patches/2/state.json','size':111,'sha256':'a'*64},
+                {'path':'patches/2/transport.aesgcm','size':32,'sha256':'b'*64},
+                {'path':'selections-v2/'+'c'*64+'.json','size':333,'sha256':'d'*64}]},
+            {'label':'code-cache','present':False,'files':[]}]}
+
+    def test_hash_only_snapshot_rejects_unsafe_duplicates_unknown_and_unbounded_entries(self):
+        import copy
+        good=self.payload(); self.assertEqual(len(e2e.cache_snapshot(good)['journals']),1)
+        for path in ('../state.json','/state.json','selections-v2/authority.json','keys/key.wrapped'):
+            changed=copy.deepcopy(good); changed['roots'][0]['files'][0]['path']=path
+            with self.subTest(path=path),self.assertRaises(ValueError): e2e.cache_snapshot(changed)
+        for values in ({'size':True},{'size':268435457},{'sha256':'bad'},{'json':{'untrusted':'must not cross control'}}):
+            changed=copy.deepcopy(good);changed['roots'][0]['files'][0].update(values)
+            with self.subTest(values=values),self.assertRaises(ValueError): e2e.cache_snapshot(changed)
+        changed=copy.deepcopy(good);changed['roots'][0]['files'].append(changed['roots'][0]['files'][0])
+        with self.assertRaises(ValueError): e2e.cache_snapshot(changed)
+
+    def test_mutation_receipt_requires_exact_cas_target_and_byte_identical_journal(self):
+        import copy
+        before=self.payload();after=copy.deepcopy(before);after['roots'][0]['files'][1]['sha256']='e'*64
+        receipt={'root':'files','path':'patches/2/transport.aesgcm','before_sha256':'b'*64,'after_sha256':'e'*64,'before':before,'after':after}
+        snapshot=e2e.cache_snapshot(before)
+        self.assertEqual(e2e.validate_cache_mutation(receipt,snapshot,'ciphertext','2'),e2e.cache_snapshot(after))
+        for key,value in (('path','selections-v2/'+'c'*64+'.json'),('before_sha256','f'*64),('after_sha256','b'*64)):
+            with self.subTest(key=key),self.assertRaises(ValueError): e2e.validate_cache_mutation(dict(receipt,**{key:value}),snapshot,'ciphertext','2')
+        for index in (0,2):
+            changed=copy.deepcopy(receipt);changed['after']['roots'][0]['files'][index]['sha256']='f'*64
+            with self.assertRaises(ValueError): e2e.validate_cache_mutation(changed,snapshot,'ciphertext','2')
+
+
+class AdversarialHarnessTest(unittest.TestCase):
+    def test_replay_launch_controls_use_check_without_real_service_or_provision_credentials(self):
+        import shlex
+        from types import SimpleNamespace
+        life=object.__new__(e2e.Lifecycle);life.api=life.provision=None;life.replay_active=True
+        life.control='a'*64;life.package='dev.shorebird.e2e.test';life.release_id=17
+        life.observer=SimpleNamespace(base='http://127.0.0.1:1');life.last_current=None
+        context=fixture_context();identity=shared.selection_identity({'epoch':'2','digest':'d'*64,'variant_id':'pro','license_type':'pro','patch_number':'2'})
+        life.variants=SimpleNamespace(latest=identity,contexts=[context]);life.stop_app=lambda:None
+        captured=[]
+        def adb(*args): captured.append(shlex.split(args[1]));raise RuntimeError('stop after actual adb construction')
+        life.adb=adb
+        with self.assertRaisesRegex(RuntimeError,'stop after actual adb'):
+            life.control_command('launch',check=True,replay=True)
+        command=captured[0];extras={command[index+1]:command[index+2] for index,value in enumerate(command) if value=='--es'}
+        self.assertEqual(extras['check'],'1');self.assertNotIn('provision_url',extras);self.assertNotIn('provision_token',extras)
+        for api,provision,active in ((object(),None,True),(None,object(),True),(None,None,False)):
+            life.api,life.provision,life.replay_active=api,provision,active
+            with self.assertRaises(e2e.FixtureError):life.control_command('launch',check=True,replay=True)
+
+    def test_actual_launch_allows_only_exact_automatic_free_and_pins_running_identity(self):
+        import copy
+        from types import SimpleNamespace
+        old=dict(epoch='4',digest='d'*64,variant_id='enterprise',license_type='enterprise',patch_number='3')
+        new=dict(epoch='5',digest='f'*64,variant_id='free',license_type='free',patch_number=None)
+        for automatic,changed in ((True,{}),(False,{}),(True,{'epoch':'6'})):
+            life=object.__new__(e2e.Lifecycle);life.assert_apk=lambda:None;life.session='session';life.sentinel='sentinel';life.previous_data=None
+            life.last_current=old.copy();life.args=SimpleNamespace(runtime_timeout=0.1);life.authority=SimpleNamespace(secret=b'secret');life.release_id=17
+            life.variants=SimpleNamespace(latest=old.copy(),contexts=[]);life.patch_material={}
+            life.variants.remember=lambda report:setattr(life.variants,'latest',shared.selection_identity(report['selection']['accepted']))
+            report=dict(schema=shared.SCHEMA,nonce='nonce',pid=42,post_frame=True,rendered=['variant:enterprise enterprise:24'],variant='enterprise',new_code_result='enterprise:24',installation_id='installation',stage='checked',check_status='upToDate',check_error=None,
+                data={'session':'session','sentinel':'sentinel','launches':1,'history':['enterprise'],'schema':3},
+                selection={'version':2,'current':old.copy(),'accepted':dict(new,**changed),'restart_required':True,'next_boot':dict(variant_id='free',license_type='free',patch_number=None,reason='selected_base')})
+            life.observer=SimpleNamespace(get=lambda *args:copy.deepcopy(report));life.pid=lambda:42;life.stage=lambda *args:None
+            life.control_command=lambda operation,**kwargs:('nonce',{'pid':42,'payload':{'receipts':[]}})
+            if automatic and not changed:
+                self.assertEqual(life.launch_variant('auto','enterprise',online=True,automatic_free=True)['selection']['accepted'],new)
+            else:
+                with self.assertRaises((ValueError,e2e.FixtureError)):life.launch_variant('auto','enterprise',online=True,automatic_free=automatic)
+
+    def test_android_adversarial_sequence_uses_explicit_reauthorization_clock_and_replay_flags(self):
+        from contextlib import contextmanager
+        from types import SimpleNamespace
+        life=object.__new__(e2e.Lifecycle);events=[]
+        identity=dict(epoch='4',digest='d'*64,variant_id='pro',license_type='pro',patch_number='2')
+        life.variants=SimpleNamespace(latest=identity,installation_id='installation');life.api=life.provision=None
+        life.scope={};life.request=lambda *args:None;life.api_url='http://127.0.0.1:1';life.args=SimpleNamespace(lease_seconds=90,runtime_timeout=10)
+        snapshot={'files':{'files/patches/2/transport.aesgcm':{'size':32,'sha256':'a'*64}},'journals':{'journal':{'size':3,'sha256':'b'*64}}}
+        cache={'pruned':False}
+        def switch(variant,current,label,**kwargs):
+            events.append(('switch',variant,current,label,kwargs));cache['pruned']=variant=='free'
+        life.switch=switch;life.stop_app=lambda:None;life.online=lambda:None;life.go_offline=lambda:None
+        life.inspect_cache=lambda:dict(snapshot,files={} if cache['pruned'] else snapshot['files'])
+        life.assert_delivery_ciphertext=lambda *args:snapshot;life.mutate_cache=lambda *args:(snapshot,snapshot)
+        life.launch_variant=lambda label,variant,**kwargs:events.append(('launch',label,variant,kwargs))
+        life.stage=lambda *args:None;life.patch_control=lambda variant,action:events.append(('patch',variant,action))
+        clocks=iter((1000,1000,1092));life.device_time=lambda:next(clocks)
+        @contextmanager
+        def replay(url,body,requests):
+            requests.append(dict(accepted_selection_epoch='4',accepted_selection_digest='d'*64,client_id='installation',nonce='new'))
+            yield
+        old=dict(identity,epoch='1');evidence={'request':{'nonce':'old'},'limitation':'Independent capture nonce'}
+        with patch.object(e2e.adversarial,'capture_response',return_value=(b'{"authentication":{"signature":"AbC"}}',old,evidence)), \
+             patch.object(e2e.adversarial,'replay_endpoint',side_effect=replay),patch.object(e2e.adversarial,'wait_past_deadline',return_value=1092), \
+             patch.object(e2e.time,'time',return_value=1000):
+            life.adversarial_cases()
+        labels={event[1]:event[3] for event in events if event[0]=='launch'}
+        for label in ('authentic-old-response-rejected','tampered-response-signature-rejected'):
+            self.assertEqual(labels[label],{'check':True,'replay':True,'fallback_reason':'expired'})
+        self.assertEqual(labels['ciphertext-tamper-free'],{'fallback_reason':'content_unavailable'})
+        self.assertEqual(labels['online-expired-server-free'],{'online':True,'automatic_free':True})
+        self.assertIn(('patch','enterprise','rollback'),events);self.assertIn(('patch','enterprise','rollforward'),events)
+        self.assertTrue(any(event[:4]==('switch','pro','free','ciphertext-reauthorized-pro') for event in events))
+        self.assertTrue(any(event[:4]==('switch','enterprise','free','explicit-reauthorization') for event in events))
 
 
 if __name__ == '__main__':

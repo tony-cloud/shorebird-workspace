@@ -3,6 +3,8 @@ import Darwin
 import Flutter
 import Security
 
+__CACHE_CONTROLS__
+
 // Disposable independently authenticated provisioning control. Keys arrive only
 // in a private child environment, never assets, output, receipts or Dart code.
 enum IosVariantFixture {
@@ -12,6 +14,16 @@ enum IosVariantFixture {
   static let appID = "__APP_ID__"
   static let release = "__RELEASE__"
   static let allowed = ["pro": "__PRO_KEY_ID__", "enterprise": "__ENTERPRISE_KEY_ID__"]
+  static var bootTime: Double = 0
+  static var cacheBefore: [String: Any] = [:]
+  static var cacheAfterControl: [String: Any] = [:]
+  static var cacheControl: [String: Any]?
+  static var cleanupReceipt: [String: Any]?
+  static var cleanupOnly: Bool { cleanupReceipt != nil }
+  static var cacheRoot: URL {
+    URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true).resolvingSymlinksInPath()
+      .appendingPathComponent("Library/Application Support/shorebird/shorebird_updater", isDirectory: true)
+  }
   static var evidenceDirectory: URL {
     URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)
       .appendingPathComponent("Library/Application Support/shorebird-ios-variant-fixture", isDirectory: true)
@@ -74,6 +86,59 @@ enum IosVariantFixture {
   static func beforeEngine() {
     precondition(Bundle.main.bundleIdentifier == bundleID, "Wrong disposable bundle")
     let env = ProcessInfo.processInfo.environment
+    bootTime = Date().timeIntervalSince1970
+    // Failure cleanup cannot depend on a valid cache, a Flutter engine, Dart,
+    // or a successful adversarial boot. It never replays the failed control.
+    if env["OPEN_SHOREBIRD_TEST_CLEANUP_KEYS_ONLY"] == "1" || env["OPEN_SHOREBIRD_TEST_CLEANUP_RECEIPT_ONLY"] == "1" {
+      precondition(env["OPEN_SHOREBIRD_TEST_KEY_ACTION"] == nil && env["OPEN_SHOREBIRD_TEST_CACHE_ACTION"] == nil)
+      let nonce = env["OPEN_SHOREBIRD_TEST_NONCE"] ?? ""
+      precondition(nonce.range(of: "^[a-f0-9]{48}$", options: .regularExpression) != nil)
+      if env["OPEN_SHOREBIRD_TEST_CLEANUP_RECEIPT_ONLY"] == "1" {
+        let url = evidenceDirectory.appendingPathComponent("native-cleanup.json")
+        guard let data = try? Data(contentsOf: url), data.count < 16384,
+              let saved = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              saved["schema"] as? String == "ios-variant-native-cleanup-v1", saved["nonce"] as? String == nonce,
+              saved["session"] as? String == session, saved["bundle_id"] as? String == bundleID,
+              saved["service"] as? String == service else { preconditionFailure("Original native cleanup receipt unavailable") }
+        cleanupReceipt = saved
+      } else {
+        var keys: [String: Any] = [:]
+        for variant in allowed.keys.sorted() {
+          let account = allowed[variant]!
+          let removed = SecItemDelete(query(account) as CFDictionary)
+          precondition(removed == errSecSuccess || removed == errSecItemNotFound)
+          keys[variant] = ["account": account, "result": removed == errSecSuccess ? "deleted" : "absent"]
+        }
+        let receipt: [String: Any] = ["schema": "ios-variant-native-cleanup-v1", "session": session, "nonce": nonce,
+          "bundle_id": bundleID, "service": service, "pid": ProcessInfo.processInfo.processIdentifier,
+          "time": Date().timeIntervalSince1970, "mode": "native-keychain-cleanup-only", "keys": keys]
+        evidence(receipt, name: "native-cleanup.json")
+        cleanupReceipt = receipt
+      }
+      return
+    }
+    do {
+      cacheBefore = try IosVariantCache.snapshot(cacheRoot)
+      if let action = env["OPEN_SHOREBIRD_TEST_CACHE_ACTION"] {
+        precondition(env["OPEN_SHOREBIRD_TEST_KEY_ACTION"] == nil, "One native control per launch")
+        var receipt: [String: Any] = ["schema": "ios-variant-cache-control-v1", "session": session,
+          "bundle_id": bundleID, "nonce": env["OPEN_SHOREBIRD_TEST_NONCE"] ?? "", "action": action,
+          "pid": ProcessInfo.processInfo.processIdentifier, "time": bootTime]
+        if action == "inspect" { receipt["result"] = "inspected" }
+        else {
+          let changed = try IosVariantCache.tamper(cacheRoot, action: action,
+              number: env["OPEN_SHOREBIRD_TEST_CACHE_PATCH"] ?? "",
+              expected: env["OPEN_SHOREBIRD_TEST_CACHE_SHA256"] ?? "")
+          receipt.merge(changed) { _, next in next }
+        }
+        cacheControl = receipt
+      }
+      cacheAfterControl = try IosVariantCache.snapshot(cacheRoot)
+    } catch {
+      // Preserve failure as missing acceptance, never expose filesystem errors,
+      // encrypted bytes or authentication contents in a diagnostic receipt.
+      preconditionFailure("Native cache control/snapshot failed")
+    }
     if let action = env["OPEN_SHOREBIRD_TEST_KEY_ACTION"] {
       guard let account = env["OPEN_SHOREBIRD_TEST_KEY_ID"], allowed.values.contains(account) else {
         preconditionFailure("Refusing foreign Keychain account")
@@ -124,6 +189,19 @@ enum IosVariantFixture {
               "time": Date().timeIntervalSince1970,
               "pid": ProcessInfo.processInfo.processIdentifier], name: "container.json")
   }
+  static func postCleanupReceipt() {
+    guard let receipt = cleanupReceipt,
+          let body = try? JSONSerialization.data(withJSONObject: receipt, options: [.sortedKeys]),
+          let endpoint = ProcessInfo.processInfo.environment["OPEN_SHOREBIRD_TEST_OBSERVER"],
+          let url = URL(string: endpoint) else { return }
+    var request = URLRequest(url: url, timeoutInterval: 5)
+    request.httpMethod = "POST"
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    request.httpBody = body
+    URLSession.shared.dataTask(with: request) { _, response, _ in
+      if (response as? HTTPURLResponse)?.statusCode == 204 { DispatchQueue.main.async { exit(0) } }
+    }.resume()
+  }
 }
 
 
@@ -132,33 +210,109 @@ public func iosVariantSubmitReport(_ pointer: UnsafePointer<CChar>?) {
   guard let pointer = pointer,
         let body = String(validatingUTF8: pointer)?.data(using: .utf8),
         body.count <= 65536,
-        let value = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
+        var value = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
         value["schema"] as? String == "ios-variant-e2e-v2",
         value["session"] as? String == IosVariantFixture.session,
         let nonce = ProcessInfo.processInfo.environment["OPEN_SHOREBIRD_TEST_NONCE"],
-        value["nonce"] as? String == nonce,
-        let endpoint = ProcessInfo.processInfo.environment["OPEN_SHOREBIRD_TEST_OBSERVER"],
-        let url = URL(string: endpoint) else { return }
+        value["nonce"] as? String == nonce else { return }
+  do {
+    value["native_boot"] = ["session": IosVariantFixture.session, "nonce": nonce,
+      "pid": ProcessInfo.processInfo.processIdentifier, "time": IosVariantFixture.bootTime]
+    value["cache_before"] = IosVariantFixture.cacheBefore
+    value["cache_after_control"] = IosVariantFixture.cacheAfterControl
+    value["cache_after"] = try IosVariantCache.snapshot(IosVariantFixture.cacheRoot)
+    value["cache_control"] = IosVariantFixture.cacheControl as Any? ?? NSNull()
+    let final = try JSONSerialization.data(withJSONObject: value, options: [.sortedKeys])
+    guard final.count <= 65536 else { return }
+    try final.write(to: IosVariantFixture.evidenceDirectory.appendingPathComponent("variant-status.json"), options: [.atomic])
+    guard value["report_route"] as? String == "native",
+          let endpoint = ProcessInfo.processInfo.environment["OPEN_SHOREBIRD_TEST_OBSERVER"],
+          let url = URL(string: endpoint) else { return }
   var request = URLRequest(url: url, timeoutInterval: 5)
   request.httpMethod = "POST"
   request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-  request.httpBody = body
+  request.httpBody = final
   // Never wait on a semaphore on the Flutter/UI thread. The device's local
   // network permission prompt must remain serviceable while updates run.
   URLSession.shared.dataTask(with: request) { _, _, _ in }.resume()
+  } catch { preconditionFailure("Native cache observation failed") }
 }
 
+// UIKit is the actual entry delegate. Constructing FlutterAppDelegate itself
+// touches Flutter callback caches, so composition must occur only after the
+// native-only cleanup branch has returned. No lazy Flutter delegate accessors.
 @main
-@objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
+@objc class AppDelegate: UIResponder, UIApplicationDelegate, FlutterImplicitEngineDelegate, FlutterAppLifeCycleProvider {
+  private var flutterDelegate: FlutterAppDelegate?
   override init() {
     super.init()
     IosVariantFixture.beforeEngine()
+    if !IosVariantFixture.cleanupOnly { flutterDelegate = FlutterAppDelegate() }
   }
-  override func application(_ application: UIApplication,
+  func application(_ application: UIApplication,
+      willFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+    guard let delegate = flutterDelegate else { return true }
+    return delegate.application(application, willFinishLaunchingWithOptions: launchOptions)
+  }
+  func application(_ application: UIApplication,
       didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-    super.application(application, didFinishLaunchingWithOptions: launchOptions)
+    guard let delegate = flutterDelegate else {
+      IosVariantFixture.postCleanupReceipt()
+      return true
+    }
+    return delegate.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+  func application(_ application: UIApplication, configurationForConnecting session: UISceneSession,
+      options: UIScene.ConnectionOptions) -> UISceneConfiguration {
+    // Every saved and new session has this same UIKit-only bootstrap. The
+    // prepared Info.plist also has no automatic Main storyboard entry.
+    let configuration = UISceneConfiguration(name: "fixture-bootstrap", sessionRole: session.role)
+    configuration.delegateClass = IosVariantSceneDelegate.self
+    configuration.storyboard = nil
+    return configuration
   }
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
+    precondition(!IosVariantFixture.cleanupOnly)
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+  }
+  func add(_ delegate: FlutterApplicationLifeCycleDelegate & NSObjectProtocol) {
+    flutterDelegate?.add(delegate)
+  }
+  override func responds(to selector: Selector!) -> Bool {
+    super.responds(to: selector) || (flutterDelegate?.responds(to: selector) ?? false)
+  }
+  override func forwardingTarget(for selector: Selector!) -> Any? {
+    if let delegate = flutterDelegate, delegate.responds(to: selector) { return delegate }
+    return super.forwardingTarget(for: selector)
+  }
+}
+
+// UIKit creates this class for restored sessions too. It cannot inherit from
+// FlutterSceneDelegate or auto-load Main: both decisions occur after the guard.
+@objc class IosVariantSceneDelegate: UIResponder, UIWindowSceneDelegate {
+  var window: UIWindow?
+  private var flutterScene: FlutterSceneDelegate?
+  func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options: UIScene.ConnectionOptions) {
+    guard let scene = scene as? UIWindowScene else { return }
+    let owned = UIWindow(windowScene: scene)
+    window = owned
+    if IosVariantFixture.cleanupOnly {
+      owned.rootViewController = UIViewController()
+      owned.makeKeyAndVisible()
+      return
+    }
+    let delegate = FlutterSceneDelegate()
+    flutterScene = delegate
+    delegate.window = owned
+    owned.rootViewController = UIStoryboard(name: "Main", bundle: nil).instantiateInitialViewController()
+    delegate.scene(scene, willConnectTo: session, options: options)
+    owned.makeKeyAndVisible()
+  }
+  override func responds(to selector: Selector!) -> Bool {
+    super.responds(to: selector) || (flutterScene?.responds(to: selector) ?? false)
+  }
+  override func forwardingTarget(for selector: Selector!) -> Any? {
+    if let delegate = flutterScene, delegate.responds(to: selector) { return delegate }
+    return super.forwardingTarget(for: selector)
   }
 }

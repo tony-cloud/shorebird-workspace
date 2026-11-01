@@ -177,12 +177,13 @@ jobs:
             https://repo.maven.apache.org/maven2/org/json/json/20180813/json-20180813.jar
           printf '%s  %s\n' 518080049ba83181914419d11a25d9bc9833a2d729b6a6e7469fa52851356da8 "$ANDROID_VARIANT_JSON_JAR" | sha256sum --check --strict
           python3 -m py_compile testapps/license_flavor_patch_test/tool/macos_variant_e2e.py testapps/license_flavor_patch_test/tool/macos_variant_lifecycle.py
-          python3 -m py_compile testapps/license_flavor_patch_test/tool/ios_variant_e2e.py
+          python3 -m py_compile testapps/license_flavor_patch_test/tool/ios_variant_e2e.py testapps/license_flavor_patch_test/tool/ios_variant_adversarial.py
           python3 -m py_compile testapps/license_flavor_patch_test/tool/android_variant_app.py testapps/license_flavor_patch_test/tool/android_variant_e2e.py
-          python3 -m py_compile testapps/license_flavor_patch_test/tool/native_variant_e2e.py testapps/license_flavor_patch_test/tool/native_variant_desktop.py testapps/license_flavor_patch_test/tool/linux_variant_e2e.py testapps/license_flavor_patch_test/tool/windows_variant_e2e.py
+          python3 -m py_compile testapps/license_flavor_patch_test/tool/native_variant_e2e.py testapps/license_flavor_patch_test/tool/native_variant_adversarial.py testapps/license_flavor_patch_test/tool/native_variant_desktop.py testapps/license_flavor_patch_test/tool/linux_variant_e2e.py testapps/license_flavor_patch_test/tool/windows_variant_e2e.py
           python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p test_macos_variant_e2e.py -v
           python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p test_macos_variant_lifecycle.py -v
           python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p test_ios_variant_e2e.py -v
+          python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p test_ios_variant_adversarial.py -v
           python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p test_android_variant_app.py -v
           python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p test_android_variant_e2e.py -v
           python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p native_variant_test.py -v
@@ -1857,10 +1858,77 @@ jobs:
           for index, variant in enumerate(('pro', 'enterprise', 'pro', 'free', 'enterprise', 'free')):
               required.update((f'online-{index}-{previous}-accept-{variant}', f'offline-cold-{index}-{variant}'))
               previous = variant
+          adversarial_required = {
+              'adversarial-select-pro-check',
+              'adversarial-select-pro-cold',
+              'owned-ciphertext-flip',
+              'ciphertext-offline-free',
+              'ciphertext-signed-free-check',
+              'ciphertext-signed-free-cold',
+              'ciphertext-same-pro-redownload-check',
+              'ciphertext-same-pro-redownload-cold',
+              'ciphertext-real-redownload',
+              'untrusted-cached-signature-flip',
+              'cached-signature-still-valid-pro',
+              'server-returned-old-response-capture',
+              'actual-leased-pro-check',
+              'actual-leased-pro-cold',
+              'platform-clock-expired-free',
+              'platform-lease-expiry',
+              'old-signed-response-rejected',
+              'old-signed-response-requests',
+              'corrupt-stale-response-combined-rejected',
+              'corrupt-stale-response-combined-requests',
+              'expired-server-signed-free',
+              'expired-server-free-cold',
+              'before-enterprise-rollback-check',
+              'before-enterprise-rollback-cold',
+              'rollback-enterprise',
+              'rollback-server-signed-free',
+              'rollback-cold-free',
+              'rollforward-enterprise',
+              'rollforward-alone-still-free',
+              'rollforward-cold-free',
+              'explicit-enterprise-restored-check',
+              'explicit-enterprise-restored-cold',
+              'adversarial-final-signed-free-check',
+              'adversarial-final-signed-free-cold',
+              'adversarial-final-offline-free',
+          }
+          required.update(adversarial_required)
+          expected_cases = (
+              'owned-ciphertext-offline-content-unavailable',
+              'signed-free-same-pro-real-redownload',
+              'cached-signature-keeps-valid-pro',
+              'actual-paid-lease-platform-clock-expiry',
+              'server-returned-older-response-rejected-independent-nonce',
+              'corrupt-stale-response-combined-rejection',
+              'enterprise-rollback-signed-free',
+              'rollforward-alone-stays-free',
+              'explicit-enterprise-reauthorization',
+              'final-offline-free',
+          )
+          if report.get('adversarial_cases') != list(expected_cases):
+              raise SystemExit('Native V2 adversarial case completion is missing or changed')
           if not required.issubset({stage['name'] for stage in report.get('stages', [])}):
               raise SystemExit('Native V2 lifecycle publication, grants, fallback, data and cold-boot evidence is incomplete')
           if report.get('provisioning', {}).get('accepted', 0) < 1 or not report.get('final_application_data'):
               raise SystemExit('Native V2 lifecycle authenticated delivery or application data proof is missing')
+          stages = {stage['name']: stage.get('evidence', {}) for stage in report['stages']}
+          if stages['ciphertext-real-redownload'].get('check_status') != 'outdated':
+              raise SystemExit('Native V2 ciphertext recovery did not execute a real public download')
+          import math
+          lease = stages['platform-lease-expiry']
+          if (any(type(lease.get(field)) not in (int, float) or not math.isfinite(lease[field]) for field in ('deadline', 'wait_completed', 'launch_started')) or
+              lease['wait_completed'] <= lease['deadline'] or lease['launch_started'] <= lease['deadline']):
+              raise SystemExit('Native V2 expiry lacks an observed platform clock boundary')
+          for label in ('old-signed-response', 'corrupt-stale-response-combined'):
+              delivered = stages[label + '-requests']
+              checks = delivered.get('requests')
+              if (type(delivered.get('delivered_check_responses')) is not int or delivered['delivered_check_responses'] < 1 or
+                  not isinstance(checks, list) or len(checks) != delivered['delivered_check_responses'] or
+                  delivered.get('real_api_and_provisioning_stopped') is not True):
+                  raise SystemExit('Native V2 rejection lacks successful owned replay delivery with real services stopped')
           PYVARIANT
 
       - name: Upload Linux native V2 variant lifecycle evidence
@@ -2457,6 +2525,26 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
+      - name: Require iOS cache controls Swift controls
+        timeout-minutes: 10
+        run: |
+          set -euo pipefail
+          test "$(uname -s)" = Darwin
+          command -v swiftc
+          command -v xcrun
+          test -x "$(xcrun --find swiftc)"
+          export PYTHONPATH="$GITHUB_WORKSPACE/testapps/license_flavor_patch_test/tool${PYTHONPATH:+:$PYTHONPATH}"
+          python3 - <<'PYSWIFT'
+          import unittest
+          suite = unittest.defaultTestLoader.loadTestsFromNames(['test_ios_variant_adversarial.NativeCacheControlsTest'])
+          expected = 3
+          if suite.countTestCases() != expected:
+              raise SystemExit('Required Swift control test inventory changed')
+          result = unittest.TextTestRunner(verbosity=2).run(suite)
+          if not result.wasSuccessful() or result.skipped or result.testsRun != expected:
+              raise SystemExit('Required Swift controls failed, skipped, or did not execute completely')
+          PYSWIFT
+
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
 
@@ -2707,6 +2795,26 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
+
+      - name: Require macOS provider ledger Swift controls
+        timeout-minutes: 10
+        run: |
+          set -euo pipefail
+          test "$(uname -s)" = Darwin
+          command -v swiftc
+          command -v xcrun
+          test -x "$(xcrun --find swiftc)"
+          export PYTHONPATH="$GITHUB_WORKSPACE/testapps/license_flavor_patch_test/tool${PYTHONPATH:+:$PYTHONPATH}"
+          python3 - <<'PYSWIFT'
+          import unittest
+          suite = unittest.defaultTestLoader.loadTestsFromNames(['test_macos_variant_e2e.VariantFixtureTest.test_actual_swift_provider_ledger_is_fresh_bounded_atomic_thread_safe_and_fail_closed'])
+          expected = 1
+          if suite.countTestCases() != expected:
+              raise SystemExit('Required Swift control test inventory changed')
+          result = unittest.TextTestRunner(verbosity=2).run(suite)
+          if not result.wasSuccessful() or result.skipped or result.testsRun != expected:
+              raise SystemExit('Required Swift controls failed, skipped, or did not execute completely')
+          PYSWIFT
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
@@ -3384,10 +3492,77 @@ jobs:
           for index, variant in enumerate(('pro', 'enterprise', 'pro', 'free', 'enterprise', 'free')):
               required.update((f'online-{index}-{previous}-accept-{variant}', f'offline-cold-{index}-{variant}'))
               previous = variant
+          adversarial_required = {
+              'adversarial-select-pro-check',
+              'adversarial-select-pro-cold',
+              'owned-ciphertext-flip',
+              'ciphertext-offline-free',
+              'ciphertext-signed-free-check',
+              'ciphertext-signed-free-cold',
+              'ciphertext-same-pro-redownload-check',
+              'ciphertext-same-pro-redownload-cold',
+              'ciphertext-real-redownload',
+              'untrusted-cached-signature-flip',
+              'cached-signature-still-valid-pro',
+              'server-returned-old-response-capture',
+              'actual-leased-pro-check',
+              'actual-leased-pro-cold',
+              'platform-clock-expired-free',
+              'platform-lease-expiry',
+              'old-signed-response-rejected',
+              'old-signed-response-requests',
+              'corrupt-stale-response-combined-rejected',
+              'corrupt-stale-response-combined-requests',
+              'expired-server-signed-free',
+              'expired-server-free-cold',
+              'before-enterprise-rollback-check',
+              'before-enterprise-rollback-cold',
+              'rollback-enterprise',
+              'rollback-server-signed-free',
+              'rollback-cold-free',
+              'rollforward-enterprise',
+              'rollforward-alone-still-free',
+              'rollforward-cold-free',
+              'explicit-enterprise-restored-check',
+              'explicit-enterprise-restored-cold',
+              'adversarial-final-signed-free-check',
+              'adversarial-final-signed-free-cold',
+              'adversarial-final-offline-free',
+          }
+          required.update(adversarial_required)
+          expected_cases = (
+              'owned-ciphertext-offline-content-unavailable',
+              'signed-free-same-pro-real-redownload',
+              'cached-signature-keeps-valid-pro',
+              'actual-paid-lease-platform-clock-expiry',
+              'server-returned-older-response-rejected-independent-nonce',
+              'corrupt-stale-response-combined-rejection',
+              'enterprise-rollback-signed-free',
+              'rollforward-alone-stays-free',
+              'explicit-enterprise-reauthorization',
+              'final-offline-free',
+          )
+          if report.get('adversarial_cases') != list(expected_cases):
+              raise SystemExit('Native V2 adversarial case completion is missing or changed')
           if not required.issubset({stage['name'] for stage in report.get('stages', [])}):
               raise SystemExit('Native V2 lifecycle publication, grants, fallback, data and cold-boot evidence is incomplete')
           if report.get('provisioning', {}).get('accepted', 0) < 1 or not report.get('final_application_data'):
               raise SystemExit('Native V2 lifecycle authenticated delivery or application data proof is missing')
+          stages = {stage['name']: stage.get('evidence', {}) for stage in report['stages']}
+          if stages['ciphertext-real-redownload'].get('check_status') != 'outdated':
+              raise SystemExit('Native V2 ciphertext recovery did not execute a real public download')
+          import math
+          lease = stages['platform-lease-expiry']
+          if (any(type(lease.get(field)) not in (int, float) or not math.isfinite(lease[field]) for field in ('deadline', 'wait_completed', 'launch_started')) or
+              lease['wait_completed'] <= lease['deadline'] or lease['launch_started'] <= lease['deadline']):
+              raise SystemExit('Native V2 expiry lacks an observed platform clock boundary')
+          for label in ('old-signed-response', 'corrupt-stale-response-combined'):
+              delivered = stages[label + '-requests']
+              checks = delivered.get('requests')
+              if (type(delivered.get('delivered_check_responses')) is not int or delivered['delivered_check_responses'] < 1 or
+                  not isinstance(checks, list) or len(checks) != delivered['delivered_check_responses'] or
+                  delivered.get('real_api_and_provisioning_stopped') is not True):
+                  raise SystemExit('Native V2 rejection lacks successful owned replay delivery with real services stopped')
           '@
           python3 -c $validate "$results/results.json" windows x64
           if ($LASTEXITCODE) { throw 'Windows native V2 variant execution receipt failed' }
@@ -4549,10 +4724,77 @@ jobs:
           for index, variant in enumerate(('pro', 'enterprise', 'pro', 'free', 'enterprise', 'free')):
               required.update((f'online-{index}-{previous}-accept-{variant}', f'offline-cold-{index}-{variant}'))
               previous = variant
+          adversarial_required = {
+              'adversarial-select-pro-check',
+              'adversarial-select-pro-cold',
+              'owned-ciphertext-flip',
+              'ciphertext-offline-free',
+              'ciphertext-signed-free-check',
+              'ciphertext-signed-free-cold',
+              'ciphertext-same-pro-redownload-check',
+              'ciphertext-same-pro-redownload-cold',
+              'ciphertext-real-redownload',
+              'untrusted-cached-signature-flip',
+              'cached-signature-still-valid-pro',
+              'server-returned-old-response-capture',
+              'actual-leased-pro-check',
+              'actual-leased-pro-cold',
+              'platform-clock-expired-free',
+              'platform-lease-expiry',
+              'old-signed-response-rejected',
+              'old-signed-response-requests',
+              'corrupt-stale-response-combined-rejected',
+              'corrupt-stale-response-combined-requests',
+              'expired-server-signed-free',
+              'expired-server-free-cold',
+              'before-enterprise-rollback-check',
+              'before-enterprise-rollback-cold',
+              'rollback-enterprise',
+              'rollback-server-signed-free',
+              'rollback-cold-free',
+              'rollforward-enterprise',
+              'rollforward-alone-still-free',
+              'rollforward-cold-free',
+              'explicit-enterprise-restored-check',
+              'explicit-enterprise-restored-cold',
+              'adversarial-final-signed-free-check',
+              'adversarial-final-signed-free-cold',
+              'adversarial-final-offline-free',
+          }
+          required.update(adversarial_required)
+          expected_cases = (
+              'owned-ciphertext-offline-content-unavailable',
+              'signed-free-same-pro-real-redownload',
+              'cached-signature-keeps-valid-pro',
+              'actual-paid-lease-platform-clock-expiry',
+              'server-returned-older-response-rejected-independent-nonce',
+              'corrupt-stale-response-combined-rejection',
+              'enterprise-rollback-signed-free',
+              'rollforward-alone-stays-free',
+              'explicit-enterprise-reauthorization',
+              'final-offline-free',
+          )
+          if report.get('adversarial_cases') != list(expected_cases):
+              raise SystemExit('Native V2 adversarial case completion is missing or changed')
           if not required.issubset({stage['name'] for stage in report.get('stages', [])}):
               raise SystemExit('Native V2 lifecycle publication, grants, fallback, data and cold-boot evidence is incomplete')
           if report.get('provisioning', {}).get('accepted', 0) < 1 or not report.get('final_application_data'):
               raise SystemExit('Native V2 lifecycle authenticated delivery or application data proof is missing')
+          stages = {stage['name']: stage.get('evidence', {}) for stage in report['stages']}
+          if stages['ciphertext-real-redownload'].get('check_status') != 'outdated':
+              raise SystemExit('Native V2 ciphertext recovery did not execute a real public download')
+          import math
+          lease = stages['platform-lease-expiry']
+          if (any(type(lease.get(field)) not in (int, float) or not math.isfinite(lease[field]) for field in ('deadline', 'wait_completed', 'launch_started')) or
+              lease['wait_completed'] <= lease['deadline'] or lease['launch_started'] <= lease['deadline']):
+              raise SystemExit('Native V2 expiry lacks an observed platform clock boundary')
+          for label in ('old-signed-response', 'corrupt-stale-response-combined'):
+              delivered = stages[label + '-requests']
+              checks = delivered.get('requests')
+              if (type(delivered.get('delivered_check_responses')) is not int or delivered['delivered_check_responses'] < 1 or
+                  not isinstance(checks, list) or len(checks) != delivered['delivered_check_responses'] or
+                  delivered.get('real_api_and_provisioning_stopped') is not True):
+                  raise SystemExit('Native V2 rejection lacks successful owned replay delivery with real services stopped')
           PYVARIANT
 
       - name: Upload Linux native V2 variant lifecycle evidence
@@ -5064,10 +5306,77 @@ jobs:
           for index, variant in enumerate(('pro', 'enterprise', 'pro', 'free', 'enterprise', 'free')):
               required.update((f'online-{index}-{previous}-accept-{variant}', f'offline-cold-{index}-{variant}'))
               previous = variant
+          adversarial_required = {
+              'adversarial-select-pro-check',
+              'adversarial-select-pro-cold',
+              'owned-ciphertext-flip',
+              'ciphertext-offline-free',
+              'ciphertext-signed-free-check',
+              'ciphertext-signed-free-cold',
+              'ciphertext-same-pro-redownload-check',
+              'ciphertext-same-pro-redownload-cold',
+              'ciphertext-real-redownload',
+              'untrusted-cached-signature-flip',
+              'cached-signature-still-valid-pro',
+              'server-returned-old-response-capture',
+              'actual-leased-pro-check',
+              'actual-leased-pro-cold',
+              'platform-clock-expired-free',
+              'platform-lease-expiry',
+              'old-signed-response-rejected',
+              'old-signed-response-requests',
+              'corrupt-stale-response-combined-rejected',
+              'corrupt-stale-response-combined-requests',
+              'expired-server-signed-free',
+              'expired-server-free-cold',
+              'before-enterprise-rollback-check',
+              'before-enterprise-rollback-cold',
+              'rollback-enterprise',
+              'rollback-server-signed-free',
+              'rollback-cold-free',
+              'rollforward-enterprise',
+              'rollforward-alone-still-free',
+              'rollforward-cold-free',
+              'explicit-enterprise-restored-check',
+              'explicit-enterprise-restored-cold',
+              'adversarial-final-signed-free-check',
+              'adversarial-final-signed-free-cold',
+              'adversarial-final-offline-free',
+          }
+          required.update(adversarial_required)
+          expected_cases = (
+              'owned-ciphertext-offline-content-unavailable',
+              'signed-free-same-pro-real-redownload',
+              'cached-signature-keeps-valid-pro',
+              'actual-paid-lease-platform-clock-expiry',
+              'server-returned-older-response-rejected-independent-nonce',
+              'corrupt-stale-response-combined-rejection',
+              'enterprise-rollback-signed-free',
+              'rollforward-alone-stays-free',
+              'explicit-enterprise-reauthorization',
+              'final-offline-free',
+          )
+          if report.get('adversarial_cases') != list(expected_cases):
+              raise SystemExit('Native V2 adversarial case completion is missing or changed')
           if not required.issubset({stage['name'] for stage in report.get('stages', [])}):
               raise SystemExit('Native V2 lifecycle publication, grants, fallback, data and cold-boot evidence is incomplete')
           if report.get('provisioning', {}).get('accepted', 0) < 1 or not report.get('final_application_data'):
               raise SystemExit('Native V2 lifecycle authenticated delivery or application data proof is missing')
+          stages = {stage['name']: stage.get('evidence', {}) for stage in report['stages']}
+          if stages['ciphertext-real-redownload'].get('check_status') != 'outdated':
+              raise SystemExit('Native V2 ciphertext recovery did not execute a real public download')
+          import math
+          lease = stages['platform-lease-expiry']
+          if (any(type(lease.get(field)) not in (int, float) or not math.isfinite(lease[field]) for field in ('deadline', 'wait_completed', 'launch_started')) or
+              lease['wait_completed'] <= lease['deadline'] or lease['launch_started'] <= lease['deadline']):
+              raise SystemExit('Native V2 expiry lacks an observed platform clock boundary')
+          for label in ('old-signed-response', 'corrupt-stale-response-combined'):
+              delivered = stages[label + '-requests']
+              checks = delivered.get('requests')
+              if (type(delivered.get('delivered_check_responses')) is not int or delivered['delivered_check_responses'] < 1 or
+                  not isinstance(checks, list) or len(checks) != delivered['delivered_check_responses'] or
+                  delivered.get('real_api_and_provisioning_stopped') is not True):
+                  raise SystemExit('Native V2 rejection lacks successful owned replay delivery with real services stopped')
           '@
           & $env:NATIVE_PYTHON -c $validate "$results/results.json" windows arm64
           if ($LASTEXITCODE) { throw 'Windows native V2 variant execution receipt failed' }
