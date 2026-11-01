@@ -1,5 +1,8 @@
 # Experimental complete-domain replacement
 
+Current completion is tracked in the [acceptance matrix](ACCEPTANCE_MATRIX.md).
+Records below retain their original revision and validation scope.
+
 The SDK has an opt-in full replacement profile intended to cover changes beyond
 body replacement and additive structural patches. Flutter/CLI integration has
 passed one distribution-signed physical iPad update and recovery lifecycle.

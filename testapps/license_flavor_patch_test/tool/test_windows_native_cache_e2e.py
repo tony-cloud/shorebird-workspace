@@ -264,6 +264,21 @@ class ReleasePolicyTest(unittest.TestCase):
 
 
 class ToolchainPreparationTest(unittest.TestCase):
+    def test_invalid_pinned_engine_identity_does_not_rewrite_cache_metadata(self):
+        with tempfile.TemporaryDirectory() as temp:
+            flutter = Path(temp)
+            (flutter / 'bin/internal').mkdir(parents=True)
+            (flutter / 'bin/cache').mkdir()
+            stamp, realm = (flutter / 'bin/cache' / name for name in ('engine.stamp', 'engine.realm'))
+            stamp.write_text('copied stamp')
+            realm.write_text('copied realm')
+            for revision in ('', 'engine-id', 'a' * 39, 'a' * 41, 'a' * 40 + '\n' + 'b' * 40):
+                (flutter / 'bin/internal/engine.version').write_text(revision)
+                with self.subTest(revision=revision), self.assertRaisesRegex(e2e.FixtureError, 'full revision'):
+                    e2e.stage_local_engine_metadata(flutter)
+                self.assertEqual(stamp.read_text(), 'copied stamp')
+                self.assertEqual(realm.read_text(), 'copied realm')
+
     def test_generated_package_replaces_stale_cache_without_aliases(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -312,13 +327,22 @@ class ToolchainPreparationTest(unittest.TestCase):
             self.assertEqual((original / 'preserve').read_text(), 'original')
 
     def test_prepare_stages_generated_package_before_vended_copy_and_commands(self):
+        for stale_metadata in (False, True):
+            with self.subTest(stale_metadata=stale_metadata):
+                self.assert_prepared_toolchain(stale_metadata)
+
+    def assert_prepared_toolchain(self, stale_metadata):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             checkout, work, host = root / 'checkout', root / 'work', root / 'engine/out/host'
             for name in ('shorebird/bin/internal', 'flutter/bin/internal',
                          'flutter/bin/cache/dart-sdk', 'flutter/bin/cache/pkg/sky_engine'):
                 (checkout / name).mkdir(parents=True)
-            (checkout / 'flutter/bin/internal/engine.version').write_text('engine-id')
+            engine_id = 'e15e' + 'a' * 36
+            (checkout / 'flutter/bin/internal/engine.version').write_text(engine_id + '\n')
+            if stale_metadata:
+                (checkout / 'flutter/bin/cache/engine.stamp').write_text('0' * 40 + '\n')
+                (checkout / 'flutter/bin/cache/engine.realm').write_text('stale-presubmit-realm\n')
             (checkout / 'flutter/bin/cache/pkg/sky_engine/stale').write_text('old')
             generated = host / 'gen/dart-pkg/sky_engine'
             generated.mkdir(parents=True)
@@ -341,13 +365,24 @@ class ToolchainPreparationTest(unittest.TestCase):
             lifecycle.snapshot = snapshot
             lifecycle.output = mock.Mock(return_value=b'S-1-5-21-123')
             lifecycle.remap_config = mock.Mock()
+            foreign_cache = root / 'foreign-go-modules'
+            foreign_cache.mkdir()
+            (foreign_cache / 'preserve').write_text('foreign module cache')
             operations = []
             def stop_before_tools(command, **kwargs):
                 operations.append(kwargs['name'])
                 if kwargs['name'] == 'compile-server':
+                    self.assertEqual(command[:3], ['go', 'build', '-modcacherw'])
+                    self.assertEqual(kwargs['env']['GOPATH'], str(work / 'go-path'))
+                    self.assertEqual(kwargs['env']['GOMODCACHE'], str(work / 'go-path/pkg/mod'))
+                    self.assertEqual(kwargs['env']['GOCACHE'], str(work / 'go-cache'))
+                    self.assertEqual(kwargs['env']['GOFLAGS'], '-trimpath')
                     return
                 self.assertIn(kwargs['name'], ('compile-cli', 'generate-windows'))
                 for sdk in (work / 'flutter', work / 'cli/bin/cache/flutter/flutter-ref'):
+                    self.assertEqual((sdk / 'bin/cache/engine.stamp').read_text(), engine_id + '\n')
+                    self.assertEqual((sdk / 'bin/cache/engine.realm').read_text(), '\n')
+                    self.assertEqual((sdk / 'bin/internal/engine.version').read_text().strip(), engine_id)
                     package = sdk / 'bin/cache/pkg/sky_engine'
                     self.assertEqual(e2e.tree_hashes(package), e2e.tree_hashes(generated))
                     self.assertFalse((package / 'stale').exists())
@@ -361,10 +396,20 @@ class ToolchainPreparationTest(unittest.TestCase):
             with mock.patch.object(e2e, 'ROOT', checkout), \
                     mock.patch.object(e2e, 'FIXTURE', fixture), \
                     mock.patch.dict(os.environ, {'FLUTTER_STORAGE_BASE_URL': 'http://untrusted.invalid',
-                        'SHOREBIRD_FLUTTER_STORAGE_BASE_URL': 'http://untrusted.invalid'}), \
+                        'SHOREBIRD_FLUTTER_STORAGE_BASE_URL': 'http://untrusted.invalid',
+                        'GOMODCACHE': str(foreign_cache), 'GOFLAGS': '-trimpath'}), \
                     self.assertRaisesRegex(RuntimeError, 'stop before external tools'):
                 lifecycle.prepare()
             self.assertEqual(operations, ['compile-cli', 'compile-server', 'generate-windows'])
+            self.assertEqual(e2e.tree_hashes(foreign_cache), {
+                'preserve': e2e.sha256(b'foreign module cache')})
+            self.assertEqual((work / 'cli/bin/internal/engine.version').read_text(), engine_id + '\n')
+            if stale_metadata:
+                self.assertEqual((checkout / 'flutter/bin/cache/engine.stamp').read_text(), '0' * 40 + '\n')
+                self.assertEqual((checkout / 'flutter/bin/cache/engine.realm').read_text(), 'stale-presubmit-realm\n')
+            else:
+                self.assertFalse((checkout / 'flutter/bin/cache/engine.stamp').exists())
+                self.assertFalse((checkout / 'flutter/bin/cache/engine.realm').exists())
             self.assertEqual((checkout / 'flutter/bin/cache/pkg/sky_engine/stale').read_text(), 'old')
             self.assertFalse((host / 'gen/dart-pkg/flutter_gpu').exists())
 
@@ -372,6 +417,7 @@ class ToolchainPreparationTest(unittest.TestCase):
 class CommandDiagnosticsTest(unittest.TestCase):
     def test_only_fixed_classifications_and_full_log_digest_survive(self):
         variants = {
+            b'Could not determine engine revision.\n': 'missing_engine_revision',
             b'Could not find package sky_engine in the Flutter SDK. Version solving failed.': 'missing_sky_engine',
             b'Material Fonts: http://localhost:8080/download.flutter.io/material_fonts.zip': 'material_fonts_local_artifact_server',
             b'the Flutter SDK is not available': 'flutter_sdk_unavailable',

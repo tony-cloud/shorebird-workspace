@@ -43,6 +43,7 @@ strict_json, private_write = portable.strict_json, portable.private_write
 replace_once, tree_hashes = portable.replace_once, portable.tree_hashes
 local_engine_flags = portable.local_engine_flags
 stage_local_engine_packages = portable.stage_local_engine_packages
+stage_local_engine_metadata = portable.stage_local_engine_metadata
 wait_for, free_port = portable.wait_for, portable.free_port
 LocalService, installed_evidence = portable.LocalService, portable.installed_evidence
 verify_release_policy = portable.verify_release_policy
@@ -455,6 +456,7 @@ class Lifecycle:
                     'XDG_RUNTIME_DIR': str(self.work / 'xdg-runtime'),
                     'GOCACHE': str(self.work / 'go-cache'),
                     'GOPATH': str(self.work / 'go-path'),
+                    'GOMODCACHE': str(self.work / 'go-path/pkg/mod'),
                     'SHOREBIRD_HOSTED_URL': self.api_url,
                     'AUTH_SERVICE_URL': self.api_url + '/auth',
                     'SHOREBIRD_ARTIFACT_BASE_URL': self.api_url,
@@ -487,6 +489,7 @@ class Lifecycle:
         shutil.copytree(self.args.engine_src / 'out' / self.args.host_engine / 'dart-sdk', sdk)
         stage_local_engine_packages(self.args.engine_src / 'out' / self.args.host_engine,
                                     self.work / 'flutter')
+        engine_id = stage_local_engine_metadata(self.work / 'flutter')
         mappings = [(ROOT / 'shorebird', self.work / 'cli'), (ROOT / 'flutter', self.work / 'flutter'),
                     (pub, self.work / 'pub-cache')]
         self.remap_config(ROOT / 'shorebird/.dart_tool/package_config.json',
@@ -494,7 +497,6 @@ class Lifecycle:
         self.remap_config(ROOT / 'flutter/packages/flutter_tools/.dart_tool/package_config.json',
                           self.work / 'flutter/packages/flutter_tools/.dart_tool/package_config.json', mappings)
         flutter_ref = self.manifest['sources']['flutter']['head']
-        engine_id = (self.work / 'flutter/bin/internal/engine.version').read_text().strip()
         for name, value in (('flutter.version', flutter_ref), ('engine.version', engine_id)):
             (self.work / 'cli/bin/internal' / name).write_text(value + '\n')
         # Real CLI expects its vended SDK here. Copy, without mutable links to the source SDK.
@@ -510,8 +512,10 @@ class Lifecycle:
         artifact.mkdir(parents=True, exist_ok=True)
         shutil.copy2(self.args.patch_tool, artifact / 'patch')
         (artifact / 'patch.stamp').touch()
-        self.run_command(['go', 'build', '-o', self.work / 'server', './cmd/server'],
-                         cwd=self.work / 'server-src', name='compile-server')
+        # Downloads live in this session's private GOPATH. Keep their directories
+        # writable so ordinary owned-tree cleanup can remove the module cache.
+        self.run_command(['go', 'build', '-modcacherw', '-o', self.work / 'server', './cmd/server'],
+                         cwd=self.work / 'server-src', env=self.environment(), name='compile-server')
         shutil.copytree(FIXTURE, self.work / 'app', ignore=shutil.ignore_patterns(
             '.git', '.dart_tool', 'build', 'Pods', '.symlinks', '.gradle', 'windows', 'linux'))
         pubspec = self.work / 'app/pubspec.yaml'
@@ -796,19 +800,22 @@ class Lifecycle:
 
     def cleanup(self):
         failures = []
-        actions = [self.stop_app, lambda: self.job.stop(self.api), self.job.close]
-        actions += [service.close for service in (self.provision, self.observer) if service]
-        actions += [log.close for log in self.logs]
+        actions = [('app', self.stop_app), ('api', lambda: self.job.stop(self.api)),
+                   ('process-groups', self.job.close)]
+        actions += [(name, service.close) for name, service in
+                    (('provision-service', self.provision), ('observer-service', self.observer)) if service]
+        actions += [('log', log.close) for log in self.logs]
         if self.ring is not None:
-            actions.append(self.ring.close)
+            actions.append(('keyring', self.ring.close))
         if self.work_owned:
-            actions.append(lambda: shutil.rmtree(self.work) if self.work.exists() else None)
-        for action in actions:
+            actions.append(('work-tree', lambda: shutil.rmtree(self.work) if self.work.exists() else None))
+        for name, action in actions:
             try:
                 action()
-            except Exception:
-                failures.append(True)
+            except Exception as error:
+                failures.append({'action': name, 'type': type(error).__name__})
         if failures:
+            self.manifest['cleanup_failures'] = failures
             raise FixtureError('Owned resource cleanup failed')
 
 

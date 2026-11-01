@@ -259,6 +259,27 @@ signal.pause()
 
 
 class EnvironmentAndInjectionTest(unittest.TestCase):
+    def test_cleanup_records_redacted_action_failures_and_continues(self):
+        with tempfile.TemporaryDirectory() as temp:
+            work = Path(temp) / 'private'
+            work.mkdir()
+            lifecycle = e2e.Lifecycle(mock.Mock(work=work))
+            lifecycle.work_owned = True
+            lifecycle.job.close = mock.Mock(side_effect=e2e.FixtureError('private process details'))
+            lifecycle.ring = mock.Mock()
+            lifecycle.logs = [mock.Mock()]
+            # Model a private Go module directory that cannot be deleted. Keep
+            # the error path secret and preserve process cleanup failures too.
+            with mock.patch.object(e2e.shutil, 'rmtree', side_effect=PermissionError('private module path')), \
+                    self.assertRaisesRegex(e2e.FixtureError, 'Owned resource cleanup failed'):
+                lifecycle.cleanup()
+            self.assertEqual(lifecycle.manifest['cleanup_failures'], [
+                {'action': 'process-groups', 'type': 'FixtureError'},
+                {'action': 'work-tree', 'type': 'PermissionError'}])
+            lifecycle.ring.close.assert_called_once_with()
+            lifecycle.logs[0].close.assert_called_once_with()
+            self.assertNotIn('private', json.dumps(lifecycle.manifest))
+
     def lifecycle(self, root):
         args = mock.Mock(work=root, provider_probe=root / 'probe', build_timeout=30)
         lifecycle = e2e.Lifecycle(args)
@@ -285,13 +306,22 @@ class EnvironmentAndInjectionTest(unittest.TestCase):
                 self.assertNotIn(name, env)
 
     def test_prepare_copies_host_generated_package_before_vended_sdk_and_tools(self):
+        for stale_metadata in (False, True):
+            with self.subTest(stale_metadata=stale_metadata):
+                self.assert_prepared_toolchain(stale_metadata)
+
+    def assert_prepared_toolchain(self, stale_metadata):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             checkout, work, host = root / 'checkout', root / 'work', root / 'engine/out/host'
             for name in ('shorebird/bin/internal', 'shorebird-server', 'flutter/bin/internal',
                          'flutter/bin/cache/dart-sdk', 'flutter/bin/cache/pkg/sky_engine'):
                 (checkout / name).mkdir(parents=True)
-            (checkout / 'flutter/bin/internal/engine.version').write_text('engine-id')
+            engine_id = 'e15e' + 'a' * 36
+            (checkout / 'flutter/bin/internal/engine.version').write_text(engine_id + '\n')
+            if stale_metadata:
+                (checkout / 'flutter/bin/cache/engine.stamp').write_text('0' * 40 + '\n')
+                (checkout / 'flutter/bin/cache/engine.realm').write_text('stale-presubmit-realm\n')
             (checkout / 'flutter/bin/cache/pkg/sky_engine/stale').write_text('old')
             generated = host / 'gen/dart-pkg/sky_engine'
             generated.mkdir(parents=True)
@@ -312,13 +342,24 @@ class EnvironmentAndInjectionTest(unittest.TestCase):
                 lifecycle.manifest.setdefault('sources', {})[source.name] = {'head': 'flutter-ref'}
             lifecycle.snapshot = snapshot
             lifecycle.remap_config = mock.Mock()
+            foreign_cache = root / 'foreign-go-modules'
+            foreign_cache.mkdir()
+            (foreign_cache / 'preserve').write_text('foreign module cache')
             operations = []
             def stop_before_tools(command, **kwargs):
                 operations.append(kwargs['name'])
                 if kwargs['name'] == 'compile-server':
+                    self.assertEqual(command[:3], ['go', 'build', '-modcacherw'])
+                    self.assertEqual(kwargs['env']['GOPATH'], str(work / 'go-path'))
+                    self.assertEqual(kwargs['env']['GOMODCACHE'], str(work / 'go-path/pkg/mod'))
+                    self.assertEqual(kwargs['env']['GOCACHE'], str(work / 'go-cache'))
+                    self.assertEqual(kwargs['env']['GOFLAGS'], '-trimpath')
                     return
                 self.assertIn(kwargs['name'], ('compile-cli', 'generate-linux'))
                 for sdk in (work / 'flutter', work / 'cli/bin/cache/flutter/flutter-ref'):
+                    self.assertEqual((sdk / 'bin/cache/engine.stamp').read_text(), engine_id + '\n')
+                    self.assertEqual((sdk / 'bin/cache/engine.realm').read_text(), '\n')
+                    self.assertEqual((sdk / 'bin/internal/engine.version').read_text().strip(), engine_id)
                     package = sdk / 'bin/cache/pkg/sky_engine'
                     self.assertEqual(e2e.tree_hashes(package), e2e.tree_hashes(generated))
                     self.assertFalse((package / 'stale').exists())
@@ -333,10 +374,20 @@ class EnvironmentAndInjectionTest(unittest.TestCase):
                     mock.patch.object(e2e, 'FIXTURE', fixture), \
                     mock.patch.object(e2e, 'OwnedSessionKeyring'), \
                     mock.patch.dict(os.environ, {'FLUTTER_STORAGE_BASE_URL': 'http://untrusted.invalid',
-                        'SHOREBIRD_FLUTTER_STORAGE_BASE_URL': 'http://untrusted.invalid'}), \
+                        'SHOREBIRD_FLUTTER_STORAGE_BASE_URL': 'http://untrusted.invalid',
+                        'GOMODCACHE': str(foreign_cache), 'GOFLAGS': '-trimpath'}), \
                     self.assertRaisesRegex(RuntimeError, 'stop before external tools'):
                 lifecycle.prepare()
             self.assertEqual(operations, ['compile-cli', 'compile-server', 'generate-linux'])
+            self.assertEqual(e2e.tree_hashes(foreign_cache), {
+                'preserve': e2e.portable.sha256(b'foreign module cache')})
+            self.assertEqual((work / 'cli/bin/internal/engine.version').read_text(), engine_id + '\n')
+            if stale_metadata:
+                self.assertEqual((checkout / 'flutter/bin/cache/engine.stamp').read_text(), '0' * 40 + '\n')
+                self.assertEqual((checkout / 'flutter/bin/cache/engine.realm').read_text(), 'stale-presubmit-realm\n')
+            else:
+                self.assertFalse((checkout / 'flutter/bin/cache/engine.stamp').exists())
+                self.assertFalse((checkout / 'flutter/bin/cache/engine.realm').exists())
             self.assertEqual((checkout / 'flutter/bin/cache/pkg/sky_engine/stale').read_text(), 'old')
             self.assertEqual((generated / 'pubspec.yaml').read_text(), 'name: sky_engine\n')
             self.assertFalse((host / 'gen/dart-pkg/flutter_gpu').exists())

@@ -70,7 +70,9 @@ def command_failure(name, code, timed_out, path):
     def contains(value):
         return value in head or value in tail
     classification = 'unknown'
-    if contains(b'could not find package sky_engine in the flutter sdk'):
+    if contains(b'could not determine engine revision.'):
+        classification = 'missing_engine_revision'
+    elif contains(b'could not find package sky_engine in the flutter sdk'):
         classification = 'missing_sky_engine'
     elif (contains(b'material_fonts') or contains(b'material fonts')) and contains(b'localhost:8080'):
         classification = 'material_fonts_local_artifact_server'
@@ -100,6 +102,27 @@ def stage_local_engine_packages(host, flutter):
     elif target.exists():
         remove_owned_tree(target)
     shutil.copytree(source, target)
+
+
+def stage_local_engine_metadata(flutter):
+    # These launchers bypass bootstrap to preserve the prebuilt local SDK.
+    # FlutterCache still reads engine.stamp, even with LocalEngineArtifacts.
+    # Use this SDK's pinned artifact identity, never a copied cache stamp or an
+    # ambient bootstrap override. The fixture selects production (empty) realm.
+    revision = (flutter / 'bin/internal/engine.version').read_text().strip()
+    if not re.fullmatch(r'[0-9a-f]{40}', revision):
+        raise FixtureError('Private Flutter engine.version must contain one full revision')
+    cache = flutter / 'bin/cache'
+    try:
+        cache.resolve().relative_to(flutter.resolve())
+    except ValueError:
+        raise FixtureError('Private Flutter engine cache escapes owned SDK') from None
+    for name, value in (('engine.stamp', revision), ('engine.realm', '')):
+        target = cache / name
+        if target.is_symlink():
+            target.unlink()
+        target.write_text(value + '\n')
+    return revision
 
 
 def strict_json(data):
@@ -710,6 +733,9 @@ class Lifecycle:
             if name.startswith(('SHOREBIRD_', 'PATCH_DELIVERY_', 'PATCH_SIGNING_')):
                 del env[name]
         env.update({'APPDATA': str(self.work / 'config'),
+                    'GOCACHE': str(self.work / 'go-cache'),
+                    'GOPATH': str(self.work / 'go-path'),
+                    'GOMODCACHE': str(self.work / 'go-path/pkg/mod'),
                     'SHOREBIRD_HOSTED_URL': self.api_url,
                     'AUTH_SERVICE_URL': self.api_url + '/auth',
                     'SHOREBIRD_ARTIFACT_BASE_URL': self.api_url,
@@ -746,6 +772,7 @@ class Lifecycle:
         shutil.copytree(self.args.engine_src / 'out' / self.args.host_engine / 'dart-sdk', sdk)
         stage_local_engine_packages(self.args.engine_src / 'out' / self.args.host_engine,
                                     self.work / 'flutter')
+        engine_id = stage_local_engine_metadata(self.work / 'flutter')
         mappings = [(ROOT / 'shorebird', self.work / 'cli'), (ROOT / 'flutter', self.work / 'flutter'),
                     (pub, self.work / 'pub-cache')]
         self.remap_config(ROOT / 'shorebird/.dart_tool/package_config.json',
@@ -753,7 +780,6 @@ class Lifecycle:
         self.remap_config(ROOT / 'flutter/packages/flutter_tools/.dart_tool/package_config.json',
                           self.work / 'flutter/packages/flutter_tools/.dart_tool/package_config.json', mappings)
         flutter_ref = self.manifest['sources']['flutter']['head']
-        engine_id = (self.work / 'flutter/bin/internal/engine.version').read_text().strip()
         for name, value in (('flutter.version', flutter_ref), ('engine.version', engine_id)):
             (self.work / 'cli/bin/internal' / name).write_text(value + '\n')
         # Real CLI expects its vended SDK here. Copy, avoiding symlink privileges on Windows.
@@ -772,8 +798,8 @@ class Lifecycle:
         artifact.mkdir(parents=True, exist_ok=True)
         shutil.copy2(self.args.patch_tool, artifact / 'patch.exe')
         (artifact / 'patch.exe.stamp').touch()
-        self.run_command(['go', 'build', '-o', self.work / 'server.exe', './cmd/server'],
-                         cwd=ROOT / 'shorebird-server', name='compile-server')
+        self.run_command(['go', 'build', '-modcacherw', '-o', self.work / 'server.exe', './cmd/server'],
+                         cwd=ROOT / 'shorebird-server', env=self.environment(), name='compile-server')
         shutil.copytree(FIXTURE, self.work / 'app', ignore=shutil.ignore_patterns(
             '.git', '.dart_tool', 'build', 'Pods', '.symlinks', '.gradle', 'windows'))
         pubspec = self.work / 'app/pubspec.yaml'

@@ -1,5 +1,8 @@
 # Platform Testing
 
+Current completion is tracked in the [acceptance matrix](ACCEPTANCE_MATRIX.md).
+Records below retain their original revision and validation scope.
+
 The first complete runtime proof was built on Windows. The next platform pass
 should verify the same source layout on Linux and macOS, then use macOS to
 prepare iOS testing without introducing JIT or writable-executable-memory
