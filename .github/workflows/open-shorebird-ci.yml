@@ -182,6 +182,9 @@ jobs:
           python3 -m py_compile testapps/license_flavor_patch_test/tool/native_variant_e2e.py testapps/license_flavor_patch_test/tool/native_variant_adversarial.py testapps/license_flavor_patch_test/tool/native_variant_desktop.py testapps/license_flavor_patch_test/tool/linux_variant_e2e.py testapps/license_flavor_patch_test/tool/windows_variant_e2e.py
           python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p test_macos_variant_e2e.py -v
           python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p test_macos_variant_lifecycle.py -v
+          python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p test_macos_target_architecture.py -v
+          python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p test_macos_presigned_lifecycle.py -v
+          python3 scripts/test_macos_app_build_inputs.py -v
           python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p test_ios_variant_e2e.py -v
           python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p test_ios_variant_adversarial.py -v
           python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p test_android_variant_app.py -v

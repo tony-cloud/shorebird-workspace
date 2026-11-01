@@ -47,7 +47,7 @@ class PreparedTransportTest(unittest.TestCase):
         self.entries = {}
         build_bytes = {name: MACHO + name.encode() for name in transport.BUILD_FILES}
         build_bytes.update({name: MACHO for name in transport.SDK_REQUIRED})
-        self.build = {'format_version': 1, 'kind': 'unsigned-native-intel-build-inputs',
+        self.build = {'format_version': transport.BUILD_FORMAT_VERSION, 'kind': 'unsigned-native-intel-build-inputs',
                       'status': 'build_inputs_only', 'workspace_commit': WORKSPACE,
                       'sdk_source_commit': SDK, 'target': {'os': 'macos', 'arch': 'x64'},
                       'files': {name: sha(value) for name, value in build_bytes.items()}}
@@ -313,16 +313,21 @@ class ReleaseMetadataTest(unittest.TestCase):
 
 
 class SourceAndWorkflowTest(unittest.TestCase):
+    def synthetic_build(self, directory):
+        build, source = directory / 'build', directory / 'source'
+        for name in transport.BUILD_FILES | transport.SDK_REQUIRED:
+            path = build / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(MACHO + name.encode())
+            path.chmod(0o755 if name in transport.BUILD_EXECUTABLE else 0o644)
+        (build / 'args.gn').write_text('target_cpu = "x64"\ndart_dynamic_modules = false\n'
+            'dart_enable_aot_patching = true\ndart_enable_shorebird_interpreter = true\n')
+        return build, source
+
     def test_unsigned_producer_and_fresh_hash_verified_extraction(self):
         with tempfile.TemporaryDirectory() as temp:
             directory = Path(temp).resolve()
-            build, source = directory / 'build', directory / 'source'
-            for name in transport.BUILD_FILES | transport.SDK_REQUIRED:
-                path = build / name
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_bytes(MACHO + name.encode())
-            (build / 'args.gn').write_text('target_cpu = "x64"\ndart_dynamic_modules = false\n'
-                'dart_enable_aot_patching = true\ndart_enable_shorebird_interpreter = true\n')
+            build, source = self.synthetic_build(directory)
             # create_sdk uses hardlinks in the original build tree. Packaging
             # must read them unchanged and extraction must break that alias.
             (build / 'dart-sdk/bin/dart').unlink()
@@ -335,6 +340,12 @@ class SourceAndWorkflowTest(unittest.TestCase):
                 destination = directory / 'private-build'
                 manifest = transport.extract_build(archive, transport.digest(archive), source, SDK, destination)
                 self.assertEqual(manifest['status'], 'build_inputs_only')
+                self.assertEqual(manifest['format_version'], 2)
+                self.assertEqual(manifest['files']['dartvm'], sha((build / 'dartvm').read_bytes()))
+                self.assertEqual((destination / 'dartvm').read_bytes(), (build / 'dartvm').read_bytes())
+                self.assertTrue((destination / 'dartvm').stat().st_mode & 0o111)
+                self.assertEqual((destination / 'dartvm').stat().st_nlink, 1)
+                self.assertNotEqual(manifest['files']['dartvm'], manifest['files']['dart-sdk/bin/dartvm'])
                 self.assertEqual((destination / 'gen_snapshot_product').read_bytes(),
                                  (build / 'gen_snapshot_product').read_bytes())
                 self.assertEqual((destination / 'dart-sdk/bin/dart').stat().st_nlink, 1)
@@ -344,6 +355,91 @@ class SourceAndWorkflowTest(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'SHA-256'):
                     transport.extract_build(archive, '0' * 64, source, SDK, directory / 'wrong-hash')
                 self.assertFalse((directory / 'wrong-hash').exists())
+
+    def test_version_only_launcher_success_cannot_replace_missing_adjacent_vm(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp).resolve()
+            build, source = self.synthetic_build(directory)
+            (build / 'dartvm').unlink()
+            self.assertTrue((build / 'dart-sdk/bin/dartvm').is_file())
+            # Model the observed split: --version succeeds, script launch
+            # cannot find a sibling VM. No supplied executable is run here.
+            launcher = mock.Mock(side_effect=lambda args: SimpleNamespace(
+                returncode=0 if args == ['--version'] else 255,
+                stdout='Dart SDK version: synthetic', stderr='Unable to locate the Dart VM executable'))
+            self.assertEqual(launcher(['--version']).returncode, 0)
+            self.assertEqual(launcher(['script.dart']).returncode, 255)
+            with mock.patch.object(transport, 'require_native_intel'), \
+                    mock.patch.object(transport, 'source_identity', return_value=WORKSPACE), \
+                    mock.patch.object(transport, 'git', return_value=SDK), \
+                    mock.patch.object(transport.subprocess, 'run', side_effect=AssertionError('No compiler probe')):
+                with self.assertRaisesRegex(ValueError, 'dartvm'):
+                    transport.package_build(source, build, directory / 'incomplete.zip')
+            self.assertFalse((directory / 'incomplete.zip').exists())
+            self.assertFalse((directory / 'incomplete.manifest.json').exists())
+
+    def test_producer_requires_regular_executable_thin_x64_vm_companions(self):
+        for name in ('dartvm', 'dart-sdk/bin/dartvm'):
+            for mutation in ('missing', 'arm64', 'not-executable', 'symlink'):
+                with self.subTest(name=name, mutation=mutation), tempfile.TemporaryDirectory() as temp:
+                    directory = Path(temp).resolve()
+                    build, source = self.synthetic_build(directory)
+                    companion = build / name
+                    if mutation in ('missing', 'symlink'):
+                        companion.unlink()
+                        if mutation == 'symlink':
+                            companion.symlink_to(build / 'dart')
+                    elif mutation == 'arm64':
+                        companion.write_bytes(MACHO[:4] + struct.pack('<II', 0x100000c, 0) + b'synthetic')
+                    else:
+                        companion.chmod(0o644)
+                    with mock.patch.object(transport, 'require_native_intel'), \
+                            mock.patch.object(transport, 'source_identity', return_value=WORKSPACE), \
+                            mock.patch.object(transport, 'git', return_value=SDK):
+                        with self.assertRaises(ValueError):
+                            transport.package_build(source, build, directory / 'rejected.zip')
+                    self.assertFalse((directory / 'rejected.zip').exists())
+
+    def test_current_extractor_rejects_legacy_missing_tampered_or_wrong_arch_vm(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp).resolve()
+            build, source = self.synthetic_build(directory)
+            archive = directory / 'build.zip'
+            with mock.patch.object(transport, 'require_native_intel'), \
+                    mock.patch.object(transport, 'source_identity', return_value=WORKSPACE), \
+                    mock.patch.object(transport, 'git', return_value=SDK):
+                transport.package_build(source, build, archive)
+                for mutation in ('legacy', 'missing-root', 'missing-sdk', 'tampered', 'arm64', 'not-executable'):
+                    with zipfile.ZipFile(archive) as original:
+                        entries = {info.filename: [info, original.read(info)] for info in original.infolist()}
+                    manifest_name = 'build-inputs/build-inputs-manifest.json'
+                    manifest = json.loads(entries[manifest_name][1])
+                    root_vm = 'build-inputs/dartvm'
+                    if mutation == 'legacy':
+                        manifest['format_version'] = 1
+                        manifest['files'].pop('dartvm')
+                        del entries[root_vm]
+                    elif mutation.startswith('missing-'):
+                        name = 'dartvm' if mutation == 'missing-root' else 'dart-sdk/bin/dartvm'
+                        del entries['build-inputs/' + name]
+                        del manifest['files'][name]
+                    elif mutation in ('tampered', 'arm64'):
+                        data = (b'changed' if mutation == 'tampered' else
+                                MACHO[:4] + struct.pack('<II', 0x100000c, 0) + b'synthetic')
+                        entries[root_vm][1] = data
+                        if mutation == 'arm64':
+                            manifest['files']['dartvm'] = sha(data)
+                    else:
+                        entries[root_vm][0].external_attr = (stat.S_IFREG | 0o644) << 16
+                    entries[manifest_name][1] = encoded(manifest)
+                    bad = directory / (mutation + '.zip')
+                    with zipfile.ZipFile(bad, 'w') as output:
+                        for info, data in entries.values():
+                            output.writestr(info, data)
+                    destination = directory / ('extracted-' + mutation)
+                    with self.subTest(mutation=mutation), self.assertRaises(ValueError):
+                        transport.extract_build(bad, transport.digest(bad), source, SDK, destination)
+                    self.assertFalse(destination.exists())
 
     def test_old_gitlink_and_dirty_sdk_fail_closed(self):
         with tempfile.TemporaryDirectory() as temp:

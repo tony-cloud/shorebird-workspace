@@ -30,11 +30,17 @@ RUNTIME = {
     'full': ['libreleased_full_ffi.dylib', 'native-source.snapshot', 'native-from-dill.snapshot'],
 }
 CASE_COUNTS = {'callouts': 8, 'callbacks': 19, 'full': 66}
-BUILD_FILES = {'args.gn', 'dart', 'gen_snapshot_product', 'vm_platform_product.dill', *HARNESSES.values()}
-SDK_REQUIRED = {'dart-sdk/bin/dart', 'dart-sdk/bin/dartaotruntime',
+# v1 omitted the build-root launcher's adjacent dartvm. It must remain bound to
+# its original source-pinned tooling; never silently upgrade its provenance.
+BUILD_FORMAT_VERSION = 2
+BUILD_FILES = {'args.gn', 'dart', 'dartvm', 'gen_snapshot_product', 'vm_platform_product.dill', *HARNESSES.values()}
+SDK_REQUIRED = {'dart-sdk/bin/dart', 'dart-sdk/bin/dartvm', 'dart-sdk/bin/dartaotruntime',
                 'dart-sdk/bin/snapshots/gen_kernel_aot.dart.snapshot',
                 'dart-sdk/bin/snapshots/frontend_server_aot.dart.snapshot',
                 'dart-sdk/lib/_internal/vm_platform_strong.dill'}
+BUILD_NATIVE = {'dart', 'dartvm', 'gen_snapshot_product', *HARNESSES.values(),
+                *(SDK_REQUIRED - {'dart-sdk/lib/_internal/vm_platform_strong.dill'})}
+BUILD_EXECUTABLE = BUILD_NATIVE - {name for name in BUILD_NATIVE if name.endswith('.snapshot')}
 ROOT_PATTERN = re.compile(r'/private/tmp/shorebird-macos-x64-proof-[A-Za-z0-9_-]{8,80}')
 SHA = re.compile(r'[0-9a-f]{64}')
 COMMIT = re.compile(r'[0-9a-f]{40}')
@@ -144,8 +150,11 @@ def package_build(workspace, build, output):
         selected['dart-sdk/' + name] = build / 'dart-sdk' / name
     if not SDK_REQUIRED.issubset(selected):
         raise ValueError('Complete matching SDK/frontend tools are required')
-    for name in ('dart', 'gen_snapshot_product', *HARNESSES.values(),
-                 *(SDK_REQUIRED - {'dart-sdk/lib/_internal/vm_platform_strong.dill'})):
+    for name in sorted(BUILD_NATIVE):
+        if not selected[name].is_file() or not stat.S_ISREG(selected[name].lstat().st_mode):
+            raise ValueError('Missing regular native compiler input: ' + name)
+        if name in BUILD_EXECUTABLE and not selected[name].stat().st_mode & 0o111:
+            raise ValueError('Native compiler input is not executable: ' + name)
         with selected[name].open('rb') as source:
             x64_macho(source.read(12))
     args = (build / 'args.gn').read_text()
@@ -153,7 +162,7 @@ def package_build(workspace, build, output):
                           'dart_enable_aot_patching': 'true', 'dart_enable_shorebird_interpreter': 'true'}.items():
         if not re.search(r'^\s*' + key + r'\s*=\s*' + re.escape(expected) + r'\s*$', args, re.M):
             raise ValueError('Missing required proof GN argument: ' + key)
-    manifest = {'format_version': 1, 'kind': 'unsigned-native-intel-build-inputs',
+    manifest = {'format_version': BUILD_FORMAT_VERSION, 'kind': 'unsigned-native-intel-build-inputs',
                 'status': 'build_inputs_only', 'workspace_commit': workspace_commit,
                 'sdk_source_commit': sdk_commit, 'target': {'os': 'macos', 'arch': 'x64'},
                 'files': {name: digest(path) for name, path in sorted(selected.items())}}
@@ -165,11 +174,14 @@ def package_build(workspace, build, output):
 
 
 def validate_build_manifest(data, workspace_commit, sdk_commit):
+    if isinstance(data, dict) and data.get('format_version') == 1:
+        raise ValueError('Legacy unsigned build format 1 lacks the required root dartvm closure; '
+                         'use its exact original source-pinned tooling, not an upgraded manifest')
     if (not isinstance(data, dict) or set(data) != {'format_version', 'kind', 'status', 'workspace_commit',
             'sdk_source_commit', 'target', 'files'} or type(data['format_version']) is not int or
             (data['format_version'], data['kind'], data['status'], data['workspace_commit'],
              data['sdk_source_commit'], data['target']) !=
-            (1, 'unsigned-native-intel-build-inputs', 'build_inputs_only', workspace_commit,
+            (BUILD_FORMAT_VERSION, 'unsigned-native-intel-build-inputs', 'build_inputs_only', workspace_commit,
              sdk_commit, {'os': 'macos', 'arch': 'x64'})):
         raise ValueError('Unsigned build source/target identity mismatch')
     hashes = data['files']
@@ -240,6 +252,12 @@ def extract_build(path, expected_sha, workspace, sdk_commit, destination):
         for name, value in hashes.items():
             if zip_hash(archive, 'build-inputs/' + name) != value:
                 raise ValueError('Unsigned compiler input hash mismatch')
+        for name in sorted(BUILD_NATIVE):
+            info = entries['build-inputs/' + name]
+            if name in BUILD_EXECUTABLE and not (info.external_attr >> 16) & 0o111:
+                raise ValueError('Native compiler input is not executable: ' + name)
+            with archive.open(info) as source:
+                x64_macho(source.read(12))
         destination.mkdir(mode=0o700)
         for entry in archive.infolist():
             output = destination / entry.filename[len('build-inputs/'):]

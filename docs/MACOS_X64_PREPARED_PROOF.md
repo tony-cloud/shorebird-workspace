@@ -17,11 +17,16 @@ checked-out workflow commit. Rebuild proof inputs after changing that source pin
 `custom-dart-sdk-macos-x64` builds `product_ffi_test`,
 `product_ffi_callback_test`, and `product_full_ffi_test` alongside matching `dart`,
 `gen_snapshot_product`, `vm_platform_product.dill`, and the complete SDK/frontend
-tools. Its `macos-x64-ffi-proof-build-inputs` artifact contains:
+tools. Format 2 also requires the top-level `dartvm` companion beside `dart`,
+plus the independently hashed SDK `bin/dartvm`. A launcher-only `--version`
+probe cannot establish that source compilation works. Its `macos-x64-ffi-proof-build-inputs` artifact contains:
 
 - `macos-x64-ffi-proof-build-inputs.zip` and SHA-256 sidecar;
 - `macos-x64-ffi-proof-build-inputs.manifest.json`, with root/SDK commits, target,
   and all source build-file hashes, including `args.gn`.
+
+Format 1 archives remain bound to their original source-pinned tooling; the
+format 2 validator rejects them instead of silently upgrading their provenance.
 
 This is build evidence only. These original compiler/harness bytes are preserved.
 The local signing/preparation process uses private extracted inputs and signs
