@@ -192,6 +192,18 @@
     "This completed older checkpoint does not validate current root86ffb47 or its newer compiler mapping, archive-integrity guards and Linux GTK lifecycle.",
     "Optional Linux and Android runtime smoke jobs did not run; web build is opt-in and publishing is default-branch-only.",
     "CI build success does not establish runtime correctness on every platform or physical iOS FFI.",
-    "Full assembled mirror was validated on the CI runner; only its release manifest was independently downloaded and checked locally in this follow-up."
-  ]
+    "Subsequent packaged Android preparation found stale CLI Flutter metadata selecting a different engine than the packaged engine pin; the completed build matrix did not prove fresh-install toolchain coherence. See public-toolchain-packaging-20261101.json for the correction."
+  ],
+  "local_mirror_verification": {
+    "result": "passed",
+    "tar_sha256": "d00e230f682ae1a6ae343a5da6522587d95498ff170979b26e22eee5e388aa25",
+    "tar_size": 1587700186,
+    "checks": [
+      "Published digest and size",
+      "Checksum sidecar",
+      "Safe extraction",
+      "Complete artifact-mirror validation"
+    ],
+    "all_42_individual_artifacts_downloaded": false
+  }
 }

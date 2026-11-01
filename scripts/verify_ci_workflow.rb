@@ -230,6 +230,13 @@ required_files = %w[
   dart-sdk/pkg/vm/lib/native_assets/shorebird_descriptor.dart
   flutter/packages/flutter_tools/lib/src/shorebird/shorebird_native_assets.dart
   flutter/packages/flutter_tools/test/general.shard/shorebird/shorebird_native_assets_test.dart
+  testapps/license_flavor_patch_test/tool/android_native_app.py
+  testapps/license_flavor_patch_test/tool/android_native_cache_e2e.py
+  testapps/license_flavor_patch_test/tool/owned_host_processes.py
+  testapps/license_flavor_patch_test/tool/android_native/compile_check.py
+  testapps/license_flavor_patch_test/tool/test_android_native_app.py
+  testapps/license_flavor_patch_test/tool/test_android_native_cache_e2e.py
+  testapps/license_flavor_patch_test/tool/test_owned_host_processes.py
   testapps/license_flavor_patch_test/tool/linux_native_cache_e2e.py
   testapps/license_flavor_patch_test/tool/test_linux_native_cache_e2e.py
   testapps/license_flavor_patch_test/tool/linux_native/runner_patch_key_provider.h
@@ -252,6 +259,8 @@ required_files = %w[
   scripts/verify_upload_readiness.sh
   scripts/verify_write_sha256.sh
   scripts/write_artifact_manifest.py
+  scripts/write_cli_toolchain_pins.py
+  scripts/test_cli_toolchain_pins.py
   scripts/package_android_maven.py
   scripts/verify_android_maven.py
   scripts/run_server_client_smoke.sh
@@ -1764,6 +1773,42 @@ assert!(
     archive_test_index < archive_evidence_index && archive_evidence_index < cli_compile_index,
   'CLI native archive tests and evidence must precede artifact compilation and packaging'
 )
+cli_package = cli_steps.fetch(cli_compile_index).fetch('run')
+pin_write = 'python3 scripts/write_cli_toolchain_pins.py write --workspace "$PWD" --package artifacts/cli'
+pin_verify = 'python3 scripts/write_cli_toolchain_pins.py verify --workspace "$PWD" --package artifacts/cli'
+pin_verify_extracted = 'python3 scripts/write_cli_toolchain_pins.py verify --workspace "$PWD" --package "$cli_extract_dir"'
+cli_pin_order = [
+  pin_write,
+  'dart compile exe packages/shorebird_cli/bin/shorebird.dart',
+  'cat > artifacts/cli/manifest.json',
+  pin_verify,
+  'tar -C artifacts/cli -czf open-shorebird-cli-',
+  'tar -C "$cli_extract_dir" -xzf open-shorebird-cli-',
+  pin_verify_extracted,
+  'HOME="$PWD/artifacts/cli-extracted-home" "$cli_extract_dir/bin/open_aot_patch_tools',
+].map { |command| cli_package.index(command) }
+assert!(
+  cli_pin_order.all? && cli_pin_order.each_cons(2).all? { |before, after| before < after } &&
+    [pin_write, pin_verify, pin_verify_extracted].all? { |command| cli_package.lines.count { |line| line.strip == command } == 1 },
+  'CLI packaging must derive the checked-out Flutter/engine pair before compilation and verify pins plus manifest before archiving and after extraction'
+)
+assert!(
+  !cli_package.include?('cp shorebird/bin/internal/flutter.version') &&
+    !cli_package.include?('cp flutter/bin/internal/engine.version'),
+  'CLI toolchain pins must come only from the checked-out Flutter gitlink pair helper, never independent stale file copies'
+)
+source_runs = job_runs(jobs.fetch('source-checks')).join("\n")
+assert!(
+  source_runs.include?('python3 -m py_compile scripts/write_cli_toolchain_pins.py scripts/test_cli_toolchain_pins.py') &&
+    source_runs.include?('python3 scripts/test_cli_toolchain_pins.py -v'),
+  'Source checks must exercise actual CLI toolchain pin generation and archive verification in an isolated gitlink fixture'
+)
+%w[android_native_app.py android_native_cache_e2e.py owned_host_processes.py android_native/compile_check.py].each do |path|
+  assert!(source_runs.include?("python3 -m py_compile testapps/license_flavor_patch_test/tool/#{path}"), "Source checks must syntax-check the Android host fixture #{path}")
+end
+%w[test_android_native_cache_e2e.py test_android_native_app.py test_owned_host_processes.py].each do |suite|
+  assert!(source_runs.include?("python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p #{suite} -v"), "Source checks must run the pure Android host fixture suite #{suite}")
+end
 archive_gate = cli_steps.fetch(archive_test_index)
 assert!(
   archive_gate['run'] == './scripts/run_native_archive_tests.sh' &&

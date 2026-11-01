@@ -1,0 +1,12 @@
+package __JAVA_PACKAGE__;
+
+import android.os.Bundle;
+import io.flutter.embedding.android.FlutterActivity;
+
+/** Unexported. ControlActivity registers the provider before this is created. */
+public final class MainActivity extends FlutterActivity {
+  @Override protected void onCreate(Bundle state) {
+    if (!ControlActivity.mayStartFlutter()) throw new IllegalStateException("fixture not configured");
+    super.onCreate(state);
+  }
+}

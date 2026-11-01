@@ -80,6 +80,24 @@ mapping provenance, CLI archive/integrity guards and the Linux GTK lifecycle
 still require their newer CI results. Optional Android/Linux app runtime smokes
 did not execute in this completed run.
 
+Preparing an Android test from these packaged artifacts exposed a CLI metadata
+defect: its default Flutter revision selected an older engine than the archive's
+engine pin. Packaging now derives a coherent pair from the root Flutter gitlink
+and verifies the pair and manifest before archiving and after extraction. A
+separate fresh-cache CI failure exposed an unadvertised tracing dependency pin;
+the corrected published fork pin passes fresh dependency resolution and 56
+trace tests. Corrected hosted builds are pending. See the
+[toolchain packaging record](validation/public-toolchain-packaging-20261101.json).
+
+The new Android native lifecycle fixture uses an isolated non-debuggable app,
+early Java/JNI provider registration and AndroidKeyStore-wrapped per-patch keys.
+It implements real CLI/server delivery, cold offline recovery, missing/wrong-key
+fallback, signed rollback and unchanged baseline APK checks. Java compilation,
+arm64 NDK compilation and host protocol/ownership checks pass. Actual APK,
+Keystore and Android linker execution remain unrun; the prepared emulator image
+and verified artifact mirror do not establish runtime acceptance. See the
+[Android fixture record](validation/android-native-lifecycle-fixture-20261101.json).
+
 In the shipping additive profile, existing signatures, inheritance and field definitions cannot change, and
 removed declarations are rejected. Added fields on existing const, deeply
 immutable or native-wrapper classes are unsupported. Constructor-only nonnullable

@@ -1,0 +1,39 @@
+{
+  "status": "source-reviewed, Java/JNI cross-compiled and host checks passed; Android runtime pending",
+  "driver": "testapps/license_flavor_patch_test/tool/android_native_cache_e2e.py",
+  "protocol": "testapps/license_flavor_patch_test/tool/android_native/PROTOCOL.md",
+  "implemented_acceptance": [
+    "Actual packaged CLI free APK release and pro AAB patch against isolated Go server",
+    "Pre-engine public callback registration through Java/JNI",
+    "AndroidKeyStore wrapping with no plaintext key file; actual callback HMAC probe on fresh native thread",
+    "Cold-process offline recovery, missing/wrong-key fallback and recovery, signed rollback",
+    "Rendered text plus actual boot patch, nonce, PID and independent process token",
+    "Read-only ciphertext/cache inventory and unchanged installed baseline APK",
+    "Owned process groups, unique package and adb reverse cleanup, including uncertain command reconciliation"
+  ],
+  "local_validation": {
+    "android_protocol_tests": 38,
+    "app_manifest_and_static_mirror_tests": 3,
+    "real_mac_process_ownership_tests": 17,
+    "provider_host_java_checks": 50,
+    "java_compile": "Java17 source against actual cached Flutter release embedding and android-36; not a stub",
+    "native_compile": "NDK28.2 arm64 Android24 shared library with Wall Wextra Werror",
+    "combined_desktop_android_regression": "94 tests, 93 passed and one Linux-only runtime check skipped on macOS",
+    "independent_reviews": "no remaining actionable findings after Activity lifetime and reverse ownership fixes"
+  },
+  "limits": [
+    "No Android APK, JNI execution, AndroidKeyStore persistence or updater-to-Android-linker lifecycle has run yet.",
+    "Java compilation used an existing cached embedding; selected packaged-engine integration is still required.",
+    "Keystore hardware backing is not claimed on the emulator; raw patch keys exist transiently in memory for the C ABI.",
+    "Cache inspection observes final files, not transient writes.",
+    "Control activity and provider are explicitly disposable test fixtures, not production enrollment or key management."
+  ],
+  "environment_preparation": {
+    "api34_arm64_google_apis_image": "installed successfully",
+    "owned_emulator_launched": false,
+    "existing_avd_modified": false,
+    "preexisting_adb_daemon_stopped": false,
+    "completed_ci_mirror": "downloaded; tar digest/size, safe extraction and complete mirror validation passed"
+  },
+  "frozen_ios_outputs": "untouched"
+}

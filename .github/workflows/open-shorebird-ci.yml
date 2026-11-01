@@ -158,6 +158,8 @@ jobs:
           python3 -m py_compile scripts/validate_release_manifest.py
           python3 -m py_compile scripts/safe_extract_tar.py
           python3 -m py_compile scripts/write_artifact_manifest.py
+          python3 -m py_compile scripts/write_cli_toolchain_pins.py scripts/test_cli_toolchain_pins.py
+          python3 scripts/test_cli_toolchain_pins.py -v
           python3 -m py_compile scripts/verify_dart_sdk_tooling.py
           python3 -m py_compile scripts/verify_native_cache_engine_tests.py
           python3 scripts/verify_native_cache_engine_tests.py --self-test
@@ -174,6 +176,13 @@ jobs:
           python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p test_ios_device_e2e.py -v
           python3 -m py_compile testapps/license_flavor_patch_test/tool/windows_native_cache_e2e.py
           python3 -m py_compile testapps/license_flavor_patch_test/tool/linux_native_cache_e2e.py
+          python3 -m py_compile testapps/license_flavor_patch_test/tool/android_native_app.py
+          python3 -m py_compile testapps/license_flavor_patch_test/tool/android_native_cache_e2e.py
+          python3 -m py_compile testapps/license_flavor_patch_test/tool/owned_host_processes.py
+          python3 -m py_compile testapps/license_flavor_patch_test/tool/android_native/compile_check.py
+          python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p test_android_native_cache_e2e.py -v
+          python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p test_android_native_app.py -v
+          python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p test_owned_host_processes.py -v
           python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p test_linux_native_cache_e2e.py -v
           python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p test_windows_native_cache_e2e.py -v
           python3 -m py_compile scripts/package_android_maven.py
@@ -304,8 +313,7 @@ jobs:
           set -euo pipefail
           rm -rf artifacts/cli
           mkdir -p artifacts/cli/bin/internal
-          cp shorebird/bin/internal/flutter.version artifacts/cli/bin/internal/flutter.version
-          cp flutter/bin/internal/engine.version artifacts/cli/bin/internal/engine.version
+          python3 scripts/write_cli_toolchain_pins.py write --workspace "$PWD" --package artifacts/cli
           cd shorebird
           dart pub get
           dart compile exe packages/shorebird_cli/bin/shorebird.dart \
@@ -345,6 +353,7 @@ jobs:
             exit 1
           fi
           HOME="$PWD/artifacts/cli-home" artifacts/cli/bin/artifact_proxy${{ matrix.extension }} --health-check
+          python3 scripts/write_cli_toolchain_pins.py verify --workspace "$PWD" --package artifacts/cli
           tar -C artifacts/cli -czf open-shorebird-cli-${{ matrix.artifact_os }}-${{ matrix.artifact_arch }}.tar.gz .
           cli_extract_dir="$(mktemp -d)"
           mkdir -p artifacts/cli-extracted-home
@@ -352,6 +361,7 @@ jobs:
           test -f "$cli_extract_dir/manifest.json"
           test -f "$cli_extract_dir/bin/internal/flutter.version"
           test -f "$cli_extract_dir/bin/internal/engine.version"
+          python3 scripts/write_cli_toolchain_pins.py verify --workspace "$PWD" --package "$cli_extract_dir"
           HOME="$PWD/artifacts/cli-extracted-home" "$cli_extract_dir/bin/open_aot_patch_tools${{ matrix.extension }}" --help >/dev/null
           extracted_version_output="$(HOME="$PWD/artifacts/cli-extracted-home" "$cli_extract_dir/bin/shorebird${{ matrix.extension }}" --version)"
           printf '%s\n' "$extracted_version_output"

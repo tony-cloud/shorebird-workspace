@@ -1,0 +1,45 @@
+{
+  "date": "2026-11-01",
+  "status": "source fixes and local checks passed; corrected hosted packaging pending",
+  "packaging_defect": {
+    "observed_ci_run": 41237899850,
+    "observed_cli_flutter_revision": "ba8173de24116305c2dd2ef3b7bfe18b1ec537a3",
+    "engine_in_that_flutter_revision": "e323fa1d40008806a2fae7dea34df2ed54e35364",
+    "observed_packaged_engine_revision": "0b65b0bea03ad4421928f0c0b7b8bebf97632a6b",
+    "cause": "Workflow copied a stale CLI Flutter pin but took engine metadata from the newer root Flutter checkout; version/health checks did not prove toolchain coherence",
+    "fix": "Derive both pins from the root Flutter gitlink and matching checked-out source; verify files and manifest before packaging and after archive extraction",
+    "tests": {
+      "fixture_tests_passed": 6,
+      "negative_workflow_probes_passed": 3,
+      "independent_review": "no remaining findings"
+    }
+  },
+  "dependency_defect": {
+    "failed_ci_run": 41255093722,
+    "failed_cli_jobs": [
+      124697995393,
+      124697995298
+    ],
+    "url": "https://github.com/tony-cloud/shorebird.git",
+    "old_ref": "cff436f66534e14618cddcaf93f0d0e9862c937a",
+    "new_ref": "3b53aa62701b06750e025c2afd5b29c79ed6356a",
+    "cause": "Old upstream commit was absent from an ordinary fresh fork clone/Pub mirror but present in existing local caches; an explicit GitHub SHA fetch still worked",
+    "fix": "Pin the publicly reachable fork commit and correct Flutter dependency checksum metadata; package copyright and license files retained",
+    "tests": {
+      "original_empty_cache_resolution": "failed",
+      "corrected_empty_cache_enforce_lockfile": "passed, 103 packages with all supplied lock pins retained",
+      "trace_package_and_flutter_tests_passed": 56,
+      "dependency_checksum": "67klf3"
+    }
+  },
+  "current_source_pins": {
+    "flutter": "a9777121a4913a9d8b7e471d600b56bf6678fcf6",
+    "shorebird": "6ec939ac41ee734df001bc2eb147e591d11e8d72",
+    "engine": "2d1d690c748864ec5adb34a96e4a62913a16c1de"
+  },
+  "limits": [
+    "These source fixes require a new hosted CI run; earlier green builds do not prove corrected packaging.",
+    "Android harness rejects mismatched staged Flutter HEAD, engine pins and source-record metadata before any device operations.",
+    "Frozen iOS and host engine outputs were not rebuilt or modified."
+  ]
+}
