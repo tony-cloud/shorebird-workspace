@@ -1,0 +1,64 @@
+{
+  "scope": "Native ARM64 linked engine controls; no signed v2 application acceptance",
+  "pins": {
+    "dart_sdk": "b17e766a7f25f22f31dcaeb313c55d40945a8c8a",
+    "flutter_source": "ff7c9b3453d434bbcefd6ce274719031f2fc6819",
+    "updater": "e482b8093890d46031d6496fc5426db56d133660",
+    "server": "3479ee0445a4db67eb223d8abbbaaf65202a909b",
+    "identity_material": "open-shorebird-toolchain-v1\nb17e766a7f25f22f31dcaeb313c55d40945a8c8a\nff7c9b3453d434bbcefd6ce274719031f2fc6819\ne482b8093890d46031d6496fc5426db56d133660\n",
+    "engine_identity": "b7ac85a5c495ea0f30c4a86be9527134797f4f19",
+    "flutter": "c7e1331d890a8d1d5f9758e57086a83a87bf5c63",
+    "shorebird": "707849987725e3fb0c84f68d473a53654b56cb25"
+  },
+  "root_checkpoint": "58f7cdf128e7557c040a0890c461adc4c2029012",
+  "host_arch": "arm64",
+  "engine_build": {
+    "exit_code": 0,
+    "ninja_actions": 10151,
+    "gn_args_sha256": "9fde23825673e802b3aa23a1c7aed0dc6d95774f96a7e9d23fb4814802b96ad4",
+    "log_sha256": "b10577170ed783b831af29b18ccb7d44a699dc1261285d05178828251728d527"
+  },
+  "tests": {
+    "shorebird": 127,
+    "embedder": 5,
+    "cocoa": 5,
+    "runtime": 2,
+    "failures": 0,
+    "skips": 0,
+    "run_after_build_completed": true,
+    "rust_updater_linked": true,
+    "runtime_controls": [
+      "UncommittedInterpreterGroupSuppressesApplicationShutdownCallback",
+      "CommittedInterpreterGroupRetainsApplicationShutdownCallback"
+    ]
+  },
+  "reports_sha256": {
+    "runtime.xml": "0a3598b0c90fb8911eb245eb6fdeb8ebba42edf8f7cdbae22af1f9da71c3cb08",
+    "embedder.xml": "1f8484237641142b5f8d58fd2aecdc91cbf30c4775b7305920894da8a76dfaf3",
+    "runtime-list.txt": "51dd0f5ccfdb8393a6e9bae8ea52eea2a6311689c80ab374e1d328dc951cae5a",
+    "runtime-list-stderr.log": "964e00d0569738adfa07759ec6416ab51a5ca0ff81a1b850017a13be6dc53fec",
+    "cocoa.xml": "227e3b3c8f4cdf60c4a1bc3a05e7b18b9a396ed26df8afdcea38b5278a13eadf",
+    "embedder-list-stderr.log": "964e00d0569738adfa07759ec6416ab51a5ca0ff81a1b850017a13be6dc53fec",
+    "embedder-tests.log": "59a35d9fc2e8d4fd2883b197af31c39e0f7908dc37deddfa61ae78b515ec158e",
+    "shorebird-tests.log": "f420a7ee8034dd576a44c08eac4b9006fcb44792ca964ccd5634d7769038a417",
+    "cocoa-tests.log": "659f685b51eb2342c89c05c9f1acbb6e9f26e4682d44bd8d8362bcd257bf4869",
+    "shorebird-list.txt": "67c043a19dd0a4bbd3385a5bd7f4edd755dabd55c9b0c851e68cb9606702d7fc",
+    "runtime-tests.log": "ba562543da716b848dc50f04a22f3692e3f7034d6e7659668854d8ed17732300",
+    "shorebird.xml": "48671beb60928d3c75f808bd8c34924331294310e647104cd2c50b9bba578aed",
+    "embedder-list.txt": "bca2c1121370772b3f606fbbf29041dcf8ef55539648576f095a44b1c446b0e0",
+    "shorebird-list-stderr.log": "964e00d0569738adfa07759ec6416ab51a5ca0ff81a1b850017a13be6dc53fec",
+    "exits.json": "e1d921a31e907f8267b27001606a28bfc1baea330d9a6921d2ab75d165c7ed93",
+    "cocoa-list-stderr.log": "964e00d0569738adfa07759ec6416ab51a5ca0ff81a1b850017a13be6dc53fec",
+    "cocoa-list.txt": "f30ae6b84f16504356b7ad2cf2c25fb15e0cd7d604d426ff11cf5731cb29e4ef"
+  },
+  "artifacts_sha256": {
+    "shorebird_unittests": "8939408ced2d1820716176f5255fb0ae85782759e711da636896be66c05f1aeb",
+    "embedder_unittests": "0dde925a56d3c8f76a786e04f9cc95e6f887bb54b5f34300398ed95570462c81",
+    "flutter_desktop_darwin_unittests": "2c03235ad719d7241cc2bd393f0150bf4840f905f7ae98203464823fd2e6b78a",
+    "runtime_unittests": "9e2d88e6e84fc5faeebb851c0c6fb52a0f776b76075789dbd8a74a7bd739b568",
+    "FlutterMacOS.framework/FlutterMacOS": "b34c279954e2f42677945363e6324ee30b62d301686e4d5f81048b8a7a2172ca",
+    "dart-sdk/bin/dart": "2d9835361991c44983bbefbdab6bad2f55e3e4adb99b4c5f8976768b6eaadc42",
+    "universal/gen_snapshot_arm64": "296928552cea49547827d7600d3590d5a07e6f2d57a1df416e65ad6c7ec6360a"
+  },
+  "application_runtime": "pending"
+}
