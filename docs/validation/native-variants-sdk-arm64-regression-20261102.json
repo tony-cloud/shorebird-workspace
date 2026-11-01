@@ -1,0 +1,148 @@
+{
+  "source_commit": "dbef3f1e9ade0e74b190c3a91e45aaffce056b19",
+  "host_target": "native macOS ARM64",
+  "intel_runtime_proof": false,
+  "envelope_target": "historical ios/arm64 fixture metadata",
+  "build": "/Users/tonylu/git/shorebird-workspace/.agents/builds/sdk-native-x64-regression-20261102",
+  "artifact_sha256_before": {
+    "/Users/tonylu/git/shorebird-workspace/.agents/builds/sdk-native-x64-regression-20261102/dart": "e0ec2c0e594acd38dc7779cdef01eef1ff1963733ff92e0f37e21498503b6bb1",
+    "/Users/tonylu/git/shorebird-workspace/.agents/builds/sdk-native-x64-regression-20261102/dartvm": "2ca20302546d7919284a892697b65a21664f0e56b716dba87b87f9a259d9a015",
+    "/Users/tonylu/git/shorebird-workspace/.agents/builds/sdk-native-x64-regression-20261102/gen_snapshot_product": "75a0a116379953c77f51b999cd5c369efb79b040ed8a1abb69c4746a74ee1146",
+    "/Users/tonylu/git/shorebird-workspace/.agents/builds/sdk-native-x64-regression-20261102/vm_platform.dill": "3aa667a8306240ea47d15c372b8a9ac6347adb6a7c7363f64a5a27f856581571",
+    "/Users/tonylu/git/shorebird-workspace/.agents/builds/sdk-native-x64-regression-20261102/vm_platform_product.dill": "f9a04ec5fba41b66c0d2fa1c128c8e66c269eb392bd9c8e6ad7ecaba31b28478",
+    "/Users/tonylu/git/shorebird-workspace/.agents/builds/sdk-native-x64-regression-20261102/product_ffi_test": "3392281501b5748489be41a98c8f0fb235248a821e19a9827a787cb8a9bb7fb0",
+    "/Users/tonylu/git/shorebird-workspace/.agents/builds/sdk-native-x64-regression-20261102/product_ffi_callback_test": "9724795a0934e120cae5f7224aef9fbb218e1c7dece61818315a6c722729ca54",
+    "/Users/tonylu/git/shorebird-workspace/.agents/builds/sdk-native-x64-regression-20261102/product_full_ffi_test": "a627dd3193f530803910f60c7b7aad0793466e0324ed5b1f1e597eca51d4cfd6"
+  },
+  "suites": [
+    {
+      "name": "callouts",
+      "argv": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/Users/tonylu/git/shorebird-workspace/dart-sdk/tools/test_aot_product_ffi.py",
+        "--build-dir",
+        "/Users/tonylu/git/shorebird-workspace/.agents/builds/sdk-native-x64-regression-20261102",
+        "--work-dir",
+        "/private/tmp/shorebird-arm64-regression-20261101T170552Z/callouts",
+        "--macos-signing-identity",
+        "CB505CEFDE0F13359AFC01406E1B27438065D257"
+      ],
+      "returncode": 0,
+      "elapsed_seconds": 82.49,
+      "log": "/Users/tonylu/git/shorebird-workspace/.agents/sdk-native-x64-regression-20261102/callouts.log"
+    },
+    {
+      "name": "callbacks",
+      "argv": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/Users/tonylu/git/shorebird-workspace/dart-sdk/tools/test_aot_product_ffi_callbacks.py",
+        "--build-dir",
+        "/Users/tonylu/git/shorebird-workspace/.agents/builds/sdk-native-x64-regression-20261102",
+        "--work-dir",
+        "/private/tmp/shorebird-arm64-regression-20261101T170552Z/callbacks",
+        "--macos-signing-identity",
+        "CB505CEFDE0F13359AFC01406E1B27438065D257"
+      ],
+      "returncode": 0,
+      "elapsed_seconds": 112.93,
+      "log": "/Users/tonylu/git/shorebird-workspace/.agents/sdk-native-x64-regression-20261102/callbacks.log"
+    },
+    {
+      "name": "full",
+      "argv": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/Users/tonylu/git/shorebird-workspace/dart-sdk/tools/test_aot_full_replacement_ffi.py",
+        "--build-dir",
+        "/Users/tonylu/git/shorebird-workspace/.agents/builds/sdk-native-x64-regression-20261102",
+        "--work-dir",
+        "/private/tmp/shorebird-arm64-regression-20261101T170552Z/full",
+        "--macos-signing-identity",
+        "CB505CEFDE0F13359AFC01406E1B27438065D257",
+        "--envelope-producer",
+        "/Users/tonylu/git/shorebird-workspace/.agents/sdk-native-x64-regression-20261102/encrypt_fixture.dart",
+        "--envelope-packages",
+        "/Users/tonylu/git/shorebird-workspace/shorebird/.dart_tool/package_config.json",
+        "--envelope-dart",
+        "/Users/tonylu/git/shorebird-workspace/dart-sdk/tools/sdks/dart-sdk/bin/dart"
+      ],
+      "returncode": 0,
+      "elapsed_seconds": 71.35,
+      "log": "/Users/tonylu/git/shorebird-workspace/.agents/sdk-native-x64-regression-20261102/full.log"
+    }
+  ],
+  "status": "arm64_runtime_passed",
+  "compiler_smoke": {
+    "name": "compiler-smoke",
+    "argv": [
+      "/Users/tonylu/git/shorebird-workspace/.agents/builds/sdk-native-x64-regression-20261102/dart",
+      "/Users/tonylu/git/shorebird-workspace/.agents/sdk-native-x64-regression-20261102/compiler-smoke.dart"
+    ],
+    "returncode": 0,
+    "elapsed_seconds": 1.73,
+    "log": "/Users/tonylu/git/shorebird-workspace/.agents/sdk-native-x64-regression-20261102/compiler-smoke.log"
+  },
+  "artifact_sha256_after": {
+    "/Users/tonylu/git/shorebird-workspace/.agents/builds/sdk-native-x64-regression-20261102/dart": "e0ec2c0e594acd38dc7779cdef01eef1ff1963733ff92e0f37e21498503b6bb1",
+    "/Users/tonylu/git/shorebird-workspace/.agents/builds/sdk-native-x64-regression-20261102/dartvm": "2ca20302546d7919284a892697b65a21664f0e56b716dba87b87f9a259d9a015",
+    "/Users/tonylu/git/shorebird-workspace/.agents/builds/sdk-native-x64-regression-20261102/gen_snapshot_product": "75a0a116379953c77f51b999cd5c369efb79b040ed8a1abb69c4746a74ee1146",
+    "/Users/tonylu/git/shorebird-workspace/.agents/builds/sdk-native-x64-regression-20261102/vm_platform.dill": "3aa667a8306240ea47d15c372b8a9ac6347adb6a7c7363f64a5a27f856581571",
+    "/Users/tonylu/git/shorebird-workspace/.agents/builds/sdk-native-x64-regression-20261102/vm_platform_product.dill": "f9a04ec5fba41b66c0d2fa1c128c8e66c269eb392bd9c8e6ad7ecaba31b28478",
+    "/Users/tonylu/git/shorebird-workspace/.agents/builds/sdk-native-x64-regression-20261102/product_ffi_test": "3392281501b5748489be41a98c8f0fb235248a821e19a9827a787cb8a9bb7fb0",
+    "/Users/tonylu/git/shorebird-workspace/.agents/builds/sdk-native-x64-regression-20261102/product_ffi_callback_test": "9724795a0934e120cae5f7224aef9fbb218e1c7dece61818315a6c722729ca54",
+    "/Users/tonylu/git/shorebird-workspace/.agents/builds/sdk-native-x64-regression-20261102/product_full_ffi_test": "a627dd3193f530803910f60c7b7aad0793466e0324ed5b1f1e597eca51d4cfd6"
+  },
+  "artifacts_unchanged": true,
+  "frozen_originals_unchanged": true,
+  "source_unchanged": true,
+  "producer_inputs_unchanged": true,
+  "signed_runtime_image_count": 18,
+  "signed_runtime_images": {
+    "callouts": 7,
+    "callbacks": 7,
+    "full": 4
+  },
+  "strict_signing": {
+    "identity": "CB505CEFDE0F13359AFC01406E1B27438065D257",
+    "team": "43FN6K7B4C",
+    "hardened_runtime": true,
+    "entitlements": {}
+  },
+  "full_admission_rejection_case_count": 30,
+  "full_additional_encrypted_positive_cases": [
+    "cleared-ffi-flag"
+  ],
+  "cleanup": "All task-owned build/test processes completed; build and fixtures retained as evidence",
+  "build_command": [
+    "ninja",
+    "-C",
+    "/Users/tonylu/git/shorebird-workspace/.agents/builds/sdk-native-x64-regression-20261102",
+    "-j2",
+    "dart",
+    "dartvm",
+    "gen_snapshot_product",
+    "vm_platform",
+    "vm_platform_product",
+    "product_ffi_test",
+    "product_ffi_callback_test",
+    "product_full_ffi_test"
+  ],
+  "build_args_sha256": "36af3fc89242dda47bb0e3c7e63ba0eab75fa6906766e2a506dc9cb5fdd1eca1",
+  "sdk_packages_sha256": "972664d307a204f9f1035466f130a0a86e92bfe631e6fba31d8708bdd20467f1",
+  "evidence": "/Users/tonylu/git/shorebird-workspace/.agents/sdk-native-x64-regression-20261102",
+  "runtime_work_root": "/private/tmp/shorebird-arm64-regression-20261101T170552Z",
+  "limitations": [
+    "Native ARM64 host regression only; no native Intel execution",
+    "Historical ARM64 full fixture envelope uses ios/arm64 metadata; no physical iOS evidence",
+    "No transient executable-permission audit, server verification or actual Flutter embedding acceptance"
+  ],
+  "scope": "Actual native macOS ARM64 signed PRODUCT SDK callout/callback/full-interpreter regressions; not native Intel or Flutter/iOS application acceptance.",
+  "evidence_sha256": {
+    "regression-results.json": "de674c8d6b0e6c7bbface5bd7b2759ba4bb8ce25cf0cdf755f94b3be841fd63f",
+    "signed-runtime-images.json": "a04d4a0c4069c4972645cb240adfeb26e16f082dcd9fe16ed9c9af5124cb7197",
+    "original-artifacts.json": "08ddbba7630feb0b686573ce0a8403c7947d09fd3e5ee55f5e8799325b33b3bd",
+    "build.log": "ff5e651f56a8871bd0867c095b07a7d462462df97fe489d03f4c195a5aa8ac61",
+    "callouts.log": "6c31862f96cefd3257756868f94f74345d4eb52cacb151700149034f022ac910",
+    "callbacks.log": "b93990d197e6c3474ca222b13f1fce6ad89664daec64e9b39cf188d9cf78b454",
+    "full.log": "3a60f89e5014d8e810d2a3e201ef1b64453768941e3ce8ce5a0b1d2c6fc19ed5"
+  }
+}

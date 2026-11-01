@@ -78,6 +78,65 @@ IOS_ENGINE_DIR="$IOS_ENGINE_DIR" \
   IOS_PATCH_ARTIFACT="$valid_artifact" \
   "$ROOT/scripts/verify_ios_interpreter_route.sh" >/dev/null
 
+host_baseline="$TMP_DIR/host-baseline.gn"
+cp "$HOST_ENGINE_DIR/args.gn" "$host_baseline"
+
+# iOS consumes the host compiler/SDK, not the host Flutter engine runtime.
+# Native host runtime metadata, or its absence, must not force another engine
+# rebuild when the actual compiler capability flags already match.
+printf '\nshorebird_use_interpreter = false\n' >> "$HOST_ENGINE_DIR/args.gn"
+IOS_ENGINE_DIR="$IOS_ENGINE_DIR" \
+  HOST_ENGINE_DIR="$HOST_ENGINE_DIR" \
+  IOS_PATCH_ARTIFACT="$valid_artifact" \
+  "$ROOT/scripts/verify_ios_interpreter_route.sh" >/dev/null
+awk '$1 != "shorebird_use_interpreter"' "$host_baseline" > "$HOST_ENGINE_DIR/args.gn"
+IOS_ENGINE_DIR="$IOS_ENGINE_DIR" \
+  HOST_ENGINE_DIR="$HOST_ENGINE_DIR" \
+  IOS_PATCH_ARTIFACT="$valid_artifact" \
+  "$ROOT/scripts/verify_ios_interpreter_route.sh" >/dev/null
+
+# Missing or disabled compiler support still fails. Check both missing values
+# and an unsafe final override to retain args.gn's last-assignment semantics.
+for key in dart_enable_aot_patching dart_enable_shorebird_interpreter dart_dynamic_modules flutter_prebuilt_dart_sdk target_os; do
+  for mode in missing unsafe; do
+    if [[ "$mode" == "unsafe" ]]; then
+      cp "$host_baseline" "$HOST_ENGINE_DIR/args.gn"
+      case "$key" in
+        dart_enable_aot_patching|dart_enable_shorebird_interpreter)
+          printf '\n%s = false\n' "$key" >> "$HOST_ENGINE_DIR/args.gn"
+          ;;
+        dart_dynamic_modules|flutter_prebuilt_dart_sdk)
+          printf '\n%s = true\n' "$key" >> "$HOST_ENGINE_DIR/args.gn"
+          ;;
+        target_os)
+          printf '\ntarget_os = "linux"\n' >> "$HOST_ENGINE_DIR/args.gn"
+          ;;
+      esac
+    else
+      awk -v key="$key" '$1 != key' "$host_baseline" > "$HOST_ENGINE_DIR/args.gn"
+    fi
+    if IOS_ENGINE_DIR="$IOS_ENGINE_DIR" \
+        HOST_ENGINE_DIR="$HOST_ENGINE_DIR" \
+        IOS_PATCH_ARTIFACT="$valid_artifact" \
+        "$ROOT/scripts/verify_ios_interpreter_route.sh" >/dev/null 2>&1; then
+      echo "iOS route validator unexpectedly accepted host $key ($mode)" >&2
+      exit 70
+    fi
+  done
+done
+cp "$host_baseline" "$HOST_ENGINE_DIR/args.gn"
+
+# The target iOS engine continues to require its interpreter-only route.
+printf '\nshorebird_use_interpreter = false\n' >> "$IOS_ENGINE_DIR/args.gn"
+if IOS_ENGINE_DIR="$IOS_ENGINE_DIR" \
+    HOST_ENGINE_DIR="$HOST_ENGINE_DIR" \
+    IOS_PATCH_ARTIFACT="$valid_artifact" \
+    "$ROOT/scripts/verify_ios_interpreter_route.sh" >/dev/null 2>&1; then
+  echo "iOS route validator unexpectedly accepted a native iOS runtime route" >&2
+  exit 70
+fi
+printf '\nshorebird_use_interpreter = true\n' >> "$IOS_ENGINE_DIR/args.gn"
+
 bad_runtime="$TMP_DIR/bad-runtime.vmcode"
 write_artifact "$bad_runtime" "dart-dynamic-modules"
 if IOS_ENGINE_DIR="$IOS_ENGINE_DIR" \

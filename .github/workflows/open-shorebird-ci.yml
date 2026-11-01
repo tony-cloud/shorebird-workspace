@@ -151,6 +151,42 @@ jobs:
           SKIP_GCLIENT_SYNC: "1"
         run: ./scripts/bootstrap_linux.sh
 
+      - name: Set up Java for variant authorization controls
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Set up Android API for variant authorization controls
+        uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: "12266719"
+          packages: "platforms;android-35"
+
+      - name: Verify variant fixture source contracts
+        run: |
+          set -euo pipefail
+          export ANDROID_VARIANT_ANDROID_JAR="${ANDROID_HOME:?}/platforms/android-35/android.jar"
+          export ANDROID_VARIANT_JSON_JAR="${RUNNER_TEMP:?}/native-variant-host-java/json-20180813.jar"
+          test -s "$ANDROID_VARIANT_ANDROID_JAR"
+          test -x "${JAVA_HOME:?}/bin/javac"
+          test -x "$JAVA_HOME/bin/java"
+          mkdir -p "$(dirname "$ANDROID_VARIANT_JSON_JAR")"
+          curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 --retry 3 \
+            --output "$ANDROID_VARIANT_JSON_JAR" \
+            https://repo.maven.apache.org/maven2/org/json/json/20180813/json-20180813.jar
+          printf '%s  %s\n' 518080049ba83181914419d11a25d9bc9833a2d729b6a6e7469fa52851356da8 "$ANDROID_VARIANT_JSON_JAR" | sha256sum --check --strict
+          python3 -m py_compile testapps/license_flavor_patch_test/tool/macos_variant_e2e.py testapps/license_flavor_patch_test/tool/macos_variant_lifecycle.py
+          python3 -m py_compile testapps/license_flavor_patch_test/tool/ios_variant_e2e.py
+          python3 -m py_compile testapps/license_flavor_patch_test/tool/android_variant_app.py testapps/license_flavor_patch_test/tool/android_variant_e2e.py
+          python3 -m py_compile testapps/license_flavor_patch_test/tool/native_variant_e2e.py testapps/license_flavor_patch_test/tool/native_variant_desktop.py testapps/license_flavor_patch_test/tool/linux_variant_e2e.py testapps/license_flavor_patch_test/tool/windows_variant_e2e.py
+          python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p test_macos_variant_e2e.py -v
+          python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p test_macos_variant_lifecycle.py -v
+          python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p test_ios_variant_e2e.py -v
+          python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p test_android_variant_app.py -v
+          python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p test_android_variant_e2e.py -v
+          python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p native_variant_test.py -v
+
       - name: Verify CI scripts
         run: |
           bash -n scripts/*.sh shorebird/third_party/flutter/bin/internal/shared.sh flutter/bin/internal/update_dart_sdk.sh
@@ -1784,6 +1820,59 @@ jobs:
           path: artifacts/linux-native-cache-e2e/results.json
           if-no-files-found: error
 
+      - name: Run Linux native V2 variant lifecycle
+        timeout-minutes: 90
+        run: |
+          set -euo pipefail
+          engine="$GITHUB_WORKSPACE/flutter/engine/src"
+          out="$engine/out/linux_release_x64"
+          work="$RUNNER_TEMP/shorebird-linux-variant-e2e-$(python3 -c 'import uuid; print(uuid.uuid4())')"
+          results="$GITHUB_WORKSPACE/artifacts/linux-native-variant-e2e"
+          probe="$GITHUB_WORKSPACE/artifacts/linux-native-provider-tests/native_cache_contract_test"
+          export GDK_BACKEND=x11 LIBGL_ALWAYS_SOFTWARE=1
+          dbus-run-session -- xvfb-run -a python3 testapps/license_flavor_patch_test/tool/linux_variant_e2e.py run --execute --arch x64 --engine-src "$engine" --host-engine linux_release_x64 --target-engine linux_release_x64 --tooling-dart "$out/dart-sdk/bin/dart" --patch-tool "$GITHUB_WORKSPACE/updater/target/release/patch" --pub-cache "$PUB_CACHE" --provider-probe "$probe" --work "$work" --results "$results" 2>&1 | tee "$results.log"
+          python3 - "$results/results.json" linux x64 <<'PYVARIANT'
+          import json, sys
+          report_path, platform, arch = sys.argv[1:]
+          report = json.load(open(report_path))
+          runtime_arch = {'x64': 'x86_64', 'arm64': 'aarch64'}[arch]
+          if (report.get('schema') != 'native-variant-e2e-v2' or
+              report.get('result') != 'passed' or report.get('runtime_acceptance') is not True or
+              report.get('platform') != platform or report.get('target_arch') != arch or
+              report.get('runtime_arch') != runtime_arch or
+              report.get('cleanup') != 'owned platform processes, services, private work, app cache and provider keys removed'):
+              raise SystemExit('Native V2 lifecycle requires real cleaned execution on the selected platform and architecture')
+          machines = report.get('binary_architectures', {})
+          if not machines or any(value.get('architecture') != arch or value.get('native_target') is not True for value in machines.values()):
+              raise SystemExit('Native V2 binary architecture receipts are incomplete')
+          required = {
+              'actual-cli-staged-native-scope', 'actual-cli-release-free',
+              'actual-cli-patch-pro_seed', 'actual-cli-patch-pro', 'actual-cli-patch-enterprise',
+              'initial-free-public-installation', 'same-content-higher-epoch', 'same-content-cold-adoption',
+              'offline-missing-key-free', 'offline-missing-key-recovery-pro',
+              'offline-wrong-key-free', 'offline-wrong-key-recovery-pro',
+              'released-bundle-unchanged', 'native-v2-final-cache',
+          }
+          previous = 'free'
+          for index, variant in enumerate(('pro', 'enterprise', 'pro', 'free', 'enterprise', 'free')):
+              required.update((f'online-{index}-{previous}-accept-{variant}', f'offline-cold-{index}-{variant}'))
+              previous = variant
+          if not required.issubset({stage['name'] for stage in report.get('stages', [])}):
+              raise SystemExit('Native V2 lifecycle publication, grants, fallback, data and cold-boot evidence is incomplete')
+          if report.get('provisioning', {}).get('accepted', 0) < 1 or not report.get('final_application_data'):
+              raise SystemExit('Native V2 lifecycle authenticated delivery or application data proof is missing')
+          PYVARIANT
+
+      - name: Upload Linux native V2 variant lifecycle evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-native-variant-e2e
+          path: |
+            artifacts/linux-native-variant-e2e/
+            artifacts/linux-native-variant-e2e.log
+          if-no-files-found: error
+
       - name: Package Linux engine artifacts
         run: |
           set -euo pipefail
@@ -3258,6 +3347,61 @@ jobs:
           path: artifacts/windows-native-cache-e2e/results.json
           if-no-files-found: error
 
+      - name: Run Windows native V2 variant lifecycle
+        shell: pwsh
+        timeout-minutes: 90
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $engine = Join-Path $env:GITHUB_WORKSPACE 'flutter/engine/src'
+          $out = Join-Path $engine 'out/windows_release_x64'
+          $work = Join-Path $env:RUNNER_TEMP ("shorebird-variant-e2e-" + [guid]::NewGuid())
+          $results = Join-Path $env:GITHUB_WORKSPACE 'artifacts/windows-native-variant-e2e'
+          python3 testapps/license_flavor_patch_test/tool/windows_variant_e2e.py run --execute --arch x64 --engine-src $engine --host-engine windows_release_x64 --target-engine windows_release_x64 --tooling-dart "$out/dart-sdk/bin/dart.exe" --patch-tool "$env:GITHUB_WORKSPACE/updater/target/release/patch.exe" --pub-cache $env:PUB_CACHE --work $work --results $results 2>&1 | Tee-Object "$results.log"
+          if ($LASTEXITCODE) { throw 'Windows native V2 variant lifecycle failed' }
+          $validate = @'
+          import json, sys
+          report_path, platform, arch = sys.argv[1:]
+          report = json.load(open(report_path))
+          runtime_arch = {'x64': 'x86_64', 'arm64': 'aarch64'}[arch]
+          if (report.get('schema') != 'native-variant-e2e-v2' or
+              report.get('result') != 'passed' or report.get('runtime_acceptance') is not True or
+              report.get('platform') != platform or report.get('target_arch') != arch or
+              report.get('runtime_arch') != runtime_arch or
+              report.get('cleanup') != 'owned platform processes, services, private work, app cache and provider keys removed'):
+              raise SystemExit('Native V2 lifecycle requires real cleaned execution on the selected platform and architecture')
+          machines = report.get('binary_architectures', {})
+          if not machines or any(value.get('architecture') != arch or value.get('native_target') is not True for value in machines.values()):
+              raise SystemExit('Native V2 binary architecture receipts are incomplete')
+          required = {
+              'actual-cli-staged-native-scope', 'actual-cli-release-free',
+              'actual-cli-patch-pro_seed', 'actual-cli-patch-pro', 'actual-cli-patch-enterprise',
+              'initial-free-public-installation', 'same-content-higher-epoch', 'same-content-cold-adoption',
+              'offline-missing-key-free', 'offline-missing-key-recovery-pro',
+              'offline-wrong-key-free', 'offline-wrong-key-recovery-pro',
+              'released-bundle-unchanged', 'native-v2-final-cache',
+          }
+          previous = 'free'
+          for index, variant in enumerate(('pro', 'enterprise', 'pro', 'free', 'enterprise', 'free')):
+              required.update((f'online-{index}-{previous}-accept-{variant}', f'offline-cold-{index}-{variant}'))
+              previous = variant
+          if not required.issubset({stage['name'] for stage in report.get('stages', [])}):
+              raise SystemExit('Native V2 lifecycle publication, grants, fallback, data and cold-boot evidence is incomplete')
+          if report.get('provisioning', {}).get('accepted', 0) < 1 or not report.get('final_application_data'):
+              raise SystemExit('Native V2 lifecycle authenticated delivery or application data proof is missing')
+          '@
+          python3 -c $validate "$results/results.json" windows x64
+          if ($LASTEXITCODE) { throw 'Windows native V2 variant execution receipt failed' }
+
+      - name: Upload Windows native V2 variant lifecycle evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-native-variant-e2e
+          path: |
+            artifacts/windows-native-variant-e2e/
+            artifacts/windows-native-variant-e2e.log
+          if-no-files-found: error
+
       - name: Package Windows engine artifacts
         run: |
           set -euo pipefail
@@ -4368,6 +4512,59 @@ jobs:
           path: artifacts/linux-native-cache-e2e/results.json
           if-no-files-found: error
 
+      - name: Run Linux native V2 variant lifecycle
+        timeout-minutes: 90
+        run: |
+          set -euo pipefail
+          engine="$GITHUB_WORKSPACE/flutter/engine/src"
+          out="$engine/out/linux_release_arm64"
+          work="$RUNNER_TEMP/shorebird-linux-variant-e2e-$(python3 -c 'import uuid; print(uuid.uuid4())')"
+          results="$GITHUB_WORKSPACE/artifacts/linux-native-variant-e2e"
+          probe="$GITHUB_WORKSPACE/artifacts/linux-native-provider-tests/native_cache_contract_test"
+          export GDK_BACKEND=x11 LIBGL_ALWAYS_SOFTWARE=1
+          dbus-run-session -- xvfb-run -a "$NATIVE_PYTHON" testapps/license_flavor_patch_test/tool/linux_variant_e2e.py run --execute --arch arm64 --engine-src "$engine" --host-engine linux_release_arm64 --target-engine linux_release_arm64 --tooling-dart "$out/dart-sdk/bin/dart" --patch-tool "$GITHUB_WORKSPACE/updater/target/release/patch" --pub-cache "$PUB_CACHE" --provider-probe "$probe" --work "$work" --results "$results" 2>&1 | tee "$results.log"
+          "$NATIVE_PYTHON" - "$results/results.json" linux arm64 <<'PYVARIANT'
+          import json, sys
+          report_path, platform, arch = sys.argv[1:]
+          report = json.load(open(report_path))
+          runtime_arch = {'x64': 'x86_64', 'arm64': 'aarch64'}[arch]
+          if (report.get('schema') != 'native-variant-e2e-v2' or
+              report.get('result') != 'passed' or report.get('runtime_acceptance') is not True or
+              report.get('platform') != platform or report.get('target_arch') != arch or
+              report.get('runtime_arch') != runtime_arch or
+              report.get('cleanup') != 'owned platform processes, services, private work, app cache and provider keys removed'):
+              raise SystemExit('Native V2 lifecycle requires real cleaned execution on the selected platform and architecture')
+          machines = report.get('binary_architectures', {})
+          if not machines or any(value.get('architecture') != arch or value.get('native_target') is not True for value in machines.values()):
+              raise SystemExit('Native V2 binary architecture receipts are incomplete')
+          required = {
+              'actual-cli-staged-native-scope', 'actual-cli-release-free',
+              'actual-cli-patch-pro_seed', 'actual-cli-patch-pro', 'actual-cli-patch-enterprise',
+              'initial-free-public-installation', 'same-content-higher-epoch', 'same-content-cold-adoption',
+              'offline-missing-key-free', 'offline-missing-key-recovery-pro',
+              'offline-wrong-key-free', 'offline-wrong-key-recovery-pro',
+              'released-bundle-unchanged', 'native-v2-final-cache',
+          }
+          previous = 'free'
+          for index, variant in enumerate(('pro', 'enterprise', 'pro', 'free', 'enterprise', 'free')):
+              required.update((f'online-{index}-{previous}-accept-{variant}', f'offline-cold-{index}-{variant}'))
+              previous = variant
+          if not required.issubset({stage['name'] for stage in report.get('stages', [])}):
+              raise SystemExit('Native V2 lifecycle publication, grants, fallback, data and cold-boot evidence is incomplete')
+          if report.get('provisioning', {}).get('accepted', 0) < 1 or not report.get('final_application_data'):
+              raise SystemExit('Native V2 lifecycle authenticated delivery or application data proof is missing')
+          PYVARIANT
+
+      - name: Upload Linux native V2 variant lifecycle evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-native-variant-e2e-arm64
+          path: |
+            artifacts/linux-native-variant-e2e/
+            artifacts/linux-native-variant-e2e.log
+          if-no-files-found: error
+
       - name: Package Linux engine artifacts
         run: |
           set -euo pipefail
@@ -4828,6 +5025,61 @@ jobs:
         with:
           name: windows-native-cache-e2e-arm64
           path: artifacts/windows-native-cache-e2e/results.json
+          if-no-files-found: error
+
+      - name: Run Windows native V2 variant lifecycle
+        shell: pwsh
+        timeout-minutes: 90
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $engine = Join-Path $env:GITHUB_WORKSPACE 'flutter/engine/src'
+          $out = Join-Path $engine 'out/windows_release_arm64'
+          $work = Join-Path $env:RUNNER_TEMP ("shorebird-variant-e2e-" + [guid]::NewGuid())
+          $results = Join-Path $env:GITHUB_WORKSPACE 'artifacts/windows-native-variant-e2e'
+          & $env:NATIVE_PYTHON testapps/license_flavor_patch_test/tool/windows_variant_e2e.py run --execute --arch arm64 --engine-src $engine --host-engine windows_release_arm64 --target-engine windows_release_arm64 --tooling-dart "$out/dart-sdk/bin/dart.exe" --patch-tool "$env:GITHUB_WORKSPACE/updater/target/release/patch.exe" --pub-cache $env:PUB_CACHE --work $work --results $results 2>&1 | Tee-Object "$results.log"
+          if ($LASTEXITCODE) { throw 'Windows native V2 variant lifecycle failed' }
+          $validate = @'
+          import json, sys
+          report_path, platform, arch = sys.argv[1:]
+          report = json.load(open(report_path))
+          runtime_arch = {'x64': 'x86_64', 'arm64': 'aarch64'}[arch]
+          if (report.get('schema') != 'native-variant-e2e-v2' or
+              report.get('result') != 'passed' or report.get('runtime_acceptance') is not True or
+              report.get('platform') != platform or report.get('target_arch') != arch or
+              report.get('runtime_arch') != runtime_arch or
+              report.get('cleanup') != 'owned platform processes, services, private work, app cache and provider keys removed'):
+              raise SystemExit('Native V2 lifecycle requires real cleaned execution on the selected platform and architecture')
+          machines = report.get('binary_architectures', {})
+          if not machines or any(value.get('architecture') != arch or value.get('native_target') is not True for value in machines.values()):
+              raise SystemExit('Native V2 binary architecture receipts are incomplete')
+          required = {
+              'actual-cli-staged-native-scope', 'actual-cli-release-free',
+              'actual-cli-patch-pro_seed', 'actual-cli-patch-pro', 'actual-cli-patch-enterprise',
+              'initial-free-public-installation', 'same-content-higher-epoch', 'same-content-cold-adoption',
+              'offline-missing-key-free', 'offline-missing-key-recovery-pro',
+              'offline-wrong-key-free', 'offline-wrong-key-recovery-pro',
+              'released-bundle-unchanged', 'native-v2-final-cache',
+          }
+          previous = 'free'
+          for index, variant in enumerate(('pro', 'enterprise', 'pro', 'free', 'enterprise', 'free')):
+              required.update((f'online-{index}-{previous}-accept-{variant}', f'offline-cold-{index}-{variant}'))
+              previous = variant
+          if not required.issubset({stage['name'] for stage in report.get('stages', [])}):
+              raise SystemExit('Native V2 lifecycle publication, grants, fallback, data and cold-boot evidence is incomplete')
+          if report.get('provisioning', {}).get('accepted', 0) < 1 or not report.get('final_application_data'):
+              raise SystemExit('Native V2 lifecycle authenticated delivery or application data proof is missing')
+          '@
+          & $env:NATIVE_PYTHON -c $validate "$results/results.json" windows arm64
+          if ($LASTEXITCODE) { throw 'Windows native V2 variant execution receipt failed' }
+
+      - name: Upload Windows native V2 variant lifecycle evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-native-variant-e2e-arm64
+          path: |
+            artifacts/windows-native-variant-e2e/
+            artifacts/windows-native-variant-e2e.log
           if-no-files-found: error
 
       - name: Package Windows engine artifacts

@@ -1,0 +1,81 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:shorebird_code_push/shorebird_code_push.dart';
+
+const fixtureSession = '__SESSION__';
+const fixtureVariant = '__VARIANT__';
+const fixtureSchema = __DATA_SCHEMA__;
+final variantKey = GlobalKey();
+__VARIANT_CODE__
+
+Map<String, Object?> identity(VariantSelection value) => {
+  'epoch': '${value.epoch}', 'digest': value.digest, 'variant_id': value.variantId,
+  'license_type': value.licenseType, 'patch_number': value.patchNumber?.toString(),
+};
+Map<String, Object?> status(VariantSelectionStatus value) => {
+  'version': 2, 'current': identity(value.current), 'accepted': identity(value.accepted),
+  'next_boot': {'variant_id': value.nextBoot.variantId, 'license_type': value.nextBoot.licenseType,
+    'patch_number': value.nextBoot.patchNumber?.toString(), 'reason': value.nextBoot.reason},
+  'restart_required': value.restartRequired,
+};
+Map<String, Object?> persistData() {
+  final directory = Directory(Platform.environment['SHOREBIRD_VARIANT_APP_DATA_DIR']!);
+  directory.createSync(recursive: true);
+  final file = File('${directory.path}/user-data.json');
+  final data = file.existsSync() ? Map<String, Object?>.from(jsonDecode(file.readAsStringSync()) as Map)
+    : <String, Object?>{'session': fixtureSession, 'sentinel': '__SENTINEL__', 'schema': 1, 'launches': 0, 'history': <Object?>[]};
+  if (data['session'] != fixtureSession || data['sentinel'] != '__SENTINEL__') throw StateError('App data identity changed');
+  if ((data['schema'] as int) < fixtureSchema) data['schema'] = fixtureSchema;
+  data['launches'] = (data['launches'] as int) + 1;
+  data['history'] = [...data['history'] as List, fixtureVariant];
+  if (fixtureSchema >= 2) data.putIfAbsent('pro_note', () => 'pro-preserved');
+  if (fixtureSchema >= 3) data.putIfAbsent('enterprise_note', () => 'enterprise-preserved');
+  final temporary = File('${file.path}.tmp')..writeAsStringSync(jsonEncode(data), flush: true);
+  temporary.renameSync(file.path);
+  if (jsonEncode(jsonDecode(file.readAsStringSync())) != jsonEncode(data)) throw StateError('App data readback failed');
+  return data;
+}
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(MaterialApp(home: Scaffold(body: Text('variant:$fixtureVariant ${variantSpecificCode()}', key: variantKey))));
+  WidgetsBinding.instance.addPostFrameCallback((_) { unawaited(report()); });
+}
+Future<void> report() async {
+  final paragraph = variantKey.currentContext?.findRenderObject();
+  final text = 'variant:$fixtureVariant ${variantSpecificCode()}';
+  if (paragraph is! RenderParagraph || !paragraph.attached || !paragraph.hasSize || paragraph.size.isEmpty || paragraph.text.toPlainText() != text) {
+    throw StateError('Real variant paragraph unavailable');
+  }
+  final updater = ShorebirdUpdater();
+  final installation = await updater.readInstallationId();
+  if (!updater.isAvailable || installation == null || installation.isEmpty) throw StateError('Public installation API unavailable');
+  final data = persistData();
+  var stage = 'boot';
+  if (Platform.environment['SHOREBIRD_VARIANT_CHECK'] == '1') {
+    if (await updater.checkForUpdate() == UpdateStatus.outdated) await updater.update();
+    stage = 'checked';
+  }
+  final selection = await updater.readSelectionStatus();
+  if (selection == null) throw StateError('Public selection API unavailable');
+  final receipt = jsonEncode({'schema': 'native-variant-e2e-v2', 'nonce': Platform.environment['SHOREBIRD_E2E_RECEIPT'],
+    'pid': pid, 'post_frame': true, 'rendered': [text], 'variant': fixtureVariant,
+    'new_code_result': variantSpecificCode(), 'installation_id': installation, 'stage': stage,
+    'data': data, 'selection': status(selection)});
+  for (var attempt = 0; attempt < 50; attempt++) {
+    final client = HttpClient()..findProxy = (_) => 'DIRECT';
+    try {
+      final request = await client.postUrl(Uri.parse(Platform.environment['SHOREBIRD_E2E_OBSERVER']!));
+      request.headers.contentType = ContentType.json;
+      request.contentLength = utf8.encode(receipt).length;
+      request.add(utf8.encode(receipt));
+      final response = await request.close();
+      await response.drain<void>();
+      if (response.statusCode == 200) return;
+    } catch (_) {} finally { client.close(force: true); }
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+  }
+  throw StateError('Owned observer unavailable');
+}

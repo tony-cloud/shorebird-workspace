@@ -1,0 +1,34 @@
+{
+  "scope": "NDK cross-compile/link only, not APK/JNI loader/Keystore/runtime acceptance",
+  "source_sha256": "586de4ea91b795253552e9113c1c9b91407e3068edf85e0d66eb9d0327e50f18",
+  "header_sha256": "88a2c9a9729dfe6f76d888bb2d16e2a22d6bfba6d8ba99cbbaf19a7e0888449f",
+  "results": [
+    {
+      "arch": "arm",
+      "target_api": 21,
+      "exit_code": 0,
+      "file": "/Users/tonylu/git/shorebird-workspace/.agents/android-variant-jni-20261102/libfixture-arm.so: ELF 32-bit LSB shared object, ARM, EABI5 version 1 (SYSV), dynamically linked, with debug_info, not stripped",
+      "sha256": "d2d6ff5fcfed48b7f91b15a8af4aef110014899b0d54e550caeea43ee4aa15d9",
+      "jni_onload_exported": true,
+      "actual_device_execution": false
+    },
+    {
+      "arch": "aarch64",
+      "target_api": 21,
+      "exit_code": 0,
+      "file": "/Users/tonylu/git/shorebird-workspace/.agents/android-variant-jni-20261102/libfixture-aarch64.so: ELF 64-bit LSB shared object, ARM aarch64, version 1 (SYSV), dynamically linked, with debug_info, not stripped",
+      "sha256": "6278d688bcb2a93b5f46e89aafe0946944b1f0fefe36f69646d747b3e63ae8ad",
+      "jni_onload_exported": true,
+      "actual_device_execution": false
+    },
+    {
+      "arch": "x86_64",
+      "target_api": 21,
+      "exit_code": 0,
+      "file": "/Users/tonylu/git/shorebird-workspace/.agents/android-variant-jni-20261102/libfixture-x86_64.so: ELF 64-bit LSB shared object, x86-64, version 1 (SYSV), dynamically linked, with debug_info, not stripped",
+      "sha256": "b2090828838cba9a2f64b619382c68caf02796385c561158835c561feb5adcde",
+      "jni_onload_exported": true,
+      "actual_device_execution": false
+    }
+  ]
+}

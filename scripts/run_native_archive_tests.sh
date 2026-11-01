@@ -36,8 +36,10 @@ macos_interpreter_cases=(
   'test/src/commands/release/release_command_test.dart|macOS requires full profile, explicit ARM64 and managed trust'
   'test/src/commands/release/release_command_test.dart|macOS encrypted release rejects weakened signing installOnly=false'
   'test/src/commands/release/release_command_test.dart|macOS encrypted release rejects weakened signing installOnly=true'
-  'test/src/artifact_builder/artifact_builder_test.dart|macos full profile generates portable registrant inputs: false'
-  'test/src/artifact_builder/artifact_builder_test.dart|macos full profile generates portable registrant inputs: true'
+  'test/src/artifact_builder/artifact_builder_test.dart|macos/arm64 full profile generates portable registrant inputs: false'
+  'test/src/artifact_builder/artifact_builder_test.dart|macos/arm64 full profile generates portable registrant inputs: true'
+  'test/src/artifact_builder/artifact_builder_test.dart|macos/x64 full profile generates portable registrant inputs: false'
+  'test/src/artifact_builder/artifact_builder_test.dart|macos/x64 full profile generates portable registrant inputs: true'
 )
 if [[ "$(uname -s)" == Darwin ]]; then
   tests+=(

@@ -1,0 +1,139 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'dart:ffi';
+import 'package:ffi/ffi.dart';
+import 'package:shorebird_code_push/src/updater.dart' show Updater;
+import 'package:shorebird_code_push/shorebird_code_push.dart';
+import 'ffi_status.dart' show completedFfiStatus;
+
+const fixtureSession = '__SESSION__';
+const fixtureVariant = '__VARIANT__';
+const fixtureSchema = __DATA_SCHEMA__;
+
+// App-owned additive data. Every version preserves unknown keys so a free
+// downgrade and a lower-number paid variant retain later schema fields.
+Map<String, Object?> updateFixtureData() {
+  final directory = Directory('${Platform.environment['HOME']}/Library/Application Support/shorebird-ios-variant-fixture');
+  directory.createSync(recursive: true);
+  final file = File('${directory.path}/user-data.json');
+  final data = file.existsSync()
+      ? Map<String, Object?>.from(jsonDecode(file.readAsStringSync()) as Map)
+      : <String, Object?>{'session': fixtureSession, 'sentinel': '__SENTINEL__', 'schema': 1, 'launches': 0, 'history': <Object?>[]};
+  if (data['session'] != fixtureSession || data['sentinel'] != '__SENTINEL__') {
+    throw StateError('Application data identity changed');
+  }
+  final previousSchema = data['schema'] as int;
+  data['schema'] = previousSchema > fixtureSchema ? previousSchema : fixtureSchema;
+  data['launches'] = (data['launches'] as int) + 1;
+  final history = List<Object?>.from(data['history'] as List)..add(fixtureVariant);
+  data['history'] = history;
+  if (fixtureSchema >= 2) data.putIfAbsent('pro_note', () => 'pro-preserved');
+  if (fixtureSchema >= 3) data.putIfAbsent('enterprise_note', () => 'enterprise-preserved');
+  final temporary = File('${file.path}.tmp');
+  temporary.writeAsStringSync(jsonEncode(data), flush: true);
+  temporary.renameSync(file.path);
+  final reread = Map<String, Object?>.from(jsonDecode(file.readAsStringSync()) as Map);
+  if (jsonEncode(data) != jsonEncode(reread)) throw StateError('Persisted data readback failed');
+  return reread;
+}
+
+Map<String, Object?> selectionIdentity(VariantSelection value) => {
+  'epoch': '${value.epoch}', 'digest': value.digest,
+  'variant_id': value.variantId, 'license_type': value.licenseType,
+  'patch_number': value.patchNumber?.toString(),
+};
+Map<String, Object?> selectionStatus(VariantSelectionStatus value) => {
+  'version': 2, 'current': selectionIdentity(value.current),
+  'accepted': selectionIdentity(value.accepted),
+  'next_boot': {'variant_id': value.nextBoot.variantId, 'license_type': value.nextBoot.licenseType,
+    'patch_number': value.nextBoot.patchNumber?.toString(), 'reason': value.nextBoot.reason},
+  'restart_required': value.restartRequired,
+};
+
+Future<void> writeVariantStatus() async {
+  final updater = ShorebirdUpdater();
+  final nativeStatus = Platform.environment['OPEN_SHOREBIRD_TEST_STATUS_ROUTE'] == 'native-ffi';
+  // Diagnostic direct ABI reads are explicitly reported. Normal acceptance
+  // also exercises the public asynchronous updater API.
+  final installation = nativeStatus ? const Updater().installationId() : await updater.readInstallationId();
+  final initial = nativeStatus ? const Updater().selectionStatus() : await updater.readSelectionStatus();
+  if (!updater.isAvailable || installation == null || installation.isEmpty || initial == null) {
+    throw StateError('Protocol 2 public installation/status API unavailable');
+  }
+  final data = updateFixtureData();
+  final directory = Directory('${Platform.environment['HOME']}/Library/Application Support/shorebird-ios-variant-fixture');
+  final started = DateTime.now().millisecondsSinceEpoch / 1000;
+  Future<void> report(String stage, {String? updateStatus, String? error}) async {
+    final status = nativeStatus ? const Updater().selectionStatus() : await updater.readSelectionStatus();
+    if (status == null) throw StateError('Protocol 2 status became unavailable');
+    final nonce = Platform.environment['OPEN_SHOREBIRD_TEST_NONCE'];
+    if (nonce == null || !RegExp(r'^[a-f0-9]{48}$').hasMatch(nonce)) throw StateError('Owned launch nonce absent');
+    final completedFfi = completedFfiStatus;
+    if (completedFfi == null) throw StateError('Current-process FFI checks did not finish');
+    final keyFile = File('${directory.path}/key-control.json');
+    final keyControl = keyFile.existsSync() ? jsonDecode(keyFile.readAsStringSync()) as Map : null;
+    final providerFile = File('${directory.path}/provider.json');
+    final provider = providerFile.existsSync() ? jsonDecode(providerFile.readAsStringSync()) as Map : null;
+    final route = Platform.environment['OPEN_SHOREBIRD_TEST_REPORT_ROUTE'] ?? 'native';
+    final contents = jsonEncode({
+      'schema': 'ios-variant-e2e-v2', 'session': fixtureSession, 'nonce': nonce,
+      'post_frame': true, 'status_route': nativeStatus ? 'native-ffi' : 'public', 'report_route': route,
+      'ffi': jsonDecode(completedFfi),
+      'key_control': keyControl?['nonce'] == nonce ? keyControl : null,
+      'provider': provider?['nonce'] == nonce ? provider : null,
+      'variant': fixtureVariant, 'new_code_result': variantSpecificCode(),
+      'installation_id': installation, 'pid': pid, 'started': started,
+      'stage': stage, 'update_status': updateStatus, 'error': error,
+      'data': data, 'selection': selectionStatus(status),
+    });
+    File('${directory.path}/variant-status.json').writeAsStringSync(contents, flush: true);
+    // Observe only after FFI, UI, status and data readback finish. Transport is
+    // asynchronous and cannot hold up the native update/status lock or UI.
+    if (route == 'native') {
+      final pointer = contents.toNativeUtf8();
+      try { _submitNativeReport(pointer); } finally { malloc.free(pointer); }
+    } else if (route == 'dart') {
+      unawaited(_submitDartReport(contents));
+    } else if (route != 'file') {
+      throw StateError('Unknown evidence route');
+    }
+  }
+  await report('boot');
+  // A private per-launch child environment enables online acceptance. Offline
+  // runs do not silently make a network check or mutate the running selection.
+  if (Platform.environment['OPEN_SHOREBIRD_TEST_CHECK'] == '1') {
+    try {
+      var result = await updater.checkForUpdate();
+      if (result == UpdateStatus.outdated) {
+        await updater.update();
+        result = await updater.checkForUpdate();
+      }
+      await report('checked', updateStatus: result.name);
+    } on Object catch (error) {
+      await report('check_failed', error: error.runtimeType.toString());
+      rethrow;
+    }
+  }
+}
+
+final void Function(Pointer<Utf8>) _submitNativeReport = DynamicLibrary.process()
+    .lookupFunction<Void Function(Pointer<Utf8>), void Function(Pointer<Utf8>)>('IosVariantSubmitReport');
+
+Future<void> _submitDartReport(String contents) async {
+  final client = HttpClient()..connectionTimeout = const Duration(seconds: 5);
+  try {
+    final body = utf8.encode(contents);
+    final request = await client.postUrl(Uri.parse(Platform.environment['OPEN_SHOREBIRD_TEST_OBSERVER']!))
+        .timeout(const Duration(seconds: 5));
+    request.headers.contentType = ContentType.json;
+    request.contentLength = body.length;
+    request.add(body);
+    final response = await request.close().timeout(const Duration(seconds: 5));
+    await response.drain<void>().timeout(const Duration(seconds: 5));
+  } on Object {
+    // No observer receipt means no runtime acceptance. Keep local evidence/UI.
+  } finally { client.close(force: true); }
+}
+
+__VARIANT_CODE__

@@ -82,7 +82,9 @@ verify_host_engine_args() {
   require_gn_value "$args_file" dart_dynamic_modules false
   require_gn_value "$args_file" dart_enable_aot_patching true
   require_gn_value "$args_file" dart_enable_shorebird_interpreter true
-  require_gn_value "$args_file" shorebird_use_interpreter true
+  # Only the host SDK/compiler artifacts are consumed for iOS builds. The
+  # host Flutter engine's runtime route does not select their capabilities;
+  # require the actual Dart compiler flags above and a source-built SDK.
   require_gn_value "$args_file" flutter_prebuilt_dart_sdk false
 }
 

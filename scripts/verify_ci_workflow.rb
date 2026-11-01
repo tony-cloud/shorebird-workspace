@@ -262,6 +262,34 @@ required_files = %w[
   testapps/license_flavor_patch_test/tool/android_native/compile_check.py
   testapps/license_flavor_patch_test/tool/test_android_native_app.py
   testapps/license_flavor_patch_test/tool/test_android_native_cache_e2e.py
+  testapps/license_flavor_patch_test/tool/android_variant_app.py
+  testapps/license_flavor_patch_test/tool/android_variant_e2e.py
+  testapps/license_flavor_patch_test/tool/test_android_variant_app.py
+  testapps/license_flavor_patch_test/tool/test_android_variant_e2e.py
+  testapps/license_flavor_patch_test/tool/android_variant/PatchKeyProvider.java.template
+  testapps/license_flavor_patch_test/tool/android_variant/ControlActivity.java.template
+  testapps/license_flavor_patch_test/tool/android_variant/MainActivity.java.template
+  testapps/license_flavor_patch_test/tool/android_variant/fixture_jni.cpp
+  testapps/license_flavor_patch_test/tool/android_variant/CMakeLists.txt
+  testapps/license_flavor_patch_test/tool/android_variant/VariantContractCheck.java
+  testapps/license_flavor_patch_test/tool/ios_variant_e2e.py
+  testapps/license_flavor_patch_test/tool/test_ios_variant_e2e.py
+  testapps/license_flavor_patch_test/tool/ios_variant/AppDelegate.swift.template
+  testapps/license_flavor_patch_test/tool/ios_variant/variant_status.dart.template
+  testapps/license_flavor_patch_test/tool/macos_variant_e2e.py
+  testapps/license_flavor_patch_test/tool/macos_variant_lifecycle.py
+  testapps/license_flavor_patch_test/tool/test_macos_variant_e2e.py
+  testapps/license_flavor_patch_test/tool/test_macos_variant_lifecycle.py
+  testapps/license_flavor_patch_test/tool/macos_variant/variant_status.dart.template
+  testapps/license_flavor_patch_test/tool/native_variant_e2e.py
+  testapps/license_flavor_patch_test/tool/native_variant_desktop.py
+  testapps/license_flavor_patch_test/tool/native_variant_test.py
+  testapps/license_flavor_patch_test/tool/native_variant_status.dart.template
+  testapps/license_flavor_patch_test/tool/native_variant_context.h
+  testapps/license_flavor_patch_test/tool/linux_variant_e2e.py
+  testapps/license_flavor_patch_test/tool/linux_variant_provider.cpp
+  testapps/license_flavor_patch_test/tool/windows_variant_e2e.py
+  testapps/license_flavor_patch_test/tool/windows_variant_provider.cpp
   testapps/license_flavor_patch_test/tool/test_owned_host_processes.py
   testapps/license_flavor_patch_test/tool/linux_native_cache_e2e.py
   testapps/license_flavor_patch_test/tool/test_linux_native_cache_e2e.py
@@ -1835,6 +1863,57 @@ end
 %w[test_android_native_cache_e2e.py test_android_native_app.py test_owned_host_processes.py].each do |suite|
   assert!(source_runs.include?("python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p #{suite} -v"), "Source checks must run the pure Android host fixture suite #{suite}")
 end
+source_steps = jobs.fetch('source-checks').fetch('steps')
+variant_index = source_steps.index { |step| step['name'] == 'Verify variant fixture source contracts' }
+assert!(!variant_index.nil?, 'Source checks must include the variant fixture source gate')
+variant_step = source_steps.fetch(variant_index)
+assert!(!variant_step.key?('if') && !variant_step['continue-on-error'] &&
+        !jobs.fetch('source-checks').key?('if'), 'Variant fixture source checks must be required on every source-checks run')
+java_index = source_steps.index do |step|
+  step['uses'] == 'actions/setup-java@v4' &&
+    step.dig('with', 'distribution') == 'temurin' &&
+    step.dig('with', 'java-version') == '${{ env.JAVA_VERSION }}' &&
+    !step.key?('if') && !step['continue-on-error']
+end
+android_index = source_steps.index do |step|
+  step['uses'] == 'android-actions/setup-android@v3' &&
+    step.dig('with', 'cmdline-tools-version') == '12266719' &&
+    step.dig('with', 'packages') == 'platforms;android-35' &&
+    !step.key?('if') && !step['continue-on-error']
+end
+assert!(workflow.fetch('env').fetch('JAVA_VERSION') == '17' && java_index && android_index &&
+        java_index < android_index && android_index < variant_index,
+        'Variant Java controls must provision Java 17 and Android API 35 before testing')
+variant_run = variant_step.fetch('run')
+%w[macos_variant_e2e.py macos_variant_lifecycle.py ios_variant_e2e.py
+   android_variant_app.py android_variant_e2e.py native_variant_e2e.py
+   native_variant_desktop.py linux_variant_e2e.py windows_variant_e2e.py].each do |path|
+  assert!(variant_run.lines.any? { |line| line.strip.start_with?('python3 -m py_compile ') &&
+          line.split.include?("testapps/license_flavor_patch_test/tool/#{path}") },
+          "Required variant source gate must syntax-check #{path}")
+end
+%w[test_macos_variant_e2e.py test_macos_variant_lifecycle.py test_ios_variant_e2e.py
+   test_android_variant_app.py test_android_variant_e2e.py native_variant_test.py].each do |suite|
+  assert!(variant_run.include?("python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p #{suite} -v"),
+          "Required variant source gate must run #{suite}")
+end
+%w[
+  set\ -euo\ pipefail
+  export\ ANDROID_VARIANT_ANDROID_JAR="${ANDROID_HOME:?}/platforms/android-35/android.jar"
+  export\ ANDROID_VARIANT_JSON_JAR="${RUNNER_TEMP:?}/native-variant-host-java/json-20180813.jar"
+  test\ -s\ "$ANDROID_VARIANT_ANDROID_JAR"
+  test\ -x\ "${JAVA_HOME:?}/bin/javac"
+  test\ -x\ "$JAVA_HOME/bin/java"
+  --output\ "$ANDROID_VARIANT_JSON_JAR"
+  https://repo.maven.apache.org/maven2/org/json/json/20180813/json-20180813.jar
+  518080049ba83181914419d11a25d9bc9833a2d729b6a6e7469fa52851356da8
+  sha256sum\ --check\ --strict
+].each do |control|
+  assert!(variant_run.include?(control), "Variant JVM gate must retain explicit verified host input control #{control}")
+end
+assert!(variant_run.include?(%q{printf '%s  %s\n' 518080049ba83181914419d11a25d9bc9833a2d729b6a6e7469fa52851356da8 "$ANDROID_VARIANT_JSON_JAR" | sha256sum --check --strict}) &&
+        variant_run.index('sha256sum --check --strict') < variant_run.index('-p test_android_variant_app.py -v') &&
+        !variant_run.include?('|| true'), 'The production Java context-before-cache authorization test must run after mandatory checksum verification')
 archive_gate = cli_steps.fetch(archive_test_index)
 assert!(
   archive_gate['run'] == './scripts/run_native_archive_tests.sh' &&
@@ -1862,6 +1941,14 @@ assert!(
     archive_runner.include?('tee "$RESULTS/tests.log"'),
   'CLI archive gate must execute the selected portable/macOS suites and preserve failures'
 )
+%w[arm64 x64].each do |arch|
+  %w[false true].each do |registrant|
+    selector = "test/src/artifact_builder/artifact_builder_test.dart|macos/#{arch} full profile generates portable registrant inputs: #{registrant}"
+    assert!(archive_runner.include?(selector), "CLI archive gate must select each macOS #{arch} registrant=#{registrant} case")
+  end
+end
+assert!(archive_runner.include?('"$DART_BIN" test --reporter expanded --plain-name "$test_name" "$test_file"'),
+        'CLI archive gate must run each exact expected case separately and fail when none match')
 archive_upload = cli_steps.fetch(archive_evidence_index)
 assert!(
   archive_upload['if'] == 'always()' &&
@@ -2098,15 +2185,15 @@ end
 
 native_test_evidence_uploads = {
   'cli-artifacts' => ['native-archive-tests-${{ matrix.artifact_os }}-${{ matrix.artifact_arch }}', 'native-mapping-build-tests-${{ matrix.artifact_os }}-${{ matrix.artifact_arch }}'],
-  'linux-engine' => %w[linux-native-cache-engine-tests linux-native-provider-tests linux-native-cache-e2e],
-  'windows-engine' => %w[windows-native-cache-engine-tests windows-native-provider-tests windows-native-cache-e2e],
+  'linux-engine' => %w[linux-native-cache-engine-tests linux-native-provider-tests linux-native-cache-e2e linux-native-variant-e2e],
+  'windows-engine' => %w[windows-native-cache-engine-tests windows-native-provider-tests windows-native-cache-e2e windows-native-variant-e2e],
   'macos-engine' => ['macos-interpreter-engine-tests-${{ matrix.arch }}'],
   'custom-dart-sdk' => ['linux-elf-memory-loader-tests'],
   'custom-dart-sdk-windows' => ['windows-elf-memory-loader-tests'],
   'custom-dart-sdk-linux-arm64' => ['linux-elf-memory-loader-tests-arm64'],
   'custom-dart-sdk-windows-arm64' => ['windows-elf-memory-loader-tests-arm64'],
-  'linux-engine-arm64' => %w[linux-native-cache-engine-tests-arm64 linux-native-provider-tests-arm64 linux-native-cache-e2e-arm64],
-  'windows-engine-arm64' => %w[windows-native-cache-engine-tests-arm64 windows-native-provider-tests-arm64 windows-native-cache-e2e-arm64],
+  'linux-engine-arm64' => %w[linux-native-cache-engine-tests-arm64 linux-native-provider-tests-arm64 linux-native-cache-e2e-arm64 linux-native-variant-e2e-arm64],
+  'windows-engine-arm64' => %w[windows-native-cache-engine-tests-arm64 windows-native-provider-tests-arm64 windows-native-cache-e2e-arm64 windows-native-variant-e2e-arm64],
 }
 jobs.each do |job_name, job|
   job.fetch('steps', []).each do |step|
@@ -2656,6 +2743,88 @@ assert!(linux_lifecycle_run.include?('required.issubset(observed)') && linux_lif
   assert!(step['if'].to_s.include?('always()') && step['uses'] == 'actions/upload-artifact@v4' && step.dig('with', 'name') == artifact && step.dig('with', 'path') == path && step.dig('with', 'if-no-files-found') == 'error', "#{name} must retain only its designated sanitized evidence")
 end
 assert!(run_text_by_job.fetch('source-checks').include?('python3 -m py_compile testapps/license_flavor_patch_test/tool/linux_native_cache_e2e.py') && run_text_by_job.fetch('source-checks').include?('-p test_linux_native_cache_e2e.py -v'), 'Source checks must exercise Linux lifecycle protocol and process ownership controls')
+
+# V2 execution complements the preserved V1 gate. Every native producer must
+# publish real scopes, run all grant transitions and retain failure receipts.
+variant_receipt_sources = []
+%w[linux windows].product(%w[x64 arm64]).each do |platform, arch|
+  title = platform.capitalize
+  suffix = arch == 'arm64' ? '-arm64' : ''
+  job_name = "#{platform}-engine#{suffix}"
+  steps = jobs.fetch(job_name).fetch('steps')
+  names = ["Run #{title} encrypted native lifecycle", "Run #{title} native V2 variant lifecycle",
+           "Upload #{title} native V2 variant lifecycle evidence", "Package #{title} engine artifacts"]
+  indices = names.map { |name| steps.index { |step| step['name'] == name } }
+  assert!(indices.all? && indices.each_cons(2).all? { |before, after| before < after },
+          "#{job_name} must pass preserved V1 then V2 execution and retain receipts before packaging")
+  gate, upload = steps.values_at(indices[1], indices[2])
+  assert!(gate['if'].nil? && !gate['continue-on-error'] && gate['timeout-minutes'] == 90,
+          "#{job_name} native V2 execution must be required and bounded")
+  run = gate.fetch('run')
+  engine = "#{platform}_release_#{arch}"
+  assert!(run.include?("#{platform}_variant_e2e.py run --execute --arch #{arch}") &&
+          run.include?("--host-engine #{engine} --target-engine #{engine}") &&
+          run.include?('--engine-src') && run.include?('--tooling-dart') && run.include?('--patch-tool') &&
+          run.include?('--pub-cache') && run.include?('--work') && run.include?('--results'),
+          "#{job_name} native V2 driver must execute with matching job-built engine, SDK, patch tool and private inputs")
+  results = "artifacts/#{platform}-native-variant-e2e"
+  assert!(run.include?(results) && !run.include?("artifacts/#{platform}-native-cache-e2e"),
+          "#{job_name} native V2 receipts must not overwrite V1 evidence")
+  if platform == 'linux'
+    python = arch == 'arm64' ? '"$NATIVE_PYTHON"' : 'python3'
+    assert!(run.include?('set -euo pipefail') &&
+            run.include?("dbus-run-session -- xvfb-run -a #{python} testapps/license_flavor_patch_test/tool/linux_variant_e2e.py") &&
+            run.include?('export GDK_BACKEND=x11 LIBGL_ALWAYS_SOFTWARE=1') &&
+            run.include?('shorebird-linux-variant-e2e-$(python3') &&
+            run.include?('--tooling-dart "$out/dart-sdk/bin/dart"') &&
+            run.include?('--patch-tool "$GITHUB_WORKSPACE/updater/target/release/patch"') &&
+            run.include?('--pub-cache "$PUB_CACHE" --provider-probe "$probe" --work "$work" --results "$results"') &&
+            run.include?('2>&1 | tee "$results.log"') && run.include?("#{python} - \"$results/results.json\" linux #{arch} <<'PYVARIANT'"),
+            "#{job_name} V2 must use owned DBus/X11, native Python, existing probe and separate private work with failure propagation")
+    validator = run[/<<'PYVARIANT'\n(.*?)\nPYVARIANT/m, 1]
+  else
+    python = arch == 'arm64' ? '& $env:NATIVE_PYTHON' : 'python3'
+    assert!(gate['shell'] == 'pwsh' && run.include?("$ErrorActionPreference = 'Stop'") &&
+            run.include?("#{python} testapps/license_flavor_patch_test/tool/windows_variant_e2e.py") &&
+            run.include?('("shorebird-variant-e2e-" + [guid]::NewGuid())') &&
+            run.include?('--tooling-dart "$out/dart-sdk/bin/dart.exe"') &&
+            run.include?('--patch-tool "$env:GITHUB_WORKSPACE/updater/target/release/patch.exe"') &&
+            run.include?('--pub-cache $env:PUB_CACHE --work $work --results $results') &&
+            run.include?('2>&1 | Tee-Object "$results.log"') &&
+            run.include?("if ($LASTEXITCODE) { throw 'Windows native V2 variant lifecycle failed' }") &&
+            run.include?("#{python} -c $validate \"$results/results.json\" windows #{arch}") &&
+            run.include?("if ($LASTEXITCODE) { throw 'Windows native V2 variant execution receipt failed' }"),
+            "#{job_name} V2 must execute in native PowerShell with matching tools, separate owned work and strict exit checks")
+    validator = run[/\$validate = @'\n(.*?)\n'@/m, 1]
+  end
+  assert!(validator && validator.include?("report.get('schema') != 'native-variant-e2e-v2'") &&
+          validator.include?("report.get('runtime_acceptance') is not True") &&
+          validator.include?("report.get('result') != 'passed'") &&
+          validator.include?("report.get('platform') != platform") && validator.include?("report.get('target_arch') != arch") &&
+          validator.include?("report.get('runtime_arch') != runtime_arch") &&
+          validator.include?("value.get('architecture') != arch or value.get('native_target') is not True") &&
+          validator.include?('owned platform processes, services, private work, app cache and provider keys removed'),
+          "#{job_name} must reject plan-only, wrong-machine or unclean V2 receipts")
+  %w[actual-cli-staged-native-scope actual-cli-release-free actual-cli-patch-pro_seed actual-cli-patch-pro actual-cli-patch-enterprise
+     initial-free-public-installation same-content-higher-epoch same-content-cold-adoption
+     offline-missing-key-free offline-missing-key-recovery-pro offline-wrong-key-free offline-wrong-key-recovery-pro
+     released-bundle-unchanged native-v2-final-cache].each do |stage|
+    assert!(validator.include?("'#{stage}'"), "#{job_name} must require real V2 stage #{stage}")
+  end
+  assert!(validator.include?("enumerate(('pro', 'enterprise', 'pro', 'free', 'enterprise', 'free'))") &&
+          validator.include?(%q{f'online-{index}-{previous}-accept-{variant}'}) &&
+          validator.include?(%q{f'offline-cold-{index}-{variant}'}) && validator.include?('required.issubset(') &&
+          validator.include?("report.get('provisioning', {}).get('accepted', 0) < 1") &&
+          validator.include?("not report.get('final_application_data')"),
+          "#{job_name} must require every real online/cold grant transition, authenticated provisioning and preserved app data")
+  variant_receipt_sources << validator
+  assert!(upload['if'].to_s.include?('always()') && upload['uses'] == 'actions/upload-artifact@v4' &&
+          upload.dig('with', 'name') == "#{platform}-native-variant-e2e#{suffix}" &&
+          upload.dig('with', 'path').to_s.strip == "#{results}/\n#{results}.log" &&
+          upload.dig('with', 'if-no-files-found') == 'error',
+          "#{job_name} must always retain its full sanitized V2 result directory and failure console log")
+end
+assert!(variant_receipt_sources.uniq.length == 1, 'All four native V2 engine producers must enforce the same complete receipt contract')
 
 # These standalone SDK tests exercise the actual loader, native page protection,
 # resource cleanup, and (on Windows) an isolated no-opt-out ACG refusal process.

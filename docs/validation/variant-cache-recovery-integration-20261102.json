@@ -1,0 +1,62 @@
+{
+  "pins": {
+    "dart_sdk": "dbef3f1e9ade0e74b190c3a91e45aaffce056b19",
+    "flutter_source": "81fc0f1b5d9de5f92f17d22ac7e6869d57400bcc",
+    "updater": "45034c2f47405c76428bb66a57c79bfe1b26c2bd",
+    "server": "3479ee0445a4db67eb223d8abbbaaf65202a909b",
+    "identity_material": "open-shorebird-toolchain-v1\ndbef3f1e9ade0e74b190c3a91e45aaffce056b19\n81fc0f1b5d9de5f92f17d22ac7e6869d57400bcc\n45034c2f47405c76428bb66a57c79bfe1b26c2bd\n",
+    "engine_identity": "51a8b2c5be363a2dab9042e0369da0ee90c5fab1",
+    "flutter": "7808b2699d06383e789023bd653dc572a31dd23c",
+    "shorebird": "260e3b19eef52f8ae7aeb518177c66d295a8670f"
+  },
+  "scope": "Source integration and focused host checks; new exact-pin engine/app runtime acceptance pending",
+  "updater_change": "For v2 Installed interpreter artifacts only, authenticated hash/size/signature cache mismatch becomes a cache miss and cleanup for redownload. Existing Bad quarantine, including ambiguous ValidationFailed, remains unchanged.",
+  "updater_regressions": {
+    "red": "ciphertext, signature, size corruption all reproduced KnownBad before fix",
+    "green_filters": {
+      "selection_v2": 20,
+      "cache_lifecycle": 64,
+      "genuine": 3,
+      "boot_validation": 2
+    },
+    "independent_review": "No actionable findings; no journal/v1/quarantine relaxation"
+  },
+  "fixture_scope": {
+    "macos": "Existing public full lifecycle runner now exposes real automatic recovery gap",
+    "android": "New opt-in v2 producer, strict native provider, exact cold identity and recoverable ownership cleanup",
+    "ios": "New opt-in signed v2 producer, native nonce observer and uncertain-device-operation guards",
+    "linux_windows": "New native v2 producer/provider lifecycle; extended adversarial runtime matrix remains pending"
+  },
+  "ci_fixes": [
+    "Architecture-qualified macOS portable-registrant selectors on every CLI host",
+    "Required six fixture source suites with checksum-pinned production Java authorization gate",
+    "Required real v2 desktop lifecycle on Linux/Windows x64/ARM64 after v1 and before packaging; matching native inputs, 19 launch checks, always-uploaded sanitized receipts"
+  ],
+  "evidence": {
+    "updater": "/Users/tonylu/git/shorebird-workspace/.agents/updater-cache-recovery-20261102",
+    "ci": "/Users/tonylu/git/shorebird-workspace/.agents/native-variant-ci-source.log"
+  },
+  "runtime_acceptance": false,
+  "fixture_checks": {
+    "total": 82,
+    "skips": 0,
+    "suites": {
+      "macos_source": 16,
+      "macos_lifecycle": 11,
+      "ios": 22,
+      "android_generator_and_actual_host_jvm": 3,
+      "android_driver": 15,
+      "shared_native_desktop": 15
+    },
+    "log_sha256": "707eaac5c4e43f1260998995b023ffb590ee165d78c526c3128beabf209329c7",
+    "runtime_acceptance": false
+  },
+  "ios_host_route_validation": "Only actual Dart compiler capabilities and source-built SDK flags are required on the Mac host. Target iOS interpreter/security checks remain unchanged; missing/disabled capabilities and unsafe final overrides are rejected.",
+  "ci_source_checks": {
+    "workflow_bash_blocks": 318,
+    "powershell_parser": "passed",
+    "workflow_negative_controls": 8,
+    "synthetic_receipt_controls": 64,
+    "actual_hosted_runtime": "pending"
+  }
+}

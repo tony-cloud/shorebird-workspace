@@ -1,0 +1,54 @@
+{
+  "schema": "ios-variant-source-validation-v1",
+  "runtime_acceptance": false,
+  "tools": {
+    "sdk": "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS27.0.sdk",
+    "swift": "Apple Swift 6.4 compiler in Swift 5 language mode; arm64-apple-ios15.0 target",
+    "dart_version": "3.14.0-edge.dbef3f1e9ade0e74b190c3a91e45aaffce056b19",
+    "sha256": {
+      "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-native-x64-20261102/out/macos_release_arm64/dart-sdk/bin/dartaotruntime": "2769f649f8ef343977084652cf721a6961c96ba1193b77fa4c56285c0b6ec4cf",
+      "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-native-x64-20261102/out/macos_release_arm64/dart-sdk/bin/snapshots/frontend_server_aot.dart.snapshot": "a6f5610707f76e90ddda035afddb14538fe6e1389b6106b815827a82a6f2c08c",
+      "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-native-x64-20261102/out/macos_release_arm64/flutter_patched_sdk/platform_strong.dill": "0d8d6b0e6b5d29c4ca89964e8a4da0eebc011d22bdac0c1ed0b5394c2e5d6c97"
+    }
+  },
+  "current_api_swift": {
+    "returncode": 0,
+    "scope": "typecheck against current source header over copied frozen framework headers; no binary link/runtime proof",
+    "command_file": "/Users/tonylu/git/shorebird-workspace/.agents/ios-variant-source-20261102/swift-current-api-command.json",
+    "log": "/Users/tonylu/git/shorebird-workspace/.agents/ios-variant-source-20261102/swift-current-api-typecheck.log",
+    "current_project_header_sha256": "c8deda55708d87a81d2d4d5a2721dc6a8ba87dae1b308fa6905d80a8b9efa258"
+  },
+  "frozen_framework": {
+    "returncode": 1,
+    "blocker": "Frozen iOS Flutter.framework FlutterDartProject header has no setShorebirdAotPatchKeyProviderV2 method",
+    "header_sha256": "1b725523c1a8f4cb0f42837969e294521be01f67a538a12fd173c0bd5455a650"
+  },
+  "dart_profiles": [
+    {
+      "phase": "base",
+      "returncode": 0,
+      "kernel_bytes": 55437616,
+      "kernel_sha256": "28d155d322678c4541e9f4708e779770c793b4273716bd1e8d428de292b60039"
+    },
+    {
+      "phase": "pro_seed",
+      "returncode": 0,
+      "kernel_bytes": 55462488,
+      "kernel_sha256": "e2ccecf459b8cefd21b6cbe7166b2dbb7eff1fa4cbedcbe7841d13a703cd5078"
+    },
+    {
+      "phase": "pro",
+      "returncode": 0,
+      "kernel_bytes": 55462576,
+      "kernel_sha256": "7d9244d8f87b850b791b4195156bf5cda57f624b61cca7ca539f16bb5a5db346"
+    },
+    {
+      "phase": "enterprise",
+      "returncode": 0,
+      "kernel_bytes": 55463200,
+      "kernel_sha256": "8a59753660a9999823ca090a4ea9b9eaa34ef66995d5fcbdc4027c4e9dc22267"
+    }
+  ],
+  "evidence": "/Users/tonylu/git/shorebird-workspace/.agents/ios-variant-source-20261102",
+  "limits": "Source compilation only: no application/engine build, binary link, signing, launch, device or updater lifecycle acceptance."
+}

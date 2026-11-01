@@ -1,0 +1,416 @@
+package __JAVA_PACKAGE__;
+
+import android.content.Context;
+import android.security.keystore.KeyGenParameterSpec;
+import android.security.keystore.KeyProperties;
+import android.system.Os;
+import android.system.OsConstants;
+import android.system.StructStat;
+import java.io.*;
+import java.net.*;
+import java.nio.*;
+import java.nio.charset.*;
+import java.security.*;
+import java.util.*;
+import java.util.concurrent.*;
+import javax.crypto.*;
+import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
+import org.json.*;
+
+/** Disposable test fixture. Never calls the updater or writes its state. */
+public final class PatchKeyProvider {
+  static final int MAX_TEXT = 262144;
+  private final Context context;
+  private final String mode, url, token, alias, releaseId;
+  private final JSONArray allowedContexts;
+  private final JSONArray receiptRows = new JSONArray();
+  private final File receiptFile;
+  private final File directory;
+  private final ThreadPoolExecutor resolver = new ThreadPoolExecutor(1, 1, 0,
+      TimeUnit.MILLISECONDS, new ArrayBlockingQueue<Runnable>(4), r -> {
+        Thread t = new Thread(r, "fixture-key-resolver"); t.setDaemon(true); return t;
+      }, new ThreadPoolExecutor.AbortPolicy());
+
+  PatchKeyProvider(Context c, String m, String u, String t, String release, String contexts) throws Exception {
+    context = c.getApplicationContext(); mode = m; url = u; token = t;
+    releaseId = decimal(release, false);
+    Object parsed = new StrictJson(contexts).parse();
+    if (!(parsed instanceof JSONArray) || ((JSONArray)parsed).length() > 32) throw new IOException();
+    allowedContexts = (JSONArray)parsed;
+    receiptFile = new File(context.getFilesDir(), "shorebird-variant-provider.jsonl");
+    if (exists(receiptFile)) { regular(receiptFile); if (!receiptFile.delete()) throw new IOException(); }
+    alias = context.getPackageName() + ".shorebird-variant-wrap-v2";
+    directory = new File(context.getNoBackupFilesDir(), "shorebird-variant-keys");
+  }
+
+  static byte[] utf8(String s) throws Exception {
+    if (s == null || s.indexOf('\0') >= 0) throw new IOException();
+    ByteBuffer b = StandardCharsets.UTF_8.newEncoder().onMalformedInput(CodingErrorAction.REPORT)
+        .onUnmappableCharacter(CodingErrorAction.REPORT).encode(CharBuffer.wrap(s));
+    if (b.remaining() == 0 || b.remaining() > MAX_TEXT) throw new IOException();
+    byte[] result = new byte[b.remaining()]; b.get(result); return result;
+  }
+  static String decode(byte[] b) throws Exception { return decodeBounded(b,MAX_TEXT); }
+  static String decodeBounded(byte[] b,int maximum) throws Exception {
+    if (b == null || b.length == 0 || b.length > maximum) throw new IOException();
+    String s = StandardCharsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT)
+        .onUnmappableCharacter(CodingErrorAction.REPORT).decode(ByteBuffer.wrap(b)).toString();
+    if (s.indexOf('\0') >= 0) throw new IOException();
+    return s;
+  }
+  static boolean lowerHex(String s, int count) {
+    return s != null && s.length() == count && s.matches("[0-9a-f]+");
+  }
+  static String hex(byte[] b) {
+    char[] out = new char[b.length * 2]; final char[] h = "0123456789abcdef".toCharArray();
+    for (int i = 0; i < b.length; i++) { out[2*i] = h[(b[i]&255)>>>4]; out[2*i+1] = h[b[i]&15]; }
+    return new String(out);
+  }
+  static byte[] unhex(String s) throws Exception {
+    if (!lowerHex(s, 64)) throw new IOException();
+    byte[] out = new byte[32];
+    for (int i=0;i<32;i++) out[i] = (byte)Integer.parseInt(s.substring(2*i,2*i+2),16);
+    return out;
+  }
+  static byte[] decodeKeyResponse(byte[] response) throws Exception {
+    if(response.length!=64) throw new IOException();
+    byte[] key=new byte[32];
+    try {
+      for(int i=0;i<64;i++) {
+        int c=response[i]&255, n=c>='0'&&c<='9'?c-'0':c>='a'&&c<='f'?c-'a'+10:-1;
+        if(n<0) throw new IOException(); key[i/2]|=(byte)(n<<((i%2==0)?4:0));
+      }
+      return key;
+    } catch(Exception error) { Arrays.fill(key,(byte)0); throw error; }
+  }
+  static void validateDelivery(String keyId, String aad) throws Exception {
+    utf8(keyId); utf8(aad);
+    if (utf8(aad).length > 8192 || !keyId.matches("[A-Za-z0-9_-]{16}")) throw new IOException();
+    String[] lines = aad.split("\n", -1);
+    String[] names = {"app_id", "release_id", "patch_number", "patch_hash", "transport_hash", "platform", "arch", "device_id_hash"};
+    if (lines.length != 9 || !lines[0].equals("open-aot-patch-delivery-v2")) throw new IOException();
+    String[] v = new String[8];
+    for (int i=0;i<8;i++) {
+      if (!lines[i+1].startsWith(names[i]+"=")) throw new IOException();
+      v[i] = lines[i+1].substring(names[i].length()+1);
+    }
+    if (!v[0].matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}") ||
+        !v[1].matches("[1-9][0-9]{0,18}") || !v[2].matches("[1-9][0-9]{0,18}") ||
+        !lowerHex(v[3],64) || !lowerHex(v[4],64) || !v[5].equals("android") ||
+        !v[6].equals("__WIRE_ARCH__") || !lowerHex(v[7],64)) throw new IOException();
+  }
+  static int endpoint(String url, String path) throws Exception {
+    if (url == null || !url.matches("http://127\\.0\\.0\\.1:[1-9][0-9]{0,4}/"+path)) throw new IOException();
+    int port = Integer.parseInt(url.substring(17, url.indexOf('/',17)));
+    if (port > 65535) throw new IOException(); return port;
+  }
+  static boolean validToken(String t) { return t != null && t.matches("[A-Za-z0-9_.~-]{1,512}"); }
+
+  static String decimal(String value, boolean zero) throws Exception {
+    if(value==null || !value.matches(zero?"0|[1-9][0-9]{0,18}":"[1-9][0-9]{0,18}") ||
+        new java.math.BigInteger(value).compareTo(java.math.BigInteger.valueOf(Long.MAX_VALUE))>0) throw new IOException();
+    return value;
+  }
+  static Set<String> keys(JSONObject value) {
+    Set<String> out=new HashSet<>(); Iterator<String> iterator=value.keys(); while(iterator.hasNext()) out.add(iterator.next()); return out;
+  }
+  static void exact(JSONObject value,String... names) throws Exception {
+    if(!keys(value).equals(new HashSet<>(Arrays.asList(names)))) throw new IOException();
+  }
+  static String text(JSONObject value,String name) throws Exception {
+    Object field=value.get(name); if(!(field instanceof String)) throw new IOException(); utf8((String)field); return (String)field;
+  }
+  static boolean same(Object left,Object right) throws Exception {
+    if(left instanceof JSONObject && right instanceof JSONObject) {
+      JSONObject a=(JSONObject)left,b=(JSONObject)right;
+      if(!keys(a).equals(keys(b))) return false;
+      for(String name:keys(a)) if(!same(a.get(name),b.get(name))) return false;
+      return true;
+    }
+    if(left instanceof JSONArray && right instanceof JSONArray) {
+      JSONArray a=(JSONArray)left,b=(JSONArray)right; if(a.length()!=b.length()) return false;
+      for(int i=0;i<a.length();i++) if(!same(a.get(i),b.get(i))) return false; return true;
+    }
+    return left==JSONObject.NULL ? right==JSONObject.NULL : left!=null && left.getClass()==right.getClass() && left.equals(right);
+  }
+  // The engine supplies this only after full response-signature verification.
+  // Exact authenticated assignment equality plus AAD binding is checked BEFORE
+  // even attempting a wrapped-key cache lookup; context text is never a grant.
+  static JSONObject validateContext(String keyId,String aad,String json,JSONArray allowed,String releaseId) throws Exception {
+    validateDelivery(keyId,aad); decimal(releaseId,false);
+    Object parsed=new StrictJson(json).parse(); if(!(parsed instanceof JSONObject)) throw new IOException();
+    JSONObject root=(JSONObject)parsed; exact(root,"version","selection","selection_digest");
+    Object version=root.get("version"); if(!(version instanceof Integer) || ((Integer)version)!=2) throw new IOException();
+    String digest=text(root,"selection_digest"); if(!lowerHex(digest,64)) throw new IOException();
+    boolean found=false; for(int i=0;i<allowed.length();i++) if(same(root,allowed.get(i))) found=true;
+    if(!found) throw new IOException();
+    JSONObject selection=root.getJSONObject("selection"),scope=selection.getJSONObject("scope"),target=selection.getJSONObject("target");
+    exact(selection,"epoch","scope","channel","variant_id","license_type","entitlement_revision","target","not_before","offline_valid_until","fallback");
+    exact(scope,"app_id","release_version","platform","arch","client_id_hash","base_artifact_hash","host_abi_hash","runtime_profile");
+    exact(target,"kind","patch_number","artifact_hash","encryption","artifact_key_id");
+    String epoch=decimal(text(selection,"epoch"),false),variant=text(selection,"variant_id");
+    if(!Arrays.asList("pro","enterprise").contains(variant) || !text(selection,"license_type").equals(variant) ||
+        !text(selection,"channel").equals("stable") || !text(selection,"entitlement_revision").startsWith("__SESSION__:")) throw new IOException();
+    String[] lines=aad.split("\n",-1); String[] fields=new String[8];
+    for(int i=0;i<8;i++) fields[i]=lines[i+1].substring(lines[i+1].indexOf('=')+1);
+    if(!fields[0].equals("__APP_ID__") || !fields[1].equals(releaseId) ||
+        !text(scope,"app_id").equals(fields[0]) || !text(scope,"release_version").equals("__RELEASE_VERSION__") ||
+        !text(scope,"platform").equals(fields[5]) || !text(scope,"arch").equals(fields[6]) ||
+        !text(scope,"client_id_hash").equals(fields[7]) || !lowerHex(text(scope,"base_artifact_hash"),64) ||
+        scope.get("host_abi_hash")!=JSONObject.NULL || !text(scope,"runtime_profile").equals("native-aot") ||
+        !text(target,"kind").equals("patch") || !text(target,"encryption").equals("transport-aes-256-gcm") ||
+        target.get("artifact_key_id")!=JSONObject.NULL || !text(target,"patch_number").equals(fields[2]) ||
+        !text(target,"artifact_hash").equals(fields[3]) || !fields[2].equals(variant.equals("pro")?"2":"3")) throw new IOException();
+    JSONObject fallback=selection.getJSONObject("fallback"); exact(fallback,"kind","variant_id","license_type");
+    if(!text(fallback,"kind").equals("base") || !text(fallback,"variant_id").equals("free") || !text(fallback,"license_type").equals("free")) throw new IOException();
+    long now=System.currentTimeMillis()/1000L,notBefore=Long.parseLong(decimal(text(selection,"not_before"),true));
+    if(notBefore>now) throw new IOException();
+    Object expiry=selection.get("offline_valid_until");
+    if(expiry!=JSONObject.NULL && (!(expiry instanceof String) || Long.parseLong(decimal((String)expiry,true))<=Math.max(now,notBefore))) throw new IOException();
+    return new JSONObject().put("epoch",epoch).put("digest",digest).put("variant_id",variant)
+        .put("license_type",variant).put("patch_number",fields[2]).put("key_id",keyId);
+  }
+  interface KeySource { byte[] read() throws Exception; }
+  interface ReceiptSink { void record(JSONObject identity) throws Exception; }
+  // The same gate is exercised by host-JVM tests with a fake cached key source.
+  static byte[] authorizedKey(String id,String aad,String verified,JSONArray allowed,String release,
+      KeySource source,ReceiptSink receipt) throws Exception {
+    JSONObject identity=validateContext(id,aad,verified,allowed,release);
+    byte[] key=source.read();
+    if(key==null) return null;
+    try { if(key.length!=32) throw new IOException(); receipt.record(identity); return key; }
+    catch(Exception failure) { Arrays.fill(key,(byte)0); throw failure; }
+  }
+
+  private synchronized void recordReceipt(JSONObject identity) throws Exception {
+    if(receiptRows.length()>=256 || (exists(receiptFile) && receiptFile.length()>1048576)) throw new IOException();
+    if(exists(receiptFile)) regular(receiptFile);
+    byte[] bytes=(identity.toString()+"\n").getBytes(StandardCharsets.UTF_8);
+    try(FileOutputStream out=new FileOutputStream(receiptFile,true)) { Os.chmod(receiptFile.getPath(),0600); out.write(bytes); out.getFD().sync(); }
+    finally { Arrays.fill(bytes,(byte)0); }
+    receiptRows.put(identity);
+  }
+  synchronized JSONObject receipts() throws Exception {
+    return new JSONObject().put("receipts",new StrictJson(receiptRows.toString()).parse());
+  }
+
+  private static final class Deadlines {
+    static final ScheduledThreadPoolExecutor TIMER = new ScheduledThreadPoolExecutor(1,r->{
+      Thread t=new Thread(r,"fixture-http-deadline"); t.setDaemon(true); return t;
+    });
+    static { TIMER.setRemoveOnCancelPolicy(true); }
+  }
+  // Direct loopback sockets deliberately bypass Java's global cookies, proxy and
+  // authenticator facilities. No redirects, chunking or ambiguous body framing.
+  static byte[] post(String url, String path, byte[] body, String bearer, int max, boolean report) throws Exception {
+    int port = endpoint(url,path);
+    try (Socket socket = new Socket()) {
+      ScheduledFuture<?> deadline=Deadlines.TIMER.schedule(()->{ try { socket.close(); } catch(IOException ignored) {} },10,TimeUnit.SECONDS);
+      try {
+      socket.connect(new InetSocketAddress(InetAddress.getByAddress(new byte[]{127,0,0,1}),port),3000);
+      socket.setSoTimeout(5000);
+      OutputStream out = socket.getOutputStream();
+      String headers = "POST /"+path+" HTTP/1.1\r\nHost: 127.0.0.1:"+port+"\r\nConnection: close\r\nContent-Type: application/json\r\nContent-Length: "+body.length+"\r\n";
+      if (bearer != null) { if (!validToken(bearer)) throw new IOException(); headers += "Authorization: Bearer "+bearer+"\r\n"; }
+      out.write(headers.getBytes(StandardCharsets.US_ASCII)); out.write(new byte[]{13,10}); out.write(body); out.flush();
+      InputStream in = socket.getInputStream(); int[] budget = {16384};
+      String status = line(in,budget);
+      if (!status.matches("HTTP/1\\.[01] [0-9]{3}( [\\x20-\\x7e]*)?")) throw new IOException();
+      int code = Integer.parseInt(status.substring(9,12));
+      if (report ? code < 200 || code >= 300 : code != 200) throw new IOException();
+      int length = -1; Set<String> seen = new HashSet<>();
+      for (;;) {
+        String h = line(in,budget); if (h.isEmpty()) break;
+        int colon = h.indexOf(':'); if (colon <= 0) throw new IOException();
+        String name = h.substring(0,colon).toLowerCase(Locale.ROOT), value = h.substring(colon+1).trim();
+        if (!name.matches("[a-z0-9-]+") || !seen.add(name) || name.equals("transfer-encoding")) throw new IOException();
+        if (name.equals("content-length")) {
+          if (!value.matches("0|[1-9][0-9]{0,8}")) throw new IOException(); length = Integer.parseInt(value);
+        }
+      }
+      if (length == -1 && code == 204) length = 0;
+      if (length < 0 || length > max) throw new IOException();
+      byte[] response = new byte[length]; int used=0;
+      try {
+        while (used < length) { int n=in.read(response,used,length-used); if(n<0) throw new IOException(); used+=n; }
+        if (in.read() != -1) throw new IOException(); return response;
+      } catch(Exception error) { Arrays.fill(response,(byte)0); throw error; }
+      } finally { deadline.cancel(false); }
+    }
+  }
+  private static String line(InputStream in,int[] budget) throws Exception {
+    ByteArrayOutputStream b = new ByteArrayOutputStream();
+    for (;;) {
+      if (--budget[0] < 0 || b.size() > 4096) throw new IOException();
+      int c=in.read(); if(c < 0) throw new IOException();
+      if(c == 13) { if (--budget[0]<0 || in.read()!=10) throw new IOException(); break; }
+      if(c < 32 || c > 126) throw new IOException(); b.write(c);
+    }
+    return b.toString("US-ASCII");
+  }
+
+  // Called through the C ABI from updater/native threads; networking and
+  // Keystore work are confined to a bounded executor, including at engine boot.
+  public byte[] resolve(byte[] idBytes, byte[] aadBytes, byte[] contextBytes) {
+    Resolution result = new Resolution(); Future<?> future = null;
+    try {
+      final String id=decodeBounded(idBytes,128), aad=decodeBounded(aadBytes,8192);
+      final String verified=decodeBounded(contextBytes,65536);
+      validateContext(id,aad,verified,allowedContexts,releaseId);
+      future = resolver.submit(() -> {
+        byte[] key=null;
+        try {
+          // Authorization precedes this call: resolveInternal is the only path
+          // to Keystore/cache/network and is never exposed by a control probe.
+          key=authorizedKey(id,aad,verified,allowedContexts,releaseId,
+              ()->resolveInternal(id,aad,false),identity->recordReceipt(identity));
+          result.complete(key); key=null;
+        } catch(Exception ignored) { result.complete(null); }
+        finally { if(key!=null) Arrays.fill(key,(byte)0); }
+      });
+      future.get(15,TimeUnit.SECONDS); return result.take();
+    } catch (Exception ignored) { result.abandon(); if(future!=null) future.cancel(true); return null; }
+  }
+  private static final class Resolution {
+    private byte[] key; private boolean abandoned;
+    synchronized void complete(byte[] value) {
+      if(abandoned) { if(value!=null) Arrays.fill(value,(byte)0); } else key=value;
+    }
+    synchronized byte[] take() { byte[] result=key; key=null; return result; }
+    synchronized void abandon() { abandoned=true; if(key!=null) Arrays.fill(key,(byte)0); key=null; }
+  }
+  private synchronized byte[] resolveInternal(String id, String aad, boolean cachedOnly) throws Exception {
+    if (!mode.equals("correct") && !cachedOnly) {
+      if (mode.equals("missing")) return null;
+      byte[] wrong = new byte[32]; Arrays.fill(wrong,(byte)0x5a); return wrong;
+    }
+    validateDelivery(id,aad);
+    File record = new File(directory, recordName(id,aad));
+    KeyStore store = store();
+    List<File> records=records();
+    if (!store.containsAlias(alias) && !records.isEmpty()) throw new IOException();
+    for(File f:records) { byte[] bytes=readRecord(f); Arrays.fill(bytes,(byte)0); }
+    boolean present = exists(record);
+    if (present) {
+      if (!store.containsAlias(alias)) throw new IOException();
+      byte[] bytes=readRecord(record), result=null;
+      try {
+        Cipher cipher=Cipher.getInstance("AES/GCM/NoPadding");
+        cipher.init(Cipher.DECRYPT_MODE,store.getKey(alias,null),new GCMParameterSpec(128,Arrays.copyOfRange(bytes,4,16)));
+        cipher.updateAAD(wrappingAad(id,aad)); result=cipher.doFinal(bytes,16,48);
+        if(result.length!=32) { Arrays.fill(result,(byte)0); throw new IOException(); } return result;
+      } finally { Arrays.fill(bytes,(byte)0); }
+    }
+    // A missing alias with *any* records is a fail-closed store, not a reason
+    // to regenerate the wrapping key or silently reprovision.
+    if(cachedOnly || url==null) return null;
+    JSONObject request=new JSONObject(); request.put("key_id",id); request.put("aad",aad);
+    byte[] response=post(url,"key",request.toString().getBytes(StandardCharsets.UTF_8),token,64,false), key=null;
+    try {
+      key=decodeKeyResponse(response);
+      if(!store.containsAlias(alias)) {
+        KeyGenerator generator=KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES,"AndroidKeyStore");
+        generator.init(new KeyGenParameterSpec.Builder(alias,KeyProperties.PURPOSE_ENCRYPT|KeyProperties.PURPOSE_DECRYPT)
+            .setKeySize(256).setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE).setUserAuthenticationRequired(false).setRandomizedEncryptionRequired(true).build());
+        generator.generateKey();
+      }
+      Cipher cipher=Cipher.getInstance("AES/GCM/NoPadding"); cipher.init(Cipher.ENCRYPT_MODE,store.getKey(alias,null));
+      cipher.updateAAD(wrappingAad(id,aad)); byte[] ciphertext=cipher.doFinal(key), iv=cipher.getIV();
+      if(iv.length!=12 || ciphertext.length!=48) throw new IOException();
+      byte[] bytes=ByteBuffer.allocate(64).put(new byte[]{'S','B','K','1'}).put(iv).put(ciphertext).array();
+      try { writeRecord(record,bytes); } finally { Arrays.fill(bytes,(byte)0); Arrays.fill(ciphertext,(byte)0); }
+      byte[] result=key; key=null; return result;
+    } finally { Arrays.fill(response,(byte)0); if(key!=null) Arrays.fill(key,(byte)0); }
+  }
+  private KeyStore store() throws Exception { KeyStore s=KeyStore.getInstance("AndroidKeyStore"); s.load(null); return s; }
+  private static boolean exists(File f) throws Exception {
+    try { Os.lstat(f.getPath()); return true; } catch(android.system.ErrnoException e) { if(e.errno==OsConstants.ENOENT) return false; throw e; }
+  }
+  private static void regular(File f) throws Exception { if(!OsConstants.S_ISREG(Os.lstat(f.getPath()).st_mode)) throw new IOException(); }
+  private List<File> records() throws Exception {
+    List<File> out=new ArrayList<>(); if(!exists(directory)) return out;
+    if(!OsConstants.S_ISDIR(Os.lstat(directory.getPath()).st_mode)) throw new IOException();
+    File[] files=directory.listFiles(); if(files==null || files.length>1024) throw new IOException();
+    for(File f:files) { regular(f); if(!f.getName().matches("[0-9a-f]{64}\\.wrapped")) throw new IOException(); out.add(f); }
+    out.sort(Comparator.comparing(File::getName)); return out;
+  }
+  private byte[] readRecord(File f) throws Exception {
+    regular(f); if(f.length()!=64) throw new IOException();
+    byte[] b=new byte[64]; try(FileInputStream in=new FileInputStream(f)) {
+      int n=0; while(n<64) { int r=in.read(b,n,64-n); if(r<0) throw new IOException(); n+=r; } if(in.read()!=-1) throw new IOException();
+    }
+    if(b[0]!='S'||b[1]!='B'||b[2]!='K'||b[3]!='1') { Arrays.fill(b,(byte)0); throw new IOException(); } return b;
+  }
+  private void writeRecord(File target,byte[] bytes) throws Exception {
+    if(!exists(directory)) { if(!directory.mkdir()) throw new IOException(); Os.chmod(directory.getPath(),0700); }
+    if(!OsConstants.S_ISDIR(Os.lstat(directory.getPath()).st_mode) || exists(target)) throw new IOException();
+    File temp=File.createTempFile(".pending-","",directory);
+    try {
+      Os.chmod(temp.getPath(),0600);
+      try(FileOutputStream out=new FileOutputStream(temp)) { out.write(bytes); out.getFD().sync(); }
+      Os.rename(temp.getPath(),target.getPath());
+      FileDescriptor dir=Os.open(directory.getPath(),OsConstants.O_RDONLY,0);
+      try { if(!OsConstants.S_ISDIR(Os.fstat(dir).st_mode)) throw new IOException(); Os.fsync(dir); } finally { Os.close(dir); }
+    } finally { if(temp.exists() && !temp.delete()) throw new IOException(); }
+  }
+  static String recordName(String id,String aad) throws Exception {
+    MessageDigest d=MessageDigest.getInstance("SHA-256"); d.update(utf8(id)); d.update((byte)0); d.update(utf8(aad)); return hex(d.digest())+".wrapped";
+  }
+  static byte[] wrappingAad(String id,String aad) throws Exception {
+    ByteArrayOutputStream b=new ByteArrayOutputStream(); b.write("shorebird-android-variant-v2".getBytes(StandardCharsets.UTF_8)); b.write(0); b.write(utf8(id)); b.write(0); b.write(utf8(aad)); return b.toByteArray();
+  }
+  synchronized JSONObject clear() throws Exception {
+    for(File f:records()) if(!f.delete()) throw new IOException();
+    KeyStore s=store(); if(s.containsAlias(alias)) s.deleteEntry(alias);
+    return new JSONObject().put("records",records().size()).put("alias_present",s.containsAlias(alias));
+  }
+  // Android JSONTokener accepts non-JSON syntax. Validate the complete strict
+  // grammar and duplicate members before constructing the reported JSON value.
+  static final class StrictJson {
+    final String text; int at;
+    StrictJson(String value) { text=value; }
+    Object parse() throws Exception { Object v=value(0); space(); if(at!=text.length()) throw new IOException(); return v; }
+    void space() { while(at<text.length() && " \t\r\n".indexOf(text.charAt(at))>=0) at++; }
+    boolean eat(char c) { space(); if(at<text.length()&&text.charAt(at)==c) { at++; return true; } return false; }
+    Object value(int depth) throws Exception {
+      if(depth>64) throw new IOException(); space(); if(at==text.length()) throw new IOException();
+      char c=text.charAt(at);
+      if(c=='{') {
+        at++; JSONObject object=new JSONObject(); Set<String> names=new HashSet<>(); if(eat('}')) return object;
+        do { space(); String name=string(); if(!names.add(name)||!eat(':')) throw new IOException(); object.put(name,value(depth+1)); if(eat('}')) return object; } while(eat(','));
+        throw new IOException();
+      }
+      if(c=='[') {
+        at++; JSONArray array=new JSONArray(); if(eat(']')) return array;
+        do { array.put(value(depth+1)); if(eat(']')) return array; } while(eat(',')); throw new IOException();
+      }
+      if(c=='"') return string();
+      for(String literal:new String[]{"true","false","null"}) if(text.startsWith(literal,at)) {
+        at+=literal.length(); return literal.equals("null")?JSONObject.NULL:Boolean.valueOf(literal);
+      }
+      int start=at; while(at<text.length() && "-+0123456789.eE".indexOf(text.charAt(at))>=0) at++;
+      String number=text.substring(start,at);
+      if(!number.matches("-?(0|[1-9][0-9]*)(\\.[0-9]+)?([eE][+-]?[0-9]+)?")) throw new IOException();
+      Object parsed=new JSONTokener(number).nextValue(); if(!(parsed instanceof Number)) throw new IOException(); return parsed;
+    }
+    String string() throws Exception {
+      if(at>=text.length()||text.charAt(at++)!='"') throw new IOException(); StringBuilder result=new StringBuilder();
+      while(at<text.length()) {
+        char c=text.charAt(at++); if(c=='"') { String s=result.toString(); StandardCharsets.UTF_8.newEncoder().onMalformedInput(CodingErrorAction.REPORT).onUnmappableCharacter(CodingErrorAction.REPORT).encode(CharBuffer.wrap(s)); return s; }
+        if(c<32) throw new IOException();
+        if(c=='\\') {
+          if(at==text.length()) throw new IOException(); c=text.charAt(at++);
+          if(c=='u') { if(at+4>text.length()||!text.substring(at,at+4).matches("[0-9a-fA-F]{4}")) throw new IOException(); c=(char)Integer.parseInt(text.substring(at,at+4),16); at+=4; }
+          else { int i="\"\\/bfnrt".indexOf(c); if(i<0) throw new IOException(); c="\"\\/\b\f\n\r\t".charAt(i); }
+        }
+        result.append(c);
+      }
+      throw new IOException();
+    }
+  }
+  public static byte[] hmac(byte[] key,byte[] challenge) throws Exception {
+    Mac mac=Mac.getInstance("HmacSHA256"); mac.init(new SecretKeySpec(key,"HmacSHA256")); return mac.doFinal(challenge);
+  }
+}

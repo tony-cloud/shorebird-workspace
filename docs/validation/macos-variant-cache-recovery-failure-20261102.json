@@ -1,0 +1,170 @@
+{
+  "root_commit": "97bf4da",
+  "pins": {
+    "dart_sdk": "dbef3f1e9ade0e74b190c3a91e45aaffce056b19",
+    "flutter_source": "520ee327c5e07cdcbbbfd2a89de1ed007e4b6f41",
+    "updater": "e482b8093890d46031d6496fc5426db56d133660",
+    "server": "3479ee0445a4db67eb223d8abbbaaf65202a909b",
+    "identity_material": "open-shorebird-toolchain-v1\ndbef3f1e9ade0e74b190c3a91e45aaffce056b19\n520ee327c5e07cdcbbbfd2a89de1ed007e4b6f41\ne482b8093890d46031d6496fc5426db56d133660\n",
+    "engine_identity": "f03ed3bd5f11ef46f0712d32834838176eed1607",
+    "flutter": "2302b277ba014e06f2d200d3e7edb13026ae4144",
+    "shorebird": "0e939b2fe44ed80a3d86c60a7ba8a972e8db6ca6"
+  },
+  "runtime_acceptance": false,
+  "scope": "Actual Developer ID hardened macOS ARM64 full interpreter app; same installed app, no cache restoration during recovery",
+  "launch_entries": 36,
+  "failed_case": "ciphertext-reauthorized-pro-check",
+  "cause": "Installed cache corruption was converted into a permanent ValidationFailed tombstone. Explicit free E10 then authenticated pro E11 advanced selection but could not download P2.",
+  "passed_before_failure": [
+    "free/pro/enterprise switches and persistent schema",
+    "same-content higher-epoch restart",
+    "offline paid boot",
+    "missing/wrong native key fallback and restoration",
+    "ciphertext tamper offline free fallback"
+  ],
+  "not_reached": [
+    "cached signature tamper recovery",
+    "lease expiry",
+    "signed response replay",
+    "rollback and rollforward"
+  ],
+  "runtime_checkpoints": [
+    {
+      "label": "ciphertext-tamper-fallback",
+      "source": "/Users/tonylu/Library/Caches/shorebird-fixtures/macos-native-x64-20261102/lifecycle/ciphertext-tamper-fallback",
+      "variant": "free",
+      "stage": "boot",
+      "update_status": null,
+      "selection": {
+        "version": 2,
+        "current": {
+          "epoch": "9",
+          "digest": "ba9c437b86270d96f5c54cfc03d2cb472f573ebf8894fdd4cded416ef37d8882",
+          "variant_id": "free",
+          "license_type": "free",
+          "patch_number": null
+        },
+        "accepted": {
+          "epoch": "9",
+          "digest": "ba9c437b86270d96f5c54cfc03d2cb472f573ebf8894fdd4cded416ef37d8882",
+          "variant_id": "pro",
+          "license_type": "pro",
+          "patch_number": "2"
+        },
+        "next_boot": {
+          "variant_id": "free",
+          "license_type": "free",
+          "patch_number": null,
+          "reason": "quarantined"
+        },
+        "restart_required": false
+      },
+      "patch2_state": {
+        "size": 450,
+        "sha256": "2f158bac70280a37ac47aabaa573e7d4afc0700b13574f4b418aa7d1a2f698fb"
+      },
+      "patch2_artifacts": [],
+      "plaintext_keys_present": false,
+      "runtime_profile": "interpreter-full",
+      "launch_validated": true,
+      "launch_error": null,
+      "offline_endpoints_closed": true
+    },
+    {
+      "label": "ciphertext-explicit-free-cold",
+      "source": "/Users/tonylu/Library/Caches/shorebird-fixtures/macos-native-x64-20261102/lifecycle/ciphertext-explicit-free-cold",
+      "variant": "free",
+      "stage": "boot",
+      "update_status": null,
+      "selection": {
+        "version": 2,
+        "current": {
+          "epoch": "10",
+          "digest": "7ba59117cf65bdeae44e43369b977a9db1bf7a90386071c47fccd7701dfffeac",
+          "variant_id": "free",
+          "license_type": "free",
+          "patch_number": null
+        },
+        "accepted": {
+          "epoch": "10",
+          "digest": "7ba59117cf65bdeae44e43369b977a9db1bf7a90386071c47fccd7701dfffeac",
+          "variant_id": "free",
+          "license_type": "free",
+          "patch_number": null
+        },
+        "next_boot": {
+          "variant_id": "free",
+          "license_type": "free",
+          "patch_number": null,
+          "reason": "selected_base"
+        },
+        "restart_required": false
+      },
+      "patch2_state": {
+        "size": 450,
+        "sha256": "2f158bac70280a37ac47aabaa573e7d4afc0700b13574f4b418aa7d1a2f698fb"
+      },
+      "patch2_artifacts": [],
+      "plaintext_keys_present": false,
+      "runtime_profile": "interpreter-full",
+      "launch_validated": true,
+      "launch_error": null,
+      "offline_endpoints_closed": false
+    },
+    {
+      "label": "ciphertext-reauthorized-pro-check",
+      "source": "/Users/tonylu/Library/Caches/shorebird-fixtures/macos-native-x64-20261102/lifecycle/ciphertext-reauthorized-pro-check",
+      "variant": "free",
+      "stage": "checked",
+      "update_status": "restartRequired",
+      "selection": {
+        "version": 2,
+        "current": {
+          "epoch": "10",
+          "digest": "7ba59117cf65bdeae44e43369b977a9db1bf7a90386071c47fccd7701dfffeac",
+          "variant_id": "free",
+          "license_type": "free",
+          "patch_number": null
+        },
+        "accepted": {
+          "epoch": "11",
+          "digest": "e5f4153fbf46bd4147d339efab7655c69d6d15575e169ad9846fa309e7d0bea9",
+          "variant_id": "pro",
+          "license_type": "pro",
+          "patch_number": "2"
+        },
+        "next_boot": {
+          "variant_id": "free",
+          "license_type": "free",
+          "patch_number": null,
+          "reason": "quarantined"
+        },
+        "restart_required": true
+      },
+      "patch2_state": {
+        "size": 450,
+        "sha256": "2f158bac70280a37ac47aabaa573e7d4afc0700b13574f4b418aa7d1a2f698fb"
+      },
+      "patch2_artifacts": [],
+      "plaintext_keys_present": false,
+      "runtime_profile": "interpreter-full",
+      "launch_validated": false,
+      "launch_error": "RuntimeError: No valid fresh report: Latest signed assignment was not accepted by the installed updater",
+      "offline_endpoints_closed": false
+    }
+  ],
+  "cleanup": {
+    "container_removed": false,
+    "container_payload_removed": true,
+    "os_metadata_shell_remaining": "/Users/tonylu/Library/Containers/org.tonycloud.shorebird-macos-ffi.fb6a186473e0",
+    "os_metadata_file_remaining": "/Users/tonylu/Library/Containers/org.tonycloud.shorebird-macos-ffi.fb6a186473e0/.com.apple.containermanagerd.metadata.plist",
+    "metadata_removal_errno": 1,
+    "all_variant_keys_deleted": true,
+    "cleanup_complete": false,
+    "bootstrap_secrets_removed": true,
+    "owned_app_removed": true
+  },
+  "raw_evidence": "/Users/tonylu/Library/Caches/shorebird-fixtures/macos-native-x64-20261102/lifecycle",
+  "result_sha256": "4bd96cc01095b41a71d246e9b5d40fc46bbbfdce9694b749ca7c405ffa54a3ef",
+  "follow_up": "Narrow updater fix has focused regressions; a fresh exact-pin build and full real lifecycle rerun are required. Existing ambiguous bad tombstones are deliberately preserved."
+}

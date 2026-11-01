@@ -1,0 +1,98 @@
+package __JAVA_PACKAGE__;
+
+import android.app.Activity;
+import android.content.Intent;
+import android.os.Bundle;
+import android.os.Process;
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
+import java.util.*;
+import java.util.concurrent.*;
+import org.json.*;
+
+/** Explicit opt-in disposable control; never writes updater state. */
+public final class ControlActivity extends Activity {
+  private static final String CAPABILITY_DIGEST="__CONTROL_SHA256__";
+  private static final String PROCESS_TOKEN;
+  private static final Set<String> NONCES=new HashSet<>();
+  private static final ThreadPoolExecutor CONTROL=new ThreadPoolExecutor(1,1,0,TimeUnit.MILLISECONDS,
+      new ArrayBlockingQueue<Runnable>(4),r->{Thread t=new Thread(r,"variant-control");t.setDaemon(true);return t;},new ThreadPoolExecutor.AbortPolicy());
+  private static volatile boolean configured,flutterAllowed;
+  private static PatchKeyProvider provider;
+  static { byte[] bytes=new byte[16]; new SecureRandom().nextBytes(bytes); PROCESS_TOKEN=PatchKeyProvider.hex(bytes); Arrays.fill(bytes,(byte)0); }
+  static boolean mayStartFlutter() { return flutterAllowed; }
+  private static native boolean nativeConfigure(PatchKeyProvider provider,byte[] nonce,byte[] observer,
+      byte[] processToken,byte[] appData,byte[] contexts,byte[] providerReceipt,boolean check);
+  @Override public void onCreate(Bundle state) {
+    super.onCreate(null); Intent command=getIntent(); setIntent(new Intent());
+    try { final Map<String,String> fields=parse(command); CONTROL.execute(()->execute(fields)); }
+    catch(Exception ignored) { finish(); }
+  }
+  @Override protected void onSaveInstanceState(Bundle state) { state.clear(); }
+  private static Map<String,String> parse(Intent intent) throws Exception {
+    Bundle extras=intent.getExtras(); if(extras==null || extras.size()>12) throw new IOException();
+    Map<String,String> fields=new HashMap<>();
+    for(String name:extras.keySet()) { Object value=extras.get(name); if(!(value instanceof String)) throw new IOException(); PatchKeyProvider.utf8((String)value); fields.put(name,(String)value); }
+    String control=fields.remove("control");
+    if(!PatchKeyProvider.lowerHex(control,64) || !MessageDigest.isEqual(MessageDigest.getInstance("SHA-256")
+        .digest(control.getBytes(StandardCharsets.US_ASCII)),PatchKeyProvider.unhex(CAPABILITY_DIGEST))) throw new IOException();
+    if(!PatchKeyProvider.lowerHex(fields.get("nonce"),48)) throw new IOException();
+    PatchKeyProvider.endpoint(fields.get("observer"),"native");
+    synchronized(NONCES) { if(NONCES.size()>=1024 || !NONCES.add(fields.get("nonce"))) throw new IOException(); }
+    return fields;
+  }
+  private static void validate(Map<String,String> fields) throws Exception {
+    Set<String> allowed=new HashSet<>(Arrays.asList("operation","nonce","observer"));
+    String operation=fields.get("operation");
+    if("launch".equals(operation)) {
+      allowed.addAll(Arrays.asList("mode","receipt_url","provision_url","provision_token","contexts","release_id","check"));
+      if(!Arrays.asList("correct","missing","wrong").contains(fields.get("mode")) || !Arrays.asList("0","1").contains(fields.get("check"))) throw new IOException();
+      PatchKeyProvider.endpoint(fields.get("receipt_url"),"receipt"); PatchKeyProvider.decimal(fields.get("release_id"),false);
+      Object parsed=new PatchKeyProvider.StrictJson(fields.get("contexts")).parse();
+      if(!(parsed instanceof JSONArray) || ((JSONArray)parsed).length()>32) throw new IOException();
+      if(fields.containsKey("provision_url")!=fields.containsKey("provision_token")) throw new IOException();
+      if(fields.containsKey("provision_url")) { PatchKeyProvider.endpoint(fields.get("provision_url"),"key"); if(!PatchKeyProvider.validToken(fields.get("provision_token"))) throw new IOException(); }
+    } else if(!"read-provider".equals(operation) && !"clear-provider".equals(operation)) throw new IOException();
+    if(!allowed.equals(fields.keySet()) && !(operation.equals("launch") && allowed.containsAll(fields.keySet()) &&
+        fields.keySet().containsAll(Arrays.asList("operation","nonce","observer","mode","receipt_url","contexts","release_id","check")))) throw new IOException();
+  }
+  private void execute(Map<String,String> fields) {
+    boolean launched=false;
+    try {
+      validate(fields); String operation=fields.get("operation"); JSONObject payload;
+      if(operation.equals("read-provider")) {
+        if(provider==null) throw new IOException(); payload=provider.receipts();
+      } else if(operation.equals("clear-provider")) {
+        // No engine and no key release; this control removes only V2 fixture keys.
+        if(configured) throw new IOException(); configured=true;
+        payload=new PatchKeyProvider(this,"correct",null,null,"1","[]").clear();
+      } else {
+        if(configured) throw new IOException(); configured=true;
+        provider=new PatchKeyProvider(this,fields.get("mode"),fields.get("provision_url"),fields.get("provision_token"),fields.get("release_id"),fields.get("contexts"));
+        File files=getFilesDir().getCanonicalFile(),data=new File(files,"shorebird-variant-app-data");
+        if(!data.getCanonicalFile().equals(data.getAbsoluteFile())) throw new IOException();
+        System.loadLibrary("flutter"); System.loadLibrary("shorebird_e2e_fixture");
+        if(!nativeConfigure(provider,PatchKeyProvider.utf8(fields.get("nonce")),PatchKeyProvider.utf8(fields.get("receipt_url")),
+            PatchKeyProvider.utf8(PROCESS_TOKEN),PatchKeyProvider.utf8(data.getPath()),PatchKeyProvider.utf8(fields.get("contexts")),
+            PatchKeyProvider.utf8(new File(files,"shorebird-variant-provider.jsonl").getPath()),fields.get("check").equals("1"))) throw new IOException();
+        report(fields,"ready",new JSONObject().put("provider_registered",true));
+        flutterAllowed=true;
+        runOnUiThread(()->{ try { startActivity(new Intent(this,MainActivity.class)); } finally { finish(); } });
+        launched=true; return;
+      }
+      report(fields,operation,payload);
+    } catch(Throwable ignored) {
+      try { report(fields,"error",new JSONObject().put("reason","operation-failed")); } catch(Exception unavailable) { }
+    } finally { fields.clear(); if(!launched) runOnUiThread(this::finish); }
+  }
+  private static void report(Map<String,String> fields,String operation,JSONObject payload) throws Exception {
+    JSONObject report=new JSONObject().put("schema","android-variant-control-v2").put("nonce",fields.get("nonce"))
+        .put("pid",Process.myPid()).put("process_token",PROCESS_TOKEN).put("operation",operation).put("payload",payload);
+    byte[] bytes=report.toString().getBytes(StandardCharsets.UTF_8);
+    if(bytes.length>1048576) throw new IOException();
+    try { PatchKeyProvider.post(fields.get("observer"),"native",bytes,null,1024,true); } finally { Arrays.fill(bytes,(byte)0); }
+  }
+}
