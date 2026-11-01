@@ -40,7 +40,10 @@ class LifecycleControlTest(unittest.TestCase):
         self.addCleanup(self.file_patch.stop)
 
     def create_runner(self):
-        return runner.Lifecycle(self.work, copy.deepcopy(self.state), 'A' * 40, timeout=.001)
+        # These are host-independent control units; native admission has its
+        # own exact syscall/architecture positive and negative controls.
+        with mock.patch.object(runner,'require_native_host'):
+            return runner.Lifecycle(self.work, copy.deepcopy(self.state), 'A' * 40, timeout=.001)
 
     def test_default_plan_does_not_read_or_mutate_fixture(self):
         with mock.patch.object(runner.fixture, 'load') as load, mock.patch.object(runner, 'Lifecycle') as lifecycle:

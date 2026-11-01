@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Isolated macOS ARM64 full-interpreter fixture; plans are not acceptance.
+"""Isolated macOS full-interpreter fixture; plans are not acceptance.
 
 prepare/base/update/serve/inspect/cleanup require --execute for mutations or
 external commands. Signing and application launches are ALWAYS left to the
@@ -50,6 +50,16 @@ MACH_MAGICS = {b'\xcf\xfa\xed\xfe', b'\xfe\xed\xfa\xcf',
                b'\xca\xfe\xba\xbf', b'\xbf\xba\xfe\xca'}
 
 
+def target_architecture(state):
+    """Canonical app target, independent of the preparation tool's host CPU."""
+    arch = state.get('arch', 'arm64')  # Preserve pre-option ARM64 state.
+    if not isinstance(arch, str) or arch not in ('arm64', 'x64'):
+        raise ValueError('Unsupported macOS fixture target architecture')
+    return {'arch': arch, 'machine': 'arm64' if arch == 'arm64' else 'x86_64',
+            'wire': 'aarch64' if arch == 'arm64' else 'x86_64',
+            'flutter_target': 'darwin-' + arch, 'envelope': arch}
+
+
 def digest(path):
     value = hashlib.sha256()
     with Path(path).open('rb') as stream:
@@ -71,6 +81,7 @@ def load(work):
             not re.fullmatch(r'org\.tonycloud\.shorebird-macos-ffi\.[a-f0-9]{12}',
                              state.get('bundle_id', ''))):
         raise ValueError('Not an owned macOS interpreter fixture')
+    target_architecture(state)
     return state
 
 
@@ -186,6 +197,7 @@ def apply_profile(work, phase):
 
 
 def prepare(args, work):
+    target = target_architecture({'arch': getattr(args, 'target_arch', 'arm64')})
     if work.exists() or work.is_symlink():
         raise ValueError('Use a fresh work directory')
     if work.resolve().is_relative_to(ROOT.resolve()):
@@ -195,7 +207,7 @@ def prepare(args, work):
     session = secrets.token_hex(6)
     api, observer = unique_ports()
     state = {'schema': SCHEMA, 'work_dir': str(work.resolve()), 'session': session,
-             'created': time.time(), 'platform': 'macos', 'arch': 'arm64',
+             'created': time.time(), 'platform': 'macos', 'arch': target['arch'],
              'bundle_id': f'org.tonycloud.shorebird-macos-ffi.{session}',
              'key_service': f'org.tonycloud.shorebird-macos-key.{session}',
              'key_id': f'macos-e2e-{session}', 'release_version': args.release_version,
@@ -203,8 +215,10 @@ def prepare(args, work):
              'api_url': f'http://127.0.0.1:{api}',
              'report_url': f'http://127.0.0.1:{observer}/report/{session}',
              'cli': str(args.cli.resolve()), 'flutter_root': str(args.flutter_root.resolve()),
-             'engine_src': str(args.engine_src.resolve()), 'engine_name': args.engine_name,
-             'host_engine_name': args.host_engine_name, 'server': str(args.server.resolve())}
+             'engine_src': str(args.engine_src.resolve()),
+             'engine_name': args.engine_name or 'macos_release_' + target['arch'],
+             'host_engine_name': args.host_engine_name or 'macos_release_' + target['arch'],
+             'server': str(args.server.resolve())}
     for name in ('engine_name', 'host_engine_name'):
         if not re.fullmatch(r'[a-zA-Z0-9_]+', state[name]):
             raise ValueError('Invalid local engine output name')
@@ -250,7 +264,7 @@ def cli_command(work, state, phase):
                f'--dart-define-from-file={work}/{"free" if phase == "base" else "pro"}-defines.json']
     if phase == 'update':
         command += [f"--release-version={state['release_version']}", '--track=stable']
-    command += ['--', '--target-platform=darwin-arm64']
+    command += ['--', '--target-platform=' + target_architecture(state)['flutter_target']]
     return command
 
 
@@ -482,6 +496,7 @@ def checked(command, log):
 
 
 def inspect_app(work, state, app, identity_sha1):
+    target_arch = target_architecture(state)
     app, runner = app_identity(work, state, app)
     if not re.fullmatch(r'[a-fA-F0-9]{40}', identity_sha1):
         raise ValueError('Pin the expected Developer ID certificate SHA-1')
@@ -501,8 +516,8 @@ def inspect_app(work, state, app, identity_sha1):
         if fingerprint != identity_sha1.upper() or (reports and signature['team_identifier'] != reports[0]['team_identifier']):
             raise ValueError('Nested code does not share the pinned Developer ID certificate/team')
         arch = checked(['lipo', '-archs', target if target != app else runner], str(prefix) + '-arch.log').strip()
-        if arch != 'arm64':
-            raise ValueError('Full-profile fixture requires ARM64-only code')
+        if arch != target_arch['machine']:
+            raise ValueError('Full-profile fixture requires ' + target_arch['machine'] + '-only code')
         dependencies = checked(['otool', '-L', target if target != app else runner], str(prefix) + '-dependencies.log')
         signature.update(path=str(target), certificate_sha1=fingerprint,
                          sha256=digest(runner if target == app else target), dependencies=dependencies)
@@ -525,12 +540,12 @@ def validate_envelope_metadata(envelope, state):
         raise ValueError('Invalid encrypted artifact metadata')
     if (envelope.get('format') != 'open-aot-vmcode-encrypted-v1' or
             envelope.get('payload_kind') != 'full-snapshot' or
-            metadata.get('target_os') != 'macos' or metadata.get('target_arch') != 'arm64' or
+            metadata.get('target_os') != 'macos' or metadata.get('target_arch') != target_architecture(state)['envelope'] or
             metadata.get('runtime_mode') != 'dart-bytecode-interpreter' or
             metadata.get('app_id') != state.get('app_id') or
             metadata.get('app_build_id') != state['release_version'] or
             encryption.get('algorithm') != 'AES-256-GCM' or encryption.get('key_id') != state['key_id']):
-        raise ValueError('Encrypted artifact is not bound to this macOS ARM64 release')
+        raise ValueError('Encrypted artifact is not bound to this macOS target release')
     return {key: metadata[key] for key in ('target_os', 'target_arch', 'runtime_mode', 'app_id', 'app_build_id')}
 
 
@@ -759,8 +774,9 @@ def parser():
     result.add_argument('--cli', type=Path)
     result.add_argument('--flutter-root', type=Path)
     result.add_argument('--engine-src', type=Path)
-    result.add_argument('--engine-name', default='macos_release_arm64')
-    result.add_argument('--host-engine-name', default='macos_release_arm64')
+    result.add_argument('--target-arch', choices=('arm64', 'x64'), default='arm64')
+    result.add_argument('--engine-name', help='Target output (default: macos_release_<target-arch>)')
+    result.add_argument('--host-engine-name', help='Compiler host output (default: macos_release_<target-arch>)')
     result.add_argument('--server', type=Path)
     result.add_argument('--release-version', default='1.0.0+1')
     result.add_argument('--app', type=Path)
@@ -787,7 +803,7 @@ def main():
             if not args.execute:
                 print(json.dumps({'phase': 'prepare', 'work_dir': str(work), 'mutations': False,
                                   'requires': ['fresh private directory', 'private source CLI/Flutter SDK',
-                                               'matching interpreter-enabled ARM64 local engine',
+                                               'matching interpreter-enabled ' + args.target_arch + ' local engine',
                                                'caller CLI honors SHOREBIRD_E2E_CONFIG_DIR'],
                                   'starts': [], 'runtime_acceptance': False}, indent=2))
                 return

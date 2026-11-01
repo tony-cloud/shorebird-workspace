@@ -106,7 +106,7 @@ enum MacosInterpreterFixture {
           scope["app_id"] as? String == appID,
           scope["release_version"] as? String == release,
           scope["platform"] as? String == "macos",
-          scope["arch"] as? String == "aarch64",
+          scope["arch"] as? String == "__WIRE_ARCH__",
           scope["runtime_profile"] as? String == "interpreter-full",
           let clientHash = scope["client_id_hash"] as? String,
           clientHash.range(of: "^[a-f0-9]{64}$", options: .regularExpression) != nil,
@@ -130,7 +130,7 @@ enum MacosInterpreterFixture {
       return nil
     }
     let identity: [String: Any] = ["scope": ["app_id": appID, "release_version": release,
-      "platform": "macos", "arch": "aarch64", "runtime_profile": "interpreter-full", "client_id_hash": clientHash],
+      "platform": "macos", "arch": "__WIRE_ARCH__", "runtime_profile": "interpreter-full", "client_id_hash": clientHash],
       "epoch": epoch, "selection_digest": digest, "variant_id": variant, "license_type": variant,
       "patch_number": number, "key_id": keyID]
     var request = query(keyID)

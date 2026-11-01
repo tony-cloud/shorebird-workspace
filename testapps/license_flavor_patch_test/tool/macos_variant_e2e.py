@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Isolated protocol-2 macOS ARM64 lifecycle fixture.
+"""Isolated protocol-2 macOS lifecycle fixture.
 
 This driver prepares/builds real CLI artifacts and talks to a real disposable
 self-hosted API. It never signs or launches an app. The caller owns sequential
@@ -133,6 +133,7 @@ def configure_native(work, state):
     template = (v1.HELPERS / 'PatchTestKeysV2.swift.template').read_text()
     values = {'__SERVICE__': state['key_service'], '__BUNDLE_ID__': state['bundle_id'],
               '__SESSION__': state['session'], '__APP_ID__': state['app_id'],
+              '__WIRE_ARCH__': v1.target_architecture(state)['wire'],
               '__RELEASE__': state['release_version'], '__PRO_KEY_ID__': state['key_ids']['pro'],
               '__ENTERPRISE_KEY_ID__': state['key_ids']['enterprise']}
     for old, new in values.items():
@@ -259,15 +260,16 @@ def build_phase(work, state, phase):
 
 
 def validate_compiled_scope(state, app):
-    scopes = list(Path(app).rglob('shorebird_release_scope_macos_aarch64.json'))
+    wire_arch = v1.target_architecture(state)['wire']
+    scopes = list(Path(app).rglob('shorebird_release_scope_macos_*.json'))
     baselines = list(Path(app).rglob('shorebird_replacement_base.sbr'))
-    if len(scopes) != 1 or len(baselines) != 1:
+    if len(scopes) != 1 or scopes[0].name != 'shorebird_release_scope_macos_' + wire_arch + '.json' or len(baselines) != 1:
         raise ValueError('Missing unique compiled v2 scope/original full baseline')
     scope = json.loads(scopes[0].read_text())
     if set(scope) != {'app_id', 'release_version', 'platform', 'arch', 'base_artifact_hash', 'host_abi_hash', 'runtime_profile'}:
         raise ValueError('Incomplete compiled immutable release scope')
     for key, expected in {'app_id': state['app_id'], 'release_version': state['release_version'],
-                          'platform': 'macos', 'arch': 'aarch64', 'runtime_profile': 'interpreter-full',
+                          'platform': 'macos', 'arch': wire_arch, 'runtime_profile': 'interpreter-full',
                           'base_artifact_hash': v1.digest(baselines[0])}.items():
         if scope.get(key) != expected:
             raise ValueError('Compiled scope does not match original macOS release: ' + key)
@@ -321,7 +323,7 @@ def release_id(work, state):
 def map_free(work, state):
     require_open(work, state)
     return api(work, state, 'PUT', f'/releases/{release_id(work, state)}/variants/free', {
-        'platform': 'macos', 'arch': 'aarch64', 'channel': 'stable', 'license_type': 'free',
+        'platform': 'macos', 'arch': v1.target_architecture(state)['wire'], 'channel': 'stable', 'license_type': 'free',
         'target': {'kind': 'base', 'patch_number': None, 'artifact_hash': None,
                    'encryption': 'none', 'artifact_key_id': None}})
 
@@ -376,7 +378,7 @@ def assign(work, state, variant, *, offline_valid_until=None, not_before=None, i
     if variant not in VARIANTS or not state.get('installation_id'):
         raise ValueError('Capture the real installed updater ID before assigning an allowed variant')
     expected = latest_selection(state)['epoch']
-    body = {'client_id': state['installation_id'], 'platform': 'macos', 'arch': 'aarch64',
+    body = {'client_id': state['installation_id'], 'platform': 'macos', 'arch': v1.target_architecture(state)['wire'],
             'channel': 'stable', 'variant_id': variant, 'entitlement_revision': f"{state['session']}:{uuid.uuid4()}",
             'not_before': str(int(time.time())) if not_before is None else not_before,
             'offline_valid_until': offline_valid_until, 'expected_epoch': expected,
@@ -396,12 +398,15 @@ def assign(work, state, variant, *, offline_valid_until=None, not_before=None, i
     expected = body['expected_epoch']
     result = api(work, state, 'POST', f'/releases/{release_id(work, state)}/selections', body)
     descriptor = result['selection']
+    expected_scope = dict(state.get('release_scope', {}), app_id=state['app_id'],
+        release_version=state['release_version'], platform='macos', arch=v1.target_architecture(state)['wire'],
+        client_id_hash=hashlib.sha256(state['installation_id'].encode()).hexdigest())
     identity = selection_identity({'epoch': descriptor['epoch'], 'digest': result['selection_digest'],
                                    'variant_id': descriptor['variant_id'],
                                    'license_type': descriptor['license_type'],
                                    'patch_number': descriptor['target']['patch_number']})
     if (descriptor['epoch'] != str(int(expected) + 1) or descriptor['variant_id'] != variant or
-            descriptor['scope']['client_id_hash'] != hashlib.sha256(state['installation_id'].encode()).hexdigest() or
+            any(descriptor['scope'].get(key) != value for key,value in expected_scope.items()) or
             descriptor['target']['patch_number'] != EXPECTED_NUMBERS[variant]):
         raise ValueError('Real assignment did not bind this installation/epoch/content')
     if any(known['epoch'] == identity['epoch'] and known != identity for known in known_selections(state)):
@@ -601,8 +606,9 @@ def cleanup(work, state):
     return state['cleanup']
 
 
-def plan():
+def plan(target_arch='arm64'):
     return {'schema': SCHEMA, 'runtime_acceptance': False,
+            'target': v1.target_architecture({'arch':target_arch}),
             'build_order': list(BUILD_ORDER), 'cold_lifecycle': list(LIFECYCLE),
             'required_runtime_cases': ['same-content-higher-epoch-restart', 'offline-paid-continuation',
                 'missing-key-base-and-recovery', 'wrong-key-base-and-recovery', 'ciphertext-tamper-base',
@@ -628,7 +634,7 @@ def main():
     args = parser().parse_args()
     work = args.work_dir.expanduser().resolve()
     if args.phase == 'plan' or not args.execute:
-        print(json.dumps(plan(), indent=2))
+        print(json.dumps(plan(args.target_arch), indent=2))
         return
     if args.phase == 'prepare':
         if not all((args.cli, args.flutter_root, args.engine_src, args.server, args.updater_package)):

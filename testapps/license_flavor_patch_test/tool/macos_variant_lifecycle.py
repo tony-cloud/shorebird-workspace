@@ -9,12 +9,15 @@ from __future__ import annotations
 
 import argparse
 import base64
+import ctypes
 from contextlib import contextmanager
 import hashlib
+import errno
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import math
 import os
+import platform
 from pathlib import Path
 import re
 import socket
@@ -33,6 +36,28 @@ SCHEMA = 'macos-variant-lifecycle-v2'
 def require(condition, message):
     if not condition:
         raise ValueError(message)
+
+
+def require_native_host(state):
+    """Execution is native-only; cross-target local preparation is separate."""
+    target = v1.target_architecture(state)
+    require(sys.platform == 'darwin' and platform.machine() == target['machine'],
+            'Lifecycle execution requires a native ' + target['machine'] + ' Mac')
+    try:
+        system = ctypes.CDLL('/usr/lib/libSystem.B.dylib', use_errno=True)
+        probe = system.sysctlbyname
+        probe.argtypes = [ctypes.c_char_p, ctypes.c_void_p, ctypes.POINTER(ctypes.c_size_t),
+                          ctypes.c_void_p, ctypes.c_size_t]
+        probe.restype = ctypes.c_int
+        translated, size = ctypes.c_int(), ctypes.c_size_t(ctypes.sizeof(ctypes.c_int))
+        ctypes.set_errno(0)
+        result = probe(b'sysctl.proc_translated', ctypes.byref(translated), ctypes.byref(size), None, 0)
+        if result == -1 and ctypes.get_errno() == errno.ENOENT:
+            return  # Apple's documented result when translation is unavailable.
+        require(result == 0 and size.value == ctypes.sizeof(ctypes.c_int) and translated.value == 0,
+                'Rosetta or an invalid translation probe cannot establish native lifecycle proof')
+    except (OSError, AttributeError):
+        raise ValueError('Native lifecycle translation status could not be verified') from None
 
 
 def bundle_tree(app):
@@ -103,7 +128,7 @@ def validate_replay_delivery(state, records, body, old_selection, accepted, *, a
     captured_nonce = old_payload['request']['nonce']
     scope = state['release_scope']
     expected = dict(selection_protocol=2, app_id=state['app_id'], release_version=state['release_version'],
-        platform='macos', arch='aarch64', channel='stable', client_id=state['installation_id'],
+        platform='macos', arch=v1.target_architecture(state)['wire'], channel='stable', client_id=state['installation_id'],
         base_artifact_hash=scope['base_artifact_hash'], host_abi_hash=scope['host_abi_hash'],
         runtime_profile=scope['runtime_profile'], accepted_selection_epoch=accepted['epoch'],
         accepted_selection_digest=accepted['digest'])
@@ -140,7 +165,7 @@ def validate_provider_ledger(state, report, ledger, *, pid, nonce, after, key_fa
     current = fixture.selection_identity(report['selection']['current'])
     accepted = fixture.selection_identity(report['selection']['accepted'])
     expected = accepted if key_failure else current
-    scope = dict(app_id=state['app_id'],release_version=state['release_version'],platform='macos',arch='aarch64',
+    scope = dict(app_id=state['app_id'],release_version=state['release_version'],platform='macos',arch=v1.target_architecture(state)['wire'],
         runtime_profile='interpreter-full',client_id_hash=hashlib.sha256(report['installation_id'].encode()).hexdigest())
     for index,event in enumerate(events):
         require(type(event) is dict and event.get('sequence') == index+1 and type(event['sequence']) is int and
@@ -203,6 +228,7 @@ def require_fresh_fixture(work, state):
 
 class Lifecycle:
     def __init__(self, work, state, identity, *, timeout=60, lease_seconds=90):
+        require_native_host(state)
         self.work, self.state, self.identity = work, state, identity
         self.app = Path(state['released_app'])
         self.evidence = work / 'lifecycle'
@@ -424,7 +450,7 @@ class Lifecycle:
         accepted = fixture.latest_selection(self.state)
         scope = self.state['release_scope']
         request = dict(selection_protocol=2, app_id=self.state['app_id'],
-            release_version=self.state['release_version'], platform='macos', arch='aarch64',
+            release_version=self.state['release_version'], platform='macos', arch=v1.target_architecture(self.state)['wire'],
             channel='stable', client_id=self.state['installation_id'], nonce=str(uuid.uuid4()),
             base_artifact_hash=scope['base_artifact_hash'], host_abi_hash=scope['host_abi_hash'],
             runtime_profile=scope['runtime_profile'], accepted_selection_epoch=accepted['epoch'],
@@ -669,8 +695,9 @@ class Lifecycle:
         return errors
 
 
-def plan():
+def plan(target_arch='arm64'):
     return {'schema': SCHEMA, 'runtime_acceptance': False, 'execute_required': True,
+            'target': v1.target_architecture({'arch':target_arch}),
             'prerequisite': 'Fresh disposable macos_variant_e2e v2 fixture; base/pro_seed/pro/enterprise built; build server stopped',
             'cold_lifecycle': list(fixture.LIFECYCLE),
             'cases': ['same-content higher-epoch restart', 'offline paid', 'missing/wrong key and offline recovery',
@@ -685,6 +712,8 @@ def plan():
 def parser():
     result = argparse.ArgumentParser(description=__doc__)
     result.add_argument('--work-dir', type=Path, required=True)
+    result.add_argument('--target-arch', choices=('arm64','x64'),
+                        help='Optional check against prepared target; plan default: arm64')
     result.add_argument('--signing-identity', help='Explicit Developer ID certificate SHA-1')
     result.add_argument('--execute', action='store_true')
     result.add_argument('--timeout', type=float, default=60)
@@ -695,7 +724,7 @@ def parser():
 def main(argv=None):
     args = parser().parse_args(argv)
     if not args.execute:
-        print(json.dumps(plan(), indent=2))
+        print(json.dumps(plan(args.target_arch or 'arm64'), indent=2))
         return
     require(re.fullmatch(r'[a-fA-F0-9]{40}', args.signing_identity or '') is not None,
             '--execute requires a pinned Developer ID certificate SHA-1')
@@ -703,6 +732,9 @@ def main(argv=None):
             'Invalid timeout or lease duration')
     work = args.work_dir.expanduser().resolve()
     state = fixture.load(work)
+    if args.target_arch is not None:
+        require(args.target_arch == v1.target_architecture(state)['arch'], 'Requested target differs from prepared app')
+    require_native_host(state)  # Before lifecycle construction, signing or any launch.
     require_fresh_fixture(work, state)
     runner = Lifecycle(work, state, args.signing_identity, timeout=args.timeout, lease_seconds=args.lease_seconds)
     error = None

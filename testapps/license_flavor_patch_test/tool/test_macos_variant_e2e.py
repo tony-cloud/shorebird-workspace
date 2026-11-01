@@ -247,7 +247,9 @@ print("PASS: fresh, concurrent, bounded, allowlisted, atomic, fail-closed ledger
 
     def assignment(self, variant, epoch, digest='a' * 64, installation='real-installation'):
         return {'selection': {'epoch': epoch, 'variant_id': variant, 'license_type': variant,
-                             'scope': {'client_id_hash': hashlib.sha256(installation.encode()).hexdigest()},
+                             'scope': {'client_id_hash': hashlib.sha256(installation.encode()).hexdigest(),
+                                       'app_id': self.state['app_id'], 'release_version': self.state['release_version'],
+                                       'platform':'macos','arch':runner.v1.target_architecture(self.state)['wire']},
                              'target': {'patch_number': runner.EXPECTED_NUMBERS[variant]}},
                 'selection_digest': digest}
 
