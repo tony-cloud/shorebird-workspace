@@ -1,0 +1,18 @@
+{
+  "status": "fixed and locally regression-tested; Windows CI rerun pending",
+  "failed_ci_run": 41257830677,
+  "failed_job": 124706035146,
+  "cause": "Full replacement sourceUri used host-default Uri.toFilePath while compiler filesystem could use different Windows/POSIX semantics. Windows host with POSIX filesystem produced four-slash org-dartlang-root paths.",
+  "fix": "Specify Windows semantics from the injected filesystem, consistently with existing multi-root conversion.",
+  "regression_before_fix": "Windows MemoryFileSystem on macOS rejected an in-project source; 5 existing cases passed and the new Windows case failed.",
+  "validation": {
+    "compiler_and_native_assets_tests": 39,
+    "fatal_infos_analysis": "passed",
+    "both_filesystem_styles": "package config, nested source, plugin registrant, root and depfile arguments",
+    "review": "no actionable findings"
+  },
+  "flutter_source_commit": "3b6b51c375659a524845c257b222e14d6b4fbc56",
+  "flutter_identity_commit": "f6ee827582837de63e861d53de5d40d96e10cf3e",
+  "cli_pin_commit": "771b72319b0a8d85d3516cde49ad8e27936764c6",
+  "engine_identity": "33f3b974597878a5daea004bb37489578c487b63"
+}

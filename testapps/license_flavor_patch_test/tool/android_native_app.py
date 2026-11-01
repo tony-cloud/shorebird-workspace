@@ -69,7 +69,12 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-        ndk { abiFilters += "arm64-v8a" }
+        // Flutter installs its supported ABI defaults while applying the plugin.
+        // Replace those defaults; adding ARM64 would retain ARM32 and x86_64.
+        ndk {
+            abiFilters.clear()
+            abiFilters += "arm64-v8a"
+        }
     }
     externalNativeBuild {
         cmake {
@@ -93,7 +98,7 @@ flutter { source = "../.." }
     <uses-permission android:name="android.permission.INTERNET"/>
     <application android:name="android.app.Application" android:label="Shorebird Native Test"
         android:icon="@mipmap/ic_launcher" android:allowBackup="false"
-        android:usesCleartextTraffic="true" android:debuggable="false">
+        android:usesCleartextTraffic="true">
         <activity android:name=".ControlActivity" android:exported="true"
             android:launchMode="standard" android:theme="@style/LaunchTheme"/>
         <activity android:name=".MainActivity" android:exported="false"
@@ -117,7 +122,7 @@ def validate_manifest_xml(xml, package):
     android = '{http://schemas.android.com/apk/res/android}'
     application = manifest.find('application')
     if (manifest.tag != 'manifest' or manifest.get('package') != package or
-            application is None or application.get(android + 'debuggable') != 'false' or
+            application is None or application.get(android + 'debuggable') not in (None, 'false') or
             application.get(android + 'allowBackup') != 'false' or
             application.get(android + 'name') != 'android.app.Application'):
         raise ValueError('Compiled fixture application manifest differs from required policy')
@@ -151,7 +156,14 @@ def verify_apk_manifest(apk, package, android_sdk, *, java_home=None):
                             capture_output=True, text=True, env=env, timeout=60)
     if result.returncode:
         raise ValueError('Compiled APK manifest inspection failed')
-    return validate_manifest_xml(result.stdout, package)
+    policy = validate_manifest_xml(result.stdout, package)
+    # Release Gradle configuration supplies the flag; an omitted manifest
+    # attribute also defaults to false. Check the analyzer's resolved value.
+    debuggable = subprocess.run([str(analyzer), 'manifest', 'debuggable', str(apk)],
+                                capture_output=True, text=True, env=env, timeout=60)
+    if debuggable.returncode or debuggable.stdout.strip() != 'false':
+        raise ValueError('Compiled APK must be non-debuggable')
+    return policy
 
 
 class _MirrorHandler(http.server.SimpleHTTPRequestHandler):

@@ -20,6 +20,7 @@ import re
 import secrets
 import shutil
 import socket
+import stat
 import subprocess
 import threading
 import urllib.parse
@@ -40,6 +41,35 @@ CONTROL_SCHEMA = 'android-native-control-v1'
 HEX64 = re.compile(r'[0-9a-f]{64}\Z')
 TOKEN = re.compile(r'[0-9a-f]{32}\Z')
 NONCE = re.compile(r'[0-9a-f]{48}\Z')
+
+
+def remove_owned_work(path):
+    """Remove private work, including Go's read-only module directories.
+
+    Only directories receive owner permissions. Open each relative to its
+    parent descriptor without following symlinks, so an external link target
+    (or a hard-linked staged input file) never receives a permission change.
+    """
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+
+    def make_writable(descriptor):
+        mode = stat.S_IMODE(os.fstat(descriptor).st_mode)
+        if mode & stat.S_IRWXU != stat.S_IRWXU:
+            os.fchmod(descriptor, mode | stat.S_IRWXU)
+        for name in os.listdir(descriptor):
+            if stat.S_ISDIR(os.stat(name, dir_fd=descriptor, follow_symlinks=False).st_mode):
+                child = os.open(name, flags, dir_fd=descriptor)
+                try:
+                    make_writable(child)
+                finally:
+                    os.close(child)
+
+    descriptor = os.open(path, flags)
+    try:
+        make_writable(descriptor)
+    finally:
+        os.close(descriptor)
+    shutil.rmtree(path)
 
 
 def parse_aad(aad):
@@ -878,7 +908,7 @@ class Lifecycle:
         for log in self.logs:
             attempt(log.close)
         if self.work_owned:
-            attempt(lambda: shutil.rmtree(self.work))
+            attempt(lambda: remove_owned_work(self.work))
         if failures:
             raise FixtureError('Owned Android lifecycle cleanup failed')
 

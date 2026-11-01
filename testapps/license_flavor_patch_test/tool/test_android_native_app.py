@@ -1,11 +1,13 @@
 """Compiled-manifest policy and read-only artifact serving contracts."""
 import tempfile
+import subprocess
 from pathlib import Path
 import unittest
+from unittest.mock import patch
 import urllib.error
 import urllib.request
 
-from android_native_app import ArtifactMirror, validate_manifest_xml
+from android_native_app import ArtifactMirror, validate_manifest_xml, verify_apk_manifest
 
 
 PACKAGE = 'dev.shorebird.e2e.fixture'
@@ -22,6 +24,28 @@ class ManifestTest(unittest.TestCase):
         result = validate_manifest_xml(MANIFEST, PACKAGE)
         self.assertEqual(result['exported_activities'], ['ControlActivity'])
         self.assertFalse(result['debuggable'])
+
+    def test_omitted_debug_attribute_uses_release_default(self):
+        result = validate_manifest_xml(MANIFEST.replace(' android:debuggable="false"', ''), PACKAGE)
+        self.assertFalse(result['debuggable'])
+
+    def test_compiled_apk_resolved_debug_mode_must_be_false(self):
+        with tempfile.TemporaryDirectory() as directory:
+            sdk = Path(directory)
+            analyzer = sdk / 'cmdline-tools/latest/bin/apkanalyzer'
+            analyzer.parent.mkdir(parents=True)
+            analyzer.touch()
+            xml = MANIFEST.replace(' android:debuggable="false"', '')
+            for code, value in [(0, 'false\n'), (0, 'true\n'), (0, ''), (1, 'false\n')]:
+                with self.subTest(code=code, value=value), patch('android_native_app.subprocess.run',
+                        side_effect=[subprocess.CompletedProcess([], 0, xml),
+                                     subprocess.CompletedProcess([], code, value)]) as run:
+                    if code == 0 and value.strip() == 'false':
+                        self.assertFalse(verify_apk_manifest(sdk / 'fixture.apk', PACKAGE, sdk)['debuggable'])
+                    else:
+                        with self.assertRaisesRegex(ValueError, 'non-debuggable'):
+                            verify_apk_manifest(sdk / 'fixture.apk', PACKAGE, sdk)
+                    self.assertEqual(run.call_args.args[0][1:3], ['manifest', 'debuggable'])
 
     def test_merged_policy_changes_are_rejected(self):
         variants = [

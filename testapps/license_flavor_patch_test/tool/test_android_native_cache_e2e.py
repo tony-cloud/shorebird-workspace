@@ -4,7 +4,9 @@ import copy
 import importlib.util
 import io
 import json
+import os
 from pathlib import Path
+import stat
 import tempfile
 from types import SimpleNamespace
 import unittest
@@ -580,6 +582,104 @@ class DriverTest(unittest.TestCase):
             mock.call('reverse', '--list'), mock.call('reverse', '--remove', 'tcp:32100')])
         runner.job.close.assert_called_once()
         self.assertFalse(any('kill-server' in str(call) or 'emu' in str(call) for call in runner.adb.call_args_list))
+
+    def cleanup_runner(self, work, *, owned=True):
+        runner = self.bare()
+        runner.work = work
+        runner.work_owned = owned
+        runner.installed = False
+        runner.reverses = set()
+        runner.job = mock.Mock()
+        runner.provision = runner.observer = runner.mirror = None
+        runner.logs = []
+        return runner
+
+    def test_cleanup_removes_nested_readonly_modules_without_changing_external_targets(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            work, unrelated = root / 'work', root / 'unrelated'
+            module = work / 'go-path/pkg/mod/toolchain@version/lib/time'
+            module.mkdir(parents=True)
+            (module / 'source.go').write_bytes(b'owned Go module')
+            unrelated.mkdir()
+            external = unrelated / 'staged-input'
+            external.write_bytes(b'preserved staged input')
+            external.chmod(0o444)
+            # A directory symlink and a hard-linked file must never cause chmod
+            # on staged inputs. Include a dangling link as well.
+            (work / 'external-directory').symlink_to(unrelated, target_is_directory=True)
+            (work / 'external-file').symlink_to(external)
+            (work / 'dangling').symlink_to(root / 'absent')
+            os.link(external, work / 'staged-hardlink')
+            original = external.stat()
+            directories = [module, *module.parents]
+            for path in directories:
+                if path == root:
+                    break
+                path.chmod(0o555)
+            unrelated.chmod(0o555)
+            try:
+                runner = self.cleanup_runner(work)
+                runner.cleanup()
+                self.assertFalse(work.exists())
+                self.assertEqual(external.read_bytes(), b'preserved staged input')
+                self.assertEqual(stat.S_IMODE(external.stat().st_mode), 0o444)
+                self.assertEqual(stat.S_IMODE(unrelated.stat().st_mode), 0o555)
+                self.assertEqual(external.stat().st_ino, original.st_ino)
+                self.assertEqual(list(unrelated.iterdir()), [external])
+                runner.stop_app.assert_called_once()
+                runner.job.close.assert_called_once()
+                runner.adb.assert_not_called()
+            finally:
+                unrelated.chmod(0o700)
+                # Keep the test's temporary directory clean if removal regresses.
+                for parent, _, _ in os.walk(work, followlinks=False):
+                    Path(parent).chmod(0o700)
+
+    def test_cleanup_rejects_symlink_work_root_without_changing_its_target(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            target, work = root / 'target', root / 'work'
+            target.mkdir()
+            (target / 'keep').write_text('outside work')
+            work.symlink_to(target, target_is_directory=True)
+            target.chmod(0o555)
+            try:
+                with self.assertRaises(e2e.FixtureError):
+                    self.cleanup_runner(work).cleanup()
+                self.assertTrue(work.is_symlink())
+                self.assertEqual((target / 'keep').read_text(), 'outside work')
+                self.assertEqual(stat.S_IMODE(target.stat().st_mode), 0o555)
+            finally:
+                target.chmod(0o700)
+
+    def test_cleanup_permission_failure_is_reported_and_other_resources_are_closed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory) / 'work'
+            work.mkdir(mode=0o555)
+            runner = self.cleanup_runner(work)
+            try:
+                with mock.patch.object(e2e.os, 'fchmod', side_effect=PermissionError('denied')), \
+                        self.assertRaises(e2e.FixtureError):
+                    runner.cleanup()
+                self.assertTrue(work.is_dir())
+                runner.stop_app.assert_called_once()
+                runner.job.close.assert_called_once()
+            finally:
+                work.chmod(0o700)
+
+    def test_cleanup_leaves_unowned_work_untouched(self):
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory) / 'work'
+            work.mkdir()
+            (work / 'keep').write_text('unowned')
+            work.chmod(0o555)
+            try:
+                self.cleanup_runner(work, owned=False).cleanup()
+                self.assertEqual((work / 'keep').read_text(), 'unowned')
+                self.assertEqual(stat.S_IMODE(work.stat().st_mode), 0o555)
+            finally:
+                work.chmod(0o700)
 
 
 if __name__ == '__main__':
