@@ -1,0 +1,61 @@
+{
+  "scope": "Component and protocol foundation evidence, not engine integration or app variant acceptance",
+  "commits": {
+    "updater": "cf1c63d84d539fbbcb36e36f415c3011701ab1a8",
+    "shorebird": "d33fe7ed86ab191fd03c7f2002637e9976295497",
+    "flutter": "16eff940aea7d582954376902a5bb541082cab34",
+    "shorebird-server": "3479ee0445a4db67eb223d8abbbaaf65202a909b"
+  },
+  "updater": {
+    "unit_tests_passed": 361,
+    "focused_v2_tests_passed": 10,
+    "workspace_check": "passed",
+    "format": "passed",
+    "independent_review": "no remaining actionable source findings after stale token and journal ordering fixes",
+    "log_sha256": "c8f117c5d6ffb1e5b2583fda1d21b214912feb9d0b65776761ff3bc1b4414788",
+    "native_v2": "intentionally refused pending provider implementation at this revision"
+  },
+  "server": {
+    "all_go_packages": "passed",
+    "sqlite_and_actual_postgresql": "passed",
+    "production_encoder_race_tests": "passed",
+    "vet": "passed",
+    "independent_review": "no remaining actionable findings after cross-endpoint storage reservation and zstd+bipatch fixes",
+    "logs_sha256": {
+      "go-vet.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "go-test-v2-production-transport-race-postgres.log": "cc549965e1ed613c4bc5ea4666b962e1e334b9f34a9500c58309549c88af7b71",
+      "postgres.log": "f91743eaa68330b25c407e8933878a11c8f7017805e1a8cac9a9ac4b6e2791e6",
+      "go-test-all.log": "57e66f51482ff741ce0f3f9bdc40b813ba182b7e839cb9023b639a785ec9b2c7",
+      "go-test-production-transport-final.log": "10f0932fd1adf45de574332383555b92ce31870643f87c93449f914c4c879fe8"
+    },
+    "production_encoder_fixture_manifest": {
+      "encoder": "updater patch::make_patch(empty_base, envelope), zstd+bipatch v1 literal-only",
+      "updater_git_revision": "92a7015bca749842de87131e354bfda626390128",
+      "encoder_binary_sha256": "83e03052a7fe5189b5640e70f42d4fc79cbf651c3c3985d5e6fdc34cc63ce2ab",
+      "encoder_source_sha256": "c40cc77cd60af0600df1e6652d0b3e0bb430524dc9fb26d55be01a8c85e2223f",
+      "installed_envelope_sha256": "12b6f65a4083cc99733590ae148bb1816e0dfff9d6654643ed45b0b51b9049c0",
+      "compressed_transport_sha256": "a023c5b3228385bbd294d84c817425cbaab2afb84b54f8cddbd6b927619af493"
+    },
+    "limitation": "Per-release selection aggregate serializes operations and scales linearly with installation count"
+  },
+  "desktop_arm64_routing": {
+    "cli_tests_passed": 4311,
+    "cli_tests_skipped": 1,
+    "skip": "Existing version-PR-only test",
+    "analyze": "passed",
+    "format": "531 files, no changes (worker tool evidence)",
+    "cspell": "32 touched files, no issues (worker tool evidence)",
+    "dart_version": "3.13.5 stable macos_arm64",
+    "test_log_sha256": "76afbd67d6c026b17993294c0df23eb8ec4bbbd74ffb3a8d2e03938d7c964913",
+    "analyze_log_sha256": "6c605f9f216937e88e5895b5d337e05cca90f8379c89447dd528c00a68bd9ad1",
+    "independent_review": "no actionable routing or GN findings",
+    "native_arm64_engine_build_or_runtime": "not run"
+  },
+  "golden_fixture_sha256": "20863c07d4c2764efdfb26fe557170fd747f50352a3086c880d4964510444440",
+  "remaining": [
+    "Engine and CLI v2 producers and selection-aware providers",
+    "Application installation identity and epoch-aware Dart status",
+    "Native ARM64 tool/SDK/engine production and runtime gates",
+    "Repeated variant and data-preservation lifecycle across the full acceptance matrix"
+  ]
+}

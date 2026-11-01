@@ -1,0 +1,61 @@
+{
+  "scope": "Reviewed component and host-test checkpoint; integrated engine build running, no v2 application acceptance",
+  "pins": {
+    "dart_sdk": "b17e766a7f25f22f31dcaeb313c55d40945a8c8a",
+    "flutter_source": "ff7c9b3453d434bbcefd6ce274719031f2fc6819",
+    "updater": "e482b8093890d46031d6496fc5426db56d133660",
+    "server": "3479ee0445a4db67eb223d8abbbaaf65202a909b",
+    "identity_material": "open-shorebird-toolchain-v1\nb17e766a7f25f22f31dcaeb313c55d40945a8c8a\nff7c9b3453d434bbcefd6ce274719031f2fc6819\ne482b8093890d46031d6496fc5426db56d133660\n",
+    "engine_identity": "b7ac85a5c495ea0f30c4a86be9527134797f4f19",
+    "flutter": "c7e1331d890a8d1d5f9758e57086a83a87bf5c63",
+    "shorebird": "707849987725e3fb0c84f68d473a53654b56cb25"
+  },
+  "updater": {
+    "rust_focused_passed": 16,
+    "rust_full_passed": 367,
+    "dart_passed": 57,
+    "analysis_format_workspace_check": "passed",
+    "c11_cpp17_headers": "passed -Werror",
+    "independent_source_review": "no remaining actionable findings",
+    "native_runtime": "not run"
+  },
+  "cli": {
+    "cli_passed": 4320,
+    "cli_skipped": 1,
+    "protocol_passed": 563,
+    "client_passed": 230,
+    "client_skipped": 1,
+    "flutter_tools_passed": 73,
+    "analysis": "passed",
+    "generated_serializers": "all six reproduced byte-identically in isolated coherent SDK/cache",
+    "native_v2_publication": "not yet implemented"
+  },
+  "engine": {
+    "focused_cpp_passed": 98,
+    "focused_rust_adapter": false,
+    "source_review": "source commitment and guarded teardown reviewed with no remaining actionable findings",
+    "integrated_rust_link_runtime_tests": "pending"
+  },
+  "fixture": {
+    "macos_python_tests_passed": 34,
+    "signed_v2_app_runtime": "not run"
+  },
+  "logs_sha256": {
+    "variant_cli_all.log": "d51aba2a64b29610e89f51b532666edefa4da74eb88bb0c2687dcc3dce96be84",
+    "variant_cli_analysis.log": "9276260554e3a5932d466203ac8430e202f221f33a5ebdf4503ff98da6b02b13",
+    "variant_cli_analysis_after_codegen.log": "9276260554e3a5932d466203ac8430e202f221f33a5ebdf4503ff98da6b02b13",
+    "variant_protocol.log": "d5d409b95071ce4dc11b080e0fab00d30dc408f22b30949a373305103ed50d86",
+    "variant_client.log": "29a01f52573c1531483acbc48212dd941af54e3a971f1f25aaf150832e747557",
+    "variant_flutter_tools.log": "9b51ff4c1e99706e0c8a8cc4fcc9cfbf1370ce47d6c02a0323281ee85fc3fae9",
+    "variant_serializer_validation.log": "2e6ff162b7b24c81245a498b5c3e62b3ac022f44c06586749a3b1a062efac51a",
+    "updater-native-status-tests.log": "bf6e3b31bbb8e3d312945355f7db6e18652f84db2328918aba0ce6a52eaaeaf0",
+    "macos-fixture-tests.log": "6f34d6be77aadd7b1ce603f796645208084b536cc9e7449bcf92a8c580fdfc57",
+    "engine-focused-race-final.log": "f6c753f73b777758a83975f106c8b08bc8d41a89b1b6343f86e635a3dc181faa"
+  },
+  "limitations": [
+    "Native production initialization and loader execution still unverified",
+    "Hardened macOS x64 interpreted FFI remains missing",
+    "No v2 same-install variant/data round trip on any native app target yet",
+    "ARM64 producer workflow review and native runtime pending"
+  ]
+}

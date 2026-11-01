@@ -13,6 +13,27 @@ from verify_native_cache_engine_tests import listed_tests, validate_report
 
 REQUIRED = {
     "shorebird": frozenset({
+        "Shorebird.V2ScopeNeverDowngradesWhenMissingOrAmbiguous",
+        "Shorebird.V2OriginalBytecodeStreamIsIndependentOwnedAndFreshOnEveryOpen",
+        "InterpreterSelectionV2Test.BeginsSameTokenBeforeSelectionAwareKeyRelease",
+        "InterpreterSelectionV2Test.V2NeverFallsBackToLegacyProvider",
+        "InterpreterSelectionV2Test.StaleTokenDoesNotReleaseKeyOrTouchVm",
+        "InterpreterSelectionV2Test.MissingContextNeverBeginsOrCallsKeyProvider",
+        "InterpreterSelectionV2Test.ArtifactMutationCannotReuseVerifiedAuthority",
+        "InterpreterSelectionV2Test.RejectsReplayProfileLeaseAndAmbiguousContext",
+        "InterpreterSelectionV2Test.WireAarch64NeverAcceptsX64EnvelopeMetadata",
+        "InterpreterSelectionV2Test.BegunAuthorityKeepsLaterEnginesCoherent",
+        "InterpreterSelectionV2Test.ConcurrentBaseWinDiscardsInstalledPatchBeforeMain",
+        "InterpreterSelectionV2Test.ConcurrentPatchCommitPreventsBaseBeforeMainCompletes",
+        "InterpreterSelectionV2Test.UnreadableOwnedArtifactIsRetryableWithoutForgedKeyStatus",
+        "InterpreterSelectionV2Test.WrongProvisionedKeyRetainsTypedDeferral",
+        "InterpreterPatchTest.FailedCommittedMainRefusesFreshGroupsUntilColdRestart",
+        "InterpreterPatchTest.CommittedBaseFailureCannotRetryAnotherSource",
+        "DesktopInterpreterConfigTest.CompiledV2MissingScopeRefusesStartup",
+        "DesktopInterpreterConfigTest.V2CheckedInitFailureRefusesUnpreparedBase",
+        "DesktopInterpreterConfigTest.ValidV2NoGrantBeginsPreparedFreeBase",
+        "UpdaterV2Marker.DirectConfigurationCannotIgnoreCompiledProtocol",
+
         "DesktopInterpreterConfigTest.PreservesDesktopScopeAndWholeFramework",
         "DesktopInterpreterConfigTest.UpdaterFailureRetainsSignedBaseWithoutKey",
         "DesktopInterpreterConfigTest.InvalidBaseRetainedAndStartupRejected",
@@ -40,7 +61,12 @@ REQUIRED = {
         "EmbedderTest.CanCreateAndCollectAValidElfSource",
         "EmbedderTest.CanLaunchAndShutdownWithAValidElfSource",
     }),
+    "runtime": frozenset({
+        "DartIsolateTest.UncommittedInterpreterGroupSuppressesApplicationShutdownCallback",
+        "DartIsolateTest.CommittedInterpreterGroupRetainsApplicationShutdownCallback",
+    }),
     "cocoa": frozenset({
+        "FlutterDartProjectShorebirdTest.V2ProviderRetainsContextBlockAndSealsAtStartup",
         "FlutterEngineTest.FullInterpreterNeverUsesNativeOrElfRoute",
         "FlutterEngineTest.LegacyProfileKeepsPublicInitializerAndElfRoute",
         "FlutterDartProjectShorebirdTest.ActualLoadedCustomBundleProvidesHostPath",

@@ -1,0 +1,118 @@
+import Cocoa
+import Darwin
+import FlutterMacOS
+import Security
+
+// Disposable independently authenticated provisioning control. Keys arrive only
+// in a private child environment, never assets, output, receipts or Dart code.
+enum MacosInterpreterFixture {
+  static let service = "__SERVICE__"
+  static let bundleID = "__BUNDLE_ID__"
+  static let session = "__SESSION__"
+  static let appID = "__APP_ID__"
+  static let release = "__RELEASE__"
+  static let allowed = ["pro": "__PRO_KEY_ID__", "enterprise": "__ENTERPRISE_KEY_ID__"]
+  static var evidenceDirectory: URL {
+    URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)
+      .appendingPathComponent("Library/Application Support/shorebird-macos-fixture", isDirectory: true)
+  }
+  static func query(_ account: String) -> [String: Any] {
+    [kSecClass as String: kSecClassGenericPassword,
+     kSecAttrService as String: service, kSecAttrAccount as String: account]
+  }
+  static func evidence(_ value: [String: Any], name: String) {
+    do {
+      try FileManager.default.createDirectory(at: evidenceDirectory, withIntermediateDirectories: true)
+      try JSONSerialization.data(withJSONObject: value, options: [.sortedKeys])
+        .write(to: evidenceDirectory.appendingPathComponent(name), options: [.atomic])
+    } catch { preconditionFailure("Could not write native fixture receipt") }
+  }
+  static func read(_ keyID: String, _ context: Data) -> Data? {
+    guard let root = try? JSONSerialization.jsonObject(with: context) as? [String: Any],
+          root["version"] as? Int == 2,
+          let digest = root["selection_digest"] as? String,
+          digest.range(of: "^[a-f0-9]{64}$", options: .regularExpression) != nil,
+          let descriptor = root["selection"] as? [String: Any],
+          let scope = descriptor["scope"] as? [String: Any],
+          scope["app_id"] as? String == appID,
+          scope["release_version"] as? String == release,
+          scope["platform"] as? String == "macos",
+          scope["arch"] as? String == "aarch64",
+          scope["runtime_profile"] as? String == "interpreter-full",
+          let clientHash = scope["client_id_hash"] as? String,
+          clientHash.range(of: "^[a-f0-9]{64}$", options: .regularExpression) != nil,
+          let revision = descriptor["entitlement_revision"] as? String,
+          revision.hasPrefix(session + ":"),
+          let variant = descriptor["variant_id"] as? String,
+          descriptor["license_type"] as? String == variant,
+          allowed[variant] == keyID,
+          descriptor["channel"] as? String == "stable",
+          let target = descriptor["target"] as? [String: Any],
+          target["kind"] as? String == "patch",
+          target["encryption"] as? String == "artifact-aes-256-gcm",
+          target["artifact_key_id"] as? String == keyID else { return nil }
+    var request = query(keyID)
+    request[kSecReturnData as String] = true
+    request[kSecMatchLimit as String] = kSecMatchLimitOne
+    var value: CFTypeRef?
+    guard SecItemCopyMatching(request as CFDictionary, &value) == errSecSuccess,
+          let data = value as? Data, data.count == 32 else { return nil }
+    evidence(["schema": "macos-variant-provider-v2", "session": session,
+              "variant": variant, "account": keyID, "selection_digest": digest,
+              "epoch": descriptor["epoch"] ?? NSNull(),
+              "pid": ProcessInfo.processInfo.processIdentifier,
+              "time": Date().timeIntervalSince1970], name: "provider.json")
+    return data
+  }
+  static func beforeEngine() {
+    precondition(Bundle.main.bundleIdentifier == bundleID, "Wrong disposable bundle")
+    let env = ProcessInfo.processInfo.environment
+    if let action = env["OPEN_SHOREBIRD_TEST_KEY_ACTION"] {
+      guard let account = env["OPEN_SHOREBIRD_TEST_KEY_ID"], allowed.values.contains(account) else {
+        preconditionFailure("Refusing foreign Keychain account")
+      }
+      var result = ""
+      switch action {
+      case "provision", "overwrite":
+        guard let hex = env["OPEN_SHOREBIRD_TEST_KEY_HEX"],
+              hex.range(of: "^[a-f0-9]{64}$", options: .regularExpression) != nil else {
+          preconditionFailure("Invalid private provisioning")
+        }
+        var bytes = [UInt8]()
+        var index = hex.startIndex
+        while index < hex.endIndex {
+          let end = hex.index(index, offsetBy: 2)
+          bytes.append(UInt8(hex[index..<end], radix: 16)!)
+          index = end
+        }
+        let removed = SecItemDelete(query(account) as CFDictionary)
+        precondition(removed == errSecSuccess || removed == errSecItemNotFound)
+        var item = query(account)
+        item[kSecValueData as String] = Data(bytes)
+        item[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        precondition(SecItemAdd(item as CFDictionary, nil) == errSecSuccess)
+        _ = bytes.withUnsafeMutableBytes { $0.initializeMemory(as: UInt8.self, repeating: 0) }
+        result = "stored"
+      case "delete":
+        let removed = SecItemDelete(query(account) as CFDictionary)
+        precondition(removed == errSecSuccess || removed == errSecItemNotFound)
+        result = removed == errSecSuccess ? "deleted" : "absent"
+      default: preconditionFailure("Unsupported private key action")
+      }
+      evidence(["schema": "macos-variant-key-control-v2", "action": action,
+                "result": result, "bundle_id": bundleID, "service": service,
+                "session": session, "account": account,
+                "time": Date().timeIntervalSince1970,
+                "pid": ProcessInfo.processInfo.processIdentifier], name: "key-control-" + account + ".json")
+      if action == "delete" || env["OPEN_SHOREBIRD_TEST_KEY_CONTROL_ONLY"] == "1" { exit(0) }
+    }
+    precondition(IosFullFfiRetain() == 13, "Released native exports missing")
+    precondition(FlutterDartProject.setShorebirdAotPatchKeyProviderV2 { read($0, $1) },
+                 "V2 provider must precede first engine")
+    evidence(["schema": "macos-interpreter-container-v1", "bundle_id": bundleID,
+              "home": NSHomeDirectory(), "temp": NSTemporaryDirectory(),
+              "status_path": evidenceDirectory.appendingPathComponent("ffi-status.json").path,
+              "time": Date().timeIntervalSince1970,
+              "pid": ProcessInfo.processInfo.processIdentifier], name: "container.json")
+  }
+}
