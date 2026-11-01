@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Run an already-built disposable macOS protocol-2 fixture.
 
-Default is a read-free plan. --execute signs and launches only the private app
-in --work-dir, uses real server assignments, and tears down its own resources.
+Default is a read-free plan. --execute signs (or verifies a pre-signed bundle)
+and launches only the private app in --work-dir, uses real server assignments,
+and tears down its own resources.
 No engine/build/device operation exists here. Unit tests are not acceptance.
 """
 from __future__ import annotations
@@ -208,7 +209,7 @@ def wait_past_deadline(deadline, *, now=time.time, sleep=time.sleep):
     return current
 
 
-def require_fresh_fixture(work, state):
+def require_fresh_fixture(work, state, *, preserve_scope=False):
     fixture.require_open(work, state)
     require(state.get('built_phases') == list(fixture.BUILD_ORDER), 'Build all four fixture phases first')
     require(not state.get('installation_id') and not state.get('assignments') and
@@ -222,14 +223,23 @@ def require_fresh_fixture(work, state):
     app = v1.contained(work, state['released_app'])
     require(app.is_dir() and not app.is_symlink(), 'Missing private released app')
     require(not app.is_relative_to(v1.ROOT), 'Released app must be outside the source workspace')
-    fixture.validate_compiled_scope(state, app)
+    if preserve_scope:
+        require(isinstance(state.get('release_scope'),dict), 'Pre-signed app requires its original pinned release scope')
+        actual = fixture.validate_compiled_scope(dict(state), app)
+        require(actual == state['release_scope'], 'Pre-signed app differs from its original pinned release scope')
+    else:
+        fixture.validate_compiled_scope(state, app)
     return app
 
 
 class Lifecycle:
-    def __init__(self, work, state, identity, *, timeout=60, lease_seconds=90):
+    def __init__(self, work, state, identity, *, timeout=60, lease_seconds=90, verify_presigned=False):
         require_native_host(state)
+        require(type(verify_presigned) is bool, 'Invalid app signing mode')
+        require(re.fullmatch(r'[a-fA-F0-9]{40}', identity or '') is not None,
+                'Pin the expected Developer ID certificate SHA-1')
         self.work, self.state, self.identity = work, state, identity
+        self.verify_presigned = verify_presigned
         self.app = Path(state['released_app'])
         self.evidence = work / 'lifecycle'
         self.evidence.mkdir(mode=0o700)
@@ -242,6 +252,8 @@ class Lifecycle:
         self.launches = []
         self.keys = tuple(json.loads((work / 'secrets.json').read_text())['variant_keys'].values())
         self.result = {'schema': SCHEMA, 'runtime_acceptance': False, 'launches': self.launches,
+                       'signing_mode': 'verify_presigned' if verify_presigned else 'sign_locally',
+                       'bundle_verified': False,
                        'work_dir': str(work), 'session': state['session']}
         self.save()
 
@@ -261,11 +273,29 @@ class Lifecycle:
         require(not any(v1.port_open(port) for port in self.ports()), 'Offline API/observer endpoint is reachable')
 
     def sign(self):
-        for index, command in enumerate(v1.signing_plan(self.work, self.state, self.app, self.identity)):
-            v1.checked(command, self.evidence / f'sign-{index}.log')
-        self.write('signed-bundle.json', v1.inspect_app(self.work, self.state, self.app, self.identity))
-        self.tree = bundle_tree(self.app)
+        self.tree = None
+        self.result['bundle_verified'] = False
+        before = None
+        if self.verify_presigned:
+            require(self.app.is_dir() and not self.app.is_symlink(), 'Missing private pre-signed app')
+            v1.app_identity(self.work, self.state, self.app)
+            before = bundle_tree(self.app)
+            require(bool(before) and isinstance(self.state.get('release_scope'),dict),
+                    'Pre-signed app requires its original pinned release scope')
+            actual = fixture.validate_compiled_scope(dict(self.state), self.app)
+            require(actual == self.state['release_scope'], 'Pre-signed app differs from its original pinned release scope')
+        else:
+            for index, command in enumerate(v1.signing_plan(self.work, self.state, self.app, self.identity)):
+                v1.checked(command, self.evidence / f'sign-{index}.log')
+        inspection = v1.inspect_app(self.work, self.state, self.app, self.identity)
+        after = bundle_tree(self.app)
+        if self.verify_presigned:
+            require(after == before, 'Pre-signed app changed during read-only verification')
+        self.write('signed-bundle.json', inspection)
+        self.tree = after
         self.write('signed-bundle-tree.json', self.tree)
+        self.result['bundle_verified'] = True
+        self.save()
 
     def start_server(self):
         require(self.server is None, 'Server already owned')
@@ -684,7 +714,7 @@ class Lifecycle:
             except Exception as error:
                 errors.append('payload: ' + str(error))
         else:
-            errors.append('Signing did not finish; final native deletion could not be safely launched')
+            errors.append('App signing/verification did not finish; final native deletion could not be safely launched')
         try:
             self.owner.close()
         except Exception as error:
@@ -695,9 +725,10 @@ class Lifecycle:
         return errors
 
 
-def plan(target_arch='arm64'):
+def plan(target_arch='arm64', *, verify_presigned=False):
     return {'schema': SCHEMA, 'runtime_acceptance': False, 'execute_required': True,
             'target': v1.target_architecture({'arch':target_arch}),
+            'signing_mode': 'verify_presigned' if verify_presigned else 'sign_locally',
             'prerequisite': 'Fresh disposable macos_variant_e2e v2 fixture; base/pro_seed/pro/enterprise built; build server stopped',
             'cold_lifecycle': list(fixture.LIFECYCLE),
             'cases': ['same-content higher-epoch restart', 'offline paid', 'missing/wrong key and offline recovery',
@@ -715,6 +746,8 @@ def parser():
     result.add_argument('--target-arch', choices=('arm64','x64'),
                         help='Optional check against prepared target; plan default: arm64')
     result.add_argument('--signing-identity', help='Explicit Developer ID certificate SHA-1')
+    result.add_argument('--verify-presigned', action='store_true',
+                        help='Verify the existing signed bundle using only the public certificate pin; never sign it')
     result.add_argument('--execute', action='store_true')
     result.add_argument('--timeout', type=float, default=60)
     result.add_argument('--lease-seconds', type=int, default=90)
@@ -724,7 +757,7 @@ def parser():
 def main(argv=None):
     args = parser().parse_args(argv)
     if not args.execute:
-        print(json.dumps(plan(args.target_arch or 'arm64'), indent=2))
+        print(json.dumps(plan(args.target_arch or 'arm64',verify_presigned=args.verify_presigned), indent=2))
         return
     require(re.fullmatch(r'[a-fA-F0-9]{40}', args.signing_identity or '') is not None,
             '--execute requires a pinned Developer ID certificate SHA-1')
@@ -735,8 +768,9 @@ def main(argv=None):
     if args.target_arch is not None:
         require(args.target_arch == v1.target_architecture(state)['arch'], 'Requested target differs from prepared app')
     require_native_host(state)  # Before lifecycle construction, signing or any launch.
-    require_fresh_fixture(work, state)
-    runner = Lifecycle(work, state, args.signing_identity, timeout=args.timeout, lease_seconds=args.lease_seconds)
+    require_fresh_fixture(work, state, preserve_scope=args.verify_presigned)
+    runner = Lifecycle(work, state, args.signing_identity, timeout=args.timeout, lease_seconds=args.lease_seconds,
+                       verify_presigned=args.verify_presigned)
     error = None
     try:
         runner.run_cases()
