@@ -1,0 +1,33 @@
+{
+  "run_id": 41248813370,
+  "run_url": "https://github.com/tony-cloud/shorebird-workspace/actions/runs/41248813370",
+  "job_id": 124678865404,
+  "job_url": "https://github.com/tony-cloud/shorebird-workspace/actions/runs/41248813370/job/124678865404",
+  "job_conclusion": "success",
+  "root_commit": "58b2651c8ec965cab063a791d224390167260fe5",
+  "flutter_commit": "774baac5a31e953a7abee3d271613f7b658bb5e9",
+  "sdk_commit": "fdc857ef4018ceddc9155a01036fcb3960062d95",
+  "updater_commit": "bb4224303d18baaacd1c2316e24336813517142d",
+  "evidence": "Successful job log and its native-cache execution validator; source of selected tests checked at the recorded Flutter commit",
+  "validator_output": "Native cache engine test contract passed (linux): 88 Shorebird tests, 5 AOT embedder controls executed; no failures/skips",
+  "shorebird_tests": 88,
+  "aot_embedder_controls": [
+    "InvalidAOTDataSourcesMustReturnError",
+    "PreparedFDOwnershipAndImageSurviveMultipleEngines",
+    "PreparedMemoryImageSurvivesInputAndMultipleEngines",
+    "CanCreateAndCollectAValidElfSource",
+    "CanLaunchAndShutdownWithAValidElfSource"
+  ],
+  "failures": 0,
+  "skips": 0,
+  "proof": [
+    "Linux release engine compilation, test execution, packaging and artifact upload succeeded",
+    "Sealed memfd fixture denies writes and truncation, duplicates descriptors, closes the original and executes across two engines",
+    "Prepared memory image remains usable after input lifetime ends and across multiple engines"
+  ],
+  "limitations": [
+    "This job predates the full signed/encrypted/offline GTK lifecycle harness and does not execute it",
+    "This is a specific older source checkpoint, not validation of subsequent CLI guards or compiler native-mapping changes",
+    "The overall workflow has other unfinished jobs and an Android packaging failure; this record claims only the Linux job result"
+  ]
+}

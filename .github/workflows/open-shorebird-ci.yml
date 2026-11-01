@@ -173,6 +173,8 @@ jobs:
           python3 -m py_compile testapps/license_flavor_patch_test/tool/ios_device_e2e.py
           python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p test_ios_device_e2e.py -v
           python3 -m py_compile testapps/license_flavor_patch_test/tool/windows_native_cache_e2e.py
+          python3 -m py_compile testapps/license_flavor_patch_test/tool/linux_native_cache_e2e.py
+          python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p test_linux_native_cache_e2e.py -v
           python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p test_windows_native_cache_e2e.py -v
           python3 -m py_compile scripts/package_android_maven.py
           python3 scripts/verify_android_maven.py
@@ -1427,7 +1429,30 @@ jobs:
           sudo apt-get install -y \
             libgtk-3-dev \
             liblzma-dev \
-            pkg-config
+            pkg-config clang cmake ninja-build \
+            libcurl4-openssl-dev libkeyutils-dev keyutils \
+            xvfb xauth dbus-x11 libgl1-mesa-dri libegl1
+
+      - name: Verify Linux session keyring support
+        run: |
+          python3 - <<'PYKEYRING'
+          import ctypes, ctypes.util
+          library = ctypes.CDLL(ctypes.util.find_library('keyutils'), use_errno=True)
+          library.keyctl_join_session_keyring.argtypes = [ctypes.c_char_p]
+          library.keyctl_join_session_keyring.restype = ctypes.c_int32
+          library.keyctl_setperm.argtypes = [ctypes.c_int32, ctypes.c_uint32]
+          library.keyctl_revoke.argtypes = [ctypes.c_int32]
+          keyring = library.keyctl_join_session_keyring(None)
+          if keyring <= 0:
+              raise SystemExit('Linux kernel session keyring is unavailable')
+          try:
+              if library.keyctl_setperm(keyring, 0x3f000000) != 0:
+                  raise SystemExit('Linux kernel session keyring permissions failed')
+          finally:
+              if library.keyctl_revoke(keyring) != 0:
+                  raise SystemExit('Linux kernel session keyring cleanup failed')
+          print('Linux kernel session keyring preflight passed')
+          PYKEYRING
 
       - name: Write gclient config
         env:
@@ -1470,6 +1495,11 @@ jobs:
             flutter/shell/platform/linux:flutter_gtk \
             flutter/build/archives:flutter_patched_sdk \
             flutter/tools/font_subset:font_subset \
+            flutter/build/dart:dart_sdk \
+            flutter/flutter_frontend_server:frontend_server \
+            flutter/tools/const_finder:const_finder \
+            flutter/sky/packages/sky_engine:sky_engine \
+            flutter/impeller/compiler:impellerc \
             flutter/shell/common/shorebird:shorebird_unittests \
             flutter/shell/platform/embedder:embedder_unittests \
             2>&1 | tee "$results/build.log"
@@ -1520,6 +1550,92 @@ jobs:
         with:
           name: linux-native-cache-engine-tests
           path: artifacts/linux-native-cache-tests/
+          if-no-files-found: error
+
+      - name: Set up Go for Linux lifecycle
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: shorebird-server/go.sum
+
+      - name: Prepare Linux encrypted lifecycle tools
+        run: |
+          set -euo pipefail
+          out="$GITHUB_WORKSPACE/flutter/engine/src/out/linux_release_x64"
+          unzip -q -o "$out/zip_archives/flutter_patched_sdk_product.zip" -d "$out"
+          cache="$GITHUB_WORKSPACE/flutter/bin/cache"
+          mkdir -p "$cache"
+          rm -rf -- "$cache/dart-sdk"
+          cp -a "$out/dart-sdk" "$cache/dart-sdk"
+          export PUB_CACHE="$RUNNER_TEMP/shorebird-linux-lifecycle-pub"
+          echo "PUB_CACHE=$PUB_CACHE" >> "$GITHUB_ENV"
+          for project in shorebird flutter/packages/flutter_tools; do
+            (cd "$GITHUB_WORKSPACE/$project" && "$out/dart-sdk/bin/dart" pub get)
+          done
+          (cd updater && cargo build --release --locked -p patch --bin patch)
+
+      - name: Compile Linux session keyring provider contract
+        run: |
+          set -euo pipefail
+          fixture="$GITHUB_WORKSPACE/testapps/license_flavor_patch_test/tool/linux_native"
+          out="$GITHUB_WORKSPACE/flutter/engine/src/out/linux_release_x64"
+          results="$GITHUB_WORKSPACE/artifacts/linux-native-provider-tests"
+          mkdir -p "$results"
+          clang++ -std=c++17 -Wall -Wextra -Werror -pthread \
+            -I"$out" $(pkg-config --cflags gtk+-3.0 libcurl) \
+            "$fixture/native_cache_contract_test.cpp" \
+            -o "$results/native_cache_contract_test" \
+            $(pkg-config --libs gtk+-3.0 libcurl) -lkeyutils \
+            2>&1 | tee "$results/build.log"
+
+      - name: Run Linux encrypted native lifecycle
+        timeout-minutes: 75
+        run: |
+          set -euo pipefail
+          engine="$GITHUB_WORKSPACE/flutter/engine/src"
+          out="$engine/out/linux_release_x64"
+          work="$RUNNER_TEMP/shorebird-linux-e2e-$(python3 -c 'import uuid; print(uuid.uuid4())')"
+          results="$GITHUB_WORKSPACE/artifacts/linux-native-cache-e2e"
+          probe="$GITHUB_WORKSPACE/artifacts/linux-native-provider-tests/native_cache_contract_test"
+          export GDK_BACKEND=x11 LIBGL_ALWAYS_SOFTWARE=1
+          dbus-run-session -- xvfb-run -a python3 testapps/license_flavor_patch_test/tool/linux_native_cache_e2e.py run --execute --engine-src "$engine" --host-engine linux_release_x64 --target-engine linux_release_x64 --tooling-dart "$out/dart-sdk/bin/dart" --patch-tool "$GITHUB_WORKSPACE/updater/target/release/patch" --pub-cache "$PUB_CACHE" --provider-probe "$probe" --work "$work" --results "$results"
+          python3 - "$results/results.json" <<'PYREPORT'
+          import json, sys
+          report = json.load(open(sys.argv[1]))
+          required = {
+              'native-probe-self-test', 'native-probe-online', 'native-probe-offline',
+              'actual-cli-release-free', 'actual-cli-patch-pro', 'ciphertext-installed',
+              'offline-cold-U', 'offline-missing-key-BASE', 'offline-missing-recovery-U',
+              'offline-wrong-key-BASE', 'offline-wrong-recovery-U',
+              'online-U-receive-signed-rollback', 'offline-cold-rollback-BASE',
+              'released-bundle-unchanged',
+          }
+          observed = {stage['name'] for stage in report.get('stages', [])}
+          if not required.issubset(observed):
+              raise SystemExit('Linux lifecycle execution evidence is incomplete')
+          if (report.get('key_storage') != 'kernel-session-keyring' or
+              report.get('key_storage_scope') != 'cold-app-processes-in-one-session'):
+              raise SystemExit('Linux lifecycle key storage contract changed')
+          if (report.get('schema') != 'linux-native-cache-e2e-v1' or
+              report.get('result') != 'passed' or
+              report.get('cleanup') != 'owned processes, ports, disposable app cache, private session removed; owned session keyring revoked'):
+              raise SystemExit('Linux lifecycle did not produce a passing cleaned execution report')
+          PYREPORT
+
+      - name: Upload Linux native provider test evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-native-provider-tests
+          path: artifacts/linux-native-provider-tests/build.log
+          if-no-files-found: error
+
+      - name: Upload Linux encrypted lifecycle evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-native-cache-e2e
+          path: artifacts/linux-native-cache-e2e/results.json
           if-no-files-found: error
 
       - name: Package Linux engine artifacts

@@ -127,13 +127,19 @@ memory or compressed download size.
 November 1 local validation passed 333 updater workspace tests, 15 Flutter
 configuration tests, 59 CLI configuration tests, 87 Shorebird engine tests and
 three AOT embedder controls. The iOS framework and snapshot build also passed.
-Linux CI subsequently passed all 87 Shorebird tests and four AOT embedder
-controls, including descriptor ownership and execution across two engines.
-That fixture used a regular file descriptor; it does not establish sealed
-anonymous descriptor execution or the complete encrypted offline lifecycle.
-A strengthened sealed-descriptor fixture and Android linker/device execution
-remain required. See the [Linux CI evidence](validation/native-cache-linux-engine-ci-20261101.json)
-and the earlier
+The first Linux CI checkpoint passed 87 Shorebird tests and four AOT controls
+using a regular descriptor. A subsequent checkpoint passed 88 Shorebird tests
+and five AOT controls, including sealed memfd ownership and execution across
+two engines, and memory-image lifetime across input release and engine reuse.
+This proves those native engine paths, not the complete signed/encrypted
+offline GTK app lifecycle. The new Linux lifecycle harness and mandatory CI
+gate cover that separate acceptance sequence; their Linux execution remains
+pending. Its test provider stores keys in an owned kernel session keyring,
+so offline recovery is scoped to cold app processes within one session, not
+reboot or login persistence. Android linker/device execution also remains
+required. See the [sealed-descriptor CI evidence](validation/native-cache-linux-sealed-ci-20261101.json),
+[Linux lifecycle fixture record](validation/linux-native-lifecycle-fixture-20261101.json),
+[earlier Linux CI evidence](validation/native-cache-linux-engine-ci-20261101.json), and
 [native cache validation record](validation/encrypted-native-cache-host-20261101.json).
 
 The subsequent Windows memory-source changes pass 341 updater tests and strict

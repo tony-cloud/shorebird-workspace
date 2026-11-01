@@ -230,6 +230,11 @@ required_files = %w[
   dart-sdk/pkg/vm/lib/native_assets/shorebird_descriptor.dart
   flutter/packages/flutter_tools/lib/src/shorebird/shorebird_native_assets.dart
   flutter/packages/flutter_tools/test/general.shard/shorebird/shorebird_native_assets_test.dart
+  testapps/license_flavor_patch_test/tool/linux_native_cache_e2e.py
+  testapps/license_flavor_patch_test/tool/test_linux_native_cache_e2e.py
+  testapps/license_flavor_patch_test/tool/linux_native/runner_patch_key_provider.h
+  testapps/license_flavor_patch_test/tool/linux_native/runner_patch_key_provider.cpp
+  testapps/license_flavor_patch_test/tool/linux_native/native_cache_contract_test.cpp
   testapps/license_flavor_patch_test/tool/windows_native_cache_e2e.py
   testapps/license_flavor_patch_test/tool/test_windows_native_cache_e2e.py
   testapps/license_flavor_patch_test/tool/windows_native/runner_patch_key_provider.h
@@ -2010,7 +2015,7 @@ end
 
 native_test_evidence_uploads = {
   'cli-artifacts' => ['native-archive-tests-${{ matrix.artifact_os }}-${{ matrix.artifact_arch }}', 'native-mapping-build-tests-${{ matrix.artifact_os }}-${{ matrix.artifact_arch }}'],
-  'linux-engine' => ['linux-native-cache-engine-tests'],
+  'linux-engine' => %w[linux-native-cache-engine-tests linux-native-provider-tests linux-native-cache-e2e],
   'windows-engine' => %w[windows-native-cache-engine-tests windows-native-provider-tests windows-native-cache-e2e],
   'custom-dart-sdk' => ['linux-elf-memory-loader-tests'],
   'custom-dart-sdk-windows' => ['windows-elf-memory-loader-tests'],
@@ -2463,6 +2468,56 @@ assert!(windows_lifecycle['shell'] == 'pwsh' && windows_lifecycle['timeout-minut
   assert!(step['if'].to_s.include?('always()') && step['uses'] == 'actions/upload-artifact@v4' && step.dig('with', 'name') == artifact && step.dig('with', 'path') == path && step.dig('with', 'if-no-files-found') == 'error', "#{name} must retain only its designated evidence even on failure")
 end
 assert!(run_text_by_job.fetch('source-checks').include?('python3 -m py_compile testapps/license_flavor_patch_test/tool/windows_native_cache_e2e.py') && run_text_by_job.fetch('source-checks').include?('-p test_windows_native_cache_e2e.py -v'), 'Source checks must execute Windows lifecycle protocol and ownership controls')
+
+# GTK app acceptance must use the real encrypted lifecycle, not seeded cache state.
+linux_steps = jobs.fetch('linux-engine').fetch('steps')
+linux_gate_names = [
+  'Install Linux engine dependencies',
+  'Verify Linux session keyring support',
+  'Build Linux engine',
+  'Run Linux prepared native cache engine tests',
+  'Prepare Linux encrypted lifecycle tools',
+  'Compile Linux session keyring provider contract',
+  'Run Linux encrypted native lifecycle',
+  'Upload Linux native provider test evidence',
+  'Upload Linux encrypted lifecycle evidence',
+  'Package Linux engine artifacts',
+]
+linux_gate_indices = linux_gate_names.map { |name| linux_steps.index { |step| step['name'] == name } }
+assert!(linux_gate_indices.none?(&:nil?) && linux_gate_indices == linux_gate_indices.sort, 'Linux full lifecycle and evidence must precede packaging after native component validation')
+linux_gate_names.reject { |name| name.start_with?('Upload ') }.each do |name|
+  step = linux_steps.find { |item| item['name'] == name }
+  assert!(step['if'].nil? && !step['continue-on-error'], "Required Linux lifecycle gate cannot skip or tolerate failure: #{name}")
+end
+linux_dependencies = linux_steps.find { |step| step['name'] == 'Install Linux engine dependencies' }.fetch('run')
+%w[clang cmake ninja-build libcurl4-openssl-dev libkeyutils-dev xvfb xauth dbus-x11 libgl1-mesa-dri].each do |dependency|
+  assert!(linux_dependencies.include?(dependency), "Linux lifecycle must install #{dependency}")
+end
+linux_keyring = linux_steps.find { |step| step['name'] == 'Verify Linux session keyring support' }.fetch('run')
+assert!(linux_keyring.include?('keyctl_join_session_keyring(None)') && linux_keyring.include?('keyctl_setperm(keyring, 0x3f000000)') && linux_keyring.include?('keyctl_revoke(keyring)'), 'Linux must preflight a private anonymous kernel keyring and revoke only its own keyring')
+linux_lifecycle_build = linux_steps.find { |step| step['name'] == 'Build Linux engine' }.fetch('run')
+%w[flutter/build/dart:dart_sdk flutter/flutter_frontend_server:frontend_server flutter/tools/const_finder:const_finder flutter/sky/packages/sky_engine:sky_engine flutter/build/archives:flutter_patched_sdk flutter/impeller/compiler:impellerc].each do |target|
+  assert!(linux_lifecycle_build.include?(target), "Linux lifecycle must build complete local tooling: #{target}")
+end
+linux_prepare = linux_steps.find { |step| step['name'] == 'Prepare Linux encrypted lifecycle tools' }.fetch('run')
+assert!(linux_prepare.include?('flutter_patched_sdk_product.zip') && linux_prepare.include?('cp -a "$out/dart-sdk" "$cache/dart-sdk"') && linux_prepare.include?('"$out/dart-sdk/bin/dart" pub get') && linux_prepare.include?('cargo build --release --locked -p patch --bin patch'), 'Linux lifecycle must stage built SDK/platforms and resolve real CLI dependencies')
+linux_probe = linux_steps.find { |step| step['name'] == 'Compile Linux session keyring provider contract' }.fetch('run')
+assert!(linux_probe.include?('clang++ -std=c++17 -Wall -Wextra -Werror') && linux_probe.include?('-I"$out"') && linux_probe.include?('native_cache_contract_test.cpp') && linux_probe.include?('-lkeyutils') && linux_probe.include?('pkg-config --libs gtk+-3.0 libcurl'), 'Linux must compile the real public-ABI keyring provider probe with strict warnings')
+linux_lifecycle = linux_steps.find { |step| step['name'] == 'Run Linux encrypted native lifecycle' }
+linux_lifecycle_run = linux_lifecycle.fetch('run')
+assert!(linux_lifecycle['timeout-minutes'] == 75 && linux_lifecycle_run.include?('set -euo pipefail') && linux_lifecycle_run.include?('dbus-run-session -- xvfb-run -a python3') && linux_lifecycle_run.include?('linux_native_cache_e2e.py run --execute') && linux_lifecycle_run.include?('--host-engine linux_release_x64 --target-engine linux_release_x64') && linux_lifecycle_run.include?('--provider-probe "$probe"') && linux_lifecycle_run.include?("report.get('result') != 'passed'") && linux_lifecycle_run.include?('owned session keyring revoked'), 'Linux full lifecycle must use the built engine, real keyring probe and cleaned success report')
+%w[native-probe-self-test native-probe-online native-probe-offline actual-cli-release-free actual-cli-patch-pro ciphertext-installed offline-cold-U offline-missing-key-BASE offline-missing-recovery-U offline-wrong-key-BASE offline-wrong-recovery-U online-U-receive-signed-rollback offline-cold-rollback-BASE released-bundle-unchanged].each do |stage|
+  assert!(linux_lifecycle_run.include?("'#{stage}'"), "Linux lifecycle must require executed stage #{stage}")
+end
+assert!(linux_lifecycle_run.include?('required.issubset(observed)') && linux_lifecycle_run.include?("report.get('key_storage') != 'kernel-session-keyring'") && linux_lifecycle_run.include?("report.get('key_storage_scope') != 'cold-app-processes-in-one-session'"), 'Linux lifecycle must verify the complete stage inventory and honest session-only key storage scope')
+{
+  'Upload Linux native provider test evidence' => ['linux-native-provider-tests', 'artifacts/linux-native-provider-tests/build.log'],
+  'Upload Linux encrypted lifecycle evidence' => ['linux-native-cache-e2e', 'artifacts/linux-native-cache-e2e/results.json'],
+}.each do |name, (artifact, path)|
+  step = linux_steps.find { |item| item['name'] == name }
+  assert!(step['if'].to_s.include?('always()') && step['uses'] == 'actions/upload-artifact@v4' && step.dig('with', 'name') == artifact && step.dig('with', 'path') == path && step.dig('with', 'if-no-files-found') == 'error', "#{name} must retain only its designated sanitized evidence")
+end
+assert!(run_text_by_job.fetch('source-checks').include?('python3 -m py_compile testapps/license_flavor_patch_test/tool/linux_native_cache_e2e.py') && run_text_by_job.fetch('source-checks').include?('-p test_linux_native_cache_e2e.py -v'), 'Source checks must exercise Linux lifecycle protocol and process ownership controls')
 
 # These standalone SDK tests exercise the actual loader, native page protection,
 # resource cleanup, and (on Windows) an isolated no-opt-out ACG refusal process.

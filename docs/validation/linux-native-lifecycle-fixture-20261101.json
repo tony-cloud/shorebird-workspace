@@ -1,0 +1,41 @@
+{
+  "status": "source-reviewed and authoring-host checks passed; native Linux execution pending",
+  "fixture": "testapps/license_flavor_patch_test/tool/linux_native_cache_e2e.py",
+  "provider": "testapps/license_flavor_patch_test/tool/linux_native/runner_patch_key_provider.cpp",
+  "probe": "testapps/license_flavor_patch_test/tool/linux_native/native_cache_contract_test.cpp",
+  "ci_job": "linux-engine",
+  "ci_gate": "Run Linux encrypted native lifecycle",
+  "implemented_acceptance": [
+    "Actual CLI free release and pro patch against an isolated real Go server",
+    "Genuine updater registration and allowlisted per-device AES-GCM delivery context",
+    "Public callback ABI probe with actual key output comparison, online provisioning and fresh-process offline retrieval",
+    "Real GTK post-frame rendered-text receipt bound to launch nonce, PID and current boot patch number",
+    "Fresh-process offline patched boot after API and provisioning listeners stop",
+    "Missing/wrong-key baseline fallback, retained ciphertext and correct-key offline recovery",
+    "Authenticated rollback API, signed updater response and fresh offline baseline boot",
+    "Rebuilt native Runner/engine/plugin byte identity and unchanged installed release bundle",
+    "Final cache file checks for encrypted transport and absence of known key bytes or plaintext executable images",
+    "Cleanup of owned processes, ports and private work, and revocation of the owned session keyring"
+  ],
+  "local_validation": {
+    "host": "macOS arm64",
+    "linux_and_windows_helper_tests": 53,
+    "passed": 52,
+    "skipped": 1,
+    "skip_reason": "Real Linux process-group and /proc cleanup test requires Linux",
+    "python_compilation": "passed",
+    "read_only_plan": "passed",
+    "provider_clang_format": "passed",
+    "independent_provider_and_lifecycle_reviews": "no remaining actionable findings"
+  },
+  "process_ownership": "waitid WNOWAIT retains each child group leader until bounded group termination and /proc live-member checks finish, then explicitly reaps it",
+  "key_storage": "anonymous kernel session keyring with possessor-only permissions and one-hour key timeout; no plaintext key file",
+  "key_storage_scope": "cold app processes in one inherited kernel session; not reboot, login/session replacement, logout or expiry persistence",
+  "ci_contract": "Mandatory native compilation, keyring support, headless GTK execution, complete required stage inventory and successful cleanup before packaging; only sanitized report and provider build log uploaded",
+  "limitations": [
+    "Linux provider compilation, keyring syscalls, GTK execution and full lifecycle have not run on the macOS authoring host",
+    "The currently running earlier CI checkpoint does not contain this harness",
+    "Final cache inspection is not a transient filesystem-write audit",
+    "This test provider is not a production Linux key-management product"
+  ]
+}
