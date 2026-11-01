@@ -94,11 +94,16 @@ android {
 }
 flutter { source = "../.." }
 ''')
-    (main / 'AndroidManifest.xml').write_text('''<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    (main / 'AndroidManifest.xml').write_text('''<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET"/>
     <application android:name="android.app.Application" android:label="Shorebird Native Test"
         android:icon="@mipmap/ic_launcher" android:allowBackup="false"
         android:usesCleartextTraffic="true">
+        <!-- Keep this disposable fixture's process startup under ControlActivity.
+             These AndroidX components arrive through embedding dependencies. -->
+        <provider android:name="androidx.startup.InitializationProvider" tools:node="remove"/>
+        <receiver android:name="androidx.profileinstaller.ProfileInstallReceiver" tools:node="remove"/>
         <activity android:name=".ControlActivity" android:exported="true"
             android:launchMode="standard" android:theme="@style/LaunchTheme"/>
         <activity android:name=".MainActivity" android:exported="false"

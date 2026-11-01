@@ -715,6 +715,17 @@ jobs:
           ./run_vm_tests DartAPI_SnapshotRegionSizes
           ./run_vm_tests DartAPI_SnapshotRegionSizesRejectInvalidHeaders
 
+      - name: Run zone memory tagging capability tests
+        working-directory: dart-sdk/out/ReleaseX64
+        run: |
+          set -euo pipefail
+          ./run_vm_tests ZoneMemoryTaggingUnsupportedPreservesTaggedPointers
+          ./run_vm_tests ZoneMemoryTaggingSetFailurePreservesTaggedPointers
+          ./run_vm_tests ZoneMemoryTaggingGetFailure
+          ./run_vm_tests ZoneMemoryTaggingIncompleteControl
+          ./run_vm_tests ZoneMemoryTaggingSupportedFaultModes
+          ./run_vm_tests ZoneWithMemoryTagging
+
       - name: Resolve public encryption tooling
         working-directory: shorebird
         run: ../dart-sdk/out/ReleaseX64/dart-sdk/bin/dart pub get
@@ -910,6 +921,17 @@ jobs:
           ./run_vm_tests DartAPI_SnapshotRegionSizes
           ./run_vm_tests DartAPI_SnapshotRegionSizesRejectInvalidHeaders
 
+      - name: Run zone memory tagging capability tests
+        working-directory: dart-sdk/xcodebuild/ReleaseARM64
+        run: |
+          set -euo pipefail
+          ./run_vm_tests ZoneMemoryTaggingUnsupportedPreservesTaggedPointers
+          ./run_vm_tests ZoneMemoryTaggingSetFailurePreservesTaggedPointers
+          ./run_vm_tests ZoneMemoryTaggingGetFailure
+          ./run_vm_tests ZoneMemoryTaggingIncompleteControl
+          ./run_vm_tests ZoneMemoryTaggingSupportedFaultModes
+          ./run_vm_tests ZoneWithMemoryTagging
+
       - name: Run AOT bytecode replacement regression
         run: python3 dart-sdk/tools/test_aot_bytecode_patch.py --build-dir dart-sdk/xcodebuild/ReleaseARM64
 
@@ -1088,6 +1110,17 @@ jobs:
           ./run_vm_tests DartAPI_BytecodePatchReloadConfiguration
           ./run_vm_tests DartAPI_SnapshotRegionSizes
           ./run_vm_tests DartAPI_SnapshotRegionSizesRejectInvalidHeaders
+
+      - name: Run zone memory tagging capability tests
+        working-directory: dart-sdk/xcodebuild/ReleaseX64
+        run: |
+          set -euo pipefail
+          ./run_vm_tests ZoneMemoryTaggingUnsupportedPreservesTaggedPointers
+          ./run_vm_tests ZoneMemoryTaggingSetFailurePreservesTaggedPointers
+          ./run_vm_tests ZoneMemoryTaggingGetFailure
+          ./run_vm_tests ZoneMemoryTaggingIncompleteControl
+          ./run_vm_tests ZoneMemoryTaggingSupportedFaultModes
+          ./run_vm_tests ZoneWithMemoryTagging
 
       - name: Run AOT bytecode replacement regression
         run: python3 dart-sdk/tools/test_aot_bytecode_patch.py --build-dir dart-sdk/xcodebuild/ReleaseX64
@@ -1336,6 +1369,17 @@ jobs:
           ./run_vm_tests.exe DartAPI_BytecodePatchReloadConfiguration
           ./run_vm_tests.exe DartAPI_SnapshotRegionSizes
           ./run_vm_tests.exe DartAPI_SnapshotRegionSizesRejectInvalidHeaders
+
+      - name: Run zone memory tagging capability tests
+        working-directory: dart-sdk/out/ReleaseX64
+        run: |
+          set -euo pipefail
+          ./run_vm_tests.exe ZoneMemoryTaggingUnsupportedPreservesTaggedPointers
+          ./run_vm_tests.exe ZoneMemoryTaggingSetFailurePreservesTaggedPointers
+          ./run_vm_tests.exe ZoneMemoryTaggingGetFailure
+          ./run_vm_tests.exe ZoneMemoryTaggingIncompleteControl
+          ./run_vm_tests.exe ZoneMemoryTaggingSupportedFaultModes
+          ./run_vm_tests.exe ZoneWithMemoryTagging
 
       - name: Package Dart SDK artifact
         run: |

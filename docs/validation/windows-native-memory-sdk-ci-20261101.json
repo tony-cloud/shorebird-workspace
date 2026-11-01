@@ -1,0 +1,30 @@
+{
+  "status": "SDK-level native Windows checks passed at recorded older source; full app lifecycle pending",
+  "workflow_run": 41248813370,
+  "sdk_job": 124678865445,
+  "job_url": "https://github.com/tony-cloud/shorebird-workspace/actions/runs/41248813370/job/124678865445",
+  "root_commit": "58b2651c8ec965cab063a791d224390167260fe5",
+  "dart_commit": "fdc857ef4018ceddc9155a01036fcb3960062d95",
+  "flutter_commit": "774baac5a31e953a7abee3d271613f7b658bb5e9",
+  "passed": {
+    "shared_ffi_abi_golden_tests": 774,
+    "focused_patch_api_tests": 4,
+    "native_loader": "Actual page permissions, caller-buffer independence, unload/unwind cleanup, allocation/protection/flush refusal and ELF/unwind bounds checks",
+    "acg": "Separate process with actual ProhibitDynamicCode, no opt-outs or injected refusal; RX mapping denied before publication, null outputs and clean resources, policy retained",
+    "sdk_packaging": "passed"
+  },
+  "limits": [
+    "Synthetic ELF loader checks do not execute a Dart snapshot or prove a Flutter app lifecycle.",
+    "Modeled ABI golden tests do not establish native execution on every modeled platform.",
+    "Latest SDK source differs and requires its own CI run."
+  ],
+  "separate_engine_job": {
+    "job": 124678865465,
+    "engine_build": "passed",
+    "prepared_native_tests": "86/87 passed; only signed asset path expectation used Unix separator on Windows",
+    "fix_source_commit": "96c75fce5f93be9288198422f7fd7b5c1cc3fe67",
+    "encrypted_lifecycle_and_packaging": "skipped after the test failure"
+  },
+  "loader_evidence_url": "https://github.com/tony-cloud/shorebird-workspace/actions/runs/41248813370/artifacts/13064550546",
+  "sdk_artifact_url": "https://github.com/tony-cloud/shorebird-workspace/actions/runs/41248813370/artifacts/13063514505"
+}

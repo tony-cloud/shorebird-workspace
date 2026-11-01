@@ -1,0 +1,65 @@
+{
+  "status": "root cause confirmed; source fix and direct helper tests passed; rebuilt engine startup pending",
+  "historical_runtime": {
+    "ci_run_id": 41237899850,
+    "root_commit": "e0ef8e04a71cbfce87c21bd36809c8f0b8917a27",
+    "dart_commit": "bdc30207c93e422dfd56d4260fa84c522cbf95b1",
+    "flutter_commit": "41865d0ebfc6bb3814f2e796ceafb141993d4e6e",
+    "engine_id": "0b65b0bea03ad4421928f0c0b7b8bebf97632a6b",
+    "engine_build_id": "c752990125b316ef7dbc1f4f1d79fe50d817da98",
+    "device": "owned API34 ARM64 emulator",
+    "release_apk": "built, compiled non-debuggable policy verified, installed original baseline",
+    "first_frame": false
+  },
+  "fault": {
+    "signal": "SIGILL",
+    "engine_offset": "0xbf3828",
+    "function": "dart::Zap",
+    "instruction": "stg x0, [x0], #0x10",
+    "encoding": "d9201400",
+    "path": "root isolate snapshot deserialization -> Zone::Segment::New -> dart::Zap",
+    "cause": "Zone initialization ignored failed MTE activation and used the tagged-pointer ABI enable bit as proof of MTE support."
+  },
+  "live_original_probe": {
+    "hwcap2": 1065345,
+    "mte_capability": false,
+    "before": 1,
+    "before_errno": 0,
+    "set_result": -1,
+    "set_errno": 22,
+    "after": 1,
+    "after_errno": 0,
+    "scope": "owned API34 ARM64 emulator shell process; probe did not execute MTE instructions"
+  },
+  "fix": {
+    "dart_commit": "ec6287baef0def9b34f66af7fa48931fff7b152f",
+    "requirements": [
+      "HWCAP2_MTE present",
+      "PR_SET_TAGGED_ADDR_CTRL succeeds",
+      "PR_GET_TAGGED_ADDR_CTRL succeeds and reports tagged pointers plus an MTE fault mode"
+    ],
+    "unsupported_policy": "Skip activation and retain existing pointer-tagging controls. No MTE instructions enabled."
+  },
+  "local_validation": {
+    "host_tests": "PASS: 5 exact ZoneMemoryTagging SDK test bodies",
+    "android_api34_arm64_tests": "PASS: 5 exact ZoneMemoryTagging SDK test bodies",
+    "production_helper_real_syscalls": {
+      "hwcap2": 1065345,
+      "enabled": false,
+      "before": 1,
+      "after": 1,
+      "set_calls": 0,
+      "get_calls": 0
+    },
+    "header_sha256": "df95ce560f2ecc6788ca0ef54f4402443ac17477e13b642801a9d3cd0f0593f3",
+    "limits": "Production helper and exact SDK test bodies compiled/run; rebuilt full VM/engine and rendered app restart remain pending."
+  },
+  "ci_gate": "All four SDK jobs require the five syscall-contract tests and runtime-aware ZoneWithMemoryTagging before packaging. The latter verifies safe allocations without MTE or a real child overflow fault when MTE is enabled.",
+  "limits": [
+    "No rebuilt full VM/engine startup or encrypted update lifecycle success yet.",
+    "Positive MTE hardware path not locally executed.",
+    "This historical replay adjusted the old CLI Flutter pin and seeded its original public Git dependency; it is not unmodified package or latest-source acceptance."
+  ],
+  "reference": "https://docs.kernel.org/arch/arm64/memory-tagging-extension.html",
+  "cleanup": "owned fixture app, reverse mappings, servers, work directories, emulator and generated AVD removed; preexisting adb daemon and user AVD preserved"
+}

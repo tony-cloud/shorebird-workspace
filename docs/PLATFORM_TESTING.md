@@ -251,6 +251,21 @@ complete plaintext-write audit. See the
 [fixture instructions](../testapps/license_flavor_patch_test/tool/windows_native/README.md)
 and [source validation record](validation/windows-native-lifecycle-source-20261101.json).
 
+The older Windows SDK checkpoint also passed 774 FFI ABI golden tests, native
+ELF loader permission/cleanup/refusal checks, a real ACG denial control and four
+patch API tests. Its engine built, but one platform-specific asset-path test
+blocked later app lifecycle gates; the expectation is now corrected. These are
+SDK-level results at the recorded source, not latest-source app acceptance. See
+[Windows SDK evidence](validation/windows-native-memory-sdk-ci-20261101.json).
+
+The Android fixture now builds release AAB/APK artifacts, verifies the compiled
+non-debuggable manifest and installs the baseline on an owned ARM64 emulator.
+First startup exposed a VM MTE capability bug before Dart rendering. Exact engine
+symbols and a native syscall probe confirmed it; the corrected gate passes five
+focused cases on macOS and Android and preserves existing pointer tagging on
+unsupported hardware. Full rebuilt-engine startup and encrypted update lifecycle
+remain pending. See [Android startup evidence](validation/android-mte-startup-20261101.json).
+
 Runtime-created listener and group-bound callbacks also pass the native ARM64
 PRODUCT host suite, including nested transitions, static-field isolation,
 shared-field access, GC and cleanup. Standalone callback coverage is not

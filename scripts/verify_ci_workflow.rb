@@ -228,6 +228,8 @@ required_files = %w[
   shorebird/packages/shorebird_cli/test/src/archive_analysis/release_supplement_validator_test.dart
   dart-sdk/pkg/frontend_server/test/shorebird_native_assets_descriptor_test.dart
   dart-sdk/pkg/vm/lib/native_assets/shorebird_descriptor.dart
+  dart-sdk/runtime/vm/zone_memory_tagging.h
+  dart-sdk/runtime/vm/zone_test.cc
   flutter/packages/flutter_tools/lib/src/shorebird/shorebird_native_assets.dart
   flutter/packages/flutter_tools/test/general.shard/shorebird/shorebird_native_assets_test.dart
   testapps/license_flavor_patch_test/tool/android_native_app.py
@@ -2090,6 +2092,16 @@ run_text_by_job = jobs.transform_values { |job| job_runs(job).join("\n") }
   test_index = steps.index { |step| step['run'].to_s.include?('pkg/frontend_server/test/shorebird_native_assets_descriptor_test.dart') }
   package_index = steps.index { |step| step['name'] == 'Package Dart SDK artifact' }
   assert!([test_index, package_index].all? && test_index < package_index && !steps.fetch(test_index).key?('if') && !steps.fetch(test_index)['continue-on-error'], "#{job_name} must require native mapping compiler provenance tests before SDK packaging")
+  tagging_index = steps.index { |step| step['name'] == 'Run zone memory tagging capability tests' }
+  assert!(tagging_index && tagging_index < package_index, "#{job_name} must test MTE capability handling before SDK packaging")
+  tagging = steps.fetch(tagging_index)
+  assert!(!tagging.key?('if') && !tagging['continue-on-error'], "#{job_name} MTE capability tests must be unconditional and required")
+  commands = tagging.fetch('run').lines.map(&:strip)
+  assert!(commands.include?('set -euo pipefail'), "#{job_name} MTE capability tests must propagate failures")
+  runner = job_name == 'custom-dart-sdk-windows' ? './run_vm_tests.exe' : './run_vm_tests'
+  %w[ZoneMemoryTaggingUnsupportedPreservesTaggedPointers ZoneMemoryTaggingSetFailurePreservesTaggedPointers ZoneMemoryTaggingGetFailure ZoneMemoryTaggingIncompleteControl ZoneMemoryTaggingSupportedFaultModes ZoneWithMemoryTagging].each do |test_name|
+    assert!(commands.include?("#{runner} #{test_name}"), "#{job_name} must execute #{test_name}")
+  end
 end
 assert!(run_text_by_job.fetch('custom-dart-sdk').include?('pkg/dart2bytecode/test/native_assets_profile_test.dart'), 'Linux SDK must test native-assets carrier profile and imported-component contracts')
 {

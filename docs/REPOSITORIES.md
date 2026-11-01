@@ -14,10 +14,10 @@ compiler/runtime cache reuse.
 
 | Path | Remote URL | Branch | Pinned commit |
 | --- | --- | --- | --- |
-| `dart-sdk` | `https://github.com/tony-cloud/dart-sdk.git` | `tonycloud/dev` | `ddddb0a1df760bddc61f767e2e05d784555f03b6` |
+| `dart-sdk` | `https://github.com/tony-cloud/dart-sdk.git` | `tonycloud/dev` | `ec6287baef0def9b34f66af7fa48931fff7b152f` |
 | `depot_tools` | `https://chromium.googlesource.com/chromium/tools/depot_tools.git` | `main` | `e154c8eda5e63cbe85a765ae9d06e2b7af05139e` |
-| `flutter` | `https://github.com/tony-cloud/flutter.git` | `tonycloud/dev` | `f6ee827582837de63e861d53de5d40d96e10cf3e` |
-| `shorebird` | `https://github.com/tony-cloud/shorebird.git` | `main` | `771b72319b0a8d85d3516cde49ad8e27936764c6` |
+| `flutter` | `https://github.com/tony-cloud/flutter.git` | `tonycloud/dev` | `8045bf964e0b8379ccefbf62a431d195c22a6852` |
+| `shorebird` | `https://github.com/tony-cloud/shorebird.git` | `main` | `bf55d3cfecb80ba0d235853d6e442697b16dfa53` |
 | `shorebird-server` | `https://github.com/tony-cloud/shorebird-server.git` | `main` | `8cc3148fdcb489b20faa0a544d7a6690b6536da9` |
 | `updater` | `https://github.com/tony-cloud/shorebird-updater.git` | `main` | `bb4224303d18baaacd1c2316e24336813517142d` |
 
@@ -85,13 +85,13 @@ file.
 
 ## Public interpreter toolchain identity
 
-The engine artifact key is `33f3b974597878a5daea004bb37489578c487b63`.
+The engine artifact key is `8b48ad134fce16464d35f6ec7bd776f8297d0cd7`.
 It is SHA-1 of UTF-8 lines (including the final newline):
 
 ```text
 open-shorebird-toolchain-v1
-ddddb0a1df760bddc61f767e2e05d784555f03b6
-3b6b51c375659a524845c257b222e14d6b4fbc56
+ec6287baef0def9b34f66af7fa48931fff7b152f
+0d87bc252882513324546b000961a58f6c6303d8
 bb4224303d18baaacd1c2316e24336813517142d
 ```
 

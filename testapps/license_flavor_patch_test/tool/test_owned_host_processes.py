@@ -24,9 +24,22 @@ class MembershipTest(unittest.TestCase):
 
     def test_malformed_or_empty_snapshot_fails_closed(self):
         for value in ('', ' \n', '1 2', '1 2 S extra', 'PID PGID STAT',
-                      '-1 2 S', '1 -2 S', '1 2 ?+', '١ 2 S'):
+                      '-1 2 S', '1 -2 S', '1 2 !+', '١ 2 S',
+                      '-1 2 ?E', '1 -2 ?E', '١ 2 ?E', '1 2 ?E extra'):
             with self.subTest(value=value), self.assertRaises(owned.OwnedProcessError):
                 owned.parse_live_members(value, 2)
+
+    def test_actual_macos_unknown_exiting_rows_are_live_only_in_matching_group(self):
+        snapshot = ('14039 14292 ?E\n14040 14292 ?E\n14041 14292 ?E\n'
+                    '42 42 S\n43 42 Z\n')
+        self.assertEqual(owned.parse_live_members(snapshot, 14292), [14039, 14040, 14041])
+        self.assertEqual(owned.parse_live_members(snapshot, 42), [42])
+        self.assertEqual(owned.parse_live_members(snapshot, 99), [])
+
+    def test_unknown_primary_state_is_conservatively_live_with_or_without_modifiers(self):
+        for state in ('?', '?E', '?+'):
+            with self.subTest(state=state):
+                self.assertEqual(owned.parse_live_members(f'10 10 {state}\n', 10), [10])
 
     def test_cleanup_timings_are_finite_and_bounded(self):
         for kwargs in ({'term_timeout': float('nan')}, {'kill_timeout': float('inf')},
@@ -108,6 +121,80 @@ class OwnershipTest(unittest.TestCase):
                 self.groups.stop(self.process)
         self.assertEqual(kill.call_args_list, [mock.call(1234, signal.SIGTERM),
                                                mock.call(1234, signal.SIGKILL)])
+        self.process._reap_after_cleanup.assert_not_called()
+        self.assertIs(self.groups.owned[1234], self.process)
+
+    def test_unknown_owned_member_cannot_allow_false_empty_cleanup(self):
+        with mock.patch.object(owned.os, 'killpg') as kill, \
+                mock.patch.object(owned.subprocess, 'run', return_value=
+                    subprocess.CompletedProcess([], 0, '1234 1234 Z\n1235 1234 ?E\n')):
+            with self.assertRaises(owned.OwnedProcessError):
+                self.groups.stop(self.process)
+        self.assertEqual(kill.call_args_list, [mock.call(1234, signal.SIGTERM),
+                                               mock.call(1234, signal.SIGKILL)])
+        self.process._reap_after_cleanup.assert_not_called()
+        self.assertIs(self.groups.owned[1234], self.process)
+
+    def test_transient_invalid_snapshot_requires_fresh_owned_empty_evidence(self):
+        self.groups.term_timeout = .2
+        with mock.patch.object(owned.os, 'killpg') as kill, \
+                mock.patch.object(owned.time, 'sleep') as sleep, \
+                mock.patch.object(owned.time, 'monotonic', side_effect=[0, .1]), \
+                mock.patch.object(owned.subprocess, 'run', side_effect=[
+                    subprocess.CompletedProcess([], 0, 'invalid snapshot'),
+                    subprocess.CompletedProcess([], 0, '1234 1234 Z\n')]) as probe:
+            self.groups.stop(self.process)
+        self.assertEqual(probe.call_count, 2)
+        sleep.assert_called_once()
+        # stop(), _signal(), and both membership attempts each recheck waitid.
+        self.assertEqual(self.process._internal_poll.call_count, 4)
+        kill.assert_called_once_with(1234, signal.SIGTERM)
+        self.process._reap_after_cleanup.assert_called_once()
+        self.assertFalse(self.groups.owned)
+
+    def test_persistent_invalid_snapshot_expires_without_reaping_or_escalating(self):
+        self.groups.term_timeout = .2
+        with mock.patch.object(owned.os, 'killpg') as kill, \
+                mock.patch.object(owned.time, 'sleep') as sleep, \
+                mock.patch.object(owned.time, 'monotonic', side_effect=[0, .1, .2]), \
+                mock.patch.object(owned.subprocess, 'run', return_value=
+                    subprocess.CompletedProcess([], 0, 'invalid snapshot')) as probe:
+            with self.assertRaises(owned.MembershipSnapshotError):
+                self.groups.stop(self.process)
+        self.assertEqual(probe.call_count, 2)
+        sleep.assert_called_once_with(self.groups.poll_interval)
+        self.assertEqual(self.process._internal_poll.call_count, 4)
+        kill.assert_called_once_with(1234, signal.SIGTERM)
+        self.process._reap_after_cleanup.assert_not_called()
+        self.assertIs(self.groups.owned[1234], self.process)
+
+    def test_identity_loss_after_invalid_snapshot_stops_before_another_probe_or_signal(self):
+        self.groups.term_timeout = .2
+        self.process._internal_poll.side_effect = [0, 0, 0,
+            owned.OwnedProcessError('retained identity lost')]
+        with mock.patch.object(owned.os, 'killpg') as kill, \
+                mock.patch.object(owned.time, 'sleep') as sleep, \
+                mock.patch.object(owned.time, 'monotonic', side_effect=[0, .1]), \
+                mock.patch.object(owned.subprocess, 'run', return_value=
+                    subprocess.CompletedProcess([], 0, 'invalid snapshot')) as probe:
+            with self.assertRaisesRegex(owned.OwnedProcessError, 'retained identity lost'):
+                self.groups.stop(self.process)
+        probe.assert_called_once()
+        sleep.assert_called_once()
+        kill.assert_called_once_with(1234, signal.SIGTERM)
+        self.process._reap_after_cleanup.assert_not_called()
+        self.assertIs(self.groups.owned[1234], self.process)
+
+    def test_snapshot_command_failure_is_not_retried_as_invalid_membership(self):
+        self.groups.term_timeout = .2
+        with mock.patch.object(owned.os, 'killpg') as kill, \
+                mock.patch.object(owned.time, 'sleep') as sleep, \
+                mock.patch.object(owned.subprocess, 'run', side_effect=OSError('unavailable')) as probe:
+            with self.assertRaisesRegex(owned.OwnedProcessError, 'Cannot inspect'):
+                self.groups.stop(self.process)
+        probe.assert_called_once()
+        sleep.assert_not_called()
+        kill.assert_called_once_with(1234, signal.SIGTERM)
         self.process._reap_after_cleanup.assert_not_called()
         self.assertIs(self.groups.owned[1234], self.process)
 

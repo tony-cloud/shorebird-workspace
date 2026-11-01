@@ -18,6 +18,10 @@ class OwnedProcessError(RuntimeError):
     """Ownership or bounded process-group cleanup could not be verified."""
 
 
+class MembershipSnapshotError(OwnedProcessError):
+    """A host process snapshot supplied no valid membership evidence."""
+
+
 class RetainedPopen(subprocess.Popen):
     """Popen with non-reaping exit observation until its owner finishes cleanup."""
 
@@ -83,7 +87,7 @@ class RetainedPopen(subprocess.Popen):
 def parse_live_members(output, group):
     """Parse a complete `ps -axo pid=,pgid=,stat=` snapshot, ignoring zombies."""
     if not isinstance(output, str) or not output.strip():
-        raise OwnedProcessError('Empty host process membership snapshot')
+        raise MembershipSnapshotError('Empty host process membership snapshot')
     live = set()
     for line in output.splitlines():
         if not line.strip():
@@ -92,9 +96,11 @@ def parse_live_members(output, group):
         if (len(fields) != 3 or not fields[0].isascii() or
                 not fields[1].isascii() or not fields[0].isdecimal() or
                 not fields[1].isdecimal() or not fields[2][0].isascii() or
-                not fields[2][0].isalpha()):
-            raise OwnedProcessError('Invalid host process membership snapshot')
+                (not fields[2][0].isalpha() and fields[2][0] != '?')):
+            raise MembershipSnapshotError('Invalid host process membership snapshot')
         pid, pgid = int(fields[0]), int(fields[1])
+        # Apple's ps/tasks.c uses '?' for unavailable Mach task state, and
+        # ps/print.c may append 'E' for exiting. Neither proves group absence.
         if pgid == group and fields[2][0].upper() not in ('Z', 'X'):
             live.add(pid)
     return sorted(live)
@@ -160,7 +166,17 @@ class OwnedHostProcesses:
         deadline = time.monotonic() + timeout
         while True:
             exited = self._assert_owned(process) is not None
-            members = self.live_members(process.pid)
+            try:
+                members = self.live_members(process.pid)
+            except MembershipSnapshotError:
+                # A rejected snapshot is never evidence that the group is
+                # empty. Retry only within this wait's existing budget, with
+                # retained ownership checked again before each fresh probe.
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise
+                time.sleep(min(self.poll_interval, remaining))
+                continue
             if exited and not members:
                 return True
             remaining = deadline - time.monotonic()

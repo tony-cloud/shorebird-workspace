@@ -1,5 +1,5 @@
 {
-  "status": "fixed and locally regression-tested; Windows CI rerun pending",
+  "status": "fixed; local regressions and Windows CI CLI artifact job passed",
   "failed_ci_run": 41257830677,
   "failed_job": 124706035146,
   "cause": "Full replacement sourceUri used host-default Uri.toFilePath while compiler filesystem could use different Windows/POSIX semantics. Windows host with POSIX filesystem produced four-slash org-dartlang-root paths.",
@@ -14,5 +14,12 @@
   "flutter_source_commit": "3b6b51c375659a524845c257b222e14d6b4fbc56",
   "flutter_identity_commit": "f6ee827582837de63e861d53de5d40d96e10cf3e",
   "cli_pin_commit": "771b72319b0a8d85d3516cde49ad8e27936764c6",
-  "engine_identity": "33f3b974597878a5daea004bb37489578c487b63"
+  "engine_identity": "33f3b974597878a5daea004bb37489578c487b63",
+  "successful_ci": {
+    "run_id": 41259846917,
+    "job_id": 124712051181,
+    "root_commit": "d6b394af0427976d2f21e1a40d8b89a4c738bda1",
+    "url": "https://github.com/tony-cloud/shorebird-workspace/actions/runs/41259846917/job/124712051181",
+    "scope": "Windows compiler mapping gate, CLI packaging and artifact job success; not full Windows app lifecycle"
+  }
 }
