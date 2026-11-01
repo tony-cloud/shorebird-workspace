@@ -1,0 +1,66 @@
+{
+  "root_commit": "1086bd0bb0061efe39bcebbf603fc5091d0f9d40",
+  "pins": {
+    "dart_sdk": "dbef3f1e9ade0e74b190c3a91e45aaffce056b19",
+    "flutter_source": "520ee327c5e07cdcbbbfd2a89de1ed007e4b6f41",
+    "updater": "e482b8093890d46031d6496fc5426db56d133660",
+    "server": "3479ee0445a4db67eb223d8abbbaaf65202a909b",
+    "identity_material": "open-shorebird-toolchain-v1\ndbef3f1e9ade0e74b190c3a91e45aaffce056b19\n520ee327c5e07cdcbbbfd2a89de1ed007e4b6f41\ne482b8093890d46031d6496fc5426db56d133660\n",
+    "engine_identity": "f03ed3bd5f11ef46f0712d32834838176eed1607",
+    "flutter": "2302b277ba014e06f2d200d3e7edb13026ae4144",
+    "shorebird": "0e939b2fe44ed80a3d86c60a7ba8a972e8db6ca6"
+  },
+  "scope": "Native macOS ARM64 engine build and executed gtests, not signed-app/Intel acceptance",
+  "build": {
+    "output": "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-native-x64-20261102/out/macos_release_arm64",
+    "exit_code": 0,
+    "initial_attempt": "Stopped when local shell lacked depot_tools/vpython3; PATH-corrected retry completed all pending 10044 actions",
+    "args_sha256": "64c201dff3a4295de3c114cd9577158692c7d88dee856a15f058bdc92bed146a",
+    "log_sha256": "153480c6574ce592108863609251e9178d536d5132c4cdcfdef2bfb40fb480b5"
+  },
+  "tests": {
+    "shorebird": 146,
+    "embedder": 5,
+    "cocoa": 5,
+    "runtime": 2,
+    "failures": 0,
+    "skips": 0,
+    "started_after_terminal_success": true
+  },
+  "artifacts": {
+    "shorebird_unittests": {
+      "sha256": "4cab1d4825d49bae40c800ed1776cba0013bb0d9998b3901259b4f3fa7afec2a",
+      "file": "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-native-x64-20261102/out/macos_release_arm64/shorebird_unittests: Mach-O 64-bit executable arm64"
+    },
+    "embedder_unittests": {
+      "sha256": "8e96031adb6c0fbe9cb5703b86ebf23c6462930a858ca22b8a1fd168a447287c",
+      "file": "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-native-x64-20261102/out/macos_release_arm64/embedder_unittests: Mach-O 64-bit executable arm64"
+    },
+    "runtime_unittests": {
+      "sha256": "a1f4c8e8dd847e2d7d2e9239a3ff597e2c7619df44e8ba45003006af473f76c2",
+      "file": "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-native-x64-20261102/out/macos_release_arm64/runtime_unittests: Mach-O 64-bit executable arm64"
+    },
+    "flutter_desktop_darwin_unittests": {
+      "sha256": "324c47607bf82631d0d0407304c2503037230307fdee02e8169f298f6562d347",
+      "file": "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-native-x64-20261102/out/macos_release_arm64/flutter_desktop_darwin_unittests: Mach-O 64-bit executable arm64"
+    },
+    "FlutterMacOS.framework/Versions/A/FlutterMacOS": {
+      "sha256": "52137961bf30039141588c31dbe164ba8d0f93dafc5322b99537faef5a33ee5e",
+      "file": "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-native-x64-20261102/out/macos_release_arm64/FlutterMacOS.framework/Versions/A/FlutterMacOS: Mach-O 64-bit dynamically linked shared library arm64"
+    },
+    "gen_snapshot": {
+      "sha256": "ef056915d8a4bafd0a4ea6dee0190ad29adc304952f91d478384265121836833",
+      "file": "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-native-x64-20261102/out/macos_release_arm64/gen_snapshot: Mach-O 64-bit executable arm64"
+    },
+    "dart-sdk/bin/dart": {
+      "sha256": "d912478b09a513ff84ebe3b3f9ee78c4c56d9a86673d4fe793aa32be6bac3761",
+      "file": "/Users/tonylu/git/shorebird-workspace/.agents/builds/engine-native-x64-20261102/out/macos_release_arm64/dart-sdk/bin/dart: Mach-O 64-bit executable arm64"
+    }
+  },
+  "reports": {
+    "cocoa.xml": "9dc3aba491f28dd1ddbda952d2593a7f4bcea09b4d97edb64f590e36d4423375",
+    "embedder.xml": "949abe4edf6a89e4140ce0a41923af4e8174e0c9d9e2abfb247036a23af695a1",
+    "runtime.xml": "9c267df53f9b88af8514cfcfa2deb0fa381f9f2d53b5ff30c80cd7b8af88bf1c",
+    "shorebird.xml": "2e6ad3fa2f940c30f49ca871940151534b3b25fd5771c0d44af2a9e1f0002112"
+  }
+}

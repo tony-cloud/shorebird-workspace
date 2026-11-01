@@ -89,7 +89,7 @@ The public certificate fingerprint is an uppercase 40-character SHA-1. This
 command creates an external SHA-256 sidecar and verifies its own result. Each
 suite keeps four exact original build copies under `original-inputs/`, explicitly
 `provenance-only-never-executed`, and binds them to the unsigned CI build
-manifest. The separate signed runtime inventory contains 7 callout, 6 callback,
+manifest. The separate signed runtime inventory contains 7 callout, 7 callback,
 and 4 full-suite Mach-Os. Only each suite's private signed harness can execute a
 case. The archive includes the exact SDK-prepared input manifests and their
 complete immutable inventories; no arbitrary additional root files are accepted.

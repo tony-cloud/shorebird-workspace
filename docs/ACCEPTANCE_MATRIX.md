@@ -74,6 +74,8 @@ establish ARM64 Flutter app or host-tool support.
 
 - **NATIVE-X64:** [reviewed integration](validation/native-variants-macos-x64-integration-20261102.json) pins native variant publication/admission, single-arch macOS x64 full interpreter/FFI, strict Intel proof transport and ARM64 CI fixes. CLI 4403 tests and Flutter tools 270 tests passed with one skip each. Fresh engine/SDK builds, native Intel execution and native variant app fixtures remain pending.
 
+- **NATIVE-ENGINE:** [fresh native ARM64 engine build](validation/native-variants-macos-arm64-engine-20261102.json) uses NATIVE-X64 pins. After the build completed, all 146 Shorebird, 5 embedder, 5 Cocoa and 2 shutdown tests passed without skips. New signed-app and Intel/runtime acceptance remain pending.
+
 - **CI-3 (running with failures):** [run 41322835047](https://github.com/tony-cloud/shorebird-workspace/actions/runs/41322835047) tests root `b91a0a6526b278595eef60a9a34bcbe2f0a4d81e`. Windows ARM64 SDK failed on an unlinked FFI trampoline; Windows ARM64 engine failed on GNU Clang receiving `/MT`; Linux ARM64 sync requested unavailable Android/JDK packages. NATIVE-X64 contains reviewed fixes with focused controls; corrected native builds/runtime must still pass.
 
 - **V2-ENGINE:** [native ARM64 integrated engine proof](validation/variant-v2-macos-engine-20261101.json) pins the same V2-COMPONENTS inputs. Build completed all 10,151 actions, then 127 Shorebird, 5 embedder, 5 Cocoa and 2 runtime shutdown tests executed with no failures/skips. This is linked native engine-test evidence; the signed application variant/data lifecycle remains pending.
