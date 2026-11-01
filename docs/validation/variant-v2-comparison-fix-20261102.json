@@ -1,0 +1,66 @@
+{
+  "scope": "Actual v2 compiler failure correction and pinned Flutter input provenance; full signed paid activation still pending",
+  "cli_fix": "0b377b52af87d4a73141bbb5e6d3f1693ef004a8",
+  "diagnosis": {
+    "symptom": "Replacement native baseline root, domain or binding mismatch.",
+    "original_frontend_exit": 255,
+    "diagnostic_nonfull_frontend_exit": 0,
+    "current_bytecode_compile_exit": 0,
+    "projected_baseline_full_frontend_exit": 0,
+    "baseline_wrapper_sha256": "9d4c74ec7c2d1920356e7384a0f4b7d5f5ab7f702faa883d1bfe77d4bbf81855",
+    "host_abi_hex": "52b7847d787097aab57d744d842181aa9134de974e1059c0adf728ff67c41fd2",
+    "baseline_digest_hex": "69db944fa892d865fadcdeb09a68393ac40f3c80c65f2abc37502a80d2e9eaee",
+    "current_digest_hex": "69db944fa892d865fadcdeb09a68393ac40f3c80c65f2abc37502a80d2e9eaee",
+    "component_sha256": "69db944fa892d865fadcdeb09a68393ac40f3c80c65f2abc37502a80d2e9eaee",
+    "kernel_comparison": {
+      "root": "package:license_flavor_patch_test/main.dart",
+      "baselineRoot": "package:license_flavor_patch_test/main.dart",
+      "currentCount": 752,
+      "baselineCount": 752,
+      "added": [
+        "package:license_flavor_patch_test/pro_feature.dart"
+      ],
+      "removed": [
+        "package:license_flavor_patch_test/removed_library.dart"
+      ],
+      "uriEquality": false
+    },
+    "current_update_wrapper_sha256": "bca4d3208a4ca6580a53ccfe20318ec08023aeca27067c486377b324a1b64741",
+    "comparison_baseline_wrapper_sha256": "59cf22f34091168fa251db5aee0d216af31772d78e7180bd7cb81dd70965a89b",
+    "root_cause": "Protocol 2 skips current-component baseline projection before native comparison compilation, then passes the original released baseline to a compiler gate that requires exact current mutable library domain.",
+    "native_app_launched": false,
+    "server_mutated": false,
+    "product_sources_changed": false,
+    "verification_limits": [
+      "Compiler-only direct reproduction; original Xcode build not rerun.",
+      "Projection uses current saved package_config without pub get; no original fixture files changed.",
+      "No archive packaging, patch upload, app installation or runtime validation performed."
+    ]
+  },
+  "focused_tests_passed": 149,
+  "analysis": "passed",
+  "strict_scope_decoder": "Rejects duplicate and escaped-duplicate keys in both Apple consumers",
+  "source_review": "Projection/original binding reviewed; duplicate-key finding corrected with shared decoder and regressions",
+  "actual_publication_after_fix": "pro_seed patch1 and pro patch2 published; enterprise build in progress",
+  "private_fixture_sources": {
+    "release_cli": "707849987725e3fb0c84f68d473a53654b56cb25",
+    "patch_cli": "0b377b52af87d4a73141bbb5e6d3f1693ef004a8",
+    "flutter": "c7e1331d890a8d1d5f9758e57086a83a87bf5c63"
+  },
+  "provenance_summary": {
+    "baseline_private_flutter_script_paths": 661,
+    "baseline_system_flutter_script_paths": 0,
+    "successful_native_private_flutter_inputs": 684,
+    "successful_native_system_flutter_inputs": 0,
+    "post_build_external_package_config": "System Flutter pub get finalizer runs after native and bytecode compilation; current package_config is not compile input evidence",
+    "native_evidence_limit": "Preserved successful-base FlutterInputs list; native kernel removed by failed patch"
+  },
+  "logs_sha256": {
+    "result.json": "c4c839a86f2e1d4e86c863615eaf87d6d76f73fcacb35326dae6e6fd20f94470",
+    "provenance.json": "20c027f9fb6c341e6968b8af72ab885925ba7a0746fb2d9e342c0ec25a17eb86",
+    "baseline-sources.jsonl": "61bcad0b47b7ee50ba9318df996f9f7175123ec5555f57f81b9979238e44e3e8",
+    "base-native-FlutterInputs.xcfilelist": "e1f7ea5a4a81b0a1ab9fd66b941fe348ad9a9d2b745a9851aafbe16b0fc6af2e",
+    "cli-focused-tests.log": "e499694340070bf8a48acbc0243e351d5ee7734f5eeb1bd6ea761b0b9fb87a9d",
+    "cli-analysis.log": "9a7a51a8bb495ad7788ae6fc03bdea80015d72437e930ed37d18644f8515bce0"
+  }
+}

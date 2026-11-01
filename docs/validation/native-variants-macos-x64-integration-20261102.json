@@ -1,0 +1,70 @@
+{
+  "scope": "Reviewed integrated source and focused/host tests only; fresh local engine/SDK builds and final authoritative CI/runtime results pending.",
+  "pins": {
+    "dart_sdk": "dbef3f1e9ade0e74b190c3a91e45aaffce056b19",
+    "flutter_source": "520ee327c5e07cdcbbbfd2a89de1ed007e4b6f41",
+    "updater": "e482b8093890d46031d6496fc5426db56d133660",
+    "server": "3479ee0445a4db67eb223d8abbbaaf65202a909b",
+    "identity_material": "open-shorebird-toolchain-v1\ndbef3f1e9ade0e74b190c3a91e45aaffce056b19\n520ee327c5e07cdcbbbfd2a89de1ed007e4b6f41\ne482b8093890d46031d6496fc5426db56d133660\n",
+    "engine_identity": "f03ed3bd5f11ef46f0712d32834838176eed1607",
+    "flutter": "2302b277ba014e06f2d200d3e7edb13026ae4144",
+    "shorebird": "0e939b2fe44ed80a3d86c60a7ba8a972e8db6ca6"
+  },
+  "features": [
+    "Native Android/Linux/Windows protocol-2 measured and sealed publication; strict packaged scope and staged release finalization",
+    "Native original AOT/source scope binding in Android/Linux/Windows engine adapters",
+    "Single-architecture hardened macOS x64 full interpreter producer, host ABI, native-assets and runtime target binding",
+    "macOS x64 signed precompiled callout/callback ABI paths and 93-case prepare/native-consume protocol",
+    "Authenticated temporary draft artifact transport for native Intel proof without exporting signing keys",
+    "Windows ARM64 unsupported interpreter trampoline linker guard, native Rust Clang static CRT flags, and Linux ARM64 non-Android dependency selection",
+    "Canonical upstream Flutter version tag restore and portable Windows test path"
+  ],
+  "checks": {
+    "cli": "4403 passed, 1 skipped; full lib/test analysis clean",
+    "flutter_tools": "270 passed, 1 skipped; modified-file analysis clean",
+    "additional_abi_golden": "16 CLI and 10 Flutter tests passed",
+    "sdk_prepared_protocol": "16 synthetic protocol + 12 signing tests passed; no native Intel run",
+    "intel_transport": "17 synthetic tests passed",
+    "arm64_ci_fixes": "5 real gclient/DEPS controls + 4 compiler-flag tests passed",
+    "workflow": "315 blocks plus full negative controls passed",
+    "macos_engine_inventory": "4 synthetic complete-inventory controls passed"
+  },
+  "evidence": {
+    "cli_full": {
+      "path": ".agents/macos-x64-cli-tools-validation/cli-full-final.log",
+      "sha256": "74394c15ca7e6ab97b604317b2289b95bc8f15ab94dd2c92d7209725dab69235"
+    },
+    "cli_analysis": {
+      "path": ".agents/macos-x64-cli-tools-validation/cli-analyze-final.log",
+      "sha256": "95a28819c918db92d8f3f7dfadfc18f1248f79ab8313759391ad318fe94cf093"
+    },
+    "flutter_tools": {
+      "path": ".agents/macos-x64-cli-tools-validation/tools-final.log",
+      "sha256": "c294f9f1ce780d7093ed19238af3e29a7c07ea377b47b071e787e7204c24532f"
+    },
+    "flutter_analysis": {
+      "path": ".agents/macos-x64-cli-tools-validation/tools-analyze-final.log",
+      "sha256": "f2b619398d71be581e81f3d77935f44ad80c0d7646d98c96e6e4bfb0000db88a"
+    },
+    "workflow_contract": {
+      "path": ".agents/ci-arm64-20261102/workflow-validation.log",
+      "sha256": "5758bb67560f5db27e6f4fbcae0a7080f00d3dc89dee5ad89306f9ad30121918"
+    },
+    "workflow_negative_controls": {
+      "path": ".agents/ci-arm64-20261102/workflow-contract-tests.log",
+      "sha256": "e6179faff9323c2c4426ba653afffd968760e0f93c1c937cd229accb20b6d404"
+    },
+    "intel_transport_unit": {
+      "path": ".agents/macos-x64-proof-transport-tests.log",
+      "sha256": "d5d5cb0beae391da657b21aa94a139da02f259fdd62010147736aa875b2de2ad"
+    }
+  },
+  "limitations": [
+    "No native Intel SDK or Flutter app runtime acceptance yet.",
+    "macOS universal packaging remains explicitly unsupported.",
+    "Windows ARM64 interpreter FFI remains unsupported; its app route uses native AOT.",
+    "Native protocol-2 Android/Linux/Windows app fixtures and runtime validation remain in progress.",
+    "Fresh local engine and SDK builds use separate outputs and are pending.",
+    "Earlier CI checkpoints have platform failures; corrected authoritative CI must pass."
+  ]
+}

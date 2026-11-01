@@ -34,8 +34,13 @@ class Arm64WorkflowContractTest(unittest.TestCase):
             ('manifest-json', edit_job(source, 'linux-engine-arm64', '"name": "linux-engine-arm64",', '"name": "linux-engine-arm64",,'), 'invalid producer manifest JSON template'),
             ('runtime-receipt', edit_job(source, 'windows-engine-arm64', '--lifecycle-report', '--receipt-validation-removed'), 'validate complete native machine and lifecycle stage receipts'),
             ('mac-runtime-filter', edit_job(source, 'macos-engine', ':DartIsolateTest.CommittedInterpreterGroupRetainsApplicationShutdownCallback', ''), 'exact committed/uncommitted interpreter shutdown controls'),
+            ('mac-inventory-arch', edit_job(source, 'macos-engine', '--arch=${{ matrix.arch }}', '--arch=arm64'), 'macOS inventory validator must receive the actual matrix architecture'),
+            ('linux-version-tag', edit_job(source, 'linux-engine', 'python3 scripts/prepare_flutter_version_tag.py flutter', 'echo tag-restore-removed'), 'verified canonical Flutter version tag before lifecycle preparation'),
+            ('windows-arm64-version-tag', edit_job(source, 'windows-engine-arm64', 'python3 scripts/prepare_flutter_version_tag.py flutter', 'echo tag-restore-removed'), 'verified canonical Flutter version tag before lifecycle preparation'),
             ('windows-vs-year', edit_job(source, 'custom-dart-sdk-windows-arm64', 'GYP_MSVS_VERSION: "2026"', 'GYP_MSVS_VERSION: "2022"'), 'align the Windows ARM64 runner with VS2026 toolchain environment'),
             ('windows-vs-range', edit_job(source, 'windows-engine-arm64', "-version '[18.0,19.0)'", "-version '[17.0,18.0)'"), 'discover VS18 ARM64 and export its matching installation'),
+            ('linux-arm64-android-deps', edit_job(source, 'linux-engine-arm64', 'INCLUDE_ANDROID_DEPS: "0"', 'INCLUDE_ANDROID_DEPS: "1"'), 'exclude unavailable Android host packages'),
+            ('windows-arm64-rust-driver', edit_job(source, 'windows-engine-arm64', 'VC/Tools/Llvm/ARM64/bin/clang.exe', 'VC/Tools/Llvm/ARM64/bin/clang-cl.exe'), 'pin native GNU-style clang drivers'),
         ]
         for label, text, error in [('valid', source, None), *controls]:
             with self.subTest(control=label):

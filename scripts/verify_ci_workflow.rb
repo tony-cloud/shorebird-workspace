@@ -229,6 +229,8 @@ required_files = %w[
   scripts/validate_artifact_mirror.py
   scripts/verify_native_desktop_arch.py
   scripts/test_native_desktop_arch.py
+  scripts/prepare_flutter_version_tag.py
+  scripts/test_prepare_flutter_version_tag.py
   scripts/test_ci_arm64_contract.py
   scripts/validate_release_manifest.py
   scripts/verify_assemble_artifact_mirror.sh
@@ -242,6 +244,7 @@ required_files = %w[
   scripts/verify_dart_sdk_tooling.py
   scripts/verify_native_cache_engine_tests.py
   scripts/verify_macos_interpreter_engine_tests.py
+  scripts/test_macos_interpreter_engine_tests.py
   scripts/run_native_archive_tests.sh
   shorebird/packages/shorebird_cli/lib/src/archive_analysis/portable_zip_namespace_validator.dart
   shorebird/packages/shorebird_cli/test/src/archive_analysis/portable_zip_namespace_validator_test.dart
@@ -2154,6 +2157,8 @@ macos_test_step = macos_steps.fetch(macos_tests)
 assert!(!macos_test_step.key?('if') && !macos_test_step['continue-on-error'], 'macOS interpreter tests must be unconditional and required')
 macos_run = macos_test_step.fetch('run')
 assert!(macos_run.include?('set -euo pipefail') && macos_run.include?('scripts/verify_macos_interpreter_engine_tests.py'), 'macOS tests must propagate failures and validate executed inventories')
+assert!(macos_run.include?('python3 scripts/verify_macos_interpreter_engine_tests.py "$results" --arch=${{ matrix.arch }}'), 'macOS inventory validator must receive the actual matrix architecture')
+assert!(run_text_by_job.fetch('source-checks').include?('python3 scripts/test_macos_interpreter_engine_tests.py -v'), 'source checks must execute macOS architecture inventory regression controls')
 %w[shorebird_unittests embedder_unittests runtime_unittests flutter_desktop_darwin_unittests].each do |binary|
   assert!(macos_run.include?(binary) && run_text_by_job.fetch('macos-engine').include?(":#{binary}"), "macOS engine must build and execute #{binary}")
 end
@@ -2895,6 +2900,14 @@ assert!(
     run_text_by_job.fetch('android-engine').include?('cp artifacts/android-engine/artifacts.zip "$mirror_root/artifacts.zip"'),
   'every Android ABI must publish and verify the canonical encryption registration header in its archive and mirrored artifacts.zip'
 )
+%w[linux-engine windows-engine linux-engine-arm64 windows-engine-arm64].each do |name|
+  steps = jobs.fetch(name).fetch('steps')
+  restore = steps.index { |step| step['run'] == 'python3 scripts/prepare_flutter_version_tag.py flutter' }
+  prepare = steps.index { |step| step['name'].to_s.match?(/Prepare (Linux|Windows) encrypted lifecycle tools/) }
+  assert!(restore && prepare && restore < prepare, "#{name} must restore the verified canonical Flutter version tag before lifecycle preparation")
+end
+assert!(run_text_by_job.fetch('source-checks').include?('python3 scripts/test_prepare_flutter_version_tag.py -v'), 'source checks must exercise Flutter tag identity and ancestry rejection')
+
 %w[linux-engine android-engine ios-engine macos-engine macos-engine-universal windows-engine].each do |name|
   assert!(run_text_by_job.fetch(name).include?('shorebird_set_patch_decryption_key_provider'), "#{name} must verify the actual linked engine exports the patch decryption key registration API")
 end
@@ -3054,6 +3067,13 @@ arm64_labels.each do |platform, label|
   sdk_runs = run_text_by_job.fetch(sdk_job)
   assert!(sdk_runs.include?('ReleaseARM64/args.gn') && sdk_runs.include?(%q{'target_cpu="arm64"'}) && sdk_runs.include?(%q{'host_cpu="arm64"'}) && sdk_runs.include?('verify_dart_sdk_args.sh'), "#{sdk_job} must verify explicit ARM64 GN and patching flags")
   engine = jobs.fetch(engine_job)
+  if platform == 'linux'
+    sync_config = engine.fetch('steps').find { |step| step['name'] == 'Write gclient config' }
+    assert!(sync_config.dig('env', 'INCLUDE_ENGINE_DEPS') == '1' && sync_config.dig('env', 'INCLUDE_ANDROID_DEPS') == '0', 'Linux ARM64 engine sync must exclude unavailable Android host packages while retaining engine dependencies')
+  else
+    prepare = engine.fetch('steps').find { |step| step['name'] == 'Prepare native Windows build tools' }.fetch('run')
+    assert!(prepare.include?('VC/Tools/Llvm/ARM64/bin/clang.exe') && prepare.include?('VC/Tools/Llvm/ARM64/bin/clang++.exe') && prepare.include?('"CC_aarch64_pc_windows_msvc=$clang"') && prepare.include?('"CXX_aarch64_pc_windows_msvc=$clangxx"'), 'Windows ARM64 updater must pin native GNU-style clang drivers for its static CRT flags')
+  end
   configure = engine.fetch('steps').find { |step| step['name'] == "Configure #{platform.capitalize} engine" }
   assert!(configure && configure.fetch('run').include?('NATIVE_PYTHON'), "#{engine_job} must configure GN using a native Python process so host_cpu cannot silently become x64")
   engine_runs = run_text_by_job.fetch(engine_job)

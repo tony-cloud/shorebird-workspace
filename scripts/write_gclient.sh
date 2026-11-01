@@ -4,10 +4,18 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PLATFORM="${1:-}"
 INCLUDE_ENGINE_DEPS="${INCLUDE_ENGINE_DEPS:-0}"
+# Desktop engine builds do not necessarily need Android's host toolchains.
+# In particular, the Android SDK/JDK CIPD packages do not exist for Linux ARM64.
+INCLUDE_ANDROID_DEPS="${INCLUDE_ANDROID_DEPS:-$INCLUDE_ENGINE_DEPS}"
+case "$INCLUDE_ANDROID_DEPS" in
+  0) ENGINE_DOWNLOAD_ANDROID_DEPS="False" ;;
+  1) ENGINE_DOWNLOAD_ANDROID_DEPS="True" ;;
+  *) echo "INCLUDE_ANDROID_DEPS must be 0 or 1" >&2; exit 64 ;;
+esac
 
 case "$PLATFORM" in
   linux)
-    if [[ "$INCLUDE_ENGINE_DEPS" == "1" ]]; then
+    if [[ "$INCLUDE_ANDROID_DEPS" == "1" ]]; then
       TARGET_OS='["linux", "android"]'
       DART_DOWNLOAD_ANDROID_DEPS="True"
     else
@@ -16,7 +24,7 @@ case "$PLATFORM" in
     fi
     ;;
   macos)
-    if [[ "$INCLUDE_ENGINE_DEPS" == "1" ]]; then
+    if [[ "$INCLUDE_ANDROID_DEPS" == "1" ]]; then
       TARGET_OS='["mac", "ios", "android"]'
       DART_DOWNLOAD_ANDROID_DEPS="True"
     else
@@ -93,7 +101,7 @@ solutions = [
     },
     "custom_vars": {
       "download_dart_sdk": False,
-      "download_android_deps": True,
+      "download_android_deps": $ENGINE_DOWNLOAD_ANDROID_DEPS,
       "download_emsdk": True,
       "setup_githooks": False,
       "use_rbe": False,

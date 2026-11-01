@@ -7,6 +7,7 @@ Each XML report must execute its entire corresponding binary/filter inventory.
 
 import argparse
 from pathlib import Path
+import platform
 
 from verify_native_cache_engine_tests import listed_tests, validate_report
 
@@ -74,16 +75,46 @@ REQUIRED = {
     }),
 }
 
+# Both native Mac architectures must execute the full source-commitment and
+# architecture-binding controls; every listed parameter is mandatory.
+REQUIRED["shorebird"] |= {
+    "Shorebird.MacFullScopeAcceptsBothWireArchitecturesAndRejectsReplay",
+    "DesktopInterpreterConfigTest.V2WrongScopeOsOrArchRefusesBeforeUpdaterInit",
+    "DesktopInterpreterConfigTest.MacBodyAndStructuralProfilesRefuseStartup",
+} | {
+    f"MacArchitectures/MacInterpreterSelectionV2Test.{case}/{arch}"
+    for arch in ("Arm64", "X64")
+    for case in (
+        "FullProfileBeginsBeforeMatchingKeyRelease",
+        "WrongScopeOsOrArchNeverBeginsOrReleasesKey",
+        "WrongEnvelopeOsOrArchNeverBeginsOrReleasesKey",
+        "UnsupportedProfilesNeverBeginOrReleaseKey",
+    )
+}
+
+
+def required_tests(suite, arch):
+    if arch not in ("arm64", "x64"):
+        raise ValueError(f"Unsupported macOS artifact architecture: {arch}")
+    required = REQUIRED[suite]
+    return required
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("evidence", type=Path)
+    parser.add_argument("--arch", choices=("arm64", "x64"), default={
+        "arm64": "arm64", "aarch64": "arm64", "x86_64": "x64",
+        "amd64": "x64",
+    }.get(platform.machine().lower()))
     args = parser.parse_args()
-    for suite, required in REQUIRED.items():
+    if args.arch is None:
+        parser.error("--arch is required when validating on an unknown host")
+    for suite in REQUIRED:
         inventory = listed_tests(args.evidence / f"{suite}-list.txt",
-                                 platform="macos", required=required)
+                                 platform="macos", required=required_tests(suite, args.arch))
         count = validate_report(args.evidence / f"{suite}.xml", inventory)
-        print(f"macOS {suite}: {count} executed, no failures or skips")
+        print(f"macOS {args.arch} {suite}: {count} executed, no failures or skips")
 
 
 if __name__ == "__main__":

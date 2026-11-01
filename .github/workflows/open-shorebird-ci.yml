@@ -156,6 +156,10 @@ jobs:
           bash -n scripts/*.sh shorebird/third_party/flutter/bin/internal/shared.sh flutter/bin/internal/update_dart_sdk.sh
           python3 -m py_compile scripts/verify_native_desktop_arch.py scripts/test_native_desktop_arch.py
           python3 scripts/test_native_desktop_arch.py -v
+          python3 scripts/test_write_gclient.py -v
+          python3 scripts/test_build_rust_updater.py -v
+          python3 -m py_compile scripts/prepare_flutter_version_tag.py scripts/test_prepare_flutter_version_tag.py
+          python3 scripts/test_prepare_flutter_version_tag.py -v
           python3 scripts/test_ci_arm64_contract.py -v
           python3 -m py_compile scripts/validate_artifact_mirror.py
           python3 -m py_compile scripts/validate_release_manifest.py
@@ -165,6 +169,7 @@ jobs:
           python3 scripts/test_cli_toolchain_pins.py -v
           python3 -m py_compile scripts/verify_dart_sdk_tooling.py
           python3 -m py_compile scripts/verify_native_cache_engine_tests.py scripts/verify_macos_interpreter_engine_tests.py
+          python3 scripts/test_macos_interpreter_engine_tests.py -v
           python3 scripts/verify_native_cache_engine_tests.py --self-test
           python3 -m py_compile dart-sdk/tools/test_aot_structural_patch.py
           python3 -m py_compile dart-sdk/tools/test_aot_full_replacement.py
@@ -1145,7 +1150,25 @@ jobs:
       - name: Build patched Dart SDK
         working-directory: dart-sdk
         run: |
-          ninja -C xcodebuild/ReleaseX64 create_sdk runtime gen_snapshot dartaotruntime dart_engine_aot_shared dart gen_snapshot_product dartaotruntime_product vm_platform_product dart_engine_aot_shared_product dartvm product_metadata_test run_ffi_unit_tests
+          python3 ../scripts/macos_x64_proof_transport.py verify-source --workspace .. --sdk-commit "$(git rev-parse HEAD)"
+          ninja -C xcodebuild/ReleaseX64 create_sdk runtime gen_snapshot dartaotruntime dart_engine_aot_shared dart gen_snapshot_product dartaotruntime_product vm_platform_product dart_engine_aot_shared_product dartvm product_metadata_test run_ffi_unit_tests product_ffi_test product_ffi_callback_test product_full_ffi_test
+
+      - name: Package unsigned native Intel FFI proof inputs
+        run: >-
+          python3 scripts/macos_x64_proof_transport.py package-build
+          --workspace "$GITHUB_WORKSPACE"
+          --build-dir dart-sdk/xcodebuild/ReleaseX64
+          --output macos-x64-ffi-proof-build-inputs.zip
+
+      - name: Upload unsigned native Intel FFI proof inputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-x64-ffi-proof-build-inputs
+          path: |
+            macos-x64-ffi-proof-build-inputs.zip
+            macos-x64-ffi-proof-build-inputs.zip.sha256
+            macos-x64-ffi-proof-build-inputs.manifest.json
+          if-no-files-found: error
 
       - name: Run shared FFI ABI golden tests
         working-directory: dart-sdk
@@ -1676,6 +1699,10 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: shorebird-server/go.sum
+
+      - name: Restore verified Flutter version tag for lifecycle
+        shell: bash
+        run: python3 scripts/prepare_flutter_version_tag.py flutter
 
       - name: Prepare Linux encrypted lifecycle tools
         run: |
@@ -2696,7 +2723,7 @@ jobs:
           cocoa_filter='FlutterEngineTest.FullInterpreterNeverUsesNativeOrElfRoute:FlutterEngineTest.LegacyProfileKeepsPublicInitializerAndElfRoute:FlutterDartProjectShorebirdTest.*'
           "$out/flutter_desktop_darwin_unittests" --gtest_filter="$cocoa_filter" --gtest_list_tests > "$results/cocoa-list.txt" 2> "$results/cocoa-list-stderr.log"
           "$out/flutter_desktop_darwin_unittests" --gtest_filter="$cocoa_filter" --gtest_output="xml:$results/cocoa.xml" > "$results/cocoa-tests.log" 2>&1
-          python3 scripts/verify_macos_interpreter_engine_tests.py "$results"
+          python3 scripts/verify_macos_interpreter_engine_tests.py "$results" --arch=${{ matrix.arch }}
 
       - name: Upload macOS interpreter test evidence
         if: always()
@@ -3149,6 +3176,10 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: shorebird-server/go.sum
+
+      - name: Restore verified Flutter version tag for lifecycle
+        shell: bash
+        run: python3 scripts/prepare_flutter_version_tag.py flutter
 
       - name: Prepare Windows encrypted lifecycle tools
         shell: pwsh
@@ -4139,6 +4170,7 @@ jobs:
       - name: Write gclient config
         env:
           INCLUDE_ENGINE_DEPS: "1"
+          INCLUDE_ANDROID_DEPS: "0"
         run: ./scripts/write_gclient.sh linux
 
       - name: Sync open-source links
@@ -4248,6 +4280,10 @@ jobs:
             --binary flutter/engine/src/out/linux_release_arm64/libflutter_linux_gtk.so \
             --build-tool flutter/engine/src/flutter/buildtools/linux-arm64/clang/bin/clang++ \
             --build-tool flutter/engine/src/flutter/third_party/gn/gn --build-tool "$(command -v python3)"
+
+      - name: Restore verified Flutter version tag for lifecycle
+        shell: bash
+        run: python3 scripts/prepare_flutter_version_tag.py flutter
 
       - name: Prepare Linux encrypted lifecycle tools
         run: |
@@ -4515,6 +4551,15 @@ jobs:
             }
           }
           if ($LASTEXITCODE) { throw 'VsDevCmd failed' }
+          # ring requires the GNU-style clang driver on Windows ARM64.
+          # Pin the native VS tools for ring and the other C/C++ Rust deps.
+          $clang = Join-Path $vs 'VC/Tools/Llvm/ARM64/bin/clang.exe'
+          $clangxx = Join-Path $vs 'VC/Tools/Llvm/ARM64/bin/clang++.exe'
+          if (!(Test-Path $clang) -or !(Test-Path $clangxx)) {
+            throw 'Visual Studio native ARM64 clang and clang++ are required'
+          }
+          "CC_aarch64_pc_windows_msvc=$clang" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+          "CXX_aarch64_pc_windows_msvc=$clangxx" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
           if (!(Test-Path "${env:ProgramFiles(x86)}\Windows Kits\10\Include\10.0.26100.0\um\Windows.h")) {
             throw 'Windows SDK 10.0.26100.0 is required by Dart/Chromium'
           }
@@ -4698,6 +4743,10 @@ jobs:
             --build-tool "$NATIVE_BUILD_LINKER" --build-tool "$(command -v python3)" \
             --build-tool flutter/engine/src/flutter/third_party/gn/gn.exe \
             --build-tool flutter/engine/src/flutter/buildtools/windows-x64/clang/bin/clang-cl.exe
+
+      - name: Restore verified Flutter version tag for lifecycle
+        shell: bash
+        run: python3 scripts/prepare_flutter_version_tag.py flutter
 
       - name: Prepare Windows encrypted lifecycle tools
         shell: pwsh

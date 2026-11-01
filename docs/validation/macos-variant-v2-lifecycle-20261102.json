@@ -1,0 +1,1884 @@
+{
+  "scope": "Actual signed hardened macOS ARM64 protocol-2 application lifecycle at the pinned revisions; not universal or Intel or final-toolchain certification.",
+  "pins": {
+    "dart_sdk": "b17e766a7f25f22f31dcaeb313c55d40945a8c8a",
+    "flutter_source": "ff7c9b3453d434bbcefd6ce274719031f2fc6819",
+    "updater": "e482b8093890d46031d6496fc5426db56d133660",
+    "server": "3479ee0445a4db67eb223d8abbbaaf65202a909b",
+    "identity_material": "open-shorebird-toolchain-v1\nb17e766a7f25f22f31dcaeb313c55d40945a8c8a\nff7c9b3453d434bbcefd6ce274719031f2fc6819\ne482b8093890d46031d6496fc5426db56d133660\n",
+    "engine_identity": "b7ac85a5c495ea0f30c4a86be9527134797f4f19",
+    "flutter": "c7e1331d890a8d1d5f9758e57086a83a87bf5c63",
+    "release_cli": "707849987725e3fb0c84f68d473a53654b56cb25",
+    "patch_cli": "0b377b52af87d4a73141bbb5e6d3f1693ef004a8",
+    "fixture_root": "89594e13a0030e79ca72b830d163d33896f4c43a"
+  },
+  "host": {
+    "machine": "arm64",
+    "macos": "26.7.2"
+  },
+  "builds": {
+    "completed_phases": [
+      "base",
+      "pro_seed",
+      "pro",
+      "enterprise"
+    ],
+    "published_patch_numbers": {
+      "pro_seed": 1,
+      "pro": 2,
+      "enterprise": 3
+    },
+    "release_version": "1.0.0+1"
+  },
+  "signatures": [
+    {
+      "team_identifier": "43FN6K7B4C",
+      "hardened_runtime": true,
+      "entitlements": {
+        "com.apple.security.app-sandbox": true,
+        "com.apple.security.network.client": true
+      },
+      "certificate_sha1": "CB505CEFDE0F13359AFC01406E1B27438065D257",
+      "sha256": "e79e8d9feb1ca264be815b18da12eb8064a15c14129d2f97bd812a009e58a365"
+    },
+    {
+      "team_identifier": "43FN6K7B4C",
+      "hardened_runtime": true,
+      "entitlements": {},
+      "certificate_sha1": "CB505CEFDE0F13359AFC01406E1B27438065D257",
+      "sha256": "51c558c6f17fd5fb3c8cce5b52fff9fc235790dd5f31cf8a220a329d9139a6d1"
+    },
+    {
+      "team_identifier": "43FN6K7B4C",
+      "hardened_runtime": true,
+      "entitlements": {},
+      "certificate_sha1": "CB505CEFDE0F13359AFC01406E1B27438065D257",
+      "sha256": "0ef84690aaba8201ad334f443ffcdd371b2eea710cc63e8826e98c89a4828060"
+    },
+    {
+      "team_identifier": "43FN6K7B4C",
+      "hardened_runtime": true,
+      "entitlements": {
+        "com.apple.security.app-sandbox": true,
+        "com.apple.security.network.client": true
+      },
+      "certificate_sha1": "CB505CEFDE0F13359AFC01406E1B27438065D257",
+      "sha256": "e79e8d9feb1ca264be815b18da12eb8064a15c14129d2f97bd812a009e58a365"
+    }
+  ],
+  "exports": [
+    "IosFullFfiRetain",
+    "IosFullFfiVersion",
+    "IosFullFfiScalarV1",
+    "IosFullFfiScalarV2",
+    "IosFullFfiChangeRecordV1",
+    "IosFullFfiChangeRecordV2",
+    "IosFullFfiUpdateOnly",
+    "IosFullFfiNegate",
+    "IosFullFfiEchoPointer",
+    "IosFullFfiCallScalar",
+    "IosFullFfiCallRecord",
+    "IosFullFfiStartWorkers",
+    "IosFullFfiWorkersDone",
+    "IosFullFfiJoinWorkers"
+  ],
+  "signed_bundle_tree_sha256": "8c9de454be54bfd565b80fd5c5d2f6a9fed2764ebb19a148347a4eac2f34db6c",
+  "runtime_launch_count": 46,
+  "runtime": [
+    {
+      "label": "initial-free",
+      "started": 1793548499.5297751,
+      "pid": 39168,
+      "variant": "free",
+      "new_code_result": "free:base",
+      "stage": "boot",
+      "current": {
+        "epoch": "0",
+        "digest": null,
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null
+      },
+      "accepted": {
+        "epoch": "0",
+        "digest": null,
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null
+      },
+      "next_boot": {
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null,
+        "reason": "no_authorization"
+      },
+      "restart_required": false,
+      "data_launches": 1,
+      "data_schema": 1,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": false,
+      "report_sha256": "908eab4e2432356a47801c1c186216e1b9a9e0727fabe4a122afc21433ac083e",
+      "note": null
+    },
+    {
+      "label": "signed-free-selection",
+      "started": 1793548806.099553,
+      "pid": 54639,
+      "variant": "free",
+      "new_code_result": "free:base",
+      "stage": "checked",
+      "current": {
+        "epoch": "0",
+        "digest": null,
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null
+      },
+      "accepted": {
+        "epoch": "1",
+        "digest": "4686bad25da79eeb8f15aafe73618f727e069da046572bad9eca8c28ef77d59e",
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null
+      },
+      "next_boot": {
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null,
+        "reason": "selected_base"
+      },
+      "restart_required": true,
+      "data_launches": 2,
+      "data_schema": 1,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": false,
+      "report_sha256": "6cb28bf88409687bd71534f19e3e3747d4ff653a5789e090bc552bc079ccaf38",
+      "note": null
+    },
+    {
+      "label": "offline-signed-free",
+      "started": 1793548847.145022,
+      "pid": 56517,
+      "variant": "free",
+      "new_code_result": "free:base",
+      "stage": "boot",
+      "current": {
+        "epoch": "1",
+        "digest": "4686bad25da79eeb8f15aafe73618f727e069da046572bad9eca8c28ef77d59e",
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null
+      },
+      "accepted": {
+        "epoch": "1",
+        "digest": "4686bad25da79eeb8f15aafe73618f727e069da046572bad9eca8c28ef77d59e",
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null
+      },
+      "next_boot": {
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null,
+        "reason": "selected_base"
+      },
+      "restart_required": false,
+      "data_launches": 3,
+      "data_schema": 1,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": true,
+      "report_sha256": "b4af8bd7ff2cb4a93c0fd01eaeb7a01d55e8b599f788c28fa11e447f6bb273ee",
+      "note": null
+    },
+    {
+      "label": "download-pro-e2",
+      "started": 1793551733.1918778,
+      "pid": 23096,
+      "variant": "free",
+      "new_code_result": "free:base",
+      "stage": "checked",
+      "current": {
+        "epoch": "1",
+        "digest": "4686bad25da79eeb8f15aafe73618f727e069da046572bad9eca8c28ef77d59e",
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null
+      },
+      "accepted": {
+        "epoch": "2",
+        "digest": "4818d39b632e52dfeb47965073d94fc9bc369ac407ac437bfffeb3f34c87a955",
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2"
+      },
+      "next_boot": {
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2",
+        "reason": "ready"
+      },
+      "restart_required": true,
+      "data_launches": 4,
+      "data_schema": 1,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": false,
+      "report_sha256": "f935a407a227371edc4eca4ddd501dded7d6bebdc34d7a408bc0210477de8838",
+      "note": null
+    },
+    {
+      "label": "cold-pro-e2",
+      "started": 1793551755.423539,
+      "pid": 24248,
+      "variant": "pro",
+      "new_code_result": "pro:42",
+      "stage": "boot",
+      "current": {
+        "epoch": "2",
+        "digest": "4818d39b632e52dfeb47965073d94fc9bc369ac407ac437bfffeb3f34c87a955",
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2"
+      },
+      "accepted": {
+        "epoch": "2",
+        "digest": "4818d39b632e52dfeb47965073d94fc9bc369ac407ac437bfffeb3f34c87a955",
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2"
+      },
+      "next_boot": {
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2",
+        "reason": "ready"
+      },
+      "restart_required": false,
+      "data_launches": 5,
+      "data_schema": 2,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": false,
+      "report_sha256": "09b55ec246047e085222cd7722d982b1232c445d0540fac93d407bd9f31087da",
+      "note": null
+    },
+    {
+      "label": "download-enterprise-e3",
+      "started": 1793551783.1638458,
+      "pid": 25857,
+      "variant": "pro",
+      "new_code_result": "pro:42",
+      "stage": "checked",
+      "current": {
+        "epoch": "2",
+        "digest": "4818d39b632e52dfeb47965073d94fc9bc369ac407ac437bfffeb3f34c87a955",
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2"
+      },
+      "accepted": {
+        "epoch": "3",
+        "digest": "7c60ad1008623e0944ed67b354215dc2cc5cce83619965cdda75300d40bebbba",
+        "variant_id": "enterprise",
+        "license_type": "enterprise",
+        "patch_number": "3"
+      },
+      "next_boot": {
+        "variant_id": "enterprise",
+        "license_type": "enterprise",
+        "patch_number": "3",
+        "reason": "ready"
+      },
+      "restart_required": true,
+      "data_launches": 6,
+      "data_schema": 2,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": false,
+      "report_sha256": "92f640a43eda383a79e2cbd8cd067a7c8a8f00a6a37720b3da4eec69618588fd",
+      "note": null
+    },
+    {
+      "label": "cold-enterprise-e3",
+      "started": 1793551784.861546,
+      "pid": 25934,
+      "variant": "enterprise",
+      "new_code_result": "enterprise:24",
+      "stage": "boot",
+      "current": {
+        "epoch": "3",
+        "digest": "7c60ad1008623e0944ed67b354215dc2cc5cce83619965cdda75300d40bebbba",
+        "variant_id": "enterprise",
+        "license_type": "enterprise",
+        "patch_number": "3"
+      },
+      "accepted": {
+        "epoch": "3",
+        "digest": "7c60ad1008623e0944ed67b354215dc2cc5cce83619965cdda75300d40bebbba",
+        "variant_id": "enterprise",
+        "license_type": "enterprise",
+        "patch_number": "3"
+      },
+      "next_boot": {
+        "variant_id": "enterprise",
+        "license_type": "enterprise",
+        "patch_number": "3",
+        "reason": "ready"
+      },
+      "restart_required": false,
+      "data_launches": 7,
+      "data_schema": 3,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": false,
+      "report_sha256": "f6d768e23aa340f4f906c14bed17bb656843fdea11f1056b5426c8c21fdfa962",
+      "note": null
+    },
+    {
+      "label": "download-pro-e4",
+      "started": 1793551786.333951,
+      "pid": 26011,
+      "variant": "enterprise",
+      "new_code_result": "enterprise:24",
+      "stage": "checked",
+      "current": {
+        "epoch": "3",
+        "digest": "7c60ad1008623e0944ed67b354215dc2cc5cce83619965cdda75300d40bebbba",
+        "variant_id": "enterprise",
+        "license_type": "enterprise",
+        "patch_number": "3"
+      },
+      "accepted": {
+        "epoch": "4",
+        "digest": "0b5db54d04405d676db27c6cb269301a640da9076e1ee9f8617ff8d6cd1df908",
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2"
+      },
+      "next_boot": {
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2",
+        "reason": "ready"
+      },
+      "restart_required": true,
+      "data_launches": 8,
+      "data_schema": 3,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": false,
+      "report_sha256": "3abaf37c1fc266bdcc8cd3e905dc147021ee630c2ad19ad41eb00f01b6a11f89",
+      "note": null
+    },
+    {
+      "label": "cold-pro-e4",
+      "started": 1793551787.920222,
+      "pid": 26076,
+      "variant": "pro",
+      "new_code_result": "pro:42",
+      "stage": "boot",
+      "current": {
+        "epoch": "4",
+        "digest": "0b5db54d04405d676db27c6cb269301a640da9076e1ee9f8617ff8d6cd1df908",
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2"
+      },
+      "accepted": {
+        "epoch": "4",
+        "digest": "0b5db54d04405d676db27c6cb269301a640da9076e1ee9f8617ff8d6cd1df908",
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2"
+      },
+      "next_boot": {
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2",
+        "reason": "ready"
+      },
+      "restart_required": false,
+      "data_launches": 9,
+      "data_schema": 3,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": false,
+      "report_sha256": "330865eacabbec68c943c15767a944583a05fd39146ce779ad471f8dc6d2fa65",
+      "note": null
+    },
+    {
+      "label": "download-free-e5",
+      "started": 1793551789.004547,
+      "pid": 26174,
+      "variant": "pro",
+      "new_code_result": "pro:42",
+      "stage": "checked",
+      "current": {
+        "epoch": "4",
+        "digest": "0b5db54d04405d676db27c6cb269301a640da9076e1ee9f8617ff8d6cd1df908",
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2"
+      },
+      "accepted": {
+        "epoch": "5",
+        "digest": "e5b5e385b381542fa4e2f11356f4f47b4367a66e9afda51df32c18edb6bff991",
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null
+      },
+      "next_boot": {
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null,
+        "reason": "selected_base"
+      },
+      "restart_required": true,
+      "data_launches": 10,
+      "data_schema": 3,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": false,
+      "report_sha256": "45e7345a306a5a0ef129fcba8e397d505cd2ae0962b8eedfb18fb65de77afefb",
+      "note": null
+    },
+    {
+      "label": "cold-free-e5",
+      "started": 1793551790.068144,
+      "pid": 26188,
+      "variant": "free",
+      "new_code_result": "free:base",
+      "stage": "boot",
+      "current": {
+        "epoch": "5",
+        "digest": "e5b5e385b381542fa4e2f11356f4f47b4367a66e9afda51df32c18edb6bff991",
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null
+      },
+      "accepted": {
+        "epoch": "5",
+        "digest": "e5b5e385b381542fa4e2f11356f4f47b4367a66e9afda51df32c18edb6bff991",
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null
+      },
+      "next_boot": {
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null,
+        "reason": "selected_base"
+      },
+      "restart_required": false,
+      "data_launches": 11,
+      "data_schema": 3,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": false,
+      "report_sha256": "43f1820b9ed7db80c0aae78e26e080aa3680626be0ce07d101c0952fa9565c50",
+      "note": null
+    },
+    {
+      "label": "download-enterprise-e6",
+      "started": 1793551790.878417,
+      "pid": 26262,
+      "variant": "free",
+      "new_code_result": "free:base",
+      "stage": "checked",
+      "current": {
+        "epoch": "5",
+        "digest": "e5b5e385b381542fa4e2f11356f4f47b4367a66e9afda51df32c18edb6bff991",
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null
+      },
+      "accepted": {
+        "epoch": "6",
+        "digest": "5d163c319634c17244b88ceec22fdbd0896d85246e6e8e26227568ac4dab59eb",
+        "variant_id": "enterprise",
+        "license_type": "enterprise",
+        "patch_number": "3"
+      },
+      "next_boot": {
+        "variant_id": "enterprise",
+        "license_type": "enterprise",
+        "patch_number": "3",
+        "reason": "ready"
+      },
+      "restart_required": true,
+      "data_launches": 12,
+      "data_schema": 3,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": false,
+      "report_sha256": "fdee9ed18e7cb0ab8638f3dee84f63f976b4b5c304abddd66af1e0df36c4f6cd",
+      "note": null
+    },
+    {
+      "label": "cold-enterprise-e6",
+      "started": 1793551791.987287,
+      "pid": 26309,
+      "variant": "enterprise",
+      "new_code_result": "enterprise:24",
+      "stage": "boot",
+      "current": {
+        "epoch": "6",
+        "digest": "5d163c319634c17244b88ceec22fdbd0896d85246e6e8e26227568ac4dab59eb",
+        "variant_id": "enterprise",
+        "license_type": "enterprise",
+        "patch_number": "3"
+      },
+      "accepted": {
+        "epoch": "6",
+        "digest": "5d163c319634c17244b88ceec22fdbd0896d85246e6e8e26227568ac4dab59eb",
+        "variant_id": "enterprise",
+        "license_type": "enterprise",
+        "patch_number": "3"
+      },
+      "next_boot": {
+        "variant_id": "enterprise",
+        "license_type": "enterprise",
+        "patch_number": "3",
+        "reason": "ready"
+      },
+      "restart_required": false,
+      "data_launches": 13,
+      "data_schema": 3,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": false,
+      "report_sha256": "77638da9611fb1da4ef456182c62878a58a797dfe2eca214e2eb79f61ae68684",
+      "note": null
+    },
+    {
+      "label": "download-free-e7",
+      "started": 1793551793.055721,
+      "pid": 26400,
+      "variant": "enterprise",
+      "new_code_result": "enterprise:24",
+      "stage": "checked",
+      "current": {
+        "epoch": "6",
+        "digest": "5d163c319634c17244b88ceec22fdbd0896d85246e6e8e26227568ac4dab59eb",
+        "variant_id": "enterprise",
+        "license_type": "enterprise",
+        "patch_number": "3"
+      },
+      "accepted": {
+        "epoch": "7",
+        "digest": "4a2a59b5ea31a5674d3bbaa48d83dae2fe147af8d4020ad892837461d6afcecd",
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null
+      },
+      "next_boot": {
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null,
+        "reason": "selected_base"
+      },
+      "restart_required": true,
+      "data_launches": 14,
+      "data_schema": 3,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": false,
+      "report_sha256": "1b76d556f9045377f3543d14546c4cab1eb8afaa3b041d2026d981abd56accf4",
+      "note": null
+    },
+    {
+      "label": "cold-free-e7",
+      "started": 1793551794.11073,
+      "pid": 26414,
+      "variant": "free",
+      "new_code_result": "free:base",
+      "stage": "boot",
+      "current": {
+        "epoch": "7",
+        "digest": "4a2a59b5ea31a5674d3bbaa48d83dae2fe147af8d4020ad892837461d6afcecd",
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null
+      },
+      "accepted": {
+        "epoch": "7",
+        "digest": "4a2a59b5ea31a5674d3bbaa48d83dae2fe147af8d4020ad892837461d6afcecd",
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null
+      },
+      "next_boot": {
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null,
+        "reason": "selected_base"
+      },
+      "restart_required": false,
+      "data_launches": 15,
+      "data_schema": 3,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": false,
+      "report_sha256": "d767794724bd423fce7414a2a481037ec438e2d9d92c51fcfef5eaf35b5a2c3e",
+      "note": null
+    },
+    {
+      "label": "download-pro-e8",
+      "started": 1793551803.788047,
+      "pid": 26930,
+      "variant": "free",
+      "new_code_result": "free:base",
+      "stage": "checked",
+      "current": {
+        "epoch": "7",
+        "digest": "4a2a59b5ea31a5674d3bbaa48d83dae2fe147af8d4020ad892837461d6afcecd",
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null
+      },
+      "accepted": {
+        "epoch": "8",
+        "digest": "b66bd26f989a5f75d8cc615fd941282fbc2539f57885707db97f553ec85fe796",
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2"
+      },
+      "next_boot": {
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2",
+        "reason": "ready"
+      },
+      "restart_required": true,
+      "data_launches": 16,
+      "data_schema": 3,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": false,
+      "report_sha256": "b04bd197b0c24db34872b67ea4437a58cf79d04546d295b7f6287dfe148c6038",
+      "note": null
+    },
+    {
+      "label": "cold-pro-e8",
+      "started": 1793551805.106293,
+      "pid": 27023,
+      "variant": "pro",
+      "new_code_result": "pro:42",
+      "stage": "boot",
+      "current": {
+        "epoch": "8",
+        "digest": "b66bd26f989a5f75d8cc615fd941282fbc2539f57885707db97f553ec85fe796",
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2"
+      },
+      "accepted": {
+        "epoch": "8",
+        "digest": "b66bd26f989a5f75d8cc615fd941282fbc2539f57885707db97f553ec85fe796",
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2"
+      },
+      "next_boot": {
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2",
+        "reason": "ready"
+      },
+      "restart_required": false,
+      "data_launches": 17,
+      "data_schema": 3,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": false,
+      "report_sha256": "5f0c9d6505a97c15ed969d4e2998e6216360087b9eb860eace884f29f1aa1de3",
+      "note": null
+    },
+    {
+      "label": "download-pro-e9",
+      "started": 1793551806.1882188,
+      "pid": 27028,
+      "variant": "pro",
+      "new_code_result": "pro:42",
+      "stage": "checked",
+      "current": {
+        "epoch": "8",
+        "digest": "b66bd26f989a5f75d8cc615fd941282fbc2539f57885707db97f553ec85fe796",
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2"
+      },
+      "accepted": {
+        "epoch": "9",
+        "digest": "66612b1e6f9b78185d750f07b77efa1a35aa89675926c873b9c00e009b120c53",
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2"
+      },
+      "next_boot": {
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2",
+        "reason": "ready"
+      },
+      "restart_required": true,
+      "data_launches": 18,
+      "data_schema": 3,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": false,
+      "report_sha256": "3200bcf9eb03ab4ae9bc2a9ddaf3a3fb08570d388e2000f6b5aa612d3a642bc7",
+      "note": null
+    },
+    {
+      "label": "cold-pro-e9",
+      "started": 1793551807.514146,
+      "pid": 27124,
+      "variant": "pro",
+      "new_code_result": "pro:42",
+      "stage": "boot",
+      "current": {
+        "epoch": "9",
+        "digest": "66612b1e6f9b78185d750f07b77efa1a35aa89675926c873b9c00e009b120c53",
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2"
+      },
+      "accepted": {
+        "epoch": "9",
+        "digest": "66612b1e6f9b78185d750f07b77efa1a35aa89675926c873b9c00e009b120c53",
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2"
+      },
+      "next_boot": {
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2",
+        "reason": "ready"
+      },
+      "restart_required": false,
+      "data_launches": 19,
+      "data_schema": 3,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": false,
+      "report_sha256": "a89b51da8f71f45aac71f611942b1795905d9503c20ffb2e1ff5ed578e197fe6",
+      "note": null
+    },
+    {
+      "label": "offline-pro-e9",
+      "started": 1793551827.976958,
+      "pid": 28111,
+      "variant": "pro",
+      "new_code_result": "pro:42",
+      "stage": "boot",
+      "current": {
+        "epoch": "9",
+        "digest": "66612b1e6f9b78185d750f07b77efa1a35aa89675926c873b9c00e009b120c53",
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2"
+      },
+      "accepted": {
+        "epoch": "9",
+        "digest": "66612b1e6f9b78185d750f07b77efa1a35aa89675926c873b9c00e009b120c53",
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2"
+      },
+      "next_boot": {
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2",
+        "reason": "ready"
+      },
+      "restart_required": false,
+      "data_launches": 20,
+      "data_schema": 3,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": true,
+      "report_sha256": "6435aa0293d5605b690bbfee92ebd459d9cb50269852f704ae1bbe260e02b468",
+      "note": null
+    },
+    {
+      "label": "missing-key-free-e9",
+      "started": 1793551858.687382,
+      "pid": 29683,
+      "variant": "free",
+      "new_code_result": "free:base",
+      "stage": "boot",
+      "current": {
+        "epoch": "9",
+        "digest": "66612b1e6f9b78185d750f07b77efa1a35aa89675926c873b9c00e009b120c53",
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null
+      },
+      "accepted": {
+        "epoch": "9",
+        "digest": "66612b1e6f9b78185d750f07b77efa1a35aa89675926c873b9c00e009b120c53",
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2"
+      },
+      "next_boot": {
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2",
+        "reason": "ready"
+      },
+      "restart_required": true,
+      "data_launches": 21,
+      "data_schema": 3,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": true,
+      "report_sha256": "5a28e6794a4211402b350343a6f08f71792c43944a5efbaee00e1f6646181985",
+      "note": null
+    },
+    {
+      "label": "restored-key-pro-e9",
+      "started": 1793551860.476521,
+      "pid": 29751,
+      "variant": "pro",
+      "new_code_result": "pro:42",
+      "stage": "boot",
+      "current": {
+        "epoch": "9",
+        "digest": "66612b1e6f9b78185d750f07b77efa1a35aa89675926c873b9c00e009b120c53",
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2"
+      },
+      "accepted": {
+        "epoch": "9",
+        "digest": "66612b1e6f9b78185d750f07b77efa1a35aa89675926c873b9c00e009b120c53",
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2"
+      },
+      "next_boot": {
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2",
+        "reason": "ready"
+      },
+      "restart_required": false,
+      "data_launches": 22,
+      "data_schema": 3,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": true,
+      "report_sha256": "6d63a53f697659af5ee46efbc2947dcd118651399b5f835d2433a65d8f907450",
+      "note": null
+    },
+    {
+      "label": "wrong-key-free-e9",
+      "started": 1793551861.945102,
+      "pid": 29826,
+      "variant": "free",
+      "new_code_result": "free:base",
+      "stage": "boot",
+      "current": {
+        "epoch": "9",
+        "digest": "66612b1e6f9b78185d750f07b77efa1a35aa89675926c873b9c00e009b120c53",
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null
+      },
+      "accepted": {
+        "epoch": "9",
+        "digest": "66612b1e6f9b78185d750f07b77efa1a35aa89675926c873b9c00e009b120c53",
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2"
+      },
+      "next_boot": {
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2",
+        "reason": "ready"
+      },
+      "restart_required": true,
+      "data_launches": 23,
+      "data_schema": 3,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": true,
+      "report_sha256": "893833c52aaa43efdc2e9d52be9bd2e825ec8935d5f21ce90f70fa91b9d26f80",
+      "note": null
+    },
+    {
+      "label": "recovered-after-wrong-pro-e9",
+      "started": 1793551863.4758432,
+      "pid": 29924,
+      "variant": "pro",
+      "new_code_result": "pro:42",
+      "stage": "boot",
+      "current": {
+        "epoch": "9",
+        "digest": "66612b1e6f9b78185d750f07b77efa1a35aa89675926c873b9c00e009b120c53",
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2"
+      },
+      "accepted": {
+        "epoch": "9",
+        "digest": "66612b1e6f9b78185d750f07b77efa1a35aa89675926c873b9c00e009b120c53",
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2"
+      },
+      "next_boot": {
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2",
+        "reason": "ready"
+      },
+      "restart_required": false,
+      "data_launches": 24,
+      "data_schema": 3,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": true,
+      "report_sha256": "1a098f23f8c6a729961d16a46ae223e30854ed75c8fd435d06cab1714fe9040d",
+      "note": null
+    },
+    {
+      "label": "ciphertext-tamper-free-e9",
+      "started": 1793551950.1732202,
+      "pid": 34414,
+      "variant": "free",
+      "new_code_result": "free:base",
+      "stage": "boot",
+      "current": {
+        "epoch": "9",
+        "digest": "66612b1e6f9b78185d750f07b77efa1a35aa89675926c873b9c00e009b120c53",
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null
+      },
+      "accepted": {
+        "epoch": "9",
+        "digest": "66612b1e6f9b78185d750f07b77efa1a35aa89675926c873b9c00e009b120c53",
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2"
+      },
+      "next_boot": {
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null,
+        "reason": "quarantined"
+      },
+      "restart_required": false,
+      "data_launches": 25,
+      "data_schema": 3,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": true,
+      "report_sha256": "534f5b6c060704955c18661f27a5e0e633dfb5740ca0783d7f1da53e772834a2",
+      "note": null
+    },
+    {
+      "label": "after-ciphertext-test-reset-pro-e9",
+      "started": 1793551951.360887,
+      "pid": 34530,
+      "variant": "pro",
+      "new_code_result": "pro:42",
+      "stage": "boot",
+      "current": {
+        "epoch": "9",
+        "digest": "66612b1e6f9b78185d750f07b77efa1a35aa89675926c873b9c00e009b120c53",
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2"
+      },
+      "accepted": {
+        "epoch": "9",
+        "digest": "66612b1e6f9b78185d750f07b77efa1a35aa89675926c873b9c00e009b120c53",
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2"
+      },
+      "next_boot": {
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2",
+        "reason": "ready"
+      },
+      "restart_required": false,
+      "data_launches": 26,
+      "data_schema": 3,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": true,
+      "report_sha256": "9fb5e1bc84f2c02c4590eaa1885603fb49ad45025f4be8eaefc67557780cda6c",
+      "note": null
+    },
+    {
+      "label": "signature-tamper-free-e9",
+      "started": 1793551952.4555871,
+      "pid": 34610,
+      "variant": "free",
+      "new_code_result": "free:base",
+      "stage": "boot",
+      "current": {
+        "epoch": "9",
+        "digest": "66612b1e6f9b78185d750f07b77efa1a35aa89675926c873b9c00e009b120c53",
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null
+      },
+      "accepted": {
+        "epoch": "9",
+        "digest": "66612b1e6f9b78185d750f07b77efa1a35aa89675926c873b9c00e009b120c53",
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2"
+      },
+      "next_boot": {
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null,
+        "reason": "quarantined"
+      },
+      "restart_required": false,
+      "data_launches": 27,
+      "data_schema": 3,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": true,
+      "report_sha256": "192e582d8bd99ccd90563c1f978be1362e922e77660834d70775225367b89503",
+      "note": null
+    },
+    {
+      "label": "after-signature-test-reset-pro-e9",
+      "started": 1793551953.627336,
+      "pid": 34753,
+      "variant": "pro",
+      "new_code_result": "pro:42",
+      "stage": "boot",
+      "current": {
+        "epoch": "9",
+        "digest": "66612b1e6f9b78185d750f07b77efa1a35aa89675926c873b9c00e009b120c53",
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2"
+      },
+      "accepted": {
+        "epoch": "9",
+        "digest": "66612b1e6f9b78185d750f07b77efa1a35aa89675926c873b9c00e009b120c53",
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2"
+      },
+      "next_boot": {
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2",
+        "reason": "ready"
+      },
+      "restart_required": false,
+      "data_launches": 28,
+      "data_schema": 3,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": true,
+      "report_sha256": "4ab909e6eeb6f28633535838b9b59b833060e33e09b423b4bd9db87e38427f6d",
+      "note": null
+    },
+    {
+      "label": "download-short-lease-pro-e10",
+      "started": 1793552019.947659,
+      "pid": 39018,
+      "variant": "pro",
+      "new_code_result": "pro:42",
+      "stage": "checked",
+      "current": {
+        "epoch": "9",
+        "digest": "66612b1e6f9b78185d750f07b77efa1a35aa89675926c873b9c00e009b120c53",
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2"
+      },
+      "accepted": {
+        "epoch": "10",
+        "digest": "404b0d4c44a6aa0886d4c266b749156c8903c6feea527fe0bbcbbdba48134d92",
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2"
+      },
+      "next_boot": {
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2",
+        "reason": "ready"
+      },
+      "restart_required": true,
+      "data_launches": 29,
+      "data_schema": 3,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": false,
+      "report_sha256": "bb2dd6a77534f272e917c7ddafa7caaa47455f3ae2c6695d3b29d12530178959",
+      "note": null
+    },
+    {
+      "label": "valid-offline-lease-pro-e10",
+      "started": 1793552021.688375,
+      "pid": 39127,
+      "variant": "pro",
+      "new_code_result": "pro:42",
+      "stage": "boot",
+      "current": {
+        "epoch": "10",
+        "digest": "404b0d4c44a6aa0886d4c266b749156c8903c6feea527fe0bbcbbdba48134d92",
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2"
+      },
+      "accepted": {
+        "epoch": "10",
+        "digest": "404b0d4c44a6aa0886d4c266b749156c8903c6feea527fe0bbcbbdba48134d92",
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2"
+      },
+      "next_boot": {
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2",
+        "reason": "ready"
+      },
+      "restart_required": false,
+      "data_launches": 30,
+      "data_schema": 3,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": true,
+      "report_sha256": "1badb80c98621e511d4aab0355096d8573134cc61e2c692b510d0aaf4cb129f4",
+      "note": null
+    },
+    {
+      "label": "before-expiry-pro-e10",
+      "started": 1793552055.6683857,
+      "pid": 40723,
+      "variant": "pro",
+      "new_code_result": "pro:42",
+      "stage": "boot",
+      "current": {
+        "epoch": "10",
+        "digest": "404b0d4c44a6aa0886d4c266b749156c8903c6feea527fe0bbcbbdba48134d92",
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2"
+      },
+      "accepted": {
+        "epoch": "10",
+        "digest": "404b0d4c44a6aa0886d4c266b749156c8903c6feea527fe0bbcbbdba48134d92",
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2"
+      },
+      "next_boot": {
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2",
+        "reason": "ready"
+      },
+      "restart_required": false,
+      "data_launches": 31,
+      "data_schema": 3,
+      "signed_bundle_unchanged": null,
+      "offline_endpoints_closed": true,
+      "report_sha256": "a7dd07e8c12c645d40f9333f79640eac27bfdda5f675a78fa486ae28c8cda51f",
+      "note": "Expiry-test launch began three seconds before deadline; actual valid-lease pro report reconciled after validator timeout. This does not establish expired-lease behavior."
+    },
+    {
+      "label": "actual-expired-offline-free-e10",
+      "started": 1793552129.7680361,
+      "pid": 44236,
+      "variant": "free",
+      "new_code_result": "free:base",
+      "stage": "boot",
+      "current": {
+        "epoch": "10",
+        "digest": "404b0d4c44a6aa0886d4c266b749156c8903c6feea527fe0bbcbbdba48134d92",
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null
+      },
+      "accepted": {
+        "epoch": "10",
+        "digest": "404b0d4c44a6aa0886d4c266b749156c8903c6feea527fe0bbcbbdba48134d92",
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2"
+      },
+      "next_boot": {
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null,
+        "reason": "expired"
+      },
+      "restart_required": false,
+      "data_launches": 32,
+      "data_schema": 3,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": true,
+      "report_sha256": "cee71f32dde22864ab3ad9816f20c0ac5d8ef2d2669dde3a3a6d95769dec7915",
+      "note": null
+    },
+    {
+      "label": "replay-api-policy-attempt-e10",
+      "started": 1793552163.857543,
+      "pid": 45817,
+      "variant": "free",
+      "new_code_result": "free:base",
+      "stage": "checked",
+      "current": {
+        "epoch": "10",
+        "digest": "404b0d4c44a6aa0886d4c266b749156c8903c6feea527fe0bbcbbdba48134d92",
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null
+      },
+      "accepted": {
+        "epoch": "10",
+        "digest": "404b0d4c44a6aa0886d4c266b749156c8903c6feea527fe0bbcbbdba48134d92",
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2"
+      },
+      "next_boot": {
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null,
+        "reason": "expired"
+      },
+      "restart_required": false,
+      "data_launches": 33,
+      "data_schema": 3,
+      "signed_bundle_unchanged": null,
+      "offline_endpoints_closed": false,
+      "report_sha256": "2b2f8c13a1adc6ba2714f92221221602c1ba46c26873b8045204be5e5ea30715",
+      "note": "Initial harness incorrectly expected thrown check error; API returns upToDate on rejected response. Actual free fallback/report and data reconciled. Dedicated request/evidence capture rerun required."
+    },
+    {
+      "label": "replay-e9-retained-e10",
+      "started": 1793552236.588792,
+      "pid": 50418,
+      "variant": "free",
+      "new_code_result": "free:base",
+      "stage": "checked",
+      "current": {
+        "epoch": "10",
+        "digest": "404b0d4c44a6aa0886d4c266b749156c8903c6feea527fe0bbcbbdba48134d92",
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null
+      },
+      "accepted": {
+        "epoch": "10",
+        "digest": "404b0d4c44a6aa0886d4c266b749156c8903c6feea527fe0bbcbbdba48134d92",
+        "variant_id": "pro",
+        "license_type": "pro",
+        "patch_number": "2"
+      },
+      "next_boot": {
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null,
+        "reason": "expired"
+      },
+      "restart_required": false,
+      "data_launches": 34,
+      "data_schema": 3,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": false,
+      "report_sha256": "3bbcb158315e751a5a3e9eb0bdf0011305ed1dbe2c5d8c679b67c4cc4d05ea9c",
+      "note": null
+    },
+    {
+      "label": "expired-grant-server-free-e11",
+      "started": 1793552293.518921,
+      "pid": 57115,
+      "variant": "free",
+      "new_code_result": "free:base",
+      "stage": "checked",
+      "current": {
+        "epoch": "10",
+        "digest": "404b0d4c44a6aa0886d4c266b749156c8903c6feea527fe0bbcbbdba48134d92",
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null
+      },
+      "accepted": {
+        "epoch": "11",
+        "digest": "4722dd2606f946f41e32d178ca437753b38128ff1502d676913f32fb4e6b86c5",
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null
+      },
+      "next_boot": {
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null,
+        "reason": "selected_base"
+      },
+      "restart_required": true,
+      "data_launches": 35,
+      "data_schema": 3,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": false,
+      "report_sha256": "a72d71259ee35ea11d951b276921b703acdf435224e4147f43b51b048edbe300",
+      "note": null
+    },
+    {
+      "label": "cold-server-free-e11",
+      "started": 1793552294.6462772,
+      "pid": 57163,
+      "variant": "free",
+      "new_code_result": "free:base",
+      "stage": "boot",
+      "current": {
+        "epoch": "11",
+        "digest": "4722dd2606f946f41e32d178ca437753b38128ff1502d676913f32fb4e6b86c5",
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null
+      },
+      "accepted": {
+        "epoch": "11",
+        "digest": "4722dd2606f946f41e32d178ca437753b38128ff1502d676913f32fb4e6b86c5",
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null
+      },
+      "next_boot": {
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null,
+        "reason": "selected_base"
+      },
+      "restart_required": false,
+      "data_launches": 36,
+      "data_schema": 3,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": false,
+      "report_sha256": "5a384561b7e9694ef6d1c4b485c2cb214d988663e0801defe10116f32805e774",
+      "note": null
+    },
+    {
+      "label": "download-enterprise-e12",
+      "started": 1793552295.783369,
+      "pid": 57226,
+      "variant": "free",
+      "new_code_result": "free:base",
+      "stage": "checked",
+      "current": {
+        "epoch": "11",
+        "digest": "4722dd2606f946f41e32d178ca437753b38128ff1502d676913f32fb4e6b86c5",
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null
+      },
+      "accepted": {
+        "epoch": "12",
+        "digest": "3e17a2f36a783d46e3265463fca21a1d166f84e3b1d66668fb52fe00c128228d",
+        "variant_id": "enterprise",
+        "license_type": "enterprise",
+        "patch_number": "3"
+      },
+      "next_boot": {
+        "variant_id": "enterprise",
+        "license_type": "enterprise",
+        "patch_number": "3",
+        "reason": "ready"
+      },
+      "restart_required": true,
+      "data_launches": 37,
+      "data_schema": 3,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": false,
+      "report_sha256": "69b91b6a51f7d812fb1b839a456667427eb3bb194501e51f6f78f097c88e4357",
+      "note": null
+    },
+    {
+      "label": "cold-enterprise-e12",
+      "started": 1793552296.829182,
+      "pid": 57260,
+      "variant": "enterprise",
+      "new_code_result": "enterprise:24",
+      "stage": "boot",
+      "current": {
+        "epoch": "12",
+        "digest": "3e17a2f36a783d46e3265463fca21a1d166f84e3b1d66668fb52fe00c128228d",
+        "variant_id": "enterprise",
+        "license_type": "enterprise",
+        "patch_number": "3"
+      },
+      "accepted": {
+        "epoch": "12",
+        "digest": "3e17a2f36a783d46e3265463fca21a1d166f84e3b1d66668fb52fe00c128228d",
+        "variant_id": "enterprise",
+        "license_type": "enterprise",
+        "patch_number": "3"
+      },
+      "next_boot": {
+        "variant_id": "enterprise",
+        "license_type": "enterprise",
+        "patch_number": "3",
+        "reason": "ready"
+      },
+      "restart_required": false,
+      "data_launches": 38,
+      "data_schema": 3,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": false,
+      "report_sha256": "9ba640f5f127103596dee0588856d6e000976aa8641f4338b1b6a0e5949c1462",
+      "note": null
+    },
+    {
+      "label": "rollback-accept-free-e13",
+      "started": 1793552370.0965319,
+      "pid": 61360,
+      "variant": "enterprise",
+      "new_code_result": "enterprise:24",
+      "stage": "checked",
+      "current": {
+        "epoch": "12",
+        "digest": "3e17a2f36a783d46e3265463fca21a1d166f84e3b1d66668fb52fe00c128228d",
+        "variant_id": "enterprise",
+        "license_type": "enterprise",
+        "patch_number": "3"
+      },
+      "accepted": {
+        "epoch": "13",
+        "digest": "df2323ea9af27876d0ceac1165e70f04c14d2f96811329c97883a007f3bef5f2",
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null
+      },
+      "next_boot": {
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null,
+        "reason": "selected_base"
+      },
+      "restart_required": true,
+      "data_launches": 39,
+      "data_schema": 3,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": false,
+      "report_sha256": "6e0c0080bc2991fa2168cc62c0d9647f604d796ee7a3b1e1b04552f87d93ca19",
+      "note": null
+    },
+    {
+      "label": "rollback-cold-free-e13",
+      "started": 1793552371.40902,
+      "pid": 61449,
+      "variant": "free",
+      "new_code_result": "free:base",
+      "stage": "boot",
+      "current": {
+        "epoch": "13",
+        "digest": "df2323ea9af27876d0ceac1165e70f04c14d2f96811329c97883a007f3bef5f2",
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null
+      },
+      "accepted": {
+        "epoch": "13",
+        "digest": "df2323ea9af27876d0ceac1165e70f04c14d2f96811329c97883a007f3bef5f2",
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null
+      },
+      "next_boot": {
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null,
+        "reason": "selected_base"
+      },
+      "restart_required": false,
+      "data_launches": 40,
+      "data_schema": 3,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": false,
+      "report_sha256": "8cadd4f92f0e974409c84923ace5d211d391de587695cf0766345d7d93466d59",
+      "note": null
+    },
+    {
+      "label": "rollforward-no-implicit-paid-e13",
+      "started": 1793552414.8436081,
+      "pid": 64875,
+      "variant": "free",
+      "new_code_result": "free:base",
+      "stage": "checked",
+      "current": {
+        "epoch": "13",
+        "digest": "df2323ea9af27876d0ceac1165e70f04c14d2f96811329c97883a007f3bef5f2",
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null
+      },
+      "accepted": {
+        "epoch": "13",
+        "digest": "df2323ea9af27876d0ceac1165e70f04c14d2f96811329c97883a007f3bef5f2",
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null
+      },
+      "next_boot": {
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null,
+        "reason": "selected_base"
+      },
+      "restart_required": false,
+      "data_launches": 41,
+      "data_schema": 3,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": false,
+      "report_sha256": "c349961e9e46f1daf0730cdf4aabeaef24d62d5de67b7f7266d836fa1fe94f49",
+      "note": null
+    },
+    {
+      "label": "cold-still-free-after-rollforward-e13",
+      "started": 1793552415.9806669,
+      "pid": 64947,
+      "variant": "free",
+      "new_code_result": "free:base",
+      "stage": "boot",
+      "current": {
+        "epoch": "13",
+        "digest": "df2323ea9af27876d0ceac1165e70f04c14d2f96811329c97883a007f3bef5f2",
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null
+      },
+      "accepted": {
+        "epoch": "13",
+        "digest": "df2323ea9af27876d0ceac1165e70f04c14d2f96811329c97883a007f3bef5f2",
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null
+      },
+      "next_boot": {
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null,
+        "reason": "selected_base"
+      },
+      "restart_required": false,
+      "data_launches": 42,
+      "data_schema": 3,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": false,
+      "report_sha256": "da02544f58bb441eef1b454c25273979667cae597b7ad763c8aee99a1acd2c43",
+      "note": null
+    },
+    {
+      "label": "explicit-enterprise-reauthorization-e14",
+      "started": 1793552417.18099,
+      "pid": 65017,
+      "variant": "free",
+      "new_code_result": "free:base",
+      "stage": "checked",
+      "current": {
+        "epoch": "13",
+        "digest": "df2323ea9af27876d0ceac1165e70f04c14d2f96811329c97883a007f3bef5f2",
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null
+      },
+      "accepted": {
+        "epoch": "14",
+        "digest": "4fe0539cc15065347428bdfa7e34b3a780cc64b8b6d1cb4a7382a518c8a4ab1c",
+        "variant_id": "enterprise",
+        "license_type": "enterprise",
+        "patch_number": "3"
+      },
+      "next_boot": {
+        "variant_id": "enterprise",
+        "license_type": "enterprise",
+        "patch_number": "3",
+        "reason": "ready"
+      },
+      "restart_required": true,
+      "data_launches": 43,
+      "data_schema": 3,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": false,
+      "report_sha256": "44b6367b2f67ec9cc4a07d21ff6005fe67b15e3e34372f55272db76fa6c3141d",
+      "note": null
+    },
+    {
+      "label": "cold-reauthorized-enterprise-e14",
+      "started": 1793552418.2520618,
+      "pid": 65223,
+      "variant": "enterprise",
+      "new_code_result": "enterprise:24",
+      "stage": "boot",
+      "current": {
+        "epoch": "14",
+        "digest": "4fe0539cc15065347428bdfa7e34b3a780cc64b8b6d1cb4a7382a518c8a4ab1c",
+        "variant_id": "enterprise",
+        "license_type": "enterprise",
+        "patch_number": "3"
+      },
+      "accepted": {
+        "epoch": "14",
+        "digest": "4fe0539cc15065347428bdfa7e34b3a780cc64b8b6d1cb4a7382a518c8a4ab1c",
+        "variant_id": "enterprise",
+        "license_type": "enterprise",
+        "patch_number": "3"
+      },
+      "next_boot": {
+        "variant_id": "enterprise",
+        "license_type": "enterprise",
+        "patch_number": "3",
+        "reason": "ready"
+      },
+      "restart_required": false,
+      "data_launches": 44,
+      "data_schema": 3,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": false,
+      "report_sha256": "e0c3ccf0bf189383db3e08548aefc6c41f5a7eafbd468e448609bd6566e8099e",
+      "note": null
+    },
+    {
+      "label": "final-free-selection-e15",
+      "started": 1793552476.994261,
+      "pid": 70931,
+      "variant": "enterprise",
+      "new_code_result": "enterprise:24",
+      "stage": "checked",
+      "current": {
+        "epoch": "14",
+        "digest": "4fe0539cc15065347428bdfa7e34b3a780cc64b8b6d1cb4a7382a518c8a4ab1c",
+        "variant_id": "enterprise",
+        "license_type": "enterprise",
+        "patch_number": "3"
+      },
+      "accepted": {
+        "epoch": "15",
+        "digest": "bebec57adcd23572c71e6d250002567ecb2269266170fbd876318ca4828c1a52",
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null
+      },
+      "next_boot": {
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null,
+        "reason": "selected_base"
+      },
+      "restart_required": true,
+      "data_launches": 45,
+      "data_schema": 3,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": false,
+      "report_sha256": "e74104326ccd4fe3b89f93369cf9110b95c7b5b926d770252dddef119d6a40c1",
+      "note": null
+    },
+    {
+      "label": "final-offline-free-e15",
+      "started": 1793552478.767753,
+      "pid": 71090,
+      "variant": "free",
+      "new_code_result": "free:base",
+      "stage": "boot",
+      "current": {
+        "epoch": "15",
+        "digest": "bebec57adcd23572c71e6d250002567ecb2269266170fbd876318ca4828c1a52",
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null
+      },
+      "accepted": {
+        "epoch": "15",
+        "digest": "bebec57adcd23572c71e6d250002567ecb2269266170fbd876318ca4828c1a52",
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null
+      },
+      "next_boot": {
+        "variant_id": "free",
+        "license_type": "free",
+        "patch_number": null,
+        "reason": "selected_base"
+      },
+      "restart_required": false,
+      "data_launches": 46,
+      "data_schema": 3,
+      "signed_bundle_unchanged": true,
+      "offline_endpoints_closed": true,
+      "report_sha256": "0d3384d7f473a259aa3ef684b28f8057c27cf228c9e14bd695f08f68b286b786",
+      "note": null
+    }
+  ],
+  "validated_round_trip": [
+    "free",
+    "pro",
+    "enterprise",
+    "pro",
+    "free",
+    "enterprise",
+    "free"
+  ],
+  "same_content_higher_epoch": {
+    "patch_number": 2,
+    "epochs": [
+      "8",
+      "9"
+    ],
+    "restart_required_and_cold_activation": true
+  },
+  "persistent_data": {
+    "launches": 46,
+    "schema": 3,
+    "history": [
+      "free",
+      "free",
+      "free",
+      "free",
+      "pro",
+      "pro",
+      "enterprise",
+      "enterprise",
+      "pro",
+      "pro",
+      "free",
+      "free",
+      "enterprise",
+      "enterprise",
+      "free",
+      "free",
+      "pro",
+      "pro",
+      "pro",
+      "pro",
+      "free",
+      "pro",
+      "free",
+      "pro",
+      "free",
+      "pro",
+      "free",
+      "pro",
+      "pro",
+      "pro",
+      "pro",
+      "free",
+      "free",
+      "free",
+      "free",
+      "free",
+      "free",
+      "enterprise",
+      "enterprise",
+      "free",
+      "free",
+      "free",
+      "free",
+      "enterprise",
+      "enterprise",
+      "free"
+    ],
+    "sentinel_sha256": "79304abbefb96bc66361649d8cd68fbfb420cf5901b9dbb3da1de486a40ca9a9",
+    "pro_and_enterprise_fields_retained_in_free": true
+  },
+  "key_recovery": {
+    "missing_and_wrong_key_fallback": "free",
+    "restored_key_offline_recovery": "pro",
+    "ciphertext_and_patch_metadata_unchanged": true,
+    "selection_journal_unchanged": true,
+    "no_plaintext_keys_in_cache": true
+  },
+  "tamper_controls": {
+    "isolation": "Restore only owned cache artifact/state/pointers between independent tamper controls; this is test reset, not automatic repair. Selection journal and application data are never restored.",
+    "cases": [
+      {
+        "case": "ciphertext",
+        "before": {
+          "patches/2/dlc.vmcode": "5feccb2d9d2b5117af59a4a568b800ffcc53b3dbd7b93fd4d39d46f6b1b52046",
+          "patches/2/state.json": "13b33199f27512c705a5a0e45198906239e90d80d0c17210296f751b54b9c627",
+          "pointers.json": "724dddbc1791b7692c2b680468a95a7b7f2663bd32b42df4ec06e1d6f39d02b8"
+        },
+        "modified_path": "patches/2/dlc.vmcode",
+        "modified_sha256": "74c8c1715b58b3292a3e7b7dbab85e2efd8d4d7450d2a0a4ed228a18e6f093ff",
+        "rejected_with_selection_journal_unchanged": true,
+        "owned_cache_test_reset": true
+      },
+      {
+        "case": "signature",
+        "before": {
+          "patches/2/dlc.vmcode": "5feccb2d9d2b5117af59a4a568b800ffcc53b3dbd7b93fd4d39d46f6b1b52046",
+          "patches/2/state.json": "13b33199f27512c705a5a0e45198906239e90d80d0c17210296f751b54b9c627",
+          "pointers.json": "724dddbc1791b7692c2b680468a95a7b7f2663bd32b42df4ec06e1d6f39d02b8"
+        },
+        "modified_path": "patches/2/state.json",
+        "modified_sha256": "2ff475ad0d68aeb81b77d8791174a9db7bf43dcbb44d14c4f64e32e09983d1ad",
+        "rejected_with_selection_journal_unchanged": true,
+        "owned_cache_test_reset": true
+      }
+    ]
+  },
+  "response_replay": {
+    "replayed_response_epoch": "9",
+    "accepted_epoch_before_and_after": "10",
+    "response_sha256": "47529565d4bbd6da484ac5b7371da4de3a9b53570a1669909bde9373e2bbdbba",
+    "requests": [
+      {
+        "selection_protocol": 2,
+        "accepted_selection_epoch": "10",
+        "accepted_selection_digest": "404b0d4c44a6aa0886d4c266b749156c8903c6feea527fe0bbcbbdba48134d92",
+        "nonce": "1c5eda29-2730-43d9-b9da-7739c8edd07e"
+      }
+    ],
+    "journal_unchanged": true,
+    "scope": "Real signed previously accepted response replayed over HTTP; old request nonce also differs, so this proves response replay rejection, not isolated epoch-only rejection."
+  },
+  "expiry": {
+    "valid_offline_paid_epoch": "10",
+    "expired_offline_free_retains_epoch": "10",
+    "online_server_free_epoch": "11"
+  },
+  "rollback": {
+    "enterprise_epoch": "12",
+    "revoked_signed_free_epoch": "13",
+    "rollforward_does_not_implicitly_reauthorize": true,
+    "explicit_enterprise_reauthorization_epoch": "14",
+    "final_offline_free_epoch": "15"
+  },
+  "ffi": {
+    "each_launch_live_validated": true,
+    "base_checks": 3,
+    "paid_checks": 16,
+    "final_free_receipt": {
+      "verification": {
+        "schema": "full-replacement-ffi-v1",
+        "phase": "base",
+        "license": "free",
+        "pro_feature_enabled": false,
+        "structural_verified": true,
+        "ffi_verified": true,
+        "rendered_text": "license:free full-replacement:verified value:10 full-ffi:v1-base",
+        "checks": [
+          "native-version",
+          "scalar-v1",
+          "struct-v1"
+        ],
+        "workers_started": 0,
+        "workers_joined": true,
+        "callbacks_closed": true,
+        "static_callbacks_retained": 0
+      },
+      "mtime": 1793552479.3147252,
+      "sha256": "7f3f574604bce835bfe4531c5cba5451affd07173f5b603080eaece317523bd4",
+      "path": "/Users/tonylu/Library/Containers/org.tonycloud.shorebird-macos-ffi.ab201bd3bfed/Data/Library/Application Support/shorebird-macos-fixture/ffi-status.json",
+      "acceptance_scope": "fresh report only"
+    },
+    "limits": "Per-launch FFI files were validated live but overwritten in the app container; the final free raw verification is retained. Native exports came only from the original signed app."
+  },
+  "cleanup": {
+    "container_removed": false,
+    "container_payload_removed": true,
+    "os_metadata_shell_remaining": "/Users/tonylu/Library/Containers/org.tonycloud.shorebird-macos-ffi.ab201bd3bfed",
+    "os_metadata_file_remaining": "/Users/tonylu/Library/Containers/org.tonycloud.shorebird-macos-ffi.ab201bd3bfed/.com.apple.containermanagerd.metadata.plist",
+    "metadata_removal_errno": 1,
+    "all_variant_keys_deleted": true,
+    "cleanup_complete": false,
+    "bootstrap_secrets_removed": true,
+    "owned_app_removed": true
+  },
+  "private_evidence_directory": "/Users/tonylu/Library/Caches/shorebird-fixtures/macos-variant-v2-20261101",
+  "runner_sha256": "dd8e070c311710e36fdd432e499013d9e339fed3fe7ebb14f2dcc9838ae0b952",
+  "limitations": [
+    "One expiry-test attempt started three seconds before its deadline and correctly ran pro; reconciled separately, then a fresh post-expiry cold launch passed.",
+    "The first replay validator expected an exception; the public bool check API instead reported upToDate with unchanged authority. Reconciled separately and reran with captured requests and unchanged journal.",
+    "Replayed response also had an old nonce; isolated epoch-only rejection remains unit-test evidence.",
+    "Tamper controls restored owned cache bytes between isolated tests; that restoration is not automatic repair.",
+    "OS-owned container metadata shell remains EPERM; app payload, all variant Keychain keys, bootstrap secrets and owned API processes were removed.",
+    "The newly integrated macOS x64/native toolchain requires its own fresh builds and runtime validation."
+  ]
+}

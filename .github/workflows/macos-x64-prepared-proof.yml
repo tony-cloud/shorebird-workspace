@@ -1,0 +1,104 @@
+name: Native Intel prepared SDK FFI proof
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_id:
+        description: Exact authenticated temporary draft release ID
+        type: string
+        required: true
+      asset_id:
+        description: Exact macos-x64-prepared-proof.zip asset ID in that draft
+        type: string
+        required: true
+      asset_sha256:
+        description: Independently pinned SHA-256 of the signed prepared ZIP
+        type: string
+        required: true
+      sdk_source_commit:
+        description: Full SDK commit matching this workspace commit's gitlink
+        type: string
+        required: true
+      certificate_sha1:
+        description: Uppercase SHA-1 fingerprint of the local Developer ID certificate
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  native-intel-proof:
+    name: Execute strict prepared PRODUCT suites on native Intel
+    runs-on: macos-15-intel
+    timeout-minutes: 180
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout exact workflow source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          submodules: false
+          persist-credentials: false
+
+      - name: Checkout matching SDK source
+        run: git submodule update --init --depth 1 dart-sdk
+
+      - name: Set up native Intel Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          architecture: x64
+
+      - name: Verify transport controls and exact source
+        env:
+          SDK_COMMIT: ${{ inputs.sdk_source_commit }}
+        run: |
+          set -euo pipefail
+          python3 scripts/test_macos_x64_proof_transport.py -v
+          python3 scripts/macos_x64_proof_transport.py verify-source --workspace "$GITHUB_WORKSPACE" --sdk-commit "$SDK_COMMIT" --evidence "$GITHUB_WORKSPACE/artifacts/native-intel-prepared-proof"
+
+      - name: Download exact authenticated unpublished draft asset
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_ID: ${{ inputs.release_id }}
+          ASSET_ID: ${{ inputs.asset_id }}
+          ASSET_SHA256: ${{ inputs.asset_sha256 }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/artifacts/native-intel-prepared-proof"
+          python3 scripts/macos_x64_proof_transport.py download \
+            --repo "$GITHUB_REPOSITORY" --release-id "$RELEASE_ID" --asset-id "$ASSET_ID" \
+            --sha256 "$ASSET_SHA256" --output "$RUNNER_TEMP/macos-x64-prepared-proof.zip" \
+            --evidence "$GITHUB_WORKSPACE/artifacts/native-intel-prepared-proof"
+
+      - name: Execute all three prepared suites without credentials
+        env:
+          SDK_COMMIT: ${{ inputs.sdk_source_commit }}
+          ASSET_SHA256: ${{ inputs.asset_sha256 }}
+          CERTIFICATE_SHA1: ${{ inputs.certificate_sha1 }}
+        run: |
+          set -euo pipefail
+          python3 scripts/macos_x64_proof_transport.py run \
+            --workspace "$GITHUB_WORKSPACE" --sdk-commit "$SDK_COMMIT" \
+            --sha256 "$ASSET_SHA256" --certificate-sha1 "$CERTIFICATE_SHA1" \
+            --archive "$RUNNER_TEMP/macos-x64-prepared-proof.zip" \
+            --evidence "$GITHUB_WORKSPACE/artifacts/native-intel-prepared-proof"
+
+      - name: Remove only owned canonical proof root
+        if: ${{ always() }}
+        run: |
+          python3 scripts/macos_x64_proof_transport.py cleanup --evidence "$GITHUB_WORKSPACE/artifacts/native-intel-prepared-proof"
+          rm -f "$RUNNER_TEMP/macos-x64-prepared-proof.zip"
+
+      - name: Upload native execution evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-intel-prepared-proof-${{ github.run_id }}
+          path: artifacts/native-intel-prepared-proof/
+          if-no-files-found: error
+          retention-days: 7
