@@ -28,6 +28,28 @@ import 'dart:io';
 import 'package:open_aot_patch_tools/open_aot_patch_tools.dart';
 
 void main(List<String> args) {
+  if (args.length < 3) {
+    throw ArgumentError('Expected baseline, payload, and output directory');
+  }
+  final target = <String, String>{};
+  for (final argument in args.skip(3)) {
+    final match = RegExp(r'^--(target-os|target-arch)=([a-z0-9_]+)$')
+        .firstMatch(argument);
+    if (match == null || target.containsKey(match.group(1))) {
+      throw ArgumentError('Invalid or duplicate fixture target option');
+    }
+    target[match.group(1)!] = match.group(2)!;
+  }
+  if (target.isNotEmpty && target.length != 2) {
+    throw ArgumentError('Fixture target OS and architecture must be paired');
+  }
+  final targetOs = target['target-os'] ?? 'ios';
+  final targetArch = target['target-arch'] ?? 'arm64';
+  if (!(targetOs == 'ios' && targetArch == 'arm64') &&
+      !(targetOs == 'macos' &&
+          (targetArch == 'arm64' || targetArch == 'x64'))) {
+    throw ArgumentError('Unsupported interpreter fixture target');
+  }
   final baseline = File(args[0]).readAsBytesSync();
   final delta = File(args[1]).readAsBytesSync();
   final out = Directory(args[2])..createSync(recursive: true);
@@ -37,7 +59,7 @@ void main(List<String> args) {
       baseFlavorId: 'free', baseLicenseType: 'free',
       flavorId: 'pro', licenseType: 'pro', sdkHash: 'encrypted-aot-host-sdk',
       baseSnapshotHash: sha256Hex(baseline), patchSnapshotHash: sha256Hex(delta),
-      targetOs: 'ios', targetArch: 'arm64',
+      targetOs: targetOs, targetArch: targetArch,
       runtimeMode: runtimeModeDartBytecodeInterpreter,
       offlineExpiresAt: expiry,
     );
