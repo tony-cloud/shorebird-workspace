@@ -1,6 +1,9 @@
 name: Native Intel prepared SDK FFI proof
 
 on:
+  push:
+    branches:
+      - 'tonycloud/intel-proof-discovery-20261102'
   workflow_dispatch:
     inputs:
       release_id:
@@ -28,7 +31,18 @@ permissions:
   contents: read
 
 jobs:
+  register-workflow:
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/tonycloud/intel-proof-discovery-20261102' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions: {}
+    steps:
+      - name: Register workflow path only
+        shell: bash
+        run: printf '%s\n' 'Workflow discovery only; no PRODUCT execution.'
+
   native-intel-proof:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     name: Execute strict prepared PRODUCT suites on native Intel
     runs-on: macos-15-intel
     timeout-minutes: 180

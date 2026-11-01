@@ -6,7 +6,9 @@ concurrency:
 
 on:
   push:
-    branches: ["**"]
+    branches:
+      - '**'
+      - '!tonycloud/intel-proof-discovery-20261102'
   pull_request:
   workflow_dispatch:
     inputs:
