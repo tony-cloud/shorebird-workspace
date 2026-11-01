@@ -30,13 +30,20 @@ import zipfile
 root = Path(sys.argv[1])
 patch_zips = {
     "patch-linux-x64.zip": "patch",
+    "patch-linux-arm64.zip": "patch",
     "patch-darwin-x64.zip": "patch",
     "patch-darwin-arm64.zip": "patch",
     "patch-windows-x64.zip": "patch.exe",
+    "patch-windows-arm64.zip": "patch.exe",
 }
 for zip_name, entry_name in patch_zips.items():
     with zipfile.ZipFile(root / zip_name, "w", zipfile.ZIP_DEFLATED) as archive:
-        archive.writestr(entry_name, f"{zip_name}:{entry_name}\n")
+        content = f"{zip_name}:{entry_name}\n".encode()
+        if zip_name == 'patch-linux-arm64.zip':
+            content = b'\x7fELF\x02\x01' + bytes(12) + b'\xb7\x00' + bytes(44)
+        elif zip_name == 'patch-windows-arm64.zip':
+            content = b'MZ' + bytes(58) + b'\x40\x00\x00\x00PE\x00\x00\x64\xaa' + bytes(2)
+        archive.writestr(entry_name, content)
 PY
 
 mkdir -p "$MIRROR_ROOT/shorebird/flutter_infra_release/flutter/$ENGINE_REVISION/linux-x64-release"
@@ -111,6 +118,20 @@ if "$PYTHON_BIN" "$ROOT/scripts/validate_artifact_mirror.py" \
   exit 70
 fi
 grep -q "artifact override is empty" "$TMP_DIR/empty-override-mirror.log"
+
+WRONG_ARCH_ROOT="$TMP_DIR/wrong-arm64-machine"
+cp -R "$MIRROR_ROOT" "$WRONG_ARCH_ROOT"
+"$PYTHON_BIN" - "$WRONG_ARCH_ROOT/shorebird/$ENGINE_REVISION/patch-linux-arm64.zip" <<'PYMACHINE'
+import sys, zipfile
+with zipfile.ZipFile(sys.argv[1], 'w') as archive:
+    archive.writestr('patch', b'\x7fELF\x02\x01' + bytes(12) + b'\x3e\x00' + bytes(44))
+PYMACHINE
+"$ROOT/scripts/write_sha256.sh" "$WRONG_ARCH_ROOT/shorebird/$ENGINE_REVISION/patch-linux-arm64.zip"
+if "$PYTHON_BIN" "$ROOT/scripts/validate_artifact_mirror.py" "$WRONG_ARCH_ROOT" >"$TMP_DIR/wrong-machine.log" 2>&1; then
+  echo "validate_artifact_mirror.py unexpectedly accepted an x64 tool labeled ARM64" >&2
+  exit 70
+fi
+grep -q "expected native ARM64 machine" "$TMP_DIR/wrong-machine.log"
 
 printf 'tampered\n' >> "$MIRROR_ROOT/shorebird/$ENGINE_REVISION/patch-linux-x64.zip"
 if "$PYTHON_BIN" "$ROOT/scripts/validate_artifact_mirror.py" "$MIRROR_ROOT" >/dev/null 2>&1; then

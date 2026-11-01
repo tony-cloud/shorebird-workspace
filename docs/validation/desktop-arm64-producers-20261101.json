@@ -1,0 +1,43 @@
+{
+  "scope": "Native ARM64 producer and driver source validation; no ARM64 engine/application execution yet",
+  "component_pins": {
+    "dart_sdk": "b17e766a7f25f22f31dcaeb313c55d40945a8c8a",
+    "flutter_source": "ff7c9b3453d434bbcefd6ce274719031f2fc6819",
+    "updater": "e482b8093890d46031d6496fc5426db56d133660",
+    "server": "3479ee0445a4db67eb223d8abbbaaf65202a909b",
+    "identity_material": "open-shorebird-toolchain-v1\nb17e766a7f25f22f31dcaeb313c55d40945a8c8a\nff7c9b3453d434bbcefd6ce274719031f2fc6819\ne482b8093890d46031d6496fc5426db56d133660\n",
+    "engine_identity": "b7ac85a5c495ea0f30c4a86be9527134797f4f19",
+    "flutter": "c7e1331d890a8d1d5f9758e57086a83a87bf5c63",
+    "shorebird": "707849987725e3fb0c84f68d473a53654b56cb25"
+  },
+  "workflow_run_blocks_checked": 310,
+  "workflow_negative_mutations_rejected": 12,
+  "driver_tests_run": 112,
+  "driver_tests_skipped": 1,
+  "machine_and_receipt_tests_passed": 5,
+  "manifest_handoff_regression_methods_passed": 2,
+  "handoff_architecture_cases": 4,
+  "proxy_tests_passed": 19,
+  "independent_source_review": "No remaining actionable findings after architecture-evidence handoff and VS2026 runner selection fixes",
+  "runners": {
+    "linux": "ubuntu-24.04-arm",
+    "windows": "windows-11-vs2026-arm"
+  },
+  "native_runtime": "not run",
+  "logs_sha256": {
+    "arm64_proxy_format.log": "2d9067b914b567cf9b9b1fed0f4b22690acdd68c2c0e1673fddc42578ee47d85",
+    "arm64_assembly.log": "363b4558fbe46a0e6553a3b0fee40351135273cb66669b235a4c374b733b1443",
+    "arm64_proxy_full_test.log": "bbab52371ee242539e4eae5d5a59fbe6b88299dca3512987b97f0f275b475bf8",
+    "arm64_workflow.log": "17e0e954ba94717806c2c5ed36e025c2f79fbd52d86205c21ca538185c27defd",
+    "arm64_proxy_analyze.log": "6c605f9f216937e88e5895b5d337e05cca90f8379c89447dd528c00a68bd9ad1",
+    "arm64_negative.log": "82d3fa204dc2f0023706439b7737ff2f317bd36c1a4131f368315d7d7f7b81b5",
+    "arm64_mirror_validator.log": "aa7b0b0031d0a55e45b8ea3213bb78908b6f1e51c79b954b602e993a56ec0063",
+    "arm64_proxy_test.log": "d346ec33213d7f6378571e6b535fdc29bbff795d396b7c4ae828eb5caf461b6c",
+    "arm64_handoff_red.log": "988ffc2dca05dcf3298cc8b5983485541d7e0e749b1d49f7f9d863bc503ec8d0",
+    "arm64_assemble.log": "2880d2f7f7354fb8e28bc1057542d5b374f73658c49efc91ad9eb633b3d0fde5",
+    "arm64_machine_test.log": "004b1cc394c9934666e6a7c034bfbde8ee514751629a590377c4e54c4481886c",
+    "arm64_handoff_green.log": "30b7db73967acdb055ef826f6af2556d423ce2ebb08c1494e1a654e3b2b89a3a",
+    "arm64_driver_test.log": "00c8ab1f6ee1939019219f278b2c9d70f1da46559ef7525a9c2a05879ef5b7d9",
+    "arm64_proxy_cspell.log": "ac44c4ae98e1dd928c54a02d88db5dc3b60c88866897217e7384b4f477af964f"
+  }
+}

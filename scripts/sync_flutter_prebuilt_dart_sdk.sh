@@ -23,7 +23,7 @@ PY
 }
 
 case "$HOST_CONFIG" in
-  linux-x64|macos-x64|macos-arm64)
+  linux-x64|linux-arm64|windows-arm64|macos-x64|macos-arm64)
     ;;
   *)
     echo "unsupported Flutter prebuilt Dart SDK host config: $HOST_CONFIG" >&2
@@ -36,9 +36,11 @@ if [[ ! -d "$DART_SDK_SOURCE" ]]; then
   exit 66
 fi
 
+extension=""
+[[ "$HOST_CONFIG" != windows-* ]] || extension=.exe
 for required in \
-  bin/dart \
-  bin/dartaotruntime \
+  "bin/dart$extension" \
+  "bin/dartaotruntime$extension" \
   bin/snapshots/dartdevc_aot.dart.snapshot \
   bin/snapshots/kernel_worker_aot.dart.snapshot
 do

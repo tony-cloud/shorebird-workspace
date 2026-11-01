@@ -355,7 +355,7 @@ class ToolchainPreparationTest(unittest.TestCase):
             (fixture / 'pubspec.yaml').write_text('name: fixture\nversion: 0.0.0\n')
             patch = root / 'patch.exe'
             patch.write_bytes(b'prebuilt patch tool')
-            args = mock.Mock(work=work, engine_src=root / 'engine', host_engine='host',
+            args = mock.Mock(arch='x64', work=work, engine_src=root / 'engine', host_engine='host',
                              target_engine='windows_release', pub_cache=pub, patch_tool=patch)
             with mock.patch.object(e2e, 'OwnedWindowsJob'), mock.patch.object(e2e, 'free_port', return_value=1234):
                 lifecycle = e2e.Lifecycle(args)
@@ -448,7 +448,7 @@ class CommandDiagnosticsTest(unittest.TestCase):
             with self.subTest(timeout=timeout), tempfile.TemporaryDirectory() as temp:
                 work = Path(temp) / 'private'
                 work.mkdir()
-                args = mock.Mock(work=work, build_timeout=1)
+                args = mock.Mock(arch='x64', work=work, build_timeout=1)
                 with mock.patch.object(e2e, 'OwnedWindowsJob'), mock.patch.object(e2e, 'free_port', return_value=1234):
                     lifecycle = e2e.Lifecycle(args)
                 lifecycle.work_owned = True
@@ -478,7 +478,7 @@ class CommandDiagnosticsTest(unittest.TestCase):
 
 class ExecutionBoundaryTest(unittest.TestCase):
     def test_create_selects_same_local_artifacts_as_release_before_command(self):
-        args = mock.Mock(engine_src=Path('/isolated/engine/src'), target_engine='windows_release',
+        args = mock.Mock(arch='x64', engine_src=Path('/isolated/engine/src'), target_engine='windows_release',
                          host_engine='host_release')
         work = Path('/private/session')
         command = e2e.create_windows_command(args, work)
@@ -502,6 +502,51 @@ class ExecutionBoundaryTest(unittest.TestCase):
                 return getattr(os, name)
         return WindowsOS()
 
+    def test_successful_execute_keeps_preflight_machine_evidence_in_final_report(self):
+        # Exercise real main/constructor/cleanup/report handoff; no native runtime
+        # starts. The mocked execute supplies a successful lifecycle's receipts.
+        stages = (
+            'isolated-toolchain', 'released-native-runtime-policy', 'actual-cli-release-free',
+            'rebuilt-native-bytes-identical', 'actual-cli-patch-pro', 'ciphertext-installed',
+            'api-and-provisioning-stopped', 'offline-cold-U', 'offline-missing-key-BASE',
+            'offline-missing-recovery-U', 'offline-wrong-key-BASE', 'offline-wrong-recovery-U',
+            'final-cache-before-rollback', 'online-U-receive-signed-rollback',
+            'offline-cold-rollback-BASE', 'final-cache-after-rollback', 'released-bundle-unchanged')
+        for arch, runtime in [('x64', 'x86_64'), ('arm64', 'aarch64')]:
+            with self.subTest(arch=arch), tempfile.TemporaryDirectory() as temp:
+                work, results = Path(temp) / 'work', Path(temp) / 'results'
+                binaries = {str(n): {'architecture': arch, 'native_target': True,
+                                      'format': 'pe'} for n in range(6)}
+
+                def execute(lifecycle):
+                    self.assertEqual(lifecycle.manifest.get('target_arch'), arch)
+                    self.assertEqual(lifecycle.manifest.get('runtime_arch'), runtime)
+                    self.assertEqual(lifecycle.manifest.get('binary_architectures'), binaries)
+                    lifecycle.manifest['stages'] = [{'name': name} for name in stages]
+                    lifecycle.manifest['result'] = 'passed'
+
+                with mock.patch.object(e2e.architecture, 'require_native_host') as host, \
+                        mock.patch.object(e2e, 'preflight', return_value=binaries) as preflight, \
+                        mock.patch.object(e2e, 'OwnedWindowsJob') as owner, \
+                        mock.patch.object(e2e, 'free_port', return_value=12345), \
+                        mock.patch.object(e2e.Lifecycle, 'execute', autospec=True,
+                                          side_effect=execute) as executed, \
+                        contextlib.redirect_stdout(io.StringIO()):
+                    code = e2e.main(['run', '--execute', '--arch', arch,
+                                    '--work', str(work), '--results', str(results)])
+                self.assertEqual(code, 0)
+                host.assert_called_once_with('windows', arch)
+                preflight.assert_called_once()
+                executed.assert_called_once()
+                owner.return_value.close.assert_called_once_with()
+                report = json.loads((results / 'results.json').read_text())
+                self.assertEqual(report['target_arch'], arch)
+                self.assertEqual(report['runtime_arch'], runtime)
+                self.assertEqual(report['binary_architectures'], binaries)
+                self.assertEqual([stage['name'] for stage in report['stages']], list(stages))
+                e2e.architecture.validate_lifecycle_report(report, 'windows', arch)
+                self.assertFalse(work.exists())
+
     def test_exclusive_work_creation_conflict_preserves_other_session_through_finally(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -510,7 +555,9 @@ class ExecutionBoundaryTest(unittest.TestCase):
                 work.mkdir()
                 (work / 'other-session.txt').write_text('preserve me')
             with mock.patch.object(e2e, 'os', self.windows_os()), \
+                    mock.patch.object(e2e.architecture, 'os', self.windows_os()), \
                     mock.patch.object(e2e.platform, 'machine', return_value='AMD64'), \
+                    mock.patch.object(e2e.architecture, 'require_binary', return_value={}), \
                     mock.patch.object(e2e, 'preflight', side_effect=competing_session), \
                     mock.patch.object(e2e, 'free_port', return_value=12345), \
                     mock.patch.object(e2e, 'OwnedWindowsJob') as job, \
@@ -528,7 +575,9 @@ class ExecutionBoundaryTest(unittest.TestCase):
             root = Path(temp)
             work, results = root / 'work', root / 'results'
             with mock.patch.object(e2e, 'os', self.windows_os()), \
+                    mock.patch.object(e2e.architecture, 'os', self.windows_os()), \
                     mock.patch.object(e2e.platform, 'machine', return_value='AMD64'), \
+                    mock.patch.object(e2e.architecture, 'require_binary', return_value={}), \
                     mock.patch.object(e2e, 'preflight', side_effect=e2e.FixtureError('Prebuilt SDK missing')), \
                     mock.patch.object(e2e, 'Lifecycle', side_effect=AssertionError('runtime started')), \
                     contextlib.redirect_stdout(io.StringIO()):
@@ -546,7 +595,7 @@ class ExecutionBoundaryTest(unittest.TestCase):
             work, cache = root / 'work', root / 'other-cache'
             cache.mkdir()
             (cache / 'state.json').write_text('other app')
-            args = mock.Mock(work=work)
+            args = mock.Mock(arch='x64', work=work)
             with mock.patch.object(e2e, 'OwnedWindowsJob'), mock.patch.object(e2e, 'free_port', return_value=12345):
                 lifecycle = e2e.Lifecycle(args)
             lifecycle.cache = cache
@@ -614,3 +663,39 @@ class ExecutionBoundaryTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class ArchitectureRoutingTest(unittest.TestCase):
+    def test_native_architecture_paths_and_cache_are_explicit(self):
+        for arch, runtime in [('x64', 'x86_64'), ('arm64', 'aarch64')]:
+            args = e2e.parser().parse_args(['plan', '--arch', arch])
+            self.assertEqual(e2e.runtime_arch(args), runtime)
+            path = e2e.bundle_directory(args, Path('/owned'), 'windows')
+            self.assertIn(('windows', arch), list(zip(path.parts, path.parts[1:])))
+            cached = e2e.patch_cache_directory(args, Path('/owned'), 'windows')
+            self.assertEqual(cached.name, 'windows-arm64' if arch == 'arm64' else 'patch')
+
+    def test_arm64_aad_is_canonical_and_cross_arch_key_context_is_rejected(self):
+        arm = dict(context(), arch='aarch64')
+        authority = e2e.KeyAuthority(b'fixture-secret', 'private-token')
+        authority.allow(arm)
+        aad = e2e.canonical_aad(arm)
+        self.assertIn('arch=aarch64\n', aad)
+        key_id, key = e2e.delivery_material(b'fixture-secret', aad)
+        self.assertEqual(authority.provision('Bearer private-token',
+            json.dumps({'key_id': key_id, 'aad': aad}).encode()), key.hex().encode())
+        x64 = e2e.canonical_aad(context())
+        x64_key_id, _ = e2e.delivery_material(b'fixture-secret', x64)
+        with self.assertRaises(ValueError):
+            authority.provision('Bearer private-token',
+                json.dumps({'key_id': x64_key_id, 'aad': x64}).encode())
+        self.assertNotEqual(key_id, x64_key_id)
+
+    def test_arm64_plan_is_read_only_and_records_selected_architecture(self):
+        output = io.StringIO()
+        with mock.patch.object(e2e, 'preflight', side_effect=AssertionError('plan mutation')), \
+                contextlib.redirect_stdout(output):
+            self.assertEqual(e2e.main(['plan', '--arch', 'arm64']), 0)
+        report = json.loads(output.getvalue())
+        self.assertEqual(report['target_arch'], 'arm64')
+        self.assertEqual(report['runtime_arch'], 'aarch64')

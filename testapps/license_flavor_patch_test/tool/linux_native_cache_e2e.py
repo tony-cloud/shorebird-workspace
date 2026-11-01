@@ -48,6 +48,10 @@ wait_for, free_port = portable.wait_for, portable.free_port
 LocalService, installed_evidence = portable.LocalService, portable.installed_evidence
 verify_release_policy = portable.verify_release_policy
 
+selected_arch, runtime_arch = portable.selected_arch, portable.runtime_arch
+bundle_directory, patch_cache_directory = portable.bundle_directory, portable.patch_cache_directory
+verify_binary, architecture = portable.verify_binary, portable.architecture
+
 
 def parse_aad(aad):
     # Reuse all strict portable field validation while requiring Linux exactly.
@@ -379,6 +383,14 @@ def preflight(args):
         processes.close()
     ring = OwnedSessionKeyring()
     ring.close()
+    binaries = [host / 'dart-sdk/bin/dart', host / 'dart-sdk/bin/dartaotruntime',
+                host / 'font-subset', host / 'libflutter_linux_gtk.so',
+                args.tooling_dart, args.patch_tool, args.provider_probe]
+    binaries.append(next(target / directory / 'gen_snapshot' for directory in
+                         ('.', 'universal', 'clang_x64', 'clang_x86', 'clang_i386', 'clang_arm64', 'clang_riscv64')
+                         if (target / directory / 'gen_snapshot').is_file()))
+    return {str(path.relative_to(args.engine_src)) if path.is_relative_to(args.engine_src)
+            else path.name: verify_binary(path, args) for path in binaries}
 
 
 class Lifecycle:
@@ -508,7 +520,7 @@ class Lifecycle:
                           '--packages=' + str(self.work / 'cli/.dart_tool/package_config.json'),
                           self.work / 'cli/packages/shorebird_cli/bin/shorebird.dart', '-o', self.cli],
                          env=self.environment(), name='compile-cli')
-        artifact = self.work / 'cli/bin/cache/artifacts/patch'
+        artifact = patch_cache_directory(self.args, self.work, 'linux')
         artifact.mkdir(parents=True, exist_ok=True)
         shutil.copy2(self.args.patch_tool, artifact / 'patch')
         (artifact / 'patch.stamp').touch()
@@ -582,7 +594,7 @@ class Lifecycle:
         if patch:
             command.extend(['--release-version=' + self.release_version, '--track=stable'])
         self.run_command(command, cwd=self.work / 'app', env=self.environment(), name=kind)
-        build = self.work / 'app/build/linux/x64/release/bundle'
+        build = bundle_directory(self.args, self.work, 'linux')
         if not patch:
             self.bundle = self.work / 'released'
             shutil.copytree(build, self.bundle)
@@ -590,9 +602,8 @@ class Lifecycle:
             self.runner = self.bundle / 'license_flavor_patch_test'
             if not self.runner.is_file():
                 raise FixtureError('Expected generated released Runner missing')
-            with (self.bundle / 'lib/libapp.so').open('rb') as image:
-                if image.read(4) != b'\x7fELF':
-                    raise FixtureError('Released native AOT image is not an ELF snapshot')
+            for binary in (self.runner, self.bundle / 'lib/libapp.so', self.bundle / 'lib/libflutter_linux_gtk.so'):
+                verify_binary(binary, self.args)
             if file_hash(self.bundle / 'lib/libflutter_linux_gtk.so') != self.expected_engine_hash:
                 raise FixtureError('Released GTK engine does not match selected prebuilt local engine')
             self.stage('released-native-runtime-policy', verify_release_policy(self.bundle, self.app_id))
@@ -616,6 +627,9 @@ class Lifecycle:
             if len(rows) != 1:
                 raise FixtureError('Expected one real Linux patch artifact')
             self.patch_id, self.number, self.patch_hash, storage, artifact_arch, signature = rows[0]
+            if artifact_arch != runtime_arch(self.args):
+                raise FixtureError('Published patch architecture does not match selected native target')
+            verify_binary(build / 'lib/libapp.so', self.args)
             if not signature:
                 raise FixtureError('Server-managed artifact signature missing')
             if file_hash(build / 'lib/libapp.so') != self.patch_hash:
@@ -689,14 +703,14 @@ class Lifecycle:
                                (self.app_id, state['client_id'], 'PatchCheck'))
             if len(events) == 1:
                 return state, events[0]
-        state, (runtime_arch, runtime_platform, version) = wait_for(registration, self.args.runtime_timeout, 'genuine updater client and runtime architecture')
-        if runtime_arch != 'x86_64' or runtime_platform != 'linux' or version != self.release_version:
+        state, (observed_arch, runtime_platform, version) = wait_for(registration, self.args.runtime_timeout, 'genuine updater client and runtime architecture')
+        if observed_arch != runtime_arch(self.args) or runtime_platform != 'linux' or version != self.release_version:
             raise FixtureError('Genuine updater runtime context mismatch')
         self.stop_app()
         self.build(patch=True)
         self.authority.allow({'app_id': self.app_id, 'release_id': self.release_id, 'patch_number': self.number,
                               'patch_hash': self.patch_hash, 'transport_hash': self.transport_hash,
-                              'platform': runtime_platform, 'arch': runtime_arch,
+                              'platform': runtime_platform, 'arch': observed_arch,
                               'device_id_hash': sha256(state['client_id'].encode())})
         self.probe_context()
         accepted_before_download = self.authority.accepted
@@ -823,6 +837,7 @@ def parser():
     result = argparse.ArgumentParser(description=__doc__)
     result.add_argument('phase', choices=('plan', 'run'), nargs='?', default='plan')
     result.add_argument('--execute', action='store_true')
+    result.add_argument('--arch', choices=('x64', 'arm64'), default='x64')
     result.add_argument('--work', type=Path)
     result.add_argument('--results', type=Path, help='New sanitized results.json directory')
     result.add_argument('--engine-src', type=Path, default=ROOT / 'flutter/engine/src')
@@ -841,7 +856,8 @@ def main(argv=None):
     args = parser().parse_args(argv)
     if args.phase == 'plan':
         print(json.dumps({'schema': SCHEMA, 'read_only': True, 'host': platform.system(),
-            'requires': ['Linux x64 X11/DBus session', 'GTK/libcurl/GLib/keyutils development libraries',
+                          'target_arch': args.arch, 'runtime_arch': runtime_arch(args),
+            'requires': ['Linux ' + args.arch + ' native X11/DBus session', 'GTK/libcurl/GLib/keyutils development libraries',
                          'anonymous kernel session keyrings permitted', 'Go, Git, CMake, Ninja, clang++, Xvfb/xauth',
                          'prebuilt matching full Dart SDK/frontend/gen_snapshot/const_finder/font-subset',
                          'Linux GTK library/public headers/ICU/sky_engine and release product platform dill',
@@ -857,8 +873,10 @@ def main(argv=None):
         return 0
     if not args.execute:
         raise SystemExit('run requires --execute')
-    if platform.system() != 'Linux' or platform.machine().lower() not in ('x86_64', 'amd64'):
-        raise SystemExit('Full execution requires Linux x64; only plan and pure unit checks are supported on this host')
+    try:
+        architecture.require_native_host('linux', args.arch)
+    except (ValueError, OSError) as error:
+        raise SystemExit(str(error)) from None
     if args.work is None or args.results is None:
         raise SystemExit('run requires new --work and --results directories')
     for name in ('work', 'results', 'engine_src', 'tooling_dart', 'patch_tool', 'provider_probe', 'pub_cache'):
@@ -873,8 +891,12 @@ def main(argv=None):
     manifest = {'schema': SCHEMA, 'result': 'failed', 'stages': [],
                 'validation': 'real Linux GTK CLI/server/Runner lifecycle', 'transient_write_trace': False}
     try:
-        preflight(args)
+        manifest['target_arch'] = args.arch
+        manifest['runtime_arch'] = runtime_arch(args)
+        manifest['binary_architectures'] = preflight(args)
         lifecycle = Lifecycle(args)
+        for name in ('target_arch', 'runtime_arch', 'binary_architectures'):
+            lifecycle.manifest[name] = manifest[name]
         manifest = lifecycle.manifest
         lifecycle.execute()
     except Exception as error:

@@ -14,6 +14,7 @@ import base64
 import hashlib
 import hmac
 import http.server
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -34,6 +35,41 @@ import uuid
 
 ROOT = Path(__file__).resolve().parents[3]
 FIXTURE = ROOT / 'testapps/license_flavor_patch_test'
+_arch_spec = importlib.util.spec_from_file_location(
+    'native_desktop_arch', ROOT / 'scripts/verify_native_desktop_arch.py')
+architecture = importlib.util.module_from_spec(_arch_spec)
+_arch_spec.loader.exec_module(architecture)
+
+
+def selected_arch(args):
+    arch = getattr(args, 'arch', 'x64')
+    if arch not in architecture.RUNTIME_ARCH:
+        raise FixtureError('Unsupported desktop architecture')
+    return arch
+
+
+def runtime_arch(args):
+    return architecture.RUNTIME_ARCH[selected_arch(args)]
+
+
+def bundle_directory(args, work, target_os):
+    root = work / 'app/build' / target_os / selected_arch(args)
+    return root / ('runner/Release' if target_os == 'windows' else 'release/bundle')
+
+
+def patch_cache_directory(args, work, target_os):
+    root = work / 'cli/bin/cache/artifacts/patch'
+    return root / (target_os + '-arm64') if selected_arch(args) == 'arm64' else root
+
+
+def verify_binary(path, args):
+    try:
+        return architecture.require_binary(path, selected_arch(args),
+            expected_format='pe' if path.suffix.lower() in ('.exe', '.dll') else 'elf')
+    except (ValueError, OSError) as error:
+        raise FixtureError(str(error)) from None
+
+
 SCHEMA = 'windows-native-cache-e2e-v1'
 AAD_PREFIX = 'open-aot-patch-delivery-v2'
 AAD_FIELDS = ('app_id', 'release_id', 'patch_number', 'patch_hash',
@@ -165,7 +201,7 @@ def parse_aad(aad):
     for name in ('patch_hash', 'transport_hash', 'device_id_hash'):
         if HEX64.fullmatch(result[name]) is None:
             raise ValueError('Invalid digest')
-    if result['platform'] != 'windows' or result['arch'] != 'x86_64':
+    if result['platform'] != 'windows' or result['arch'] not in ('x86_64', 'aarch64'):
         raise ValueError('Unsupported runtime context')
     return result
 
@@ -514,9 +550,19 @@ def preflight(args):
             missing.append(str(config))
     if missing:
         raise FixtureError('Prebuilt local engine/SDK inputs missing (no engine build is performed):\n' + '\n'.join(missing))
+    binaries = [host / 'dart-sdk/bin/dart.exe', host / 'dart-sdk/bin/dartaotruntime.exe',
+                host / 'font-subset.exe', host / 'flutter_windows.dll',
+                args.patch_tool, args.tooling_dart]
+    snapshot = next(target / directory / 'gen_snapshot.exe' for directory in
+                    ('.', 'universal', 'clang_x64', 'clang_x86', 'clang_i386', 'clang_arm64', 'clang_riscv64')
+                    if (target / directory / 'gen_snapshot.exe').is_file())
+    binaries.append(snapshot)
+    binary_evidence = {str(path.relative_to(args.engine_src)) if path.is_relative_to(args.engine_src)
+                       else path.name: verify_binary(path, args) for path in binaries}
     for executable in ('git', 'go'):
         if shutil.which(executable) is None:
             raise FixtureError('Required executable missing: ' + executable)
+    return binary_evidence
 
 
 def stop_process(process):
@@ -794,7 +840,7 @@ class Lifecycle:
                           '--packages=' + str(self.work / 'cli/.dart_tool/package_config.json'),
                           self.work / 'cli/packages/shorebird_cli/bin/shorebird.dart', '-o', self.cli],
                          env=self.environment(), name='compile-cli')
-        artifact = self.work / 'cli/bin/cache/artifacts/patch'
+        artifact = patch_cache_directory(self.args, self.work, 'windows')
         artifact.mkdir(parents=True, exist_ok=True)
         shutil.copy2(self.args.patch_tool, artifact / 'patch.exe')
         (artifact / 'patch.exe.stamp').touch()
@@ -900,7 +946,7 @@ class Lifecycle:
         if patch:
             command.extend(['--release-version=' + self.release_version, '--track=stable'])
         self.run_command(command, cwd=self.work / 'app', env=self.environment(), name=kind)
-        build = self.work / 'app/build/windows/x64/runner/Release'
+        build = bundle_directory(self.args, self.work, 'windows')
         if not patch:
             self.bundle = self.work / 'released'
             shutil.copytree(build, self.bundle)
@@ -908,15 +954,14 @@ class Lifecycle:
             self.runner = self.bundle / 'license_flavor_patch_test.exe'
             if not self.runner.is_file():
                 raise FixtureError('Expected generated released Runner missing')
-            with (self.bundle / 'data/app.so').open('rb') as image:
-                if image.read(4) != b'\x7fELF':
-                    raise FixtureError('Released native AOT image is not an ELF snapshot')
+            for binary in (self.runner, self.bundle / 'data/app.so', self.bundle / 'flutter_windows.dll'):
+                verify_binary(binary, self.args)
             self.stage('released-native-runtime-policy', verify_release_policy(self.bundle, self.app_id))
             release = self.rows('SELECT id, version FROM releases WHERE app_id=?', (self.app_id,))
             if len(release) != 1:
                 raise FixtureError('Expected one actual CLI release')
             self.release_id, self.release_version = release[0]
-            cmake = (self.work / 'app/build/windows/x64/CMakeCache.txt').read_text()
+            cmake = (self.work / 'app/build/windows' / selected_arch(self.args) / 'CMakeCache.txt').read_text()
             match = re.search(r'^CMAKE_LINKER:FILEPATH=(.+)$', cmake, re.M)
             if not match or not Path(match.group(1)).is_file():
                 raise FixtureError('Cannot identify the exact Windows linker')
@@ -940,6 +985,9 @@ class Lifecycle:
             if len(rows) != 1:
                 raise FixtureError('Expected one real Windows patch artifact')
             self.patch_id, self.number, self.patch_hash, storage, artifact_arch, signature = rows[0]
+            if artifact_arch != runtime_arch(self.args):
+                raise FixtureError('Published patch architecture does not match selected native target')
+            verify_binary(build / 'data/app.so', self.args)
             if not signature:
                 raise FixtureError('Server-managed artifact signature missing')
             if file_hash(build / 'data/app.so') != self.patch_hash:
@@ -1041,14 +1089,14 @@ class Lifecycle:
                                (self.app_id, state['client_id'], 'PatchCheck'))
             if len(events) == 1:
                 return state, events[0]
-        state, (runtime_arch, runtime_platform, version) = wait_for(registration, self.args.runtime_timeout, 'genuine updater client and runtime architecture')
-        if runtime_arch != 'x86_64' or runtime_platform != 'windows' or version != self.release_version:
+        state, (observed_arch, runtime_platform, version) = wait_for(registration, self.args.runtime_timeout, 'genuine updater client and runtime architecture')
+        if observed_arch != runtime_arch(self.args) or runtime_platform != 'windows' or version != self.release_version:
             raise FixtureError('Genuine updater runtime context mismatch')
         self.stop_app()
         self.build(patch=True)
         self.authority.allow({'app_id': self.app_id, 'release_id': self.release_id, 'patch_number': self.number,
                               'patch_hash': self.patch_hash, 'transport_hash': self.transport_hash,
-                              'platform': runtime_platform, 'arch': runtime_arch,
+                              'platform': runtime_platform, 'arch': observed_arch,
                               'device_id_hash': sha256(state['client_id'].encode())})
         self.launch('online-BASE-download', 'BASE', 0, online=True)
         candidate = wait_for(self.candidate, self.args.runtime_timeout, 'actual ciphertext installation')
@@ -1124,6 +1172,7 @@ def parser():
     result = argparse.ArgumentParser(description=__doc__)
     result.add_argument('phase', choices=('plan', 'run'), nargs='?', default='plan')
     result.add_argument('--execute', action='store_true')
+    result.add_argument('--arch', choices=('x64', 'arm64'), default='x64')
     result.add_argument('--work', type=Path)
     result.add_argument('--results', type=Path, help='New directory for sanitized results.json only')
     result.add_argument('--engine-src', type=Path, default=ROOT / 'flutter/engine/src')
@@ -1141,7 +1190,8 @@ def main(argv=None):
     args = parser().parse_args(argv)
     if args.phase == 'plan':
         print(json.dumps({'schema': SCHEMA, 'read_only': True, 'host': platform.system(),
-                          'requires': ['Windows x64 interactive desktop', 'VS desktop C++/CMake', 'Go', 'Git',
+                          'target_arch': args.arch, 'runtime_arch': runtime_arch(args),
+                          'requires': ['Windows ' + args.arch + ' native interactive desktop', 'VS desktop C++/CMake', 'Go', 'Git',
                                        'populated CLI/Flutter package configs and private-copyable pub/cache',
                                        'prebuilt host create_sdk Dart SDK/frontend_server/gen_snapshot/const_finder/font-subset',
                                        'Shorebird Windows DLL/import library/headers/cpp_client_wrapper and product platform dill',
@@ -1155,8 +1205,10 @@ def main(argv=None):
         return 0
     if not args.execute:
         raise SystemExit('run requires --execute')
-    if os.name != 'nt' or platform.machine().lower() not in ('amd64', 'x86_64'):
-        raise SystemExit('Full execution requires Windows x64; only plan and pure unit checks are supported on this host')
+    try:
+        architecture.require_native_host('windows', args.arch)
+    except (ValueError, OSError) as error:
+        raise SystemExit(str(error)) from None
     if args.work is None or args.results is None:
         raise SystemExit('run requires new --work and --results directories')
     for name in ('work', 'results', 'engine_src', 'tooling_dart', 'patch_tool', 'pub_cache'):
@@ -1169,8 +1221,12 @@ def main(argv=None):
                 'validation': 'real Windows CLI/server/Runner lifecycle',
                 'transient_write_trace': False}
     try:
-        preflight(args)
+        manifest['target_arch'] = args.arch
+        manifest['runtime_arch'] = runtime_arch(args)
+        manifest['binary_architectures'] = preflight(args)
         lifecycle = Lifecycle(args)
+        for name in ('target_arch', 'runtime_arch', 'binary_architectures'):
+            lifecycle.manifest[name] = manifest[name]
         manifest = lifecycle.manifest
         lifecycle.execute()
     except Exception as error:

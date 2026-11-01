@@ -35,9 +35,9 @@ All targets below require the full lifecycle and variant sequence above.
 | macOS ARM64, hardened, no executable-memory/library-validation exceptions | MAC-2 signed release→publish→download→cold activate passed | MAC-2 offline, missing/wrong-key fallback+restoration and isolated ciphertext/signature rejection passed | MAC-2 authenticated rollback and rollforward passed | MAC-2 16 update FFI checks, unchanged same-team signed bundle, native Keychain | Only free→pro and rollback; v2 selector/data round trip pending | Incomplete |
 | macOS x64, same hardened policy | CI-1 native engine build; full interpreter profile gated | Unproven | Unproven | Architecture-correct interpreted FFI callbacks missing | Not implemented/proven | Incomplete |
 | Windows x64 | CI-1 engine build; app preparation FAILED before lifecycle | Native cache unit controls passed; app lifecycle unproven | App lifecycle unproven | DPAPI contract passed; engine 87+4+4 tests passed | Not implemented/proven | Incomplete |
-| Windows ARM64, native execution | No app-target pipeline acceptance | Unproven | Unproven | Driver currently rejects ARM64; architecture/FFI/loader/DPAPI/package work required | Not implemented/proven | Incomplete |
+| Windows ARM64, native execution | ARM64-PRODUCERS pipeline added; no runtime acceptance | Unproven | Unproven | ARM64-PRODUCERS routes native Runner/engine/DPAPI lifecycle and preserves architecture receipts; execution pending | Not implemented/proven | Incomplete |
 | Linux x64 | CI-1 engine build; app preparation FAILED before lifecycle | Native cache unit controls passed; app lifecycle unproven | App lifecycle unproven | Engine 88+5 tests passed; keyring provider compiled only | Not implemented/proven | Incomplete |
-| Linux ARM64, native execution | No app-target pipeline acceptance | Unproven | Unproven | Driver currently rejects ARM64; architecture/FFI/loader/keyring/package work required | Not implemented/proven | Incomplete |
+| Linux ARM64, native execution | ARM64-PRODUCERS pipeline added; no runtime acceptance | Unproven | Unproven | ARM64-PRODUCERS routes native Runner/engine/keyring lifecycle and preserves architecture receipts; execution pending | Not implemented/proven | Incomplete |
 
 macOS universal packaging requires both constituent native runtime results; an
 ARM64-only run does not establish x64 support. iOS simulator results do not
@@ -65,10 +65,12 @@ establish ARM64 Flutter app or host-tool support.
 | CLI/patch tools: Linux x64, Windows x64, macOS x64/ARM64 | CI-1 artifact jobs passed | Final-revision packaging and actual app lifecycle consumption |
 | Custom SDKs: Linux x64, Windows x64, macOS x64/ARM64 | CI-1 SDK jobs passed | Final typed-status changes, exported API checks and matching engine builds |
 | Android host snapshotters on supported desktop hosts | CI-1 jobs passed | Final pins and per-app architecture consumption |
-| Windows/Linux ARM64 host tools | Not established by x64 builds or server ARM64 artifacts | Explicit native/cross-host support contract, package/run tests; report any emulation separately |
+| Windows/Linux ARM64 host tools | ARM64-PRODUCERS adds native SDK/engine/CLI/patch jobs and machine checks; builds pending | Explicit native/cross-host support contract, package/run tests; report any emulation separately |
 | Server: Linux x64/ARM64, macOS x64/ARM64, Windows x64 | CI-1 artifact jobs passed | Final protocol migration/variant-selection tests and native deployment claims only where executed |
 
 ## Evidence ledger and exact revisions
+
+- **ARM64-PRODUCERS:** [workflow and driver validation](validation/desktop-arm64-producers-20261101.json) covers native Linux/Windows ARM64 producer routing, mandatory full lifecycle receipts before packaging, machine checks, mirrors and proxy routes. Workflow 310 blocks and 12 negative mutations passed; driver suite ran 112 tests with one skip. This is source/host-test evidence, not native ARM64 engine or app execution.
 
 - **V2-COMPONENTS:** [reviewed source and host tests](validation/variant-v2-components-20261101.json) records exact SDK, Flutter source/final identity, CLI, updater and server pins. Updater 367 Rust + 57 Dart tests, CLI 4320 tests, protocol 563, client 230, Flutter tools 73 and focused engine 98 tests passed. Integrated engine build, new runtime teardown tests and signed v2 app validation remain pending. [Protocol foundation evidence](validation/variant-v2-foundation-20261101.json) retains the earlier component-only checkpoint.
 

@@ -10,12 +10,16 @@ import re
 import sys
 import zipfile
 
+from verify_native_desktop_arch import machine_arch, machine_format
+
 
 REQUIRED_PATCH_ZIPS = {
     "patch-linux-x64.zip": "patch",
+    "patch-linux-arm64.zip": "patch",
     "patch-darwin-x64.zip": "patch",
     "patch-darwin-arm64.zip": "patch",
     "patch-windows-x64.zip": "patch.exe",
+    "patch-windows-arm64.zip": "patch.exe",
 }
 
 
@@ -146,6 +150,11 @@ def validate_patch_zips(mirror_root: Path, manifest_paths: list[Path]) -> list[s
                             f"{display_path}: expected only {expected_entry!r}, got {names!r}"
                         )
                         continue
+                    if zip_name in ('patch-linux-arm64.zip', 'patch-windows-arm64.zip'):
+                        payload = archive.read(expected_entry)
+                        expected_format = 'pe' if zip_name.startswith('patch-windows') else 'elf'
+                        if machine_arch(payload) != 'arm64' or machine_format(payload) != expected_format:
+                            errors.append(f"{display_path}: expected native ARM64 machine")
                     if archive.getinfo(expected_entry).file_size <= 0:
                         errors.append(f"{display_path}: {expected_entry} is empty")
             except zipfile.BadZipFile:

@@ -37,7 +37,12 @@ import zipfile
 
 zip_path, entry_name, content = sys.argv[1:]
 with zipfile.ZipFile(Path(zip_path), "w", zipfile.ZIP_DEFLATED) as archive:
-    archive.writestr(entry_name, content + "\n")
+    payload = (content + "\n").encode()
+    if zip_path.endswith('patch-linux-arm64.zip'):
+        payload = b'\x7fELF\x02\x01' + bytes(12) + b'\xb7\x00' + bytes(44)
+    elif zip_path.endswith('patch-windows-arm64.zip'):
+        payload = b'MZ' + bytes(58) + b'\x40\x00\x00\x00PE\x00\x00\x64\xaa' + bytes(2)
+    archive.writestr(entry_name, payload)
 PY
   "$ROOT/scripts/write_sha256.sh" "$zip_path"
 }
@@ -70,17 +75,21 @@ write_tgz() {
 
 for target in \
   cli-linux-x64/open-shorebird-cli-linux-x64.tar.gz \
+  cli-linux-arm64/open-shorebird-cli-linux-arm64.tar.gz \
   cli-macos-x64/open-shorebird-cli-macos-x64.tar.gz \
   cli-macos-arm64/open-shorebird-cli-macos-arm64.tar.gz \
   cli-windows-x64/open-shorebird-cli-windows-x64.tar.gz \
+  cli-windows-arm64/open-shorebird-cli-windows-arm64.tar.gz \
   shorebird-server-linux-amd64/shorebird-server-linux-amd64.tar.gz \
   shorebird-server-linux-arm64/shorebird-server-linux-arm64.tar.gz \
   shorebird-server-darwin-amd64/shorebird-server-darwin-amd64.tar.gz \
   shorebird-server-darwin-arm64/shorebird-server-darwin-arm64.tar.gz \
   shorebird-server-windows-amd64/shorebird-server-windows-amd64.tar.gz \
+  custom-dart-sdk-linux-arm64/custom-dart-sdk-linux-arm64.tar.gz \
   custom-dart-sdk-linux-x64/custom-dart-sdk-linux-x64.tar.gz \
   custom-dart-sdk-macos-arm64/custom-dart-sdk-macos-arm64.tar.gz \
   custom-dart-sdk-macos-x64/custom-dart-sdk-macos-x64.tar.gz \
+  custom-dart-sdk-windows-arm64/custom-dart-sdk-windows-arm64.tar.gz \
   custom-dart-sdk-windows-x64/custom-dart-sdk-windows-x64.tar.gz; do
   write_artifact "$DOWNLOADED/$target" "$target"
 done
@@ -101,9 +110,11 @@ write_patch_artifact() {
   write_zip "$DOWNLOADED/$artifact_name/artifacts/mirror/shorebird/$ENGINE_REVISION/$zip_name" "$entry_name" "$zip_name"
 }
 write_patch_artifact mirror-patch-linux-x64.zip patch-linux-x64.zip patch
+write_patch_artifact mirror-patch-linux-arm64.zip patch-linux-arm64.zip patch
 write_patch_artifact mirror-patch-darwin-x64.zip patch-darwin-x64.zip patch
 write_patch_artifact mirror-patch-darwin-arm64.zip patch-darwin-arm64.zip patch
 write_patch_artifact mirror-patch-windows-x64.zip patch-windows-x64.zip patch.exe
+write_patch_artifact mirror-patch-windows-arm64.zip patch-windows-arm64.zip patch.exe
 
 engine_stage="$TMP_DIR/engine-stage"
 mkdir -p "$engine_stage"
@@ -143,6 +154,17 @@ write_font_zip \
 write_tgz "$DOWNLOADED/linux-engine-x64/linux-engine-x64.tar.gz" \
   "$engine_stage/linux-engine" \
   linux-engine
+make_engine_archive \
+  linux-engine-arm64 linux-engine-arm64.tar.gz linux-engine linux-arm64-release \
+  artifacts.zip linux-artifacts \
+  linux-arm64-flutter-gtk.zip linux-gtk
+mkdir -p "$engine_stage/linux-engine/linux-engine/mirror/shorebird/flutter_infra_release/flutter/$ENGINE_REVISION"
+write_font_zip \
+  "$engine_stage/linux-engine/linux-engine/mirror/shorebird/flutter_infra_release/flutter/$ENGINE_REVISION/linux-arm64/font-subset.zip" \
+  font-subset linux-font-subset
+write_tgz "$DOWNLOADED/linux-engine-arm64/linux-engine-arm64.tar.gz" \
+  "$engine_stage/linux-engine" \
+  linux-engine
 
 make_engine_archive \
   android-engine-arm64 android-engine-arm64.tar.gz android-engine android-arm64-release \
@@ -178,6 +200,9 @@ make_engine_archive \
 make_engine_archive \
   windows-engine-x64 windows-engine-x64.tar.gz windows-engine windows-x64-release \
   windows-x64-flutter.zip windows-engine
+make_engine_archive \
+  windows-engine-arm64 windows-engine-arm64.tar.gz windows-engine windows-arm64-release \
+  windows-arm64-flutter.zip windows-engine
 
 for arch in arm64 x64; do
   font_stage="$TMP_DIR/font-stage-$arch"
@@ -196,25 +221,35 @@ write_font_zip \
   font-subset.exe windows-font-subset
 write_tgz "$DOWNLOADED/windows-engine-x64/windows-engine-x64.tar.gz" "$windows_font_stage" windows-engine
 
+arm_stage="$TMP_DIR/font-stage-windows-arm64"
+mkdir -p "$arm_stage"
+tar -C "$arm_stage" -xzf "$DOWNLOADED/windows-engine-arm64/windows-engine-arm64.tar.gz"
+write_font_zip "$arm_stage/windows-engine/mirror/shorebird/flutter_infra_release/flutter/$ENGINE_REVISION/windows-arm64/font-subset.zip" font-subset.exe windows-arm64-font
+write_tgz "$DOWNLOADED/windows-engine-arm64/windows-engine-arm64.tar.gz" "$arm_stage" windows-engine
+
 mirror_input="$TMP_DIR/mirror-input"
 mkdir -p "$mirror_input"
 cp -R "$DOWNLOADED"/mirror-* "$mirror_input/"
 cp -R "$DOWNLOADED/linux-engine-x64" "$mirror_input/"
+cp -R "$DOWNLOADED/linux-engine-arm64" "$mirror_input/"
 cp -R "$DOWNLOADED/android-engine-arm64" "$mirror_input/"
 cp -R "$DOWNLOADED/ios-interpreter-engine" "$mirror_input/"
 cp -R "$DOWNLOADED/macos-engine-arm64" "$mirror_input/"
 cp -R "$DOWNLOADED/macos-engine-x64" "$mirror_input/"
 cp -R "$DOWNLOADED/macos-engine-universal" "$mirror_input/"
 cp -R "$DOWNLOADED/windows-engine-x64" "$mirror_input/"
+cp -R "$DOWNLOADED/windows-engine-arm64" "$mirror_input/"
 cp -R "$DOWNLOADED/android-engine-arm" "$mirror_input/"
 cp -R "$DOWNLOADED/android-engine-x64" "$mirror_input/"
 cp -R "$DOWNLOADED"/android-host-tools-* "$mirror_input/"
 
 sdk_mirror="$mirror_input/shorebird/flutter_infra_release/flutter/$ENGINE_REVISION"
 write_zip "$sdk_mirror/dart-sdk-linux-x64.zip" dart-sdk/bin/dart linux-sdk
+write_zip "$sdk_mirror/dart-sdk-linux-arm64.zip" dart-sdk/bin/dart linux-sdk
 write_zip "$sdk_mirror/dart-sdk-darwin-arm64.zip" dart-sdk/bin/dart macos-sdk
 write_zip "$sdk_mirror/dart-sdk-darwin-x64.zip" dart-sdk/bin/dart macos-x64-sdk
 write_zip "$sdk_mirror/dart-sdk-windows-x64.zip" dart-sdk/bin/dart.exe windows-sdk
+write_zip "$sdk_mirror/dart-sdk-windows-arm64.zip" dart-sdk/bin/dart.exe windows-sdk
 
 # The three ABI producers publish Maven paths alongside their engine trees;
 # arm64 is the sole producer of the shared embedding artifact.
@@ -250,25 +285,31 @@ cp "$TMP_DIR/open-shorebird-artifact-mirror.tar.gz.sha256" "$manifest_input/open
   "$manifest_input" \
   --github-sha test-sha \
   --require 'cli-linux-x64/*open-shorebird-cli-linux-x64.tar.gz' \
+  --require 'cli-linux-arm64/*open-shorebird-cli-linux-arm64.tar.gz' \
   --require 'cli-macos-x64/*open-shorebird-cli-macos-x64.tar.gz' \
   --require 'cli-macos-arm64/*open-shorebird-cli-macos-arm64.tar.gz' \
   --require 'cli-windows-x64/*open-shorebird-cli-windows-x64.tar.gz' \
+  --require 'cli-windows-arm64/*open-shorebird-cli-windows-arm64.tar.gz' \
   --require 'shorebird-server-linux-amd64/*shorebird-server-linux-amd64.tar.gz' \
   --require 'shorebird-server-linux-arm64/*shorebird-server-linux-arm64.tar.gz' \
   --require 'shorebird-server-darwin-amd64/*shorebird-server-darwin-amd64.tar.gz' \
   --require 'shorebird-server-darwin-arm64/*shorebird-server-darwin-arm64.tar.gz' \
   --require 'shorebird-server-windows-amd64/*shorebird-server-windows-amd64.tar.gz' \
   --require 'custom-dart-sdk-linux-x64/*custom-dart-sdk-linux-x64.tar.gz' \
+  --require 'custom-dart-sdk-linux-arm64/*custom-dart-sdk-linux-arm64.tar.gz' \
   --require 'custom-dart-sdk-macos-arm64/*custom-dart-sdk-macos-arm64.tar.gz' \
   --require 'linux-engine-x64/*linux-engine-x64.tar.gz' \
+  --require 'linux-engine-arm64/*linux-engine-arm64.tar.gz' \
   --require 'android-engine-arm64/*android-engine-arm64.tar.gz' \
   --require 'custom-dart-sdk-macos-x64/*custom-dart-sdk-macos-x64.tar.gz' \
   --require 'custom-dart-sdk-windows-x64/*custom-dart-sdk-windows-x64.tar.gz' \
+  --require 'custom-dart-sdk-windows-arm64/*custom-dart-sdk-windows-arm64.tar.gz' \
   --require 'android-engine-arm/*android-engine-arm.tar.gz' \
   --require 'android-engine-x64/*android-engine-x64.tar.gz' \
   --require 'macos-engine-x64/*macos-engine-x64.tar.gz' \
   --require 'macos-engine-universal/*macos-engine-universal.tar.gz' \
   --require 'windows-engine-x64/*windows-engine-x64.tar.gz' \
+  --require 'windows-engine-arm64/*windows-engine-arm64.tar.gz' \
   --require 'android-host-tools-darwin-x64-arm/*android-host-tools-darwin-x64-arm.tar.gz' \
   --require 'android-host-tools-darwin-x64-arm64/*android-host-tools-darwin-x64-arm64.tar.gz' \
   --require 'android-host-tools-darwin-x64-x64/*android-host-tools-darwin-x64-x64.tar.gz' \
@@ -278,9 +319,11 @@ cp "$TMP_DIR/open-shorebird-artifact-mirror.tar.gz.sha256" "$manifest_input/open
   --require 'ios-interpreter-engine/*ios-interpreter-engine.tar.gz' \
   --require 'macos-engine-arm64/*macos-engine-arm64.tar.gz' \
   --require 'mirror-patch-linux-x64.zip/*patch-linux-x64.zip' \
+  --require 'mirror-patch-linux-arm64.zip/*patch-linux-arm64.zip' \
   --require 'mirror-patch-darwin-x64.zip/*patch-darwin-x64.zip' \
   --require 'mirror-patch-darwin-arm64.zip/*patch-darwin-arm64.zip' \
   --require 'mirror-patch-windows-x64.zip/*patch-windows-x64.zip' \
+  --require 'mirror-patch-windows-arm64.zip/*patch-windows-arm64.zip' \
   --require 'mirror-metadata/*artifacts_manifest.yaml' \
   --require 'open-shorebird-artifact-mirror/*open-shorebird-artifact-mirror.tar.gz' \
   --output "$TMP_DIR/open-shorebird-release-manifest.json"

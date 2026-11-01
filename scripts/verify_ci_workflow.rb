@@ -3,6 +3,7 @@
 
 require 'tempfile'
 require 'yaml'
+require 'json'
 require 'open3'
 require 'pathname'
 
@@ -151,6 +152,22 @@ jobs.each_value do |job|
   end
 end
 
+# Manifest heredocs are release artifacts too: malformed templates must fail
+# source validation before an hours-long engine build reaches packaging.
+jobs.each do |name, job|
+  next unless %w[cli-artifacts custom-dart-sdk-linux-arm64 custom-dart-sdk-windows-arm64 linux-engine-arm64 windows-engine-arm64].include?(name)
+
+  job_runs(job).each do |run|
+    run.scan(/cat > [^\n]*manifest\.json <<EOF\n(.*?)\nEOF/m).flatten.each do |body|
+      begin
+        JSON.parse(body)
+      rescue JSON::ParserError => error
+        fail!("#{name} has an invalid producer manifest JSON template: #{error.message}")
+      end
+    end
+  end
+end
+
 scripts.each_with_index do |script, index|
   Tempfile.create(["open-shorebird-ci-run-#{index}", '.sh']) do |file|
     file.write(script.gsub(/\$\{\{[^}]+\}\}/, 'x'))
@@ -210,6 +227,9 @@ required_files = %w[
   scripts/sync_flutter_prebuilt_dart_sdk.sh
   scripts/sync_open_sources.sh
   scripts/validate_artifact_mirror.py
+  scripts/verify_native_desktop_arch.py
+  scripts/test_native_desktop_arch.py
+  scripts/test_ci_arm64_contract.py
   scripts/validate_release_manifest.py
   scripts/verify_assemble_artifact_mirror.sh
   scripts/verify_artifact_mirror_validator.sh
@@ -1887,9 +1907,11 @@ jobs.fetch('artifact-mirror').fetch('steps').each do |step|
 end
 expected_cli_targets = [
   ['ubuntu-latest', 'linux', 'x64', 'patch-linux-x64.zip', 'patch'],
+  ['ubuntu-24.04-arm', 'linux', 'arm64', 'patch-linux-arm64.zip', 'patch'],
   ['macos-15-intel', 'macos', 'x64', 'patch-darwin-x64.zip', 'patch'],
   ['macos-15', 'macos', 'arm64', 'patch-darwin-arm64.zip', 'patch'],
   ['windows-latest', 'windows', 'x64', 'patch-windows-x64.zip', 'patch.exe'],
+  ['windows-11-arm', 'windows', 'arm64', 'patch-windows-arm64.zip', 'patch.exe'],
 ]
 expected_cli_targets.each do |runner_os, artifact_os, artifact_arch, patch_zip, patch_entry|
   assert!(
@@ -2078,6 +2100,10 @@ native_test_evidence_uploads = {
   'macos-engine' => ['macos-interpreter-engine-tests-${{ matrix.arch }}'],
   'custom-dart-sdk' => ['linux-elf-memory-loader-tests'],
   'custom-dart-sdk-windows' => ['windows-elf-memory-loader-tests'],
+  'custom-dart-sdk-linux-arm64' => ['linux-elf-memory-loader-tests-arm64'],
+  'custom-dart-sdk-windows-arm64' => ['windows-elf-memory-loader-tests-arm64'],
+  'linux-engine-arm64' => %w[linux-native-cache-engine-tests-arm64 linux-native-provider-tests-arm64 linux-native-cache-e2e-arm64],
+  'windows-engine-arm64' => %w[windows-native-cache-engine-tests-arm64 windows-native-provider-tests-arm64 windows-native-cache-e2e-arm64],
 }
 jobs.each do |job_name, job|
   job.fetch('steps', []).each do |step|
@@ -2128,8 +2154,27 @@ macos_test_step = macos_steps.fetch(macos_tests)
 assert!(!macos_test_step.key?('if') && !macos_test_step['continue-on-error'], 'macOS interpreter tests must be unconditional and required')
 macos_run = macos_test_step.fetch('run')
 assert!(macos_run.include?('set -euo pipefail') && macos_run.include?('scripts/verify_macos_interpreter_engine_tests.py'), 'macOS tests must propagate failures and validate executed inventories')
-%w[shorebird_unittests embedder_unittests flutter_desktop_darwin_unittests].each do |binary|
+%w[shorebird_unittests embedder_unittests runtime_unittests flutter_desktop_darwin_unittests].each do |binary|
   assert!(macos_run.include?(binary) && run_text_by_job.fetch('macos-engine').include?(":#{binary}"), "macOS engine must build and execute #{binary}")
+end
+runtime_controls = %w[DartIsolateTest.UncommittedInterpreterGroupSuppressesApplicationShutdownCallback DartIsolateTest.CommittedInterpreterGroupRetainsApplicationShutdownCallback]
+assert!(macos_run[/^runtime_filter='([^']+)'$/, 1].to_s.split(':') == runtime_controls, 'macOS runtime isolate gate must execute the exact committed/uncommitted interpreter shutdown controls')
+macos_commands = macos_run.lines.map(&:strip)
+[
+  'export FLUTTER_BUILD_DIRECTORY="$out"',
+  'test -x "$out/runtime_unittests"',
+  'rm -f "$results/runtime-list.txt" "$results/runtime.xml" "$results/runtime-tests.log" "$results/runtime-list-stderr.log"',
+  '"$out/runtime_unittests" --gtest_filter="$runtime_filter" --gtest_list_tests > "$results/runtime-list.txt" 2> "$results/runtime-list-stderr.log"',
+  '"$out/runtime_unittests" --gtest_filter="$runtime_filter" --gtest_repeat=1 --gtest_output="xml:$results/runtime.xml" > "$results/runtime-tests.log" 2>&1',
+].each do |command|
+  assert!(macos_commands.include?(command), "macOS runtime isolate gate must preserve fresh inventory/XML/log evidence and execute controls: #{command}")
+end
+runtime_source = read_repo_file(repo_root, 'flutter/engine/src/flutter/runtime/dart_isolate_unittests.cc')
+macos_validator = read_repo_file(repo_root, 'scripts/verify_macos_interpreter_engine_tests.py')
+assert!(macos_validator.match?(/["']runtime["']\s*:\s*frozenset/), 'macOS execution validator must validate the runtime test inventory and XML')
+runtime_controls.each do |control|
+  name = control.split('.').last
+  assert!(runtime_source.match?(/TEST_F\s*\(\s*DartIsolateTest\s*,\s*#{Regexp.escape(name)}\s*\)/) && macos_validator.include?(control), "macOS runtime isolate control must exist in source and required execution oracle: #{control}")
 end
 macos_upload = macos_steps.find { |step| step['name'] == 'Upload macOS interpreter test evidence' }
 assert!(macos_upload && macos_upload['if'].to_s.include?('always()') && macos_upload.dig('with', 'name') == 'macos-interpreter-engine-tests-${{ matrix.arch }}' && macos_upload.dig('with', 'path') == 'artifacts/macos-interpreter-tests/', 'macOS interpreter test logs and XML must survive test failure')
@@ -2455,9 +2500,11 @@ embedder_test_source = read_repo_file(repo_root, 'flutter/engine/src/flutter/she
 shorebird_test_source = read_repo_file(repo_root, 'flutter/engine/src/flutter/shell/common/shorebird/updater_unittests.cc')
 common_embedder_controls = %w[PreparedMemoryImageSurvivesInputAndMultipleEngines InvalidAOTDataSourcesMustReturnError CanCreateAndCollectAValidElfSource CanLaunchAndShutdownWithAValidElfSource]
 assert!(native_cache_validator.include?('choices=("linux", "windows"), default="linux"') && native_cache_validator.include?('PreparedBootSourceTest.MemoryLeaseOutlivesCallerAndEndsAfterLoader') && shorebird_test_source.match?(/TEST\s*\(\s*PreparedBootSourceTest\s*,\s*MemoryLeaseOutlivesCallerAndEndsAfterLoader\s*\)/), 'Platform-aware native cache validation must require the real memory lease lifetime control')
-%w[linux windows].each do |platform|
+%w[linux windows].product(%w[x64 arm64]).each do |platform, arch|
+  job_name = "#{platform}-engine#{arch == 'arm64' ? '-arm64' : ''}"
+  evidence_suffix = arch == 'arm64' ? '-arm64' : ''
   title = platform.capitalize
-  steps = jobs.fetch("#{platform}-engine").fetch('steps')
+  steps = jobs.fetch(job_name).fetch('steps')
   configure = steps.index { |step| step['name'] == "Configure #{title} engine" }
   build = steps.index { |step| step['name'] == "Build #{title} engine" }
   test = steps.index { |step| step['name'] == "Run #{title} prepared native cache engine tests" }
@@ -2472,7 +2519,7 @@ assert!(native_cache_validator.include?('choices=("linux", "windows"), default="
   build_run = steps.fetch(build).fetch('run')
   test_step = steps.fetch(test)
   test_run = test_step.fetch('run')
-  assert!(configure_run.include?('--runtime-mode=release') && configure_run.include?('--enable-unittests') && run_text_by_job.fetch("#{platform}-engine").include?('enable_unittests=true'), "#{title} release engine must enable and verify unittest targets")
+  assert!(configure_run.include?('--runtime-mode=release') && configure_run.include?('--enable-unittests') && run_text_by_job.fetch(job_name).include?('enable_unittests=true'), "#{title} release engine must enable and verify unittest targets")
   %w[flutter/shell/common/shorebird:shorebird_unittests flutter/shell/platform/embedder:embedder_unittests].each do |target|
     assert!(build_run.include?(target), "#{title} engine must build #{target}")
   end
@@ -2481,7 +2528,7 @@ assert!(native_cache_validator.include?('choices=("linux", "windows"), default="
   if platform == 'linux'
     assert!(test_run.include?('export LD_LIBRARY_PATH="$out'), 'Linux native engine tests must resolve built libraries')
   else
-    assert!(test_run.include?('cygpath -m "$PWD/out/windows_release_x64"') && test_run.include?('export PATH="$PWD/out/windows_release_x64:$PATH"'), 'Windows native engine tests must use native fixture paths and resolve built DLLs')
+    assert!(test_run.include?(%Q{cygpath -m "$PWD/out/windows_release_#{arch}"}) && test_run.include?(%Q{export PATH="$PWD/out/windows_release_#{arch}:$PATH"}), 'Windows native engine tests must use native fixture paths and resolve built DLLs')
   end
   assert!(test_run.include?(%Q{"$out/shorebird_unittests#{suffix}" --gtest_filter='*' --gtest_list_tests}) && test_run.include?(%Q{"$out/shorebird_unittests#{suffix}" --gtest_filter='*' --gtest_repeat=1}) && test_run.include?('--gtest_output="xml:$results/shorebird.xml"') && test_run.include?('--gtest_output="xml:$results/embedder.xml"'), "#{title} engine controls must execute the full Shorebird inventory and emit fresh XML from both binaries")
   cleanup = 'rm -f "$results/shorebird.xml" "$results/embedder.xml" "$results/shorebird-list.txt"'
@@ -2496,7 +2543,7 @@ assert!(native_cache_validator.include?('choices=("linux", "windows"), default="
   end
   assert!(test_run.include?('set -euo pipefail') && test_run.include?(%Q{python3 "$GITHUB_WORKSPACE/scripts/verify_native_cache_engine_tests.py" --platform #{platform}}) && %w[--shorebird-list --shorebird-xml --embedder-xml].all? { |arg| test_run.include?(arg) }, "#{title} must enforce its strict executed XML contract and propagate pipeline failures")
   upload = steps.fetch(evidence)
-  assert!(upload['if'].to_s.include?('always()') && upload['uses'] == 'actions/upload-artifact@v4' && upload.dig('with', 'name') == "#{platform}-native-cache-engine-tests" && upload.dig('with', 'path') == "artifacts/#{platform}-native-cache-tests/", "#{title} native logs and XML must be preserved even on build/test failure")
+  assert!(upload['if'].to_s.include?('always()') && upload['uses'] == 'actions/upload-artifact@v4' && upload.dig('with', 'name') == "#{platform}-native-cache-engine-tests#{evidence_suffix}" && upload.dig('with', 'path') == "artifacts/#{platform}-native-cache-tests/", "#{title} native logs and XML must be preserved even on build/test failure")
   next unless platform == 'windows'
 
   assert!(build_run.include?('flutter/shell/platform/windows:flutter_windows_unittests'), 'Windows engine must build the actual native Windows adapter tests')
@@ -2973,6 +3020,58 @@ assert!(
   workflow_text.include?('scripts/write_sha256.sh'),
   'workflow must use the workspace checksum helper'
 )
+
+
+# Native ARM64 producers use official native runner labels. Never accept an x64
+# runner plus an ARM64 filename as proof of native execution.
+arm64_labels = { 'linux' => 'ubuntu-24.04-arm', 'windows' => 'windows-11-vs2026-arm' }
+arm64_labels.each do |platform, label|
+  sdk_job = "custom-dart-sdk-#{platform}-arm64"
+  engine_job = "#{platform}-engine-arm64"
+  [sdk_job, engine_job].each do |name|
+    assert!(jobs.key?(name), "missing native ARM64 producer #{name}")
+    job = jobs.fetch(name)
+    runs = job_runs(job).join("\n")
+    assert!(job['runs-on'] == label, "#{name} must use the verified native ARM64 runner #{label}")
+    if platform == 'windows'
+      assert!(job.dig('env', 'GYP_MSVS_VERSION') == '2026', "#{name} must align the Windows ARM64 runner with VS2026 toolchain environment")
+      prepare = job.fetch('steps').find { |step| step['name'] == 'Prepare native Windows build tools' }
+      prepare_run = prepare&.fetch('run', '').to_s
+      assert!(prepare_run.include?(%q{-version '[18.0,19.0)'}) && prepare_run.include?('Microsoft.VisualStudio.Component.VC.Tools.ARM64') && prepare_run.include?('"GYP_MSVS_OVERRIDE_PATH=$vs"') && prepare_run.include?('"vs2026_install=$vs"') && prepare_run.include?('-arch=arm64 -host_arch=arm64'), "#{name} must discover VS18 ARM64 and export its matching installation for Dart, GN and Flutter")
+    end
+
+    assert!(Array(job['needs']).include?('source-checks'), "#{name} must depend on source checks")
+    assert!(job['if'].to_s.include?("github.event_name != 'workflow_dispatch'") && job['if'].to_s.include?('inputs.full_sdk_build'), "#{name} must be a default full-build gate")
+    assert!(runs.include?('scripts/check_ci_capacity.sh') && runs.include?('gclient sync --no-history'), "#{name} must provision and check capacity")
+    python = job.fetch('steps').find { |step| step['name'] == 'Set up native ARM64 Python' }
+    assert!(python && python['uses'] == 'actions/setup-python@v5' && python.dig('with', 'architecture') == 'arm64', "#{name} must use native Python for runtime verification")
+    assert!(runs.include?('scripts/verify_native_desktop_arch.py') && runs.include?('--require-native-host') && runs.include?('--arch arm64'), "#{name} must verify native host and binary machine types")
+    assert!(Array(jobs.fetch('artifact-mirror')['needs']).include?(name), "artifact mirror must wait for #{name}")
+    artifact = name == sdk_job ? "custom-dart-sdk-#{platform}-arm64" : "#{platform}-engine-arm64"
+    assert!(upload_names(job).include?(artifact), "#{name} must upload its ARM64 package")
+    assert!(run_text_by_job.fetch('artifact-mirror').include?("--require '#{artifact}/*#{artifact}.tar.gz'"), "release manifest must require #{artifact}")
+  end
+  sdk_runs = run_text_by_job.fetch(sdk_job)
+  assert!(sdk_runs.include?('ReleaseARM64/args.gn') && sdk_runs.include?(%q{'target_cpu="arm64"'}) && sdk_runs.include?(%q{'host_cpu="arm64"'}) && sdk_runs.include?('verify_dart_sdk_args.sh'), "#{sdk_job} must verify explicit ARM64 GN and patching flags")
+  engine = jobs.fetch(engine_job)
+  configure = engine.fetch('steps').find { |step| step['name'] == "Configure #{platform.capitalize} engine" }
+  assert!(configure && configure.fetch('run').include?('NATIVE_PYTHON'), "#{engine_job} must configure GN using a native Python process so host_cpu cannot silently become x64")
+  engine_runs = run_text_by_job.fetch(engine_job)
+  assert!(engine_runs.include?("--#{platform}-cpu=arm64") && engine_runs.include?(%q{'target_cpu="arm64"'}) && engine_runs.include?(%q{'host_cpu="arm64"'}) && engine_runs.include?(platform == 'linux' ? 'aarch64-unknown-linux-gnu' : 'aarch64-pc-windows-msvc'), "#{engine_job} must configure explicit ARM64 engine and Rust targets")
+  assert!(engine_runs.include?('--build-tool') && engine_runs.include?('NATIVE_PYTHON'), "#{engine_job} must distinguish emulated build tools from native runtime binaries")
+  gate = engine.fetch('steps').find { |step| step['name'] == "Run #{platform.capitalize} encrypted native lifecycle" }
+  assert!(gate && gate['if'].nil? && !gate['continue-on-error'] && gate.fetch('run').include?('--execute --arch arm64') && gate.fetch('run').include?("--host-engine #{platform}_release_arm64 --target-engine #{platform}_release_arm64"), "#{engine_job} must execute the real ARM64 app lifecycle, never a plan/build-only substitute")
+  assert!(gate.fetch('run').include?('target_arch') && gate.fetch('run').include?('runtime_arch') && gate.fetch('run').include?('aarch64') && gate.fetch('run').include?('passed') && gate.fetch('run').include?('cleanup'), "#{engine_job} must require ARM64 runtime receipts and owned cleanup")
+  if platform == 'windows'
+    package = engine.fetch('steps').find { |step| step['name'] == 'Package Windows engine artifacts' }.fetch('run')
+    assert!(package.include?(%q{"$NATIVE_PYTHON" - "$engine_extract_dir/windows-tools/flutter_windows.dll"}) && package.include?('ctypes.WinDLL'), 'Windows ARM64 archive smoke must load the actual ARM64 DLL from native Python')
+  end
+  assert!(gate.fetch('run').include?('--lifecycle-report'), "#{engine_job} must validate complete native machine and lifecycle stage receipts")
+  names = engine.fetch('steps').map { |step| step['name'] }
+  assert!(names.index(gate['name']) < names.index("Package #{platform.capitalize} engine artifacts"), "#{engine_job} must pass runtime before packaging")
+end
+assert!(run_text_by_job.fetch('cli-artifacts').include?('--target "${{ matrix.rust_target }}"') && run_text_by_job.fetch('cli-artifacts').include?('--require-native-host'), 'CLI patch producers must use explicit Rust targets and native machine checks')
+assert!(source_runs.include?('python3 scripts/test_native_desktop_arch.py -v'), 'source checks must execute the portable native-machine oracle tests')
 
 puts "workflow yaml ok: #{workflow_path}"
 puts "workflow run blocks ok: #{scripts.length} checked"

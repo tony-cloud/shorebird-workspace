@@ -33,13 +33,20 @@ import zipfile
 root = Path(sys.argv[1])
 patch_zips = {
     "patch-linux-x64.zip": "patch",
+    "patch-linux-arm64.zip": "patch",
     "patch-darwin-x64.zip": "patch",
     "patch-darwin-arm64.zip": "patch",
     "patch-windows-x64.zip": "patch.exe",
+    "patch-windows-arm64.zip": "patch.exe",
 }
 for zip_name, entry_name in patch_zips.items():
     with zipfile.ZipFile(root / zip_name, "w", zipfile.ZIP_DEFLATED) as archive:
-        archive.writestr(entry_name, f"{zip_name}:{entry_name}\n")
+        content = f"{zip_name}:{entry_name}\n".encode()
+        if zip_name == 'patch-linux-arm64.zip':
+            content = b'\x7fELF\x02\x01' + bytes(12) + b'\xb7\x00' + bytes(44)
+        elif zip_name == 'patch-windows-arm64.zip':
+            content = b'MZ' + bytes(58) + b'\x40\x00\x00\x00PE\x00\x00\x64\xaa' + bytes(2)
+        archive.writestr(entry_name, content)
 PY
 
 engine_staging="$TMP_DIR/linux-engine"
