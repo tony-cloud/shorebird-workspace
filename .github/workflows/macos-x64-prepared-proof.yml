@@ -44,16 +44,19 @@ jobs:
   native-intel-proof:
     if: ${{ github.event_name == 'workflow_dispatch' }}
     name: Execute strict prepared PRODUCT suites on native Intel
+    # Draft reads require push visibility; payload execution receives no token.
+    permissions:
+      contents: write
     runs-on: macos-15-intel
     timeout-minutes: 180
     defaults:
       run:
         shell: bash
     steps:
-      - name: Checkout exact workflow source
+      - name: Checkout original prepared proof source
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.sha }}
+          ref: 1086bd0bb0061efe39bcebbf603fc5091d0f9d40
           fetch-depth: 1
           submodules: false
           persist-credentials: false
@@ -84,10 +87,40 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$GITHUB_WORKSPACE/artifacts/native-intel-prepared-proof"
-          python3 scripts/macos_x64_proof_transport.py download \
-            --repo "$GITHUB_REPOSITORY" --release-id "$RELEASE_ID" --asset-id "$ASSET_ID" \
-            --sha256 "$ASSET_SHA256" --output "$RUNNER_TEMP/macos-x64-prepared-proof.zip" \
-            --evidence "$GITHUB_WORKSPACE/artifacts/native-intel-prepared-proof"
+          python3 - <<'PYDOWNLOAD'
+          import hashlib, json, os, runpy, sys, urllib.error
+          from pathlib import Path
+          evidence = Path(os.environ['GITHUB_WORKSPACE']) / 'artifacts/native-intel-prepared-proof'
+          (evidence / 'workflow-source.json').write_text(json.dumps({
+              'workflow_commit': os.environ['GITHUB_SHA'],
+              'proof_source_commit': '1086bd0bb0061efe39bcebbf603fc5091d0f9d40',
+              'download_job_permission': 'contents:write',
+              'prepared_payload_published': False}) + '\n')
+          sys.argv = ['scripts/macos_x64_proof_transport.py', 'download',
+              '--repo', os.environ['GITHUB_REPOSITORY'], '--release-id', os.environ['RELEASE_ID'],
+              '--asset-id', os.environ['ASSET_ID'], '--sha256', os.environ['ASSET_SHA256'],
+              '--output', os.environ['RUNNER_TEMP'] + '/macos-x64-prepared-proof.zip',
+              '--evidence', str(evidence)]
+          try:
+              runpy.run_path(sys.argv[0], run_name='__main__')
+          except urllib.error.HTTPError as error:
+              body = error.read(16384)
+              try:
+                  message = json.loads(body).get('message', '')
+              except (ValueError, AttributeError):
+                  message = ''
+              category = ('integration_permission' if message == 'Resource not accessible by integration'
+                  else 'rate_limit' if isinstance(message, str) and 'rate limit' in message.lower()
+                  else 'unclassified_http_error')
+              headers = {key: value for key in ('X-RateLimit-Limit', 'X-RateLimit-Remaining',
+                  'X-RateLimit-Reset', 'Retry-After')
+                  if (value := error.headers.get(key, '')).isdigit() and len(value) <= 20}
+              report = {'status': error.code, 'category': category,
+                  'headers': headers, 'bounded_body_sha256': hashlib.sha256(body).hexdigest()}
+              (evidence / 'download-http-error.json').write_text(json.dumps(report) + '\n')
+              print(json.dumps(report))
+              raise SystemExit(1)
+          PYDOWNLOAD
 
       - name: Execute all three prepared suites without credentials
         env:
