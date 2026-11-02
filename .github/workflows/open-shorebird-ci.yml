@@ -2937,23 +2937,42 @@ jobs:
           ) &
           sampler=$!
           trap 'kill "$sampler" 2>/dev/null || true' EXIT
+          show_samples() {
+            echo "::group::resource samples after $1 (last 60 lines)"
+            tail -n 60 "$diag/resources.log" || true
+            echo "::endgroup::"
+          }
+          # The engine has no concurrent_links GN arg (only concurrent_toolchain_jobs,
+          # already memory-capped by flutter/tools/gn), so bound ninja directly. On
+          # the hosted arm64 runner (~3 vCPU / 7 GB) run compiles at ncpu jobs
+          # (default is ncpu+2) and the link-heavy unit-test phase at 2 jobs.
+          artifact_jobs=()
+          test_jobs=()
+          if [ "${{ matrix.arch }}" = arm64 ] && [ "${RUNNER_ENVIRONMENT:-github-hosted}" = github-hosted ]; then
+            ncpu="$(sysctl -n hw.ncpu)"
+            artifact_jobs=(-j "$ncpu")
+            test_jobs=(-j 2)
+          fi
+          echo "ninja job caps: artifacts=${artifact_jobs[*]:-default} tests=${test_jobs[*]:-default}"
           # Phase 1: shipped artifacts. Phase 2: unit-test binaries (the heaviest
           # link steps). Same targets as before, split so a failure is attributable
           # and disk use is recorded between phases.
-          ninja -C "$out" \
+          ninja -C "$out" ${artifact_jobs[@]+"${artifact_jobs[@]}"} \
             flutter/shell/platform/darwin/macos:zip_macos_flutter_framework \
             flutter/build/archives:flutter_patched_sdk \
             create_macos_gen_snapshots create_macos_analyze_snapshots \
             flutter/tools/font_subset:font_subset
           df -h / | tail -n 1
           du -sh "$out" 2>/dev/null || true
-          ninja -C "$out" \
+          show_samples "artifact phase"
+          ninja -C "$out" ${test_jobs[@]+"${test_jobs[@]}"} \
             flutter/shell/common/shorebird:shorebird_unittests \
             flutter/shell/platform/embedder:embedder_unittests \
             flutter/runtime:runtime_unittests \
             flutter/shell/platform/darwin/macos:flutter_desktop_darwin_unittests
           df -h / | tail -n 1
           du -sh "$out" 2>/dev/null || true
+          show_samples "unit-test phase"
 
       - name: Upload macOS build diagnostics
         if: always()
