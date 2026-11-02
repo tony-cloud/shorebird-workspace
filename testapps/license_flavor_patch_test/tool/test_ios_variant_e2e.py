@@ -2,11 +2,13 @@
 import argparse
 import copy
 import hashlib
+import http.client
 import json
 import os
 from pathlib import Path
 import tempfile
 import time
+import threading
 import unittest
 from unittest import mock
 
@@ -68,6 +70,97 @@ class IosVariantFixtureTest(unittest.TestCase):
             cache_before=copy.deepcopy(empty), cache_after_control=copy.deepcopy(empty), cache_after=copy.deepcopy(empty),
             selection=dict(version=2, current=copy.deepcopy(identity), accepted=copy.deepcopy(identity),
                 next_boot=dict(variant_id=variant), restart_required=False))
+
+    def start_http_observer(self):
+        self.state['launches'] = [dict(nonce=self.nonce, after=self.state['created'], check=True,
+            report_route='native', status_route='public')]
+        self.state.update(bind_address='127.0.0.1', report_url='http://127.0.0.1:0/report/' + self.state['session'])
+        runner.save(self.work, self.state)
+        server = runner.report_observer(self.work, self.state)
+        thread = threading.Thread(target=server.serve_forever, kwargs={'poll_interval': .01}, daemon=True)
+        thread.start()
+        def close():
+            server.shutdown(); server.server_close(); thread.join(timeout=5)
+            self.assertFalse(thread.is_alive())
+        self.addCleanup(close)
+        def post(body):
+            connection = http.client.HTTPConnection('127.0.0.1', server.server_port, timeout=5)
+            try:
+                connection.request('POST', '/report/' + self.state['session'], body=body,
+                    headers={'Content-Type': 'application/json'})
+                response = connection.getresponse(); response.read()
+                return response.status
+            finally: connection.close()
+        return post
+
+    def test_real_http_observer_receipt_precedes_terminal_publish_and_late_boot_cannot_replace_it(self):
+        post = self.start_http_observer()
+        boot = self.report(); boot_raw = json.dumps(boot).encode()
+        self.assertEqual(post(boot_raw), 204)
+        launch = self.state['launches'][-1]
+        runner.read_http_receipt(self.work, launch, boot)
+        checked = dict(boot, stage='checked', update_status='upToDate')
+        checked_raw = json.dumps(checked).encode()
+        receipt_written, release = threading.Event(), threading.Event()
+        original = runner.adversarial.atomic_receipt
+        def paused(fixture, path, value):
+            original(fixture, path, value)
+            if path.name == 'checked.json':
+                receipt_written.set()
+                self.assertTrue(release.wait(5))
+        statuses = {}
+        with mock.patch.object(runner.adversarial, 'atomic_receipt', side_effect=paused):
+            terminal = threading.Thread(target=lambda: statuses.update(checked=post(checked_raw)))
+            terminal.start()
+            try:
+                self.assertTrue(receipt_written.wait(5))
+                self.assertEqual((self.work / 'reports' / (self.nonce + '.json')).read_bytes(), boot_raw)
+                self.assertTrue(runner.http_receipt_path(self.work, self.nonce, 'checked').is_file())
+                late = threading.Thread(target=lambda: statuses.update(boot=post(boot_raw)))
+                late.start()
+            finally: release.set()
+            terminal.join(5); late.join(5)
+            self.assertFalse(terminal.is_alive() or late.is_alive())
+        self.assertEqual(statuses, {'checked': 204, 'boot': 400})
+        receipt = runner.read_http_receipt(self.work, launch, checked)
+        path = self.work / 'reports' / (self.nonce + '.json')
+        receipt_bytes = runner.http_receipt_path(self.work, self.nonce, 'checked').read_bytes()
+        before = path.stat()
+        self.assertEqual(post(checked_raw), 204)
+        self.assertEqual(runner.http_receipt_path(self.work, self.nonce, 'checked').read_bytes(), receipt_bytes)
+        self.assertEqual(path.stat().st_mtime_ns, before.st_mtime_ns)
+        self.assertEqual(post(json.dumps(dict(checked, stage='check_failed')).encode()), 400)
+        self.assertEqual(post(json.dumps(dict(checked, pid=999)).encode()), 400)
+        self.assertEqual(receipt['body_sha256'], hashlib.sha256(checked_raw).hexdigest())
+
+    def test_http_receipt_rejects_missing_non_http_tampered_identity_body_rawfile_and_old_launch(self):
+        post = self.start_http_observer()
+        report = dict(self.report(), stage='checked', update_status='upToDate')
+        raw = json.dumps(report).encode(); launch = self.state['launches'][-1]
+        runner.receive_report(self.work, raw)  # Direct/USB persistence is not HTTP proof.
+        with self.assertRaisesRegex(ValueError, 'host HTTP report receipt'):
+            runner.read_http_receipt(self.work, launch, report)
+        self.assertEqual(post(raw), 204)
+        path = runner.http_receipt_path(self.work, self.nonce, 'checked')
+        original = json.loads(path.read_bytes())
+        for key, value in (('pid', 99), ('nonce', '0' * 48), ('session', 'foreign'), ('stage', 'boot'),
+                ('body_sha256', '0' * 64), ('body_size', 1), ('received_at', time.time() + 60), ('recorded_at', 1),
+                ('raw_file', {**original['raw_file'], 'inode': original['raw_file']['inode'] + 1})):
+            altered = {**original, key: value}
+            runner.ios.write_json(path, altered)
+            with self.subTest(key=key), self.assertRaisesRegex(ValueError, 'identity/body/host timing'):
+                runner.read_http_receipt(self.work, launch, report)
+        runner.ios.write_json(path, original)
+        current = runner.load(self.work)
+        current['launches'].append({**launch, 'nonce': 'b' * 48})
+        runner.save(self.work, current)
+        with self.assertRaisesRegex(ValueError, 'current launch'):
+            runner.read_http_receipt(self.work, launch, report)
+        runner.save(self.work, self.state)
+        target = self.work / 'reports' / (self.nonce + '.json')
+        target.write_bytes(raw)  # Same bytes, foreign file-write observation.
+        with self.assertRaisesRegex(ValueError, 'identity/body/host timing'):
+            runner.read_http_receipt(self.work, launch, report)
 
     def validate(self, report, **kwargs):
         return runner.validate_report(self.state, report, nonce=self.nonce,

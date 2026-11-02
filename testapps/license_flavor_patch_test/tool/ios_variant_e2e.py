@@ -23,6 +23,7 @@ import re
 import secrets
 import shutil
 import signal
+import stat
 import sys
 import threading
 import time
@@ -536,6 +537,8 @@ def read_report(work, state, *, variant, path=None, checked=False, accepted_vari
     if rejected_check != launch.get('rejected_check', False):
         raise ValueError('Rejected-check expectation changed after launch')
     if rejected_check:
+        if path.absolute() != (work / 'reports' / (launch['nonce'] + '.json')).absolute():
+            raise ValueError('Replay acceptance requires the original HTTP observer report')
         adversarial.validate_replay_delivery(sys.modules[__name__], work, state, launch, report)
     if launch['action']:
         validate_key_receipt(state, report.get('key_control'), launch)
@@ -573,7 +576,45 @@ def validate_key_receipt(state, receipt, launch):
         raise ValueError('Fresh native scoped key-control receipt required')
 
 
-def receive_report(work, body):
+def http_receipt_path(work, nonce, stage):
+    if not isinstance(nonce, str) or not re.fullmatch('[a-f0-9]{48}', nonce) or stage not in ('boot', 'checked', 'check_failed'):
+        raise ValueError('Invalid HTTP report receipt identity')
+    return work / 'report-http-receipts' / nonce / (stage + '.json')
+
+
+def read_http_receipt(work, launch, report):
+    """Bind observer-host timestamps to the exact immutable terminal raw file."""
+    current = load(work)
+    if not current.get('launches') or current['launches'][-1] != launch:
+        raise ValueError('HTTP report no longer belongs to the current launch')
+    path = work / 'reports' / (launch['nonce'] + '.json')
+    info = path.lstat()
+    if not stat.S_ISREG(info.st_mode) or not 0 < info.st_size <= MAX_REPORT:
+        raise ValueError('Unsafe HTTP observer raw report')
+    raw = path.read_bytes()
+    after = path.lstat()
+    binding = lambda value: dict(device=value.st_dev, inode=value.st_ino, size=value.st_size, mtime_ns=value.st_mtime_ns)
+    if binding(info) != binding(after) or len(raw) != info.st_size or json.loads(raw) != report:
+        raise ValueError('HTTP raw report changed during receipt validation')
+    receipt_path = http_receipt_path(work, launch['nonce'], report.get('stage'))
+    if receipt_path.is_symlink() or not receipt_path.is_file() or not 0 < receipt_path.stat().st_size <= 8192:
+        raise ValueError('Missing or unsafe host HTTP report receipt')
+    receipt = json.loads(receipt_path.read_bytes())
+    fields = {'schema', 'session', 'nonce', 'pid', 'stage', 'body_sha256', 'body_size', 'received_at', 'recorded_at', 'raw_file'}
+    if (not isinstance(receipt, dict) or set(receipt) != fields or receipt['schema'] != 'ios-variant-http-receipt-v1' or
+            receipt['session'] != current['session'] or receipt['session'] != report.get('session') or
+            receipt['nonce'] != launch['nonce'] or receipt['nonce'] != report.get('nonce') or
+            type(receipt['pid']) is not int or receipt['pid'] <= 0 or receipt['pid'] != report.get('pid') or
+            receipt['stage'] != report.get('stage') or type(receipt['body_size']) is not int or receipt['body_size'] != len(raw) or
+            receipt['body_sha256'] != hashlib.sha256(raw).hexdigest() or receipt['raw_file'] != binding(info) or
+            any(type(value) is not int for value in receipt['raw_file'].values()) or
+            any(type(receipt[key]) not in (int, float) or not math.isfinite(receipt[key]) for key in ('received_at', 'recorded_at')) or
+            not launch['after'] <= receipt['received_at'] <= receipt['recorded_at'] <= time.time() + 2):
+        raise ValueError('HTTP report receipt identity/body/host timing differs')
+    return receipt
+
+
+def receive_report(work, body, *, http_received_at=None):
     """Persist transport evidence only; read_report remains the acceptance gate."""
     if not 1 <= len(body) <= MAX_REPORT:
         raise ValueError('Oversized or empty report')
@@ -596,10 +637,33 @@ def receive_report(work, body):
     if value.get('stage') not in ('boot', 'checked', 'check_failed'):
         raise ValueError('Unknown report stage')
     target = work / 'reports' / (launch['nonce'] + '.json')
-    if target.exists() and json.loads(target.read_text()).get('stage') in ('checked', 'check_failed') and value['stage'] == 'boot':
-        raise ValueError('Report stage regressed')
+    if target.is_symlink():
+        raise ValueError('Redirected report output')
+    if target.exists() and json.loads(target.read_bytes()).get('stage') in ('checked', 'check_failed'):
+        if target.read_bytes() != body:
+            raise ValueError('Terminal report cannot change or regress')
+        receipt_path = http_receipt_path(work, launch['nonce'], value['stage'])
+        if http_received_at is None:
+            return
+        if receipt_path.exists() or receipt_path.is_symlink():
+            read_http_receipt(work, launch, value)
+            return  # Exact retransmission preserves the original host receipt.
     temporary = target.with_suffix('.next.json')
     ios.private_write(temporary, body)
+    if http_received_at is not None:
+        if (type(http_received_at) not in (int, float) or not math.isfinite(http_received_at) or
+                not launch['after'] <= http_received_at <= time.time() + 2 or
+                type(value.get('pid')) is not int or value['pid'] <= 0):
+            raise ValueError('Invalid host HTTP capture')
+        info = temporary.lstat()
+        receipt = dict(schema='ios-variant-http-receipt-v1', session=current['session'], nonce=launch['nonce'],
+            pid=value['pid'], stage=value['stage'], body_sha256=hashlib.sha256(body).hexdigest(), body_size=len(body),
+            received_at=http_received_at, recorded_at=time.time(),
+            raw_file=dict(device=info.st_dev, inode=info.st_ino, size=info.st_size, mtime_ns=info.st_mtime_ns))
+        # Stage-specific receipt precedes raw publication. A reader that sees a
+        # checked report therefore already has its receipt; terminal bodies are
+        # immutable, so later boot/retry threads cannot replace its binding.
+        adversarial.atomic_receipt(sys.modules[__name__], http_receipt_path(work, launch['nonce'], value['stage']), receipt)
     temporary.replace(target)
 
 
@@ -616,8 +680,9 @@ def report_observer(work, state):
                 body = self.rfile.read(size)
                 if len(body) != size:
                     raise ValueError('Truncated body')
+                received_at = time.time()
                 with report_lock:
-                    receive_report(work, body)
+                    receive_report(work, body, http_received_at=received_at)
             except (ValueError, TypeError, KeyError, IndexError, OSError):
                 self.send_error(400)
                 return

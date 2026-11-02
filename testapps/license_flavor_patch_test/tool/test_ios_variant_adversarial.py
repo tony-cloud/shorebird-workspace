@@ -110,7 +110,7 @@ class AdversarialTest(unittest.TestCase):
         report['cache_after_control'] = report['cache_after'] = copy.deepcopy(report['cache_before'])
         report.update(stage='checked', update_status='upToDate')
         report['selection']['next_boot']['reason'] = 'expired'
-        path = self.work / 'rejection.json'
+        path = self.work / 'reports' / (launch['nonce'] + '.json')
         runner.ios.write_json(path, report)
         # Ordinary checked acceptance deliberately rejects this expired-paid
         # combination; explicit rejection mode requires unchanged authority.
@@ -122,6 +122,7 @@ class AdversarialTest(unittest.TestCase):
         launch['replay'] = dict(id='1' * 32, started=launch['after'] - 1,
             capture_sha256='c' * 64, accepted=self.fixture.identity('pro', '1', 'a' * 64))
         runner.save(self.work, self.state)
+        runner.receive_report(self.work, path.read_bytes(), http_received_at=time.time())
         receipt = dict(schema='ios-replay-delivery-v1', session=self.state['session'], replay_id='1' * 32,
             launch_nonce=launch['nonce'], request_nonce='real-request', accepted=launch['replay']['accepted'],
             capture_sha256='c' * 64, response_bytes=100, completed=True, started=report['started'], time=report['started'])
@@ -162,6 +163,61 @@ class AdversarialTest(unittest.TestCase):
             runner.observe(self.work, self.state)
             server.server_close.assert_called_once()
             processes.assert_not_called()
+
+    def test_replay_uses_host_http_clock_and_device_duration_without_cross_thread_completion_order(self):
+        self.paid()
+        host = time.time()
+        self.state['created'] = host - 3
+        deadline = str(int(host) - 10)
+        self.state['assignments'][0]['selection']['offline_valid_until'] = deadline
+        accepted = self.fixture.identity('pro', '1', 'a' * 64)
+        launch = dict(nonce=self.fixture.nonce, after=host - 1, check=True, rejected_check=True,
+            action=None, report_route='native', status_route='public', replay=dict(id='1' * 32,
+                started=host - 2, capture_sha256='c' * 64, accepted=accepted))
+        self.state['launches'] = [launch]
+        runner.save(self.work, self.state)
+        report = self.tampered_report(launch)
+        report.update(stage='checked', update_status='upToDate', started=host - .1, completed=host - .08)
+        report['native_boot']['time'] = host - .2
+        report['cache_control'] = None
+        report['cache_after_control'] = report['cache_after'] = copy.deepcopy(report['cache_before'])
+        report['selection']['next_boot']['reason'] = 'expired'
+        runner.receive_report(self.work, json.dumps(report).encode(), http_received_at=host)
+        receipt = dict(schema='ios-replay-delivery-v1', session=self.state['session'], replay_id='1' * 32,
+            launch_nonce=launch['nonce'], request_nonce='fresh-updater-request', accepted=accepted,
+            capture_sha256='c' * 64, response_bytes=100, completed=True, started=host - .01, time=host + .01)
+        path = self.work / 'replay-deliveries' / (launch['nonce'] + '.json')
+        # Device completion precedes host delivery start, and the observer
+        # receives before the replay thread records its completed flush. Both
+        # are legitimate observations from independent clocks/handler threads.
+        self.assertLess(report['completed'], receipt['started'])
+        self.assertGreater(receipt['time'], host)
+        with mock.patch.object(runner.adversarial.time, 'time', return_value=host + .02):
+            with self.assertRaisesRegex(ValueError, 'No completed authentic replay'):
+                runner.adversarial.validate_replay_delivery(runner, self.work, self.state, launch, report)
+            for change in ('incomplete', 'future', 'after-observer', 'device-duration'):
+                value, observed = copy.deepcopy(receipt), copy.deepcopy(report)
+                if change == 'incomplete': value['completed'] = False
+                elif change == 'future': value['time'] = host + 3
+                elif change == 'after-observer': value['started'] = host + .001
+                else: observed['completed'] = observed['started'] - 1
+                runner.ios.write_json(path, value)
+                with self.subTest(change=change), self.assertRaises(ValueError):
+                    runner.adversarial.validate_replay_delivery(runner, self.work, self.state, launch, observed)
+            runner.ios.write_json(path, receipt)
+            runner.validate_report(self.state, report, nonce=launch['nonce'], after=launch['after'], variant='free',
+                checked=True, rejected_check=True, cold=True, fallback=True, expired_after=deadline)
+            runner.adversarial.validate_replay_delivery(runner, self.work, self.state, launch, report)
+            explicit = self.work / 'usb-copy.json'
+            runner.ios.write_json(explicit, report)
+            with self.assertRaisesRegex(ValueError, 'original HTTP observer report'):
+                runner.read_report(self.work, self.state, variant='free', path=explicit, checked=True,
+                    rejected_check=True, cold=True, fallback=True, expired_after=deadline)
+            self.assertNotIn('validated_nonce', runner.load(self.work))
+            accepted_report = runner.read_report(self.work, self.state, variant='free', checked=True,
+                rejected_check=True, cold=True, fallback=True, expired_after=deadline)
+            self.assertEqual(accepted_report, report)
+        self.assertEqual(runner.load(self.work)['validated_nonce'], launch['nonce'])
 
     def test_capture_is_real_ios_nonce_bound_and_body_is_private(self):
         self.paid()

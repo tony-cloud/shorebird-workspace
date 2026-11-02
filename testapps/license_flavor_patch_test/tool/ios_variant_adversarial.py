@@ -164,6 +164,8 @@ def validate_replay_delivery(fixture, work, state, launch, report):
     require(not path.is_symlink() and path.is_file() and path.stat().st_size <= 16384,
             'No completed authentic replay delivery for this launch; offline/error is not replay evidence')
     receipt = json.loads(path.read_text())
+    observed = fixture.read_http_receipt(work, launch, report)
+    now = time.time()
     require(set(receipt) == {'schema', 'session', 'replay_id', 'launch_nonce', 'request_nonce', 'accepted',
             'capture_sha256', 'response_bytes', 'completed', 'started', 'time'} and
             receipt['schema'] == 'ios-replay-delivery-v1' and receipt['session'] == state['session'] and
@@ -172,9 +174,10 @@ def validate_replay_delivery(fixture, work, state, launch, report):
             receipt['accepted'] == replay['accepted'] == fixture.selection.selection_identity(report['selection']['accepted']) and
             receipt['capture_sha256'] == replay['capture_sha256'] and receipt['completed'] is True and
             type(receipt['response_bytes']) is int and 0 < receipt['response_bytes'] <= 1024 * 1024 and
-            all(type(value) in (int, float) and math.isfinite(value) for value in (receipt['started'], receipt['time'], report.get('completed'))) and
-            replay['started'] <= launch['after'] <= report['started'] <= receipt['started'] <= report['completed'] <= time.time() + 2 and
-            receipt['started'] <= receipt['time'] <= time.time() + 2,
+            all(type(value) in (int, float) and math.isfinite(value) for value in
+                (receipt['started'], receipt['time'], report.get('started'), report.get('completed'))) and
+            replay['started'] <= launch['after'] <= receipt['started'] <= observed['received_at'] <= observed['recorded_at'] <= now + 2 and
+            receipt['started'] <= receipt['time'] <= now + 2 and report['started'] <= report['completed'],
             'Authentic replay delivery is not bound to the fresh launch/check window')
 
 
