@@ -314,6 +314,18 @@ class CleanupTest(unittest.TestCase):
             self.assertEqual(len([action for action in ledger['actions'] if action['action']=='uninstall-owned-package']),1)
 
 
+class PrivateFailureLogTest(unittest.TestCase):
+    def test_diagnostic_is_opt_in_private_and_outside_results(self):
+        error = e2e.FixtureError('specific private reason')
+        self.assertIsNone(e2e.record_private_failure(error, {}))
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / 'failure.log'
+            path = e2e.record_private_failure(error, {'SHOREBIRD_E2E_PRIVATE_FAILURE_LOG': str(target)})
+            self.assertEqual(path, target)
+            self.assertIn('specific private reason', target.read_text())
+            self.assertEqual(target.stat().st_mode & 0o777, 0o600)
+
+
 class AdversarialOracleTest(unittest.TestCase):
     identity=ColdOracleTest.identity
     report=ColdOracleTest.report

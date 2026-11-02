@@ -687,6 +687,19 @@ def parser():
     return result
 
 
+def record_private_failure(error, environ=None):
+    """Opt-in operator diagnostic kept outside the sanitized results directory."""
+    import os, traceback
+    target = (environ if environ is not None else os.environ).get('SHOREBIRD_E2E_PRIVATE_FAILURE_LOG')
+    if not target:
+        return None
+    path = Path(target)
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+    with os.fdopen(descriptor, 'a') as handle:
+        handle.write(''.join(traceback.format_exception(type(error), error, error.__traceback__)))
+    return path
+
+
 def main(argv=None):
     args = parser().parse_args(argv)
     if args.phase == 'plan':
@@ -723,6 +736,7 @@ def main(argv=None):
     try:
         preflight(args); lifecycle = Lifecycle(args); manifest = lifecycle.manifest; lifecycle.execute()
     except Exception as error:
+        record_private_failure(error)
         manifest['failure'] = {'type':type(error).__name__,'after_stage':manifest['stages'][-1]['name'] if manifest['stages'] else 'preflight'}
         print('Android V2 variant lifecycle failed; sanitized evidence retained.',flush=True)
     finally:
