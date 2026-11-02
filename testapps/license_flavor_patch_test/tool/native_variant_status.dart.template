@@ -44,9 +44,20 @@ void main() {
   WidgetsBinding.instance.addPostFrameCallback((_) { unawaited(report()); });
 }
 Future<void> report() async {
-  final paragraph = variantKey.currentContext?.findRenderObject();
   final text = 'variant:$fixtureVariant ${variantSpecificCode()}';
-  if (paragraph is! RenderParagraph || !paragraph.attached || !paragraph.hasSize || paragraph.size.isEmpty || paragraph.text.toPlainText() != text) {
+  // The warm-up frame can run before the platform view has real metrics (seen on
+  // Android emulator cold starts), laying the paragraph out at zero size. Keep
+  // requiring a genuinely rendered, non-empty paragraph, but allow a bounded
+  // number of real frames for the first layout.
+  final deadline = Stopwatch()..start();
+  var paragraph = variantKey.currentContext?.findRenderObject();
+  bool rendered(Object? value) => value is RenderParagraph && value.attached && value.hasSize && !value.size.isEmpty && value.text.toPlainText() == text;
+  while (!rendered(paragraph) && deadline.elapsed < const Duration(seconds: 30)) {
+    WidgetsBinding.instance.scheduleFrame();
+    await WidgetsBinding.instance.endOfFrame;
+    paragraph = variantKey.currentContext?.findRenderObject();
+  }
+  if (!rendered(paragraph)) {
     throw StateError('Real variant paragraph unavailable');
   }
   final updater = ShorebirdUpdater();
