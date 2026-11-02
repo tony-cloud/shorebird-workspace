@@ -378,10 +378,7 @@ class Lifecycle(v1.Lifecycle):
             elif self.api is not None or self.provision is not None:
                 raise FixtureError('Offline launch requires both owned services stopped')
         extras.update(fields)
-        command = ['am','start','-W','-n',self.package + '/.ControlActivity']
-        for name,value in extras.items():
-            command += ['--es',name,value]
-        self.adb('shell',' '.join(shlex.quote(value) for value in command))
+        self.adb('shell',' '.join(shlex.quote(value) for value in control_start_command(self.package,extras,fresh)))
         expected = 'ready' if operation == 'launch' else operation
         def receive():
             report = self.observer.get('/native',nonce)
@@ -685,6 +682,20 @@ def parser():
     result.add_argument('--updater-package',type=Path)
     result.add_argument('--lease-seconds',type=int,default=90)
     return result
+
+
+def control_start_command(package, extras, fresh):
+    """am argv for a private control. ControlActivity finishes itself, so while the app's
+    task already exists a plain NEW_TASK start is treated as a launcher re-launch and only
+    brings that task to front (START_TASK_TO_FRONT) without delivering the control extras.
+    A non-fresh control therefore needs its own task in the same process."""
+    command = ['am','start','-W']
+    if not fresh:
+        command.append('--activity-multiple-task')
+    command += ['-n',package + '/.ControlActivity']
+    for name,value in extras.items():
+        command += ['--es',name,value]
+    return command
 
 
 def record_private_failure(error, environ=None):

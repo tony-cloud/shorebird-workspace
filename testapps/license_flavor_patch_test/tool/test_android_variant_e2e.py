@@ -314,6 +314,16 @@ class CleanupTest(unittest.TestCase):
             self.assertEqual(len([action for action in ledger['actions'] if action['action']=='uninstall-owned-package']),1)
 
 
+class ControlStartCommandTest(unittest.TestCase):
+    def test_non_fresh_control_gets_its_own_task_in_the_running_process(self):
+        fresh = e2e.control_start_command('p.q', {'operation': 'launch'}, True)
+        again = e2e.control_start_command('p.q', {'operation': 'read-provider'}, False)
+        self.assertNotIn('--activity-multiple-task', fresh)
+        self.assertEqual(again[:4], ['am', 'start', '-W', '--activity-multiple-task'])
+        self.assertEqual(again[4:7], ['-n', 'p.q/.ControlActivity', '--es'])
+        self.assertEqual(again[-2:], ['operation', 'read-provider'])
+
+
 class PrivateFailureLogTest(unittest.TestCase):
     def test_diagnostic_is_opt_in_private_and_outside_results(self):
         error = e2e.FixtureError('specific private reason')
