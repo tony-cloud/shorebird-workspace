@@ -2910,6 +2910,9 @@ assert!(source_cases == native_adversarial_cases, 'Required native adversarial c
           validator.include?("delivered.get('real_api_and_provisioning_stopped') is not True"),
           "#{job_name} must gate full adversarial completion, real redownload, platform expiry and successfully delivered replay responses")
   variant_receipt_sources << validator
+  variant_id = "#{platform}_native_v2_variant#{suffix.tr('-', '_')}"
+  assert!(gate['id'] == variant_id && upload['if'] == "${{ always() && steps.#{variant_id}.outcome != 'skipped' }}",
+          "#{job_name} V2 evidence upload must run after V2 failure but not when an earlier gate skipped V2")
   assert!(upload['if'].to_s.include?('always()') && upload['uses'] == 'actions/upload-artifact@v4' &&
           upload.dig('with', 'name') == "#{platform}-native-variant-e2e#{suffix}" &&
           upload.dig('with', 'path').to_s.strip == "#{results}/\n#{results}.log" &&

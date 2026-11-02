@@ -723,16 +723,19 @@ class CacheAndExecutionBoundaryTest(unittest.TestCase):
     def test_preflight_error_redacts_raw_secret_and_preserves_work(self):
         with tempfile.TemporaryDirectory() as temp:
             work, results = Path(temp) / 'work', Path(temp) / 'results'
+            console = io.StringIO()
             with mock.patch.object(e2e.platform, 'system', return_value='Linux'), \
                     mock.patch.object(e2e.platform, 'machine', return_value='x86_64'), \
                     mock.patch.object(e2e.architecture, 'require_binary', return_value={}), \
                     mock.patch.object(e2e, 'preflight', side_effect=RuntimeError('private-token')), \
                     mock.patch.object(e2e, 'Lifecycle', side_effect=AssertionError('runtime')), \
-                    contextlib.redirect_stdout(io.StringIO()):
+                    contextlib.redirect_stdout(console):
                 self.assertEqual(e2e.main(['run', '--execute', '--work', str(work), '--results', str(results)]), 1)
             self.assertFalse(work.exists())
             output = (results / 'results.json').read_text()
             self.assertNotIn('private-token', output)
+            self.assertNotIn('private-token', console.getvalue())
+            self.assertIn('type=RuntimeError after_stage=preflight', console.getvalue())
             report = json.loads(output)
             self.assertEqual(report['failure'], {'type': 'RuntimeError', 'after_stage': 'preflight'})
             self.assertIn('work untouched', report['cleanup'])

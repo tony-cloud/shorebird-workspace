@@ -1846,6 +1846,7 @@ jobs:
           if-no-files-found: error
 
       - name: Run Linux native V2 variant lifecycle
+        id: linux_native_v2_variant
         timeout-minutes: 90
         run: |
           set -euo pipefail
@@ -1956,7 +1957,7 @@ jobs:
           PYVARIANT
 
       - name: Upload Linux native V2 variant lifecycle evidence
-        if: ${{ always() }}
+        if: ${{ always() && steps.linux_native_v2_variant.outcome != 'skipped' }}
         uses: actions/upload-artifact@v4
         with:
           name: linux-native-variant-e2e
@@ -3553,6 +3554,7 @@ jobs:
           if-no-files-found: error
 
       - name: Run Windows native V2 variant lifecycle
+        id: windows_native_v2_variant
         shell: pwsh
         timeout-minutes: 90
         run: |
@@ -3665,7 +3667,7 @@ jobs:
           if ($LASTEXITCODE) { throw 'Windows native V2 variant execution receipt failed' }
 
       - name: Upload Windows native V2 variant lifecycle evidence
-        if: ${{ always() }}
+        if: ${{ always() && steps.windows_native_v2_variant.outcome != 'skipped' }}
         uses: actions/upload-artifact@v4
         with:
           name: windows-native-variant-e2e
@@ -4786,6 +4788,7 @@ jobs:
           if-no-files-found: error
 
       - name: Run Linux native V2 variant lifecycle
+        id: linux_native_v2_variant_arm64
         timeout-minutes: 90
         run: |
           set -euo pipefail
@@ -4896,7 +4899,7 @@ jobs:
           PYVARIANT
 
       - name: Upload Linux native V2 variant lifecycle evidence
-        if: ${{ always() }}
+        if: ${{ always() && steps.linux_native_v2_variant_arm64.outcome != 'skipped' }}
         uses: actions/upload-artifact@v4
         with:
           name: linux-native-variant-e2e-arm64
@@ -5368,6 +5371,7 @@ jobs:
           if-no-files-found: error
 
       - name: Run Windows native V2 variant lifecycle
+        id: windows_native_v2_variant_arm64
         shell: pwsh
         timeout-minutes: 90
         run: |
@@ -5480,7 +5484,7 @@ jobs:
           if ($LASTEXITCODE) { throw 'Windows native V2 variant execution receipt failed' }
 
       - name: Upload Windows native V2 variant lifecycle evidence
-        if: ${{ always() }}
+        if: ${{ always() && steps.windows_native_v2_variant_arm64.outcome != 'skipped' }}
         uses: actions/upload-artifact@v4
         with:
           name: windows-native-variant-e2e-arm64
