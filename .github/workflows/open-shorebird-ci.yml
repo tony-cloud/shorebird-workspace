@@ -185,6 +185,8 @@ jobs:
           python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p test_macos_target_architecture.py -v
           python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p test_macos_presigned_lifecycle.py -v
           python3 scripts/test_macos_app_build_inputs.py -v
+          python3 scripts/test_macos_app_prepared_transport.py -v
+          python3 scripts/test_macos_app_lifecycle_consumer.py -v
           python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p test_ios_variant_e2e.py -v
           python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p test_ios_variant_adversarial.py -v
           python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p test_android_variant_app.py -v
