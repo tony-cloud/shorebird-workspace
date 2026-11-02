@@ -3,7 +3,7 @@
 
 The Shorebird report must cover its complete --gtest_list_tests inventory. The
 embedder report must contain exactly the platform's release/AOT controls.
-Windows additionally requires its four native adapter controls. This validator
+Windows additionally requires its five native adapter controls. This validator
 does not execute native code; --self-test uses synthetic XML only.
 """
 
@@ -44,6 +44,7 @@ WINDOWS_ENGINE_TESTS = frozenset({
     "ShorebirdFlutterWindowsEngineTest.PreparedMemoryRunsAndLaterEnginesCannotMixBase",
     "ShorebirdFlutterWindowsEngineTest.RefusedMemoryBeginsBaseBeforeLoadingIt",
     "ShorebirdFlutterWindowsEngineTest.FailedPreparationNeverLoadsBundledOrLegacyCode",
+    "ShorebirdFlutterWindowsEngineTest.CompiledV2MetadataOrScopeFailureCannotLoadUnpreparedBase",
     "ShorebirdFlutterWindowsEngineTest.FailedPreparedConfigurationNeverPreparesOrLoadsCode",
 })
 
@@ -254,7 +255,7 @@ class ValidatorTests(unittest.TestCase):
 
     def test_windows_adapter_requires_exact_executed_controls(self):
         self.write(self.report(WINDOWS_ENGINE_TESTS))
-        self.assertEqual(validate_report(self.path, WINDOWS_ENGINE_TESTS), 4)
+        self.assertEqual(validate_report(self.path, WINDOWS_ENGINE_TESTS), 5)
         for names in (set(), WINDOWS_ENGINE_TESTS - {min(WINDOWS_ENGINE_TESTS)}, WINDOWS_ENGINE_TESTS | {"ShorebirdFlutterWindowsEngineTest.Unrequested"}, embedder_tests("windows")):
             self.write(self.report(names))
             with self.subTest(names=names), self.assertRaises(ValueError):
