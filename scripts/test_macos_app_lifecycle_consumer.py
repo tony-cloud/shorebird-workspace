@@ -57,6 +57,7 @@ class ConsumerTest(unittest.TestCase):
     def setUp(self):
         self.fixture=fixtures.TransportTest('test_round_trip_preserves_links_modes_and_producer_roots')
         self.fixture.setUp(); self.addCleanup(self.fixture.doCleanups)
+        self.fixture.use_owned_filesystem_root()
         self.fixture.seed['variant_keys']={v:transport.sha(('private-fixture-'+v).encode()) for v in ('pro','enterprise')}
         # Match the actual Go producer's app/release/patch/wire storage namespace.
         with closing(sqlite3.connect(self.fixture.payload/'state.sqlite')) as db,db:

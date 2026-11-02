@@ -16,6 +16,7 @@ import os
 import shutil
 from pathlib import Path
 import plistlib
+import re
 import sqlite3
 import stat
 import struct
@@ -137,6 +138,21 @@ class TransportTest(unittest.TestCase):
         self.patch_source.start(); self.addCleanup(self.patch_source.stop)
         self.patch_signature = mock.patch.object(transport, 'inspect_bundle', return_value=self.signature)
         self.signature_mock = self.patch_signature.start(); self.addCleanup(self.patch_signature.stop)
+
+    def use_owned_filesystem_root(self):
+        """Only materializing tests relocate; archive-policy tests stay real.
+
+        Production accepts a Mac /private/tmp root and an identically prefixed
+        ZIP. Linux must never create /private. Admit exactly this test's owned
+        root through ROOT's normal fullmatch, without replacing canonical().
+        """
+        self.root = self.directory / ('shorebird-macos-x64-app-' + uuid.uuid4().hex)
+        self.state.update(work_dir=str(self.root), released_app=str(self.root / self.app),
+                          server=str(self.root / 'runtime/shorebird-server'))
+        self.put_json('state.json', self.state)
+        self.seal()
+        patch = mock.patch.object(transport, 'ROOT', re.compile(re.escape(str(self.root))))
+        patch.start(); self.addCleanup(patch.stop)
 
     def put(self, name, value, mode=0o600):
         path = self.payload / name
@@ -281,7 +297,29 @@ class TransportTest(unittest.TestCase):
             self.assertEqual(found, manifest['files'])
         self.assertFalse(root.exists())
 
+    def test_original_mac_canonical_policy_accepts_only_the_exact_private_tmp_namespace(self):
+        original = '/private/tmp/shorebird-macos-x64-app-01234567'
+        self.assertEqual(transport.canonical(original), Path(original))
+        self.assertEqual(transport.canonical('/private/tmp/shorebird-macos-x64-app-' + 'a' * 80),
+                         Path('/private/tmp/shorebird-macos-x64-app-' + 'a' * 80))
+        for path in (str(self.directory / 'shorebird-macos-x64-app-01234567'),
+                     '/tmp/shorebird-macos-x64-app-01234567', '/private/tmp/foreign-01234567',
+                     '/private/tmp/shorebird-macos-x64-app-short', original + '/child',
+                     original + '/../outside', '/private/tmp/shorebird-macos-x64-app-' + 'a' * 81):
+            with self.subTest(path=path), self.assertRaises(ValueError):
+                transport.canonical(path)
+
+    def test_materializing_fixture_admits_only_its_owned_root(self):
+        self.use_owned_filesystem_root()
+        self.assertTrue(self.root.is_relative_to(self.directory))
+        self.assertEqual(transport.canonical(str(self.root)), self.root)
+        for path in (str(self.root / 'child'), str(self.root.parent / 'foreign'),
+                     '/private/tmp/shorebird-macos-x64-app-01234567'):
+            with self.subTest(path=path), self.assertRaises(ValueError):
+                transport.canonical(path)
+
     def test_prepare_projects_private_seed_without_mutating_fixture(self):
+        self.use_owned_filesystem_root()
         shutil.copytree(self.payload, self.root, symlinks=True)
         self.addCleanup(lambda: shutil.rmtree(self.root) if self.root.exists() else None)
         original = {**self.state, 'cli': '/local/cli', 'flutter_root': '/local/flutter', 'serve_started': 10}
@@ -536,7 +574,12 @@ class TransportTest(unittest.TestCase):
         with self.assertRaises(ValueError): transport.provenance(changed, self.server, self.pins)
 
     def test_extract_native_admission_and_owned_cleanup(self):
+        self.use_owned_filesystem_root()
         archive, digest = self.package()
+        # Actual Mac-prefix ZIP admission is exercised by the round-trip and
+        # hostile-archive tests above. Here the admitted root is relocated so
+        # real materialize/validate/ownership/cleanup operations stay in temp.
+        transport.validate_payload(self.payload, self.manifest, WORKSPACE, self.source, CERTIFICATE, inspect=False)
         with mock.patch.object(transport, 'fixture_modules') as modules:
             modules.return_value.__enter__.return_value = (None, SimpleNamespace(require_native_host=mock.Mock(side_effect=ValueError('not native'))))
             # Mock only the native probe after semantic validation has succeeded.
@@ -550,7 +593,9 @@ class TransportTest(unittest.TestCase):
             with original_modules(workspace) as (variant, lifecycle):
                 with mock.patch.object(lifecycle, 'require_native_host'):
                     yield variant, lifecycle
-        with mock.patch.object(transport, 'fixture_modules', native_modules):
+        with mock.patch.object(transport, 'fixture_modules', native_modules), \
+                mock.patch.object(transport, 'validate_archive', return_value=(self.root, self.manifest)), \
+                mock.patch.object(Path, 'home', return_value=self.directory / 'home'):
             result = transport.extract(archive, digest, WORKSPACE, COMMIT, self.pins, CERTIFICATE, self.directory / 'evidence')
         self.addCleanup(lambda: transport.cleanup(result['ownership_receipt']) if self.root.exists() else None)
         self.assertFalse(result['runtime_acceptance'])
