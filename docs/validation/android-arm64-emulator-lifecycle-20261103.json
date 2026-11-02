@@ -1,0 +1,74 @@
+{
+  "status": "partial: native ARM64 emulator executed real release/patch/install/variant-switch/offline/tamper/replay stages (66 stages passed); full lifecycle NOT accepted (runtime_acceptance=false) because the 'online-expired-server-free' launch timed out",
+  "evidence_class": "native ARM64 Android emulator execution on Apple Silicon (not physical hardware; AndroidKeyStore hardware backing not claimed)",
+  "date": "2026-11-03",
+  "driver": "testapps/license_flavor_patch_test/tool/android_variant_e2e.py (schema native-variant-e2e-v2, arch aarch64)",
+  "pins": {
+    "engine_identity": "2dea141505e6803c9b0a1796bf1b53f4f72fdb6b",
+    "dart_sdk": "eaefa0a0c7cb4e9043770795bf6b8cdcaf1ab612",
+    "flutter": "d1fc719e1d7ff068600a4303d4094088aface8e6",
+    "cli": "3d6fc05cd88eec9843d5084355eb5b9bb3abe0a1",
+    "updater": "9d79a58bf49014af9f358cfa0d30d38d881dba2b",
+    "server": "3479ee0445a4db67eb223d8abbbaaf65202a909b",
+    "ci_run": "41401102303",
+    "source_record_root_commit": "a741b62f3d9de28dcf593576fa22edb7f19f298c",
+    "driver_commit_at_final_run": "472cdd2 (root branch tonycloud/native-variant-lifecycles-20261102)"
+  },
+  "artifact_closure": "No local engine/SDK build required. Mixed-producer route: 10 verified CI originals (Android 3-ABI, CLI macos-arm64, snapshotter/Maven, etc.) plus the truthful local final-2dea host Dart SDK/font/product ZIPs already staged in the iOS precache mirror. No Darwin-target arm snapshotter / Mac ARM SDK / Mac ARM engine CI artifact was needed or invented. .agents/builds/engine-native-host-gate-ci-final-20261102 (macos_release_arm64 only) was inspected read-only and not used.",
+  "device": {
+    "kind": "emulator",
+    "avd": "shorebird_native_v2_2dea_20261102_arm64 (private, created and deleted)",
+    "system_image": "system-images;android-34;google_apis;arm64-v8a",
+    "ro.product.cpu.abi": "arm64-v8a",
+    "ro.kernel.qemu": "1",
+    "api": 34,
+    "serial": "emulator-5580",
+    "private_adb_server": "tcp:5039 (--one-device emulator-5580)",
+    "boot_ms": 70965
+  },
+  "signing": "Gradle debug signing of a unique disposable package (dev.shorebird.e2e.<random>); patch signatures verified by updater (signing: Patch signature is valid); private keys not retained or published",
+  "builds": {
+    "release": "shorebird release android --stage-only --artifact=apk --target-platform=android-arm64, then release-finalize --arch=aarch64",
+    "patches": ["pro_seed (#1)", "pro (#2)", "enterprise (#3)"],
+    "release_version": "1.0.0+1"
+  },
+  "attempts": [
+    {"run": 1, "result": "failed", "after_stage": "actual-cli-variant-enterprise", "cause": "opaque FixtureError (no message in sanitized ledger); led to opt-in private failure log (commit 2ee0753)"},
+    {"run": 2, "result": "failed", "same_point": "initial-free-checked receipt timeout (120s)"},
+    {"run": 3, "result": "failed", "same_point": "same, 480s timeout; logcat showed Dart 'Bad state: Real variant paragraph unavailable' in warm-up frame (zero-size paragraph before platform metrics). Fixed in native_variant_status.dart.template (commit 1be9bd6)"},
+    {"run": 4, "result": "failed", "after_stage": "actual-cli-variant-enterprise", "cause": "read-provider control timed out: second 'am start ControlActivity' with plain NEW_TASK was a launcher re-launch (START_TASK_TO_FRONT) and never delivered extras. Fixed with --activity-multiple-task for non-fresh controls (commit 472cdd2)"},
+    {"run": 5, "result": "failed", "stages_passed": 66, "after_stage": "tampered-response-signature-high-water-preserved", "failed_stage": "online-expired-server-free", "cause": "UNDIAGNOSED: app rendered and native ready, no Dart error in logcat, no public receipt within 240s; private server/work logs were removed by driver cleanup"}
+  ],
+  "run5_stage_groups": {
+    "cli_release_publish_finalize_scopes": "passed (actual-cli-scopes-staged, actual-cli-scopes-finalized, variants pro_seed/pro/enterprise with hash/signature rows)",
+    "install_download_activate_free_initial": "passed (initial-free-checked, initial-free-cold)",
+    "variant_switching_free_pro_enterprise_pro_free_enterprise_free_same_install_data_preserved": "passed (stages 1..6 accept+cold; includes enterprise->pro->free->enterprise->free)",
+    "offline_cold_restart": "passed (api-and-provisioning-stopped + cold launches for every switch)",
+    "missing_and_wrong_key_fallback_and_recovery": "passed (variants pro and enterprise, 4 fallback + 4 recovery stages)",
+    "same_content_higher_epoch": "passed",
+    "signature_metadata_tamper": "passed (signature-tamper-control, independent paid, authority preserved)",
+    "ciphertext_tamper_and_real_redownload_recovery": "passed",
+    "lease_valid_and_expiry_device_clock": "passed (lease-valid-pro-cold, lease-expired-offline-free, lease-expiry-device-clock)",
+    "replay_old_authentic_response_rejected": "passed (authentic-old-response-rejected + high-water-preserved)",
+    "tampered_response_signature_rejected": "passed (documented combined nonce/epoch/signature limitation applies)",
+    "online_expired_server_free": "FAILED (timeout)",
+    "not_reached": ["cold-server-free", "before-rollback-enterprise", "rollback-accept-free", "rollback-cold-free", "rollforward-no-implicit-paid", "rollforward-still-free", "explicit-reauthorization", "final-free", "final-offline-free", "baseline-package-preserved"]
+  },
+  "counts": {"stages_recorded_run5": 66, "adversarial_cases_defined": 10, "adversarial_cases_fully_completed": "none claimed (adversarial.CASES list only recorded on full pass)"},
+  "driver_fixes": [
+    {"commit": "2ee0753", "change": "opt-in SHOREBIRD_E2E_PRIVATE_FAILURE_LOG traceback outside sanitized results; test added"},
+    {"commit": "1be9bd6", "change": "status app waits a bounded 30s of real frames for non-empty paragraph layout (emulator cold-start warm-up frame)"},
+    {"commit": "472cdd2", "change": "non-fresh ControlActivity starts use --activity-multiple-task; test added"}
+  ],
+  "unit_tests": "test_android_variant_e2e: 24 pass. Full tool suite: 294 run, 19 failures all in test_ios_variant_launch_context, identical before and after these changes (pre-existing)",
+  "skipped_gates": "shared-bootstrap verify-bootstrap was not run (denied by the permission classifier as potentially interfering with the concurrent iOS run); inputs were consumed read-only from the iOS stage while that run was active",
+  "cleanup": {
+    "driver_ledger": "package confirmed-absent, adb reverse mappings removed, host children stopped, work removed, retained_work=false (each run)",
+    "emulator": "stopped via adb emu kill",
+    "private_adb_5039": "stopped",
+    "avd": "deleted via avdmanager (scoped)",
+    "user_adb_5037_and_user_avd": "untouched",
+    "retained": "private control dir with SDK copy (reusable) and per-run sanitized results/logs under android/runtime-arm64-20261102 (8.9 GiB)"
+  },
+  "claim_limit": "Native ARM64 emulator execution only; no physical-device, OEM/secure-hardware, reboot persistence, ARMv7/x64 or performance claim. Lifecycle not accepted."
+}
