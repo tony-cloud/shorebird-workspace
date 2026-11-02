@@ -276,9 +276,12 @@ required_files = %w[
   testapps/license_flavor_patch_test/tool/ios_variant_adversarial.py
   testapps/license_flavor_patch_test/tool/test_ios_variant_e2e.py
   testapps/license_flavor_patch_test/tool/test_ios_variant_adversarial.py
+  testapps/license_flavor_patch_test/tool/test_ios_variant_launch_context.py
   testapps/license_flavor_patch_test/tool/ios_variant/AppDelegate.swift.template
   testapps/license_flavor_patch_test/tool/ios_variant/CacheControls.swift.template
   testapps/license_flavor_patch_test/tool/ios_variant/variant_status.dart.template
+  testapps/license_flavor_patch_test/tool/ios_variant/LaunchContext.dart.template
+  testapps/license_flavor_patch_test/tool/ios_variant/LaunchContext.swift.template
   testapps/license_flavor_patch_test/tool/macos_variant_e2e.py
   testapps/license_flavor_patch_test/tool/macos_variant_lifecycle.py
   testapps/license_flavor_patch_test/tool/test_macos_variant_e2e.py
@@ -1890,7 +1893,7 @@ assert!(workflow.fetch('env').fetch('JAVA_VERSION') == '17' && java_index && and
         java_index < android_index && android_index < variant_index,
         'Variant Java controls must provision Java 17 and Android API 35 before testing')
 variant_run = variant_step.fetch('run')
-%w[macos_variant_e2e.py macos_variant_lifecycle.py ios_variant_e2e.py ios_variant_adversarial.py
+%w[macos_variant_e2e.py macos_variant_lifecycle.py ios_variant_e2e.py ios_variant_adversarial.py test_ios_variant_launch_context.py
    android_variant_app.py android_variant_e2e.py native_variant_e2e.py
    native_variant_adversarial.py native_variant_desktop.py linux_variant_e2e.py windows_variant_e2e.py].each do |path|
   assert!(variant_run.lines.any? { |line| line.strip.start_with?('python3 -m py_compile ') &&
@@ -1941,6 +1944,34 @@ assert!(variant_run.include?(%q{printf '%s  %s\n' 518080049ba83181914419d11a25d9
           run.include?('if not result.wasSuccessful() or result.skipped or result.testsRun != expected:'),
           "#{job_name} must execute the exact real Swift inventory and reject missing, failed, or skipped controls")
 end
+context_steps = jobs.fetch('custom-dart-sdk-macos').fetch('steps')
+context_build = context_steps.index { |step| step['name'] == 'Build patched Dart SDK' }
+context_gate = context_steps.index { |step| step['name'] == 'Require iOS launch context Dart controls' }
+context_package = context_steps.index { |step| step['name'] == 'Package Dart SDK artifact' }
+assert!(context_build && context_gate && context_package && context_build < context_gate && context_gate < context_package,
+        'Apple Dart launch context controls must run after the matching SDK build and before packaging')
+assert!(context_steps.fetch(context_build).fetch('run').include?('ninja -C xcodebuild/ReleaseARM64 create_sdk'),
+        'Apple Dart launch context controls require the matching built ARM64 SDK')
+context_step = context_steps.fetch(context_gate)
+context_run = context_step.fetch('run')
+assert!(context_step['if'].nil? && !context_step['continue-on-error'] && context_step['timeout-minutes'] == 10 &&
+        context_step['working-directory'].nil?, 'Apple Dart launch context controls must be required and bounded')
+[
+  'set -euo pipefail',
+  'test "$(uname -s)" = Darwin',
+  'export IOS_VARIANT_TEST_DART="$GITHUB_WORKSPACE/dart-sdk/xcodebuild/ReleaseARM64/dart-sdk/bin/dart"',
+  'test -x "$IOS_VARIANT_TEST_DART"',
+  'export PYTHONPATH="$GITHUB_WORKSPACE/testapps/license_flavor_patch_test/tool${PYTHONPATH:+:$PYTHONPATH}"',
+  "suite = unittest.defaultTestLoader.loadTestsFromNames(['test_ios_variant_launch_context.DartLaunchContextTest'])",
+  "expected = 3\n",
+  'if suite.countTestCases() != expected:',
+  'if not result.wasSuccessful() or result.skipped or result.testsRun != expected:',
+].each do |control|
+  assert!(context_run.include?(control), "Apple Dart launch context controls must retain #{control}")
+end
+assert!(!context_run.include?('|| true'), 'Apple Dart launch context failures must not be suppressed')
+assert!(jobs.fetch('custom-dart-sdk-windows-arm64')['timeout-minutes'] == 360,
+        'Windows ARM64 SDK must retain its six-hour budget for native compilation and all regression gates')
 archive_gate = cli_steps.fetch(archive_test_index)
 assert!(
   archive_gate['run'] == './scripts/run_native_archive_tests.sh' &&

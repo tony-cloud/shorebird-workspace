@@ -1,0 +1,86 @@
+{
+  "observed_at_utc": "2026-11-02T05:40:31.924374+00:00",
+  "run_id": 41342959908,
+  "run_attempt": 1,
+  "head_sha": "44b71648720280a1f56730147149a19648fa7c4a",
+  "status": "completed",
+  "conclusion": "failure",
+  "html_url": "https://github.com/tony-cloud/shorebird-workspace/actions/runs/41342959908",
+  "total_jobs": 40,
+  "counts": {
+    "cancelled": 1,
+    "failure": 5,
+    "skipped": 6,
+    "success": 28
+  },
+  "failures": [
+    {
+      "id": 124959052115,
+      "name": "Build Windows engine artifacts (native ARM64)",
+      "conclusion": "failure",
+      "failed_steps": [
+        "Build Windows engine",
+        "Upload Windows native provider test evidence",
+        "Upload Windows encrypted lifecycle evidence",
+        "Upload Windows native V2 variant lifecycle evidence"
+      ],
+      "html_url": "https://github.com/tony-cloud/shorebird-workspace/actions/runs/41342959908/job/124959052115"
+    },
+    {
+      "id": 124959052158,
+      "name": "Build Windows engine artifacts",
+      "conclusion": "failure",
+      "failed_steps": [
+        "Build Windows engine",
+        "Upload Windows native provider test evidence",
+        "Upload Windows encrypted lifecycle evidence",
+        "Upload Windows native V2 variant lifecycle evidence"
+      ],
+      "html_url": "https://github.com/tony-cloud/shorebird-workspace/actions/runs/41342959908/job/124959052158"
+    },
+    {
+      "id": 124959052214,
+      "name": "Build macOS engine artifacts (arm64, macos-15, aarch64-apple-darwin)",
+      "conclusion": "failure",
+      "failed_steps": [],
+      "html_url": "https://github.com/tony-cloud/shorebird-workspace/actions/runs/41342959908/job/124959052214"
+    },
+    {
+      "id": 124959052246,
+      "name": "Build custom Dart SDK (Windows arm64)",
+      "conclusion": "cancelled",
+      "failed_steps": [
+        "Build patched Dart SDK",
+        "Upload ELF memory loader test evidence"
+      ],
+      "html_url": "https://github.com/tony-cloud/shorebird-workspace/actions/runs/41342959908/job/124959052246"
+    },
+    {
+      "id": 124959052250,
+      "name": "Build Linux engine artifacts (native ARM64)",
+      "conclusion": "failure",
+      "failed_steps": [
+        "Run Linux encrypted native lifecycle",
+        "Upload Linux native V2 variant lifecycle evidence"
+      ],
+      "html_url": "https://github.com/tony-cloud/shorebird-workspace/actions/runs/41342959908/job/124959052250"
+    },
+    {
+      "id": 124959052286,
+      "name": "Build Linux engine artifacts",
+      "conclusion": "failure",
+      "failed_steps": [
+        "Run Linux encrypted native lifecycle",
+        "Upload Linux native V2 variant lifecycle evidence"
+      ],
+      "html_url": "https://github.com/tony-cloud/shorebird-workspace/actions/runs/41342959908/job/124959052286"
+    }
+  ],
+  "diagnosis": {
+    "windows_engine": "C++20 deprecated u8path in Windows engine unit test; corrected by Flutter source66c5396",
+    "linux_lifecycle": "Fixture inspected HOME/.shorebird_cache instead of engine app namespace shorebird_updater/<app_id>; corrected in7daff4f",
+    "windows_arm64_sdk": "180 minute job expired while compile progressed to5823/7250; no runtime gate reached",
+    "macos_arm64_engine": "Runner lost communication; joblogs unavailable; no compiler/test failure established"
+  },
+  "runtime_acceptance": false
+}

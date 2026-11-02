@@ -177,7 +177,7 @@ jobs:
             https://repo.maven.apache.org/maven2/org/json/json/20180813/json-20180813.jar
           printf '%s  %s\n' 518080049ba83181914419d11a25d9bc9833a2d729b6a6e7469fa52851356da8 "$ANDROID_VARIANT_JSON_JAR" | sha256sum --check --strict
           python3 -m py_compile testapps/license_flavor_patch_test/tool/macos_variant_e2e.py testapps/license_flavor_patch_test/tool/macos_variant_lifecycle.py
-          python3 -m py_compile testapps/license_flavor_patch_test/tool/ios_variant_e2e.py testapps/license_flavor_patch_test/tool/ios_variant_adversarial.py
+          python3 -m py_compile testapps/license_flavor_patch_test/tool/ios_variant_e2e.py testapps/license_flavor_patch_test/tool/ios_variant_adversarial.py testapps/license_flavor_patch_test/tool/test_ios_variant_launch_context.py
           python3 -m py_compile testapps/license_flavor_patch_test/tool/android_variant_app.py testapps/license_flavor_patch_test/tool/android_variant_e2e.py
           python3 -m py_compile testapps/license_flavor_patch_test/tool/native_variant_e2e.py testapps/license_flavor_patch_test/tool/native_variant_adversarial.py testapps/license_flavor_patch_test/tool/native_variant_desktop.py testapps/license_flavor_patch_test/tool/linux_variant_e2e.py testapps/license_flavor_patch_test/tool/windows_variant_e2e.py
           python3 -m unittest discover -s testapps/license_flavor_patch_test/tool -p test_macos_variant_e2e.py -v
@@ -998,6 +998,25 @@ jobs:
         working-directory: dart-sdk
         run: |
           ninja -C xcodebuild/ReleaseARM64 create_sdk runtime gen_snapshot dartaotruntime dart_engine_aot_shared dart gen_snapshot_product dartaotruntime_product vm_platform_product dart_engine_aot_shared_product dartvm product_metadata_test product_ffi_test product_ffi_callback_test product_full_ffi_test run_ffi_unit_tests
+
+      - name: Require iOS launch context Dart controls
+        timeout-minutes: 10
+        run: |
+          set -euo pipefail
+          test "$(uname -s)" = Darwin
+          export IOS_VARIANT_TEST_DART="$GITHUB_WORKSPACE/dart-sdk/xcodebuild/ReleaseARM64/dart-sdk/bin/dart"
+          test -x "$IOS_VARIANT_TEST_DART"
+          export PYTHONPATH="$GITHUB_WORKSPACE/testapps/license_flavor_patch_test/tool${PYTHONPATH:+:$PYTHONPATH}"
+          python3 - <<'PYCONTEXT'
+          import unittest
+          suite = unittest.defaultTestLoader.loadTestsFromNames(['test_ios_variant_launch_context.DartLaunchContextTest'])
+          expected = 3
+          if suite.countTestCases() != expected:
+              raise SystemExit('Required Dart launch context test inventory changed')
+          result = unittest.TextTestRunner(verbosity=2).run(suite)
+          if not result.wasSuccessful() or result.skipped or result.testsRun != expected:
+              raise SystemExit('Required Dart launch context controls failed, skipped, or did not execute completely')
+          PYCONTEXT
 
       - name: Run shared FFI ABI golden tests
         working-directory: dart-sdk
@@ -4142,7 +4161,8 @@ jobs:
     name: Build custom Dart SDK (Windows arm64)
     needs: source-checks
     runs-on: windows-11-vs2026-arm
-    timeout-minutes: 180
+    # Native ARM64 compilation exceeded three hours; retain time for every regression and package gate.
+    timeout-minutes: 360
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.full_sdk_build }}
     env:
       DEPOT_TOOLS_WIN_TOOLCHAIN: "0"

@@ -1,0 +1,47 @@
+{
+  "schema": "ios-status-reporting-causal-diagnosis-v1",
+  "recorded_at_utc": "2026-11-02T06:14:04.821724+00:00",
+  "fixture_root_commit": "3709232560fb98481cdad078de3d6a9e25d58ee9",
+  "pins": {
+    "dart_sdk": "dbef3f1e9ade0e74b190c3a91e45aaffce056b19",
+    "flutter_source": "61e4422447053bece99a6457ec004d7eeab70401",
+    "updater": "9d79a58bf49014af9f358cfa0d30d38d881dba2b",
+    "server": "3479ee0445a4db67eb223d8abbbaaf65202a909b",
+    "identity_material": "open-shorebird-toolchain-v1\ndbef3f1e9ade0e74b190c3a91e45aaffce056b19\n61e4422447053bece99a6457ec004d7eeab70401\n9d79a58bf49014af9f358cfa0d30d38d881dba2b\n",
+    "engine_identity": "d0343086cd8f2c6d752ea96c4b862e8532c514a1",
+    "flutter": "3a453a2d63cc95485e3abdf8cbdaa7505801c105",
+    "shorebird": "01015c74206767b5a3ecea17cf44effb976a8eae"
+  },
+  "session": "ea2500546f4e",
+  "result": "public updater API succeeds; fixture data path fails before report",
+  "source_cause": "dart-sdk/runtime/bin/platform_macos.cc intentionally returns an empty environment on iOS; fixture incorrectly derived HOME and launch routing from Platform.environment",
+  "observed_stages": [
+    "native environment present",
+    "Dart environment flags zero",
+    "public updater constructor available",
+    "public installation ID nonnull",
+    "public selection status nonnull",
+    "data-before",
+    "error"
+  ],
+  "evidence_sha256": {
+    "d-initial-diagnostics.jsonl": "cdc2cc7f683be4fbec84ba367da064532db838d80854e73b9c7e1ce32b245bd0",
+    "d-native-cleanup-device.json": "7a9aafde57b1804134a66244a5a94c0b1dd45d102ed61e94a0a92a8fc6eadfde"
+  },
+  "cleanup_transport": "original native cleanup receipt copied over devicectl device-file transport; no HTTP receipt claimed",
+  "cleanup": {
+    "all_variant_keys_deleted": true,
+    "owned_app_uninstalled": true,
+    "secrets_removed": true,
+    "unresolved_runtime_controls_preserved": false
+  },
+  "runtime_lifecycle_accepted": false,
+  "fix_commit": "7daff4f",
+  "fix": "native whitelist atomic private launch context consumed and validated through Directory.systemTemp; SDK and public updater API unchanged",
+  "source_tests": {
+    "tests": 67,
+    "swift_typecheck": true,
+    "cfe_profiles": 4,
+    "physical_fix_acceptance": false
+  }
+}
