@@ -29,6 +29,10 @@ permissions:
 
 jobs:
   native-intel-proof:
+    # GitHub requires push access to read an unpublished private draft asset.
+    # Only the download step exports the token; native suites get a clean environment.
+    permissions:
+      contents: write
     name: Execute strict prepared PRODUCT suites on native Intel
     runs-on: macos-15-intel
     timeout-minutes: 180

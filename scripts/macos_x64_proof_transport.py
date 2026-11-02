@@ -452,11 +452,26 @@ def download(repo, release_id, asset_id, expected_sha, output, evidence):
         (Path(evidence) / 'download-status.json').write_text(json.dumps(report, indent=2) + '\n')
 
 
+def _sysctl_flag(name):
+    # -i hides an absent OID as silent success. Only the exact documented
+    # unknown-OID result is admissible when Intel macOS omits these flags.
+    probe = subprocess.run(['/usr/sbin/sysctl', '-n', name], capture_output=True,
+                           text=True, env=credential_free_environment(), timeout=60)
+    if probe.returncode == 0 and not probe.stderr.strip() and probe.stdout.strip() in ('0', '1'):
+        return probe.stdout.strip() == '1'
+    if (probe.returncode == 1 and not probe.stdout.strip() and
+            re.fullmatch(r"sysctl: unknown oid '" + re.escape(name) + "'",
+                         probe.stderr.strip(), flags=re.IGNORECASE)):
+        return None
+    raise ValueError('Cannot establish native Intel host: sysctl probe failed for ' + name)
+
+
 def require_native_intel():
     if sys.platform != 'darwin' or platform.machine() != 'x86_64':
         raise ValueError('Native proof requires a native Intel Mac')
-    probe = subprocess.run(['/usr/sbin/sysctl', '-in', 'sysctl.proc_translated'], capture_output=True, text=True)
-    if probe.returncode == 0 and probe.stdout.strip() == '1':
+    translated = _sysctl_flag('sysctl.proc_translated')
+    hardware_arm64 = _sysctl_flag('hw.optional.arm64')
+    if translated or hardware_arm64:
         raise ValueError('Rosetta cannot establish native Intel runtime proof')
 
 

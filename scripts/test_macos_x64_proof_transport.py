@@ -10,6 +10,7 @@ from pathlib import Path
 import stat
 import struct
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -298,7 +299,7 @@ class ReleaseMetadataTest(unittest.TestCase):
     def test_native_gate_rejects_rosetta_and_children_get_no_credentials(self):
         with mock.patch.object(transport.sys, 'platform', 'darwin'), \
                 mock.patch.object(transport.platform, 'machine', return_value='x86_64'), \
-                mock.patch.object(transport.subprocess, 'run', return_value=mock.Mock(returncode=0, stdout='1')):
+                mock.patch.object(transport.subprocess, 'run', return_value=SimpleNamespace(returncode=0, stdout='1', stderr='')):
             with self.assertRaisesRegex(ValueError, 'Rosetta'):
                 transport.require_native_intel()
         with mock.patch.dict(os.environ, {'GITHUB_TOKEN': 'secret', 'AWS_SECRET_ACCESS_KEY': 'secret', 'DYLD_INSERT_LIBRARIES': 'evil'}):
@@ -310,6 +311,88 @@ class ReleaseMetadataTest(unittest.TestCase):
         for path in ('a/../b', 'a/./b', 'a//b', 'a\\b', '/absolute', 'a\nsecret', 'a:b'):
             with self.subTest(path=path), self.assertRaises(ValueError):
                 transport.relative(path)
+
+
+class NativeIntelAdmissionTest(unittest.TestCase):
+    @staticmethod
+    def result(code=0, stdout='0\n', stderr=''):
+        return SimpleNamespace(returncode=code, stdout=stdout, stderr=stderr)
+
+    def test_native_zero_or_exact_missing_flags_use_both_bounded_clean_probes(self):
+        for translated, hardware in ((0, 0), (None, None), (0, None), (None, 0)):
+            def probe(command, **kwargs):
+                self.assertEqual(command[:2], ['/usr/sbin/sysctl', '-n'])
+                self.assertEqual(kwargs, dict(capture_output=True, text=True,
+                    env=transport.credential_free_environment(), timeout=60))
+                value = translated if command[2] == 'sysctl.proc_translated' else hardware
+                return (self.result(1, '', "sysctl: unknown oid '" + command[2] + "'\n")
+                        if value is None else self.result(0, str(value) + '\n'))
+            with self.subTest(translated=translated, hardware=hardware), \
+                    mock.patch.object(transport.sys, 'platform', 'darwin'), \
+                    mock.patch.object(transport.platform, 'machine', return_value='x86_64'), \
+                    mock.patch.object(transport.subprocess, 'run', side_effect=probe) as run:
+                transport.require_native_intel()
+            self.assertEqual([c.args[0][2] for c in run.call_args_list],
+                             ['sysctl.proc_translated', 'hw.optional.arm64'])
+
+    def test_translated_or_arm_hardware_never_admits_even_x64_process(self):
+        for flags in ((1, 0), (0, 1), (1, 1)):
+            with self.subTest(flags=flags), mock.patch.object(transport.sys, 'platform', 'darwin'), \
+                    mock.patch.object(transport.platform, 'machine', return_value='x86_64'), \
+                    mock.patch.object(transport.subprocess, 'run', side_effect=[self.result(0, str(v)) for v in flags]):
+                with self.assertRaisesRegex(ValueError, 'Rosetta'):
+                    transport.require_native_intel()
+
+    def test_probe_errors_empty_success_and_malformed_output_fail_closed_for_either_oid(self):
+        names = ('sysctl.proc_translated', 'hw.optional.arm64')
+        for index, name in enumerate(names):
+            absent = "sysctl: unknown oid '" + name + "'\n"
+            bad = [self.result(0, ''), self.result(0, '2'), self.result(0, '0\n1'),
+                   self.result(0, '0', 'sysctl: permission denied'), self.result(1, '', 'permission denied'),
+                   self.result(2, '', absent), self.result(1, '0', absent),
+                   self.result(1, '', "sysctl: unknown oid 'another.oid'"),
+                   self.result(1, '', "sysctl: unknown oid '" + name.replace('.', 'X') + "'"),
+                   self.result(1, '', absent + 'extra error'),
+                   self.result(1, '', 'sysctl: unknown oid'),
+                   self.result(1, '', 'sysctl: unknown oid \u2018' + name + '\u2019')]
+            for result in bad:
+                results = [self.result()] * index + [result]
+                with self.subTest(name=name, result=result), \
+                        mock.patch.object(transport.sys, 'platform', 'darwin'), \
+                        mock.patch.object(transport.platform, 'machine', return_value='x86_64'), \
+                        mock.patch.object(transport.subprocess, 'run', side_effect=results):
+                    with self.assertRaisesRegex(ValueError, 'sysctl probe failed'):
+                        transport.require_native_intel()
+
+    def test_timeout_or_execution_error_does_not_establish_native_host(self):
+        for index in (0, 1):
+            for error in (OSError('probe unavailable'), subprocess.TimeoutExpired('sysctl', 60)):
+                with self.subTest(index=index, error=error), \
+                        mock.patch.object(transport.sys, 'platform', 'darwin'), \
+                        mock.patch.object(transport.platform, 'machine', return_value='x86_64'), \
+                        mock.patch.object(transport.subprocess, 'run', side_effect=[self.result()] * index + [error]):
+                    with self.assertRaises(type(error)):
+                        transport.require_native_intel()
+
+    def test_foreign_process_fails_before_any_sysctl_execution(self):
+        for system, machine in (('linux', 'x86_64'), ('darwin', 'arm64'), ('win32', 'AMD64')):
+            with self.subTest(system=system, machine=machine), mock.patch.object(transport.sys, 'platform', system), \
+                    mock.patch.object(transport.platform, 'machine', return_value=machine), \
+                    mock.patch.object(transport.subprocess, 'run') as run:
+                with self.assertRaisesRegex(ValueError, 'native Intel Mac'):
+                    transport.require_native_intel()
+                run.assert_not_called()
+
+    @unittest.skipUnless(sys.platform == 'darwin' and Path('/usr/sbin/sysctl').is_file(),
+                         'Actual missing-OID reproduction requires macOS sysctl')
+    def test_actual_mac_missing_oid_is_distinguishable_from_silent_ignore(self):
+        # Read-only synthetic absent OID; not native Intel runtime acceptance
+        # on the Apple-silicon development host.
+        name = 'shorebird.native_intel_transport_missing_oid_20261102'
+        ignored = subprocess.run(['/usr/sbin/sysctl', '-in', name], capture_output=True,
+                                 text=True, env=transport.credential_free_environment(), timeout=60)
+        self.assertEqual((ignored.returncode, ignored.stdout, ignored.stderr), (0, '', ''))
+        self.assertIsNone(transport._sysctl_flag(name))
 
 
 class SourceAndWorkflowTest(unittest.TestCase):
@@ -469,7 +552,7 @@ class SourceAndWorkflowTest(unittest.TestCase):
             with self.assertRaises(subprocess.CalledProcessError):
                 transport.source_identity(root, revision)
 
-    def test_workflow_uses_native_runner_readonly_token_fixed_source_and_always_cleanup(self):
+    def test_workflow_uses_native_runner_scoped_draft_access_fixed_source_and_always_cleanup(self):
         root = Path(__file__).resolve().parents[1]
         text = (root / '.github/workflows/macos-x64-prepared-proof.yml').read_text()
         for required in ('workflow_dispatch:', 'runs-on: macos-15-intel', 'contents: read',
@@ -479,8 +562,15 @@ class SourceAndWorkflowTest(unittest.TestCase):
                          '--sdk-commit "$SDK_COMMIT"', '--certificate-sha1 "$CERTIFICATE_SHA1"',
                          'if: ${{ always() }}', 'macos_x64_proof_transport.py cleanup'):
             self.assertIn(required, text)
-        self.assertNotIn('contents: write', text)
+        self.assertRegex(text, r'(?m)^permissions:\n  contents: read$')
+        job = text.split('  native-intel-proof:\n', 1)[1]
+        self.assertRegex(job, r'(?m)^    permissions:\n      contents: write$')
+        self.assertEqual(text.count('contents: write'), 1)
         self.assertEqual(text.count('GITHUB_TOKEN:'), 1)
+        download = text.split('      - name: Download exact authenticated unpublished draft asset\n', 1)[1].split('\n      - name:', 1)[0]
+        self.assertIn('GITHUB_TOKEN: ${{ github.token }}', download)
+        execute = text.split('      - name: Execute all three prepared suites without credentials\n', 1)[1].split('\n      - name:', 1)[0]
+        self.assertNotIn('GITHUB_TOKEN:', execute)
         self.assertNotIn('codesign --sign', text)
         producer = (root / '.github/workflows/open-shorebird-ci.yml').read_text()
         producer = producer.split('  custom-dart-sdk-macos-x64:\n', 1)[1].split('\n  custom-dart-sdk-windows:', 1)[0]
