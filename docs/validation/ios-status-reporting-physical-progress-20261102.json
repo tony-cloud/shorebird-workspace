@@ -1,0 +1,194 @@
+{
+  "schema": "ios-physical-variant-progress-evidence-v1",
+  "recorded_at_utc": "2026-11-02T08:01:06.766745+00:00",
+  "runtime_acceptance": false,
+  "status": "partial_physical_validation_stopped_and_cleaned_up",
+  "scope": "One physical arm64 iOS ad-hoc distribution app, installed once; interpreter-full structural Dart/FFI variants with public updater APIs and native encrypted-key context. This is partial progress, not full lifecycle acceptance.",
+  "pins": {
+    "dart_sdk": "dbef3f1e9ade0e74b190c3a91e45aaffce056b19",
+    "flutter_source": "66c53960366e9233c1f2b689f000839bf6fedba5",
+    "updater": "9d79a58bf49014af9f358cfa0d30d38d881dba2b",
+    "server": "3479ee0445a4db67eb223d8abbbaaf65202a909b",
+    "engine_identity": "2e1870b9576db041463e6739497125e24e718e87",
+    "flutter": "1e506076b5a8cf2a377a64430fb39b50ee7362ad",
+    "shorebird": "fb8e39141e4093e7a187cc2cfb91da93eb75204c"
+  },
+  "build_evidence": ".agents/ios-status-reporting-ci-20261102/built.json",
+  "source_provenance": {
+    "operator_source": ".agents/ios-status-reporting-ci-20261102/run_lifecycle_v2.py",
+    "operator_sha256": "ec360fef2715d7939f7ed9b78ce2b72b48d38d0286a723df0f2ee71e3722bd75",
+    "operator_metadata_sha256": "dd62da3b0dbb58afb1a9c55e07eb7722e85fd670538984f7eca35f0ff40603e2",
+    "fixture_execution_sources_sha256": {
+      "testapps/license_flavor_patch_test/tool/ios_variant_e2e.py": "9a44995623281c5550e55338c0e4323f2204c426681027678e51590d87b1b007",
+      "testapps/license_flavor_patch_test/tool/ios_variant_adversarial.py": "379b781a341d34cc7ba0be535a11f11d56757c18d576a229f04c78391ab1cb76",
+      "testapps/license_flavor_patch_test/tool/ios_variant/AppDelegate.swift.template": "3741b965b1ef5e82160326370ddae899c2fbda5d289b318c5b383d7aac2fa371",
+      "testapps/license_flavor_patch_test/tool/ios_variant/CacheControls.swift.template": "64c24644c17a981b27088cf499f54ac178eaa8045d6ff0cd6b922822b42baf0f",
+      "testapps/license_flavor_patch_test/tool/ios_variant/Diagnostics.swift.template": "4ba4423c6fce181c2ff2ced0eb291a066ca07c82df42f8ab7f2a27914e322240",
+      "testapps/license_flavor_patch_test/tool/ios_variant/LaunchContext.swift.template": "f59880f2ac82ec58716e3ee8f73d156899267d1a306890fbdce5f2e65f92b4e6",
+      "testapps/license_flavor_patch_test/tool/ios_variant/LaunchContext.dart.template": "08c736a5c520e76a23840c785e7ccf140d68b75a2930158f5cae972f1f555b37",
+      "testapps/license_flavor_patch_test/tool/ios_variant/variant_status.dart.template": "a28532a035e7db783bdc14749526a913ec4b439d7d082a678f397e724046a463",
+      "testapps/license_flavor_patch_test/tool/ios_device_e2e.py": "a422346ead7a1c0eb23b8f802129353882729f7b4554e6271a03f8dba89a9f9a",
+      "testapps/license_flavor_patch_test/tool/macos_variant_e2e.py": "c8437b47e148f13203a218adf481cf86267f3c135e2981f79cab96ec0e44b226",
+      "testapps/license_flavor_patch_test/tool/macos_interpreter_e2e.py": "29952b92e50fd48c307cbc3c042d418877e6aef32f0fc777deeb3bb5f7136771",
+      "testapps/license_flavor_patch_test/tool/owned_host_processes.py": "afe17333220fd9f32d15e1009e73dfed78f495baf370f5c56cae049aa580064e",
+      "testapps/license_flavor_patch_test/ios/Runner/FullFfiFixture.c": "e609fa61bacf96f10cda32a17973914f4bb2dfd6cb355f1ef76b672571d768f8",
+      "testapps/license_flavor_patch_test/ios/Runner/FullFfiFixture.h": "2c1665dd0cccda69257c606aa59158ce51d8d583f1c1e9bf8407385f63ead3ec",
+      "testapps/license_flavor_patch_test/ios/Runner.xcodeproj/project.pbxproj": "5e2f2c22de7533dad6b1189acafd7fc1024ece9b35d08a7f877e3a7cf12f9bb9",
+      "testapps/license_flavor_patch_test/ios/Runner/Info.plist": "91016f9b118361d1916b6c98f97d970acf84dfe6b65e9c249d6e1326b29ce662",
+      "testapps/license_flavor_patch_test/ios/Runner/SceneDelegate.swift": "654bc7d64bfa1505719934f38195e6b89331461e55bb8a681a2785527f1b5dca",
+      "testapps/license_flavor_patch_test/tool/full_replacement_ffi/base/ffi_plugin.dart.template": "07fb33a9a20465f9c62e74466af679a0407768546efe13189ddbe609ef0ad2f6",
+      "testapps/license_flavor_patch_test/tool/full_replacement_ffi/base/ffi_status.dart.template": "1d93070e8a4f538c786b0d673ca44d38a784bf4fa6e9cd364249bdc399972066",
+      "testapps/license_flavor_patch_test/tool/full_replacement_ffi/base/license.dart.template": "6f091ad44d49784081743da99c5470f4dde91b15e931bc3ce0c97defe53a69d4",
+      "testapps/license_flavor_patch_test/tool/full_replacement_ffi/base/main.dart.template": "dd7d6a8c1bb786cacb89b0d6f7492d91d6e8990fa53e70430a9be51233315582",
+      "testapps/license_flavor_patch_test/tool/full_replacement_ffi/base/removed_library.dart.template": "75b103048dbb9ccec1a3b023d5e6bcb34d94bf592cfa787ac284a3b6d4712136",
+      "testapps/license_flavor_patch_test/tool/full_replacement_ffi/base/unchanged_caller.dart.template": "2765416c97ce5e03225e3efd722a818dfaafaae661918e7cf887ca3c015f3bb1",
+      "testapps/license_flavor_patch_test/tool/full_replacement_ffi/patch/ffi_plugin.dart.template": "90d104867f03f34374f5a981c35203892c61b38cce9cfb8d154bcbe0d6dd5b15",
+      "testapps/license_flavor_patch_test/tool/full_replacement_ffi/patch/ffi_status.dart.template": "1d93070e8a4f538c786b0d673ca44d38a784bf4fa6e9cd364249bdc399972066",
+      "testapps/license_flavor_patch_test/tool/full_replacement_ffi/patch/license.dart.template": "c2db6ca9bcc0ad6f473a574d95179f09adebff35d27cba0dc2c4adce3e414004",
+      "testapps/license_flavor_patch_test/tool/full_replacement_ffi/patch/main.dart.template": "229a06a0c46b01bbea8081dd0486280341046e58eae252ecf4e4e7d35153b614",
+      "testapps/license_flavor_patch_test/tool/full_replacement_ffi/patch/pro_feature.dart.template": "a1915f910d89c83a7ba19ea715d551e6df2d7c540f4c132a4a3c58161199f345",
+      "testapps/license_flavor_patch_test/tool/full_replacement_ffi/patch/unchanged_caller.dart.template": "2765416c97ce5e03225e3efd722a818dfaafaae661918e7cf887ca3c015f3bb1"
+    },
+    "private_tools_sha256": {
+      "cli": "d1c7cbdfc0b9ec62b41d7f97a316ebce6fb4ac04ed1b66631a4bf3ce96567f3c",
+      "server": "f7a9b8d37b7c37e6fbab2504aa2c845e9760de83aaab0a3493ec2861ef68c0df"
+    },
+    "audit_validator": "Original copied fixture validators were hash-matched to the prepared execution seals before read-only revalidation. The subsequent host-clock validator change was not used to accept this session.",
+    "frozen_replay_validator_sha256": "379b781a341d34cc7ba0be535a11f11d56757c18d576a229f04c78391ab1cb76"
+  },
+  "accepted_progress": {
+    "planned_stages": 134,
+    "accepted_stages": 111,
+    "last_accepted_stage": "lease-expired-offline",
+    "accepted_full_reports": 67,
+    "distinct_accepted_processes": 67,
+    "distinct_accepted_nonces": 67,
+    "accepted_variant_reports": {
+      "free": 31,
+      "pro": 21,
+      "enterprise": 15
+    },
+    "accepted_cold_reports": 44,
+    "public_status_api_reports": 67,
+    "native_report_route_reports": 67,
+    "same_installation_id_all_reports": true,
+    "same_original_exported_bundle_tree": true,
+    "accepted_raw_report_hash_manifest_sha256": "672bb699f352b17409f030c84cd4eb12a4f89abe33f9e67739da3a331ea83f27",
+    "accepted_stage_receipt_hash_manifest_sha256": "2bb04a85573fc4b59f656b8c8700fac430beff0d990c131e0de910652a1b6925"
+  },
+  "report_transport": {
+    "initial": {
+      "transport": "devicectl-owned-app-data-container-copy",
+      "reports": 1,
+      "observer_delivery_claimed": false,
+      "report_sha256": "13bae8f58b7cce08dc80e70ea9e6055dba537736c5abd47932a740bc7117f4a5",
+      "copy_provenance_sha256": "06352033e8b4ed7c4023df792e031fe37b6f9502bb9e880abbb5bead7e261a4b"
+    },
+    "subsequent": {
+      "transport": "native-HTTP-observer",
+      "accepted_reports": 66,
+      "raw_bytes_match_nonce_bound_observer_files": true
+    },
+    "physical_fix_proven": "Native whitelist launch-context transport allowed the intentionally empty iOS Dart environment to drive nonce, data, check and report routing. All accepted reports exercised public updater status and installation APIs.",
+    "initial_HTTP_limit": "No HTTP receipt was accepted for the first launch. Permission timing was a plausible explanation, not an established cause."
+  },
+  "distribution_and_native_host": {
+    "profile_type": "ad-hoc distribution",
+    "profile_authorized_exact_device_and_team": true,
+    "embedded_profile_get_task_allow": false,
+    "no_debugger_launch_route": true,
+    "retained_strict_route_gate": {
+      "passed": true,
+      "dynamic_modules": false,
+      "no_JIT_or_unsigned_executable_memory_entitlement": true,
+      "no_bundled_patch_payload": true,
+      "no_bundled_raw_artifact_key": true
+    },
+    "strict_route_log_sha256": "bda9d120ffe60443be10b16ca029b3702cafa3cda9f5f7f0b06663ffeec481ce",
+    "original_executable_sha256": "86ad6d7a2934898626e6676c38c3d5b2e2377498f03eb1a92ea77b8780d83113",
+    "native_pre_shipped_FFI_exports": 14,
+    "native_export_receipt_sha256": "865880e89dc072c33f0e55656bd2bb021318e36f3935a11bcebb5ba1157acff9"
+  },
+  "structural_FFI_and_data": {
+    "base_reports_with_3_checks": 31,
+    "paid_reports_with_16_checks": 36,
+    "all_FFI_frame_structural_and_callback_cleanup_checks_passed": true,
+    "accepted_data_launches": 67,
+    "final_accepted_schema": 3,
+    "same_sentinel_and_additive_pro_enterprise_data_preserved": true,
+    "unaccepted_replay_attempt_data_launches": 68,
+    "no_key_material_found_in_accepted_raw_reports": true
+  },
+  "authorization_and_cache_cases": {
+    "real_CAS_assignment_receipts_verified": 21,
+    "same_content_higher_epoch_and_restart": true,
+    "native_key_control_receipts": 10,
+    "key_control_actions": {
+      "provision": 4,
+      "overwrite": 4,
+      "delete": 2
+    },
+    "both_paid_variants_missing_and_wrong_key_free_fallback_with_offline_recovery": true,
+    "native_fixed_path_CAS_tamper_cases": 4,
+    "tamper_matrix": "Pro and enterprise, each ciphertext and cached-signature corruption, bundled-free fallback, explicit signed free then paid repair, and paid offline recovery.",
+    "same_pristine_ciphertext_restored_without_cache_reset_or_restore": true,
+    "verified_successful_target_HTTP_downloads": {
+      "pro": 7,
+      "enterprise": 6,
+      "total": 13
+    },
+    "failed_or_foreign_transfer_count": 0,
+    "dynamic_paid_reauthorizations_requiring_redownload": 7,
+    "transfer_policy": "First paid downloads and four tamper repairs required one exact-target successful transfer. Offline/cold/free and same-content higher-epoch/lease checks required zero. Other paid checks permitted zero or one only against observed absent or pristine installed ciphertext-and-metadata pairs; unreferenced startup pruning was allowed.",
+    "raw_log_window_hashes_and_prefixes_verified": true
+  },
+  "lease": {
+    "valid_paid_offline_report_accepted": true,
+    "post_deadline_bundled_free_report_accepted": true,
+    "signed_deadline_and_native_boot_times_validated": true,
+    "expiry_reason": "expired",
+    "accepted_high_water_authority_preserved": true,
+    "offline_ciphertext_metadata_and_journal_preserved": true,
+    "expired_report_sha256": "c5ab7715f2e10f24c14ef2e1fc0b3d6aa711edbcd4964fac348b451359397d47"
+  },
+  "replay_attempt_not_accepted": {
+    "attempted_stage": "old-response-rejected",
+    "accepted": false,
+    "full_runtime_acceptance": false,
+    "original_core_FFI_data_status_expiry_validator_passed": true,
+    "original_complete_delivery_gate_passed": false,
+    "complete_old_response_delivery_receipts": 1,
+    "response_bytes": 5258,
+    "delivery_receipt_sha256": "f3f533856a55dc08fe327777c8217e9d4b41ff6308d3d9682061e65f0f4f7bcc",
+    "raw_unaccepted_report_sha256": "57553c830d7f4b07794806305271c080f8a6cee9bd97abd4a2e03e14d9b48912",
+    "captured_response_sha256": "d981cb91bb4187b852ea33d4a7043384c7aa0e7762c80e1bb49f50be2f43d849",
+    "failure": "The frozen fixture compared host delivery-start time with device report-completion time; device report completion preceded host delivery start by about 49 milliseconds, so the original gate refused acceptance.",
+    "device_report_completion_minus_host_delivery_start_seconds": -0.048956871,
+    "limits": "Completed host write/flush and a valid core report are retained, but no replay security acceptance is claimed. A later clock-domain predicate change was not applied retroactively. The replay combined an old nonce and old epoch; no isolated rejection-branch claim is made."
+  },
+  "remaining_unproven": [
+    "Accepted old-response replay rejection under a valid clock-domain delivery oracle",
+    "Authenticated rollback and explicit rollforward/paid reauthorization in this iOS session",
+    "Final signed-free and final offline-free runtime stages",
+    "Full 134-stage runtime acceptance",
+    "Physical runtime validation of the later 2dea engine/SDK pins"
+  ],
+  "cleanup": {
+    "complete": true,
+    "native_only_original_nonce_receipt_validated_with_frozen_validator": true,
+    "both_scoped_keychain_accounts_absent": true,
+    "native_cleanup_accepted_receipts": 1,
+    "owned_app_uninstalled": true,
+    "secrets_and_config_removed": true,
+    "all_owned_service_controllers_recorded_stopped": true,
+    "API_and_observer_ports_refused_on_loopback_and_advertised_host": true,
+    "replay_active_marker_absent": true,
+    "pending_key_cache_or_cleanup_control": false,
+    "unaccepted_runtime_report_preserved_without_accepting_or_replaying_it": true,
+    "native_cleanup_receipt_sha256": "98a6ea0b25569d3e21b34b7617c40ba53828175b18949648a807c815305b900e",
+    "cleanup_final_receipt_sha256": "3896b8714fc0362424e731a18034e1d8b668797dfde70f6d786443852ca0b3bb",
+    "uninstall_log_sha256": "fe6392f93e98560a3e83a03b44597798c92392632a5cbc5f2fc937904c141929",
+    "closed_fixture_state_sha256": "57c8175aeb9b06972a6c2fc0e3af12672b6731da580ee04754870130398f581e"
+  },
+  "audit_limits": "Read-only host evidence audit with original-validator revalidation; no device command, app/server launch, source rewrite, state mutation or runtime rerun was performed by the auditor. Cleanup success does not complete the unfinished runtime matrix."
+}
