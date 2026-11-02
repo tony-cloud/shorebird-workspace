@@ -2861,6 +2861,18 @@ jobs:
       - name: Install Apple Rust targets
         run: rustup target add ${{ matrix.rust_target }}
 
+      - name: Reclaim macOS runner disk
+        run: |
+          set -uo pipefail
+          echo "Runner resources before cleanup:"
+          df -h / "$GITHUB_WORKSPACE" || true
+          sysctl -n hw.ncpu hw.memsize || true
+          # Best-effort reclaim of caches this job never uses; failures are non-fatal.
+          rm -rf "$HOME/Library/Developer/Xcode/DerivedData" "$HOME/Library/Caches/"* 2>/dev/null || true
+          xcrun simctl delete unavailable >/dev/null 2>&1 || true
+          echo "Runner resources after cleanup:"
+          df -h / "$GITHUB_WORKSPACE" || true
+
       - name: Check runner capacity
         run: CI_MIN_FREE_DISK_GB="$ENGINE_MIN_FREE_DISK_GB" ./scripts/check_ci_capacity.sh
 
@@ -2899,15 +2911,57 @@ jobs:
       - name: Build macOS engine
         working-directory: flutter/engine/src
         run: |
-          ninja -C out/macos_release_${{ matrix.arch }} \
+          set -euo pipefail
+          out="out/macos_release_${{ matrix.arch }}"
+          diag="$GITHUB_WORKSPACE/artifacts/macos-build-diagnostics"
+          mkdir -p "$diag"
+          # Resource sampler: earlier macOS arm64 builds lost runner contact with no
+          # retrievable logs, so record disk/memory pressure every 2 minutes (full
+          # sample to a file, compact line to the live log every 10 minutes).
+          (
+            n=0
+            while true; do
+              {
+                date -u +%FT%TZ
+                df -h / "$GITHUB_WORKSPACE" | tail -n +2
+                vm_stat | head -n 8
+                memory_pressure 2>/dev/null | tail -n 2 || true
+                ps -Ao pid,rss,etime,comm -r | head -n 6
+              } >> "$diag/resources.log" 2>&1
+              if (( n % 5 == 0 )); then
+                echo "[sampler] $(date -u +%T) free=$(df -Pk "$GITHUB_WORKSPACE" | awk 'NR==2{printf "%d GiB", $4/1048576}') $(memory_pressure 2>/dev/null | grep -i 'free percentage' || true)"
+              fi
+              n=$((n + 1))
+              sleep 120
+            done
+          ) &
+          sampler=$!
+          trap 'kill "$sampler" 2>/dev/null || true' EXIT
+          # Phase 1: shipped artifacts. Phase 2: unit-test binaries (the heaviest
+          # link steps). Same targets as before, split so a failure is attributable
+          # and disk use is recorded between phases.
+          ninja -C "$out" \
             flutter/shell/platform/darwin/macos:zip_macos_flutter_framework \
             flutter/build/archives:flutter_patched_sdk \
             create_macos_gen_snapshots create_macos_analyze_snapshots \
-            flutter/tools/font_subset:font_subset \
+            flutter/tools/font_subset:font_subset
+          df -h / | tail -n 1
+          du -sh "$out" 2>/dev/null || true
+          ninja -C "$out" \
             flutter/shell/common/shorebird:shorebird_unittests \
             flutter/shell/platform/embedder:embedder_unittests \
             flutter/runtime:runtime_unittests \
             flutter/shell/platform/darwin/macos:flutter_desktop_darwin_unittests
+          df -h / | tail -n 1
+          du -sh "$out" 2>/dev/null || true
+
+      - name: Upload macOS build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-build-diagnostics-${{ matrix.arch }}
+          path: artifacts/macos-build-diagnostics/
+          if-no-files-found: error
 
       - name: Verify macOS engine args
         run: |

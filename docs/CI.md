@@ -396,6 +396,13 @@ through `releases/latest/download`.
 
 Apple engines run on separate runners so iOS outputs do not exhaust the disk before the macOS build.
 
+The macOS engine job reclaims runner caches, records disk/memory pressure every
+two minutes during `ninja` (uploaded as `macos-build-diagnostics-<arch>`), and builds
+shipped artifacts and unit-test binaries as two ninja phases with the same targets
+and gates. This was added after the arm64 build repeatedly lost runner
+communication mid-build with no retrievable logs; the cause (disk vs. memory vs.
+runner infrastructure) is unconfirmed until a diagnostics artifact is captured.
+
 `ios-engine` builds:
 
 - `host_release_arm64` with `--shorebird-interpreter`,
