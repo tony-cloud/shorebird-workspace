@@ -62,6 +62,18 @@ def zip_bytes(entries, extra=()):
     return out.getvalue()
 
 
+def tar_header_types(path):
+    """Observe extension headers before Python transparently consumes them."""
+    kinds = []
+    class InspectTarInfo(tarfile.TarInfo):
+        def _proc_member(self, archive):
+            kinds.append(self.type)
+            return super()._proc_member(archive)
+    with tarfile.open(path, 'r:*', tarinfo=InspectTarInfo) as archive:
+        list(archive)
+    return kinds
+
+
 class MaterializerTest(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -160,8 +172,8 @@ class MaterializerTest(unittest.TestCase):
         self.tar_entries = values
         self.write_tar([*values.items(), *extra])
 
-    def write_tar(self, entries):
-        with tarfile.open(self.target, 'w:gz', format=tarfile.USTAR_FORMAT) as archive:
+    def write_tar(self, entries, format=tarfile.USTAR_FORMAT):
+        with tarfile.open(self.target, 'w:gz', format=format) as archive:
             for name, (data, mode) in entries:
                 info = tarfile.TarInfo(name)
                 info.mode = mode & 0o777
@@ -362,19 +374,53 @@ class MaterializerTest(unittest.TestCase):
                 self.materialize()
             self.assertFalse((self.root / 'result').exists())
 
-    def test_current_system_tar_pack_recipe_handles_bsd_metadata_without_restoring_it(self):
+    def system_tar_source(self):
         source = self.root / 'pack-source'
         for name, (data, mode) in self.tar_entries.items():
             path = source / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(data)
             path.chmod(mode & 0o777)
+        return source
+
+    def test_current_system_tar_recipe_accepts_bsd_but_rejects_gnu_longname(self):
+        source = self.system_tar_source()
         # Real host packaging of synthetic inputs, never a compiler/app. On
         # macOS this exercises BSD tar's actual per-file PAX/AppleDouble output.
+        # GNU's default instead emits unsupported long-name extensions for
+        # our canonical mirror paths; it is not the BSD producer's recipe.
+        version = subprocess.run(['/usr/bin/tar', '--version'], check=True,
+                                 capture_output=True, text=True).stdout
         subprocess.run(['/usr/bin/tar', '-C', str(source), '-czf', str(self.target), 'macos-engine'], check=True)
         self.pin['archive_sha256'] = sha(self.target.read_bytes())
+        if 'GNU tar' in version:
+            self.assertIn(tarfile.GNUTYPE_LONGNAME, tar_header_types(self.target))
+            with self.assertRaisesRegex(ValueError, 'Extended/special/oversize tar member'):
+                self.materialize()
+            self.assertFalse((self.root / 'result').exists())
+            return
+        self.assertIn('bsdtar', version, 'System archive producer is neither BSD nor GNU tar')
         result = self.materialize()
         self.assertFalse(any('/._' in n or n.startswith('._') for n in result['files']))
+
+    def test_system_tar_explicit_ustar_recipe_is_portable(self):
+        source = self.system_tar_source()
+        subprocess.run(['/usr/bin/tar', '--format=ustar', '-C', str(source),
+                        '-czf', str(self.target), 'macos-engine'], check=True)
+        self.pin['archive_sha256'] = sha(self.target.read_bytes())
+        self.assertNotIn(tarfile.GNUTYPE_LONGNAME, tar_header_types(self.target))
+        result = self.materialize()
+        self.assertEqual(result['target']['archive_sha256'], self.pin['archive_sha256'])
+
+    def test_complete_gnu_longname_archive_is_rejected_without_restoring_it(self):
+        # A complete otherwise valid archive reproduces GNU's default long
+        # mirror-path encoding even on macOS hosts without a GNU tar binary.
+        self.assertTrue(any(len(name.encode()) > 100 for name in self.tar_entries))
+        self.write_tar(list(self.tar_entries.items()), format=tarfile.GNU_FORMAT)
+        self.assertIn(tarfile.GNUTYPE_LONGNAME, tar_header_types(self.target))
+        with self.assertRaisesRegex(ValueError, 'Extended/special/oversize tar member'):
+            self.materialize()
+        self.assertFalse((self.root / 'result').exists())
 
     def test_pax_semantic_overrides_and_malformed_appledouble_are_rejected(self):
         for key, value in [('path', '../escape'), ('size', '999999999'), ('linkpath', '/outside'),
