@@ -1,0 +1,267 @@
+{
+  "schema": "ios-physical-variant-lifecycle-evidence-v1",
+  "recorded_at_utc": "2026-11-02T18:01:04.224107+00:00",
+  "run_window_utc": {
+    "driver_first_stage": "2026-11-02T17:41:14Z",
+    "runtime_complete": "2026-11-02T17:52:45Z",
+    "native_cleanup_launch_accepted_receipt_epoch": 1793641997
+  },
+  "runtime_acceptance": true,
+  "cleanup_complete": true,
+  "status": "physical_ios_arm64_runtime_accepted_cleaned_up_final_ci_pending",
+  "scope": "One physical arm64 iOS distribution-signed app, installed once, interpreter-full structural Dart/FFI variants with public updater APIs and native encrypted-key context, run through the complete 134-stage staged lifecycle at the current candidate pins. This is physical iOS ARM64 runtime acceptance only; it is not final-integration-revision CI and does not certify any other target.",
+  "supersedes": "IOS-4 for these pins: the IOS-4 replay-stage failure came from a host/device cross-clock delivery predicate that was corrected at fixture root 2d064cf. IOS-4 remains the record for its own older component pins.",
+  "pins": {
+    "dart_sdk": "eaefa0a0c7cb4e9043770795bf6b8cdcaf1ab612",
+    "flutter_source": "857ff2b8e4e9ad461469041847223516ca9038e4",
+    "flutter": "d1fc719e1d7ff068600a4303d4094088aface8e6",
+    "engine_identity": "2dea141505e6803c9b0a1796bf1b53f4f72fdb6b",
+    "shorebird_cli": "3d6fc05cd88eec9843d5084355eb5b9bb3abe0a1",
+    "updater": "9d79a58bf49014af9f358cfa0d30d38d881dba2b",
+    "server": "3479ee0445a4db67eb223d8abbbaaf65202a909b",
+    "fixture_tool_root_clock_fix_commit": "2d064cff67f055712664cea1ef071deeb1a1d5c5"
+  },
+  "build_inputs": {
+    "cli_binary_origin": "GitHub Actions run 41401102303, artifact cli-macos-arm64 (id 13124089992), producer root 6a63eaac052e282a62dc8f54efb827a404eef904",
+    "cli_artifact_zip_digest_sha256": "988bd6fd047a024227893eea72c64e9b8cf365b95acee436252d11d07ae67f8b",
+    "cli_tarball_sha256": "16bdd7ce912407eb4c42908991d41957d1f70f2a48951695ae5b2cfe9078cdec",
+    "cli_manifest_flutter_revision": "d1fc719e1d7ff068600a4303d4094088aface8e6",
+    "cli_manifest_engine_revision": "2dea141505e6803c9b0a1796bf1b53f4f72fdb6b",
+    "ci_note": "Run 41401102303 is the binary provenance source for the CLI only; it is not final CI at the integration revision.",
+    "server_binary_sha256": "0ee3f21b1463773d0b983bbab970e1d0312fbe0473bc772162e3645a02a89e8a",
+    "cli_wrapper_sha256": "9ed815989a18ddb00054714cb84f1cbc945c9e749c853cd1f7d500be6aa03aca"
+  },
+  "source_provenance": {
+    "source_seal": ".agents/ios-final-replay-clock-20261102/source-seal.json",
+    "sealed_file_count": 32,
+    "all_non_agent_sealed_files_still_match_at_commit_time": true,
+    "sealed_operator": ".agents/ios-final-replay-clock-20261102/run_lifecycle_f.py",
+    "sealed_operator_sha256": "1ea2982b4dc84dc83aad572ef7e737143da0a45c4a0da5f0a47195ad85add3d8",
+    "derived_operator": ".agents/ios-final-replay-clock-20261102/run_lifecycle_g_migrated.py",
+    "derived_operator_sha256": "a143bbaff27be0cda08f123f65efe93bcdc8dfe4d91b3f341e6399dcf5c69cdd",
+    "derived_operator_changes": "ROOT and DEFAULT_WORK constants only",
+    "ios_replay_clock_fix_fixture_sha256": {
+      "testapps/license_flavor_patch_test/tool/ios_variant_adversarial.py": "e47739c4aeeb4124ae68011b5c6c56485f5ac6227738aaf1b0f39e381dc3c132",
+      "testapps/license_flavor_patch_test/tool/ios_variant_e2e.py": "422d336d64423b7ed9584d669bfd586b382f05893da7bd7a2f191a54d3e0a797",
+      "testapps/license_flavor_patch_test/tool/ios_device_e2e.py": "a422346ead7a1c0eb23b8f802129353882729f7b4554e6271a03f8dba89a9f9a",
+      "testapps/license_flavor_patch_test/tool/owned_host_processes.py": "afe17333220fd9f32d15e1009e73dfed78f495baf370f5c56cae049aa580064e"
+    },
+    "root_head_relation": "Run used fixture/tool root 2d064cf. Root HEAD at run time (8b8c0fb, then a741b62) differs from 2d064cf in testapps/scripts only by scripts/test_macos_app_lifecycle_consumer.py, scripts/test_macos_app_prepared_transport.py and (a741b62) scripts/verify_ci_workflow.rb: CI and test-portability files. No sealed iOS fixture, template or operator file differs. A later commit adds Android driver files, also outside this run."
+  },
+  "device_and_distribution": {
+    "device": "iPad Pro 13-inch (M4), product type iPad16,5, physical",
+    "os": "iPadOS 26.6.1 (23G83)",
+    "arch": "arm64",
+    "signing": "distribution-signed export; embedded profile get-task-allow false",
+    "team": "43FN6K7B4C",
+    "bundle_id_scheme": "per-session org.tonycloud.shorebird-ios-variant.<session>; session 26cd32d303e6",
+    "no_debugger_launch_route": true,
+    "no_jit_route": true,
+    "strict_route_gate": {
+      "passed": true,
+      "app_bundle_no_bundled_patch_payload": true,
+      "no_JIT_or_unsigned_executable_memory_entitlement": true,
+      "get_task_allow_not_true": true,
+      "no_bundled_raw_artifact_key": true,
+      "log_sha256": "1e6eb48f4c8fe37f05c9188929846d4631266442e1cbd08170b806ce0bbe0189"
+    },
+    "original_executable_sha256": "21efc08e21ee53b60aec2fd1a7dcc265ad33a70f435d968dec7166a98b51098f",
+    "installed_executable_sha256_equals_original": true,
+    "base_ipa_sha256": "0eb58a2e4e20ab2fe4f29f4dd0d2b71fa68ef012983751fcacdf5603689d1301",
+    "native_pre_shipped_FFI_exports": 14,
+    "native_export_receipt_sha256": "5bcc034ce28b860394272f280033399b211ab59de61d2eefc9164bc6145ef025",
+    "installed_once_same_installation_id_all_reports": true
+  },
+  "accepted_progress": {
+    "planned_stages": 134,
+    "accepted_stages": 134,
+    "stages_by_kind": {
+      "launch": 81,
+      "assign": 24,
+      "api_off": 10,
+      "api_on": 9,
+      "admin": 2,
+      "capture": 1,
+      "deadline": 1,
+      "wait_deadline": 1,
+      "replay_on": 1,
+      "replay_off": 1,
+      "map_free": 1,
+      "complete": 1,
+      "readiness": 1
+    },
+    "driver_stage_steps": 132,
+    "stages_accepted_before_driver": ["api-ready", "initial-free"],
+    "last_accepted_stage": "runtime-complete",
+    "accepted_full_reports": 81,
+    "distinct_accepted_processes": 81,
+    "distinct_accepted_nonces": 81,
+    "accepted_variant_reports": {
+      "free": 41,
+      "pro": 21,
+      "enterprise": 19
+    },
+    "accepted_cold_boot_reports": 52,
+    "accepted_checked_reports": 29,
+    "public_status_api_reports": 81,
+    "native_report_route_reports": 81,
+    "same_installation_id_all_reports": true,
+    "reports_with_error": 0,
+    "raw_report_sha256_matches_accepted_receipt": 81,
+    "accepted_raw_report_hash_manifest_sha256": "5ace7b27cf8102dfeb3224827573ff56a216a8832098edde25d28c6e2e5fb651",
+    "raw_report_hash_manifest_definition": "SHA-256 of the 81 accepted report_sha256 values sorted ascending, joined with newlines plus a trailing newline.",
+    "distinct_accepted_selection_epochs_in_reports": 28,
+    "highest_report_data_launch_counter": 81,
+    "state_json_sha256": "75b4cd8f6abf969f4acb1229852a8959a03819186e54136a2208bb16bdab2084",
+    "driver_log_sha256": "d6e15391bd3530a7480626f41b34b9c37be9cb5c3d52260a621224dddf640827"
+  },
+  "report_transport": {
+    "initial": {
+      "transport": "devicectl-owned-app-data-container-copy",
+      "reports": 1,
+      "route": "operator --adopt-initial after explicit USB copy",
+      "observer_delivery_claimed": false,
+      "report_sha256": "b6ed4d4ce25df6a28727b45101faafb64a29867886208d6631d53c3ab5bfd80a",
+      "copy_provenance_sha256": "0c505d3a1d950906c43a78ffbbe1afb9ed63148764cbf05714c684642ffab1c1"
+    },
+    "subsequent": {
+      "transport": "native-HTTP-observer",
+      "accepted_reports": 80,
+      "report_http_receipts": 80,
+      "raw_bytes_match_nonce_bound_observer_files": true
+    },
+    "local_network_permission": "The iPadOS Local Network prompt was accepted unattended by the retained XCUITest helper with user authorization for device use (one tap, 2026-11-02T17:38:43Z), before the g initial report was copied. The helper did not touch the app, keys or reports; its screenshots/logs stay private."
+  },
+  "structural_FFI_and_data": {
+    "base_free_reports_with_3_checks": 41,
+    "paid_reports_with_16_checks": 40,
+    "all_reports_ffi_verified_structural_verified_callbacks_closed": true,
+    "data_schema_distribution": {
+      "schema_1": 6,
+      "schema_2": 2,
+      "schema_3": 73
+    },
+    "sentinel_and_additive_pro_enterprise_data_preserved": true,
+    "no_key_material_in_accepted_reports": true
+  },
+  "authorization_and_cache_cases": {
+    "native_key_control_receipts": 10,
+    "key_control_actions": {
+      "provision": 4,
+      "overwrite": 4,
+      "delete": 2
+    },
+    "both_paid_variants_missing_and_wrong_key_free_fallback_with_offline_recovery": true,
+    "native_fixed_path_CAS_tamper_cases": 4,
+    "tamper_matrix": "Pro and enterprise, each ciphertext and cached-signature corruption, bundled-free fallback, explicit signed free then paid repair, and paid offline recovery.",
+    "fallback_expected_reports": 10,
+    "verified_successful_target_HTTP_downloads": {
+      "pro": 7,
+      "enterprise": 7,
+      "total": 14
+    },
+    "failed_or_foreign_transfer_count": 0,
+    "reports_with_a_successful_download": 14,
+    "total_accepted_assignments_staged": 24,
+    "transfer_policy": "Counts are the per-stage download receipts recorded in the accepted stage receipts (successful, failed and all-GET counts per stage); offline, free and fallback stages recorded zero."
+  },
+  "lease": {
+    "valid_paid_offline_report_accepted": true,
+    "post_deadline_bundled_free_report_accepted": true,
+    "signed_deadline": 1793641898,
+    "expiry_reason": "expired"
+  },
+  "old_response_replay": {
+    "stage": "old-response-rejected",
+    "accepted": true,
+    "capture_epoch": "21",
+    "replay_launch_epoch": "22",
+    "complete_old_response_delivery_receipts": 1,
+    "response_bytes": 5258,
+    "captured_response_sha256": "539d806a55705d9d46c6c4d8d8efa88147da781aafad19c47299eac025c0330c",
+    "accepted_report_sha256": "44306f9151c09741d2e95f05fc891b5a7e062250333b690cbfe5a0da278835ff",
+    "report_rejected_check": true,
+    "report_fell_back_to_free_with_expired_reason": true,
+    "device_report_completion_minus_host_delivery_start_seconds": 0.0396,
+    "clock_domain_oracle": "The corrected predicate accepted: device report completion followed host delivery start. The IOS-4 value was -0.049 s and refused acceptance.",
+    "replay_service_stopped_before_next_stage": true,
+    "limitation": "Old-response replay combines old nonce and epoch; no isolated rejection-branch claim."
+  },
+  "rollback_and_final_stages": {
+    "authenticated_rollback": {"variant": "enterprise", "patch_id": 3, "is_rolled_back": true},
+    "rollback_cold_and_checked_free_accepted": true,
+    "authenticated_rollforward": {"variant": "enterprise", "patch_id": 3, "is_rolled_back": false},
+    "rollforward_did_not_implicitly_restore_paid": true,
+    "explicit_paid_reauthorization_assign_check_cold_accepted": true,
+    "final_signed_free_assign_check_cold_accepted": true,
+    "final_offline_free_accepted": true
+  },
+  "deviations": [
+    {
+      "id": "workspace-move",
+      "detail": "The workspace moved to the current root after preparation. Sealed files were not edited: an in-memory path-migration wrapper checks sealed hashes, and derived operator copies change only ROOT and DEFAULT_WORK. Private git clone alternates/remote paths were repointed.",
+      "receipt_sha256": "520819c8f56ad0136b86045e3ab1714c0ffc2c0daef3d5a65b1aee1feb785171"
+    },
+    {
+      "id": "scoped-home-signing",
+      "detail": "xcodebuild archive under the scoped HOME found zero codesigning identities and crashed in the Xcode account manager. Coordinator-authorized fallback: read-only symlinks (not copies) from the scoped HOME to the real keychain, Xcode preferences and provisioning profile directories (identities 0 to 3). No secret contents were recorded. The symlinks were not removed by this run.",
+      "receipt_sha256": "686b4f5d9889cfd6a4dda5f64edbb97a9b075d627f12a261ef6de2e96846773c"
+    },
+    {
+      "id": "session-f-not-evidence",
+      "detail": "Session f is NOT accepted evidence. Its base was re-exported from the release archive; its initial report was lost while the Local Network prompt was pending (nonce burned, no retry); the UI helper's re-activation then launched f's app once, unplanned, which failed closed with no keys provisioned. Native cleanup, key deletion and uninstall passed. Session f accepted only api-ready; it has no launch acceptance.",
+      "f_accepted_cases": ["api-ready"],
+      "f_cleanup_final": {"all_variant_keys_deleted": true, "owned_app_uninstalled": true, "secrets_removed": true, "unresolved_runtime_controls_preserved": false}
+    },
+    {
+      "id": "session-g-aborted-wrapper",
+      "detail": "A first g attempt used the f-bound CLI wrapper, exited 74 before any build and stopped its API; it is retained as g-aborted-f-wrapper. g then used a copy of the wrapper changing only the config path, and the private HOME config link was re-pointed.",
+      "config_binding_receipt_sha256": "f29c56e6f92f9a7aa83f535f8a6f62ebd5d3f393d50e7d1b83677375f4b2ad01"
+    },
+    {
+      "id": "session-g-initial-adoption",
+      "detail": "The g initial report was adopted through the explicit USB copy plus operator --adopt-initial route, as in IOS-4. The Local Network prompt was accepted by the XCUITest helper."
+    },
+    {
+      "id": "invalid-direct-init",
+      "detail": "A direct initialize() call through the f-derived operator (read-only import, no device action) bypassed the work-directory guard and recorded the f copy hash. It was moved aside unmodified as staged-lifecycle-v2.invalid-direct-init-20261103 and re-initialized through the g CLI.",
+      "derivation_receipt_sha256": "965683311ea60ea24a6f665da140818cd6931422d150078884082ff641cbb9b6"
+    },
+    {
+      "id": "operator-stops",
+      "detail": "Two operator stops were resolved only through its allowed resume paths with no retry beyond that: pro-keys-api-off (the driver failed to stop the main-owned pre-init API; a precondition failure with no device action) and past-lease-deadline (a read-only gate run before the real deadline had passed)."
+    }
+  ],
+  "distribution_of_evidence": {
+    "build_only": false,
+    "unit_only": false,
+    "runtime_on_physical_device": true,
+    "hardware": "single physical iPad; no simulator, emulator or debugger route"
+  },
+  "cleanup": {
+    "complete": true,
+    "native_cleanup_mode": "native-keychain-cleanup-only",
+    "native_cleanup_accepted_receipts": 1,
+    "native_cleanup_receipt_sha256": "05000fdc991a52f7cea602ef03fe514ee62c98d4666f2df2425306e5b426a4cf",
+    "keys_deleted": {"pro": true, "enterprise": true},
+    "cleanup_final": {
+      "all_variant_keys_deleted": true,
+      "owned_app_uninstalled": true,
+      "secrets_removed": true,
+      "unresolved_runtime_controls_preserved": false
+    },
+    "cleanup_final_receipt_sha256": "18a14b2ddb1c95b46ecf78854d87affefa85645bcff040fcdb9677d539c91a5c",
+    "uninstall_log_sha256": "fe6392f93e98560a3e83a03b44597798c92392632a5cbc5f2fc937904c141929",
+    "owned_service_controllers_recorded_stopped": ["api", "observer", "replay"],
+    "driver_runtime_complete_result_cleanup_complete": false,
+    "driver_runtime_complete_note": "The runtime-complete stage ran before native cleanup and therefore recorded cleanup_complete false; native cleanup, observer stop and final cleanup were completed afterward and are recorded here.",
+    "left_in_place": "Read-only scoped-HOME symlinks to the real keychain, Xcode preferences and provisioning profiles, and private session directories, are retained for the operator to remove."
+  },
+  "remaining_unproven": [
+    "CI at the final integration revision, including the remaining ARM64 app runtime gates",
+    "Isolated old-nonce and old-epoch rejection branches",
+    "Other app targets",
+    "Release publication on a hosted service"
+  ],
+  "audit_limits": "Counts were computed from the private per-case accepted receipts, raw reports, state and cleanup receipts. The recorder did not independently rerun the operator validators or any device stage. Private absolute reports, keys, tokens, signed URLs and screenshots are not copied here."
+}
