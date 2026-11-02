@@ -69,7 +69,8 @@ def require_open(work, state, *, deletion=False):
 
 
 def fixture_sources():
-    return [Path(__file__), Path(adversarial.__file__), TEMPLATES / 'AppDelegate.swift.template', TEMPLATES / 'CacheControls.swift.template', TEMPLATES / 'Diagnostics.swift.template', TEMPLATES / 'variant_status.dart.template',
+    return [Path(__file__), Path(adversarial.__file__), TEMPLATES / 'AppDelegate.swift.template', TEMPLATES / 'CacheControls.swift.template', TEMPLATES / 'Diagnostics.swift.template', TEMPLATES / 'LaunchContext.swift.template',
+        TEMPLATES / 'LaunchContext.dart.template', TEMPLATES / 'variant_status.dart.template',
         Path(ios.__file__), Path(selection.__file__), Path(selection.v1.__file__),
         Path(__file__).with_name('owned_host_processes.py'),
         ios.FIXTURE / 'ios/Runner/FullFfiFixture.c', ios.FIXTURE / 'ios/Runner/FullFfiFixture.h',
@@ -190,8 +191,10 @@ def apply_profile(work, state, phase):
         'pro': "class ProVariantFeature { int calculate(int value) => value * 7; }\nString variantSpecificCode() => 'pro:${ProVariantFeature().calculate(6)}';",
         'enterprise': "class EnterpriseVariantFeature { final List<int> seats; EnterpriseVariantFeature(this.seats); int total() => seats.fold(0, (a, b) => a + b); }\nString enterpriseOnlyFunction() => 'enterprise:${EnterpriseVariantFeature([4, 8, 12]).total()}';\nString variantSpecificCode() => enterpriseOnlyFunction();",
     }[phase]
-    source = (TEMPLATES / 'variant_status.dart.template').read_text()
+    source = (TEMPLATES / 'variant_status.dart.template').read_text().replace('__LAUNCH_CONTEXT_DART__',
+        (TEMPLATES / 'LaunchContext.dart.template').read_text())
     for key, value in {'__SESSION__': state['session'], '__SENTINEL__': state['sentinel'],
+            '__BUNDLE_ID__': state['bundle_id'], '__REPORT_URL__': state['report_url'],
             '__VARIANT__': variant, '__DATA_SCHEMA__': str({'free': 1, 'pro': 2, 'enterprise': 3}[variant]), '__VARIANT_CODE__': code}.items():
         source = source.replace(key, value)
     ios.private_write(work / 'app/lib/variant_status.dart', source)
@@ -230,8 +233,9 @@ def configure_native(work, state):
     source = (TEMPLATES / 'AppDelegate.swift.template').read_text()
     source = source.replace('__CACHE_CONTROLS__', (TEMPLATES / 'CacheControls.swift.template').read_text())
     source = source.replace('__DIAGNOSTICS__', (TEMPLATES / 'Diagnostics.swift.template').read_text())
+    source = source.replace('__LAUNCH_CONTEXT_SWIFT__', (TEMPLATES / 'LaunchContext.swift.template').read_text())
     for key, value in {'__SERVICE__': state['key_service'], '__BUNDLE_ID__': state['bundle_id'],
-            '__SESSION__': state['session'], '__APP_ID__': state['app_id'], '__RELEASE__': state['release_version'],
+            '__SESSION__': state['session'], '__REPORT_URL__': state['report_url'], '__APP_ID__': state['app_id'], '__RELEASE__': state['release_version'],
             '__PRO_KEY_ID__': state['key_ids']['pro'], '__ENTERPRISE_KEY_ID__': state['key_ids']['enterprise']}.items():
         source = source.replace(key, value)
     ios.private_write(work / 'app/ios/Runner/AppDelegate.swift', source)

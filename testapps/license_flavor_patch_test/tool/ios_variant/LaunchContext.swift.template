@@ -1,0 +1,43 @@
+import Foundation
+
+// Normal-launch control transport only. iOS intentionally exposes no Dart
+// Platform.environment. Never copy keys, credentials or the full environment.
+enum IosVariantLaunchContext {
+  static func write(temporary: URL, evidence: URL, session: String, bundle: String,
+      observer: String, environment: [String: String], pid: Int, created: Double) -> Bool {
+    guard session.range(of: "^[a-f0-9]{12}$", options: .regularExpression) != nil,
+          bundle == "org.tonycloud.shorebird-ios-variant." + session,
+          let nonce = environment["OPEN_SHOREBIRD_TEST_NONCE"],
+          nonce.range(of: "^[a-f0-9]{48}$", options: .regularExpression) != nil,
+          pid > 0, created.isFinite, created > 0 else { return false }
+    let check = environment["OPEN_SHOREBIRD_TEST_CHECK"] ?? "0"
+    let report = environment["OPEN_SHOREBIRD_TEST_REPORT_ROUTE"] ?? "native"
+    let status = environment["OPEN_SHOREBIRD_TEST_STATUS_ROUTE"] ?? "public"
+    guard ["0", "1"].contains(check), ["native", "dart", "file"].contains(report),
+          ["public", "native-ffi"].contains(status),
+          (environment["OPEN_SHOREBIRD_TEST_OBSERVER"] ?? observer) == observer,
+          let endpoint = URLComponents(string: observer), endpoint.scheme == "http",
+          let host = endpoint.host, !host.isEmpty,
+          let port = endpoint.port, port > 0, port <= 65535,
+          endpoint.path == "/report/" + session, endpoint.query == nil,
+          endpoint.fragment == nil, endpoint.user == nil, endpoint.password == nil else { return false }
+    let temp = temporary.resolvingSymlinksInPath().standardizedFileURL
+    let expected = temp.deletingLastPathComponent()
+      .appendingPathComponent("Library/Application Support/shorebird-ios-variant-fixture", isDirectory: true)
+      .resolvingSymlinksInPath().standardizedFileURL
+    guard evidence.resolvingSymlinksInPath().standardizedFileURL == expected else { return false }
+    let value: [String: Any] = ["schema": "ios-variant-launch-context-v1", "session": session,
+      "bundle_id": bundle, "nonce": nonce, "check": check == "1", "report_route": report,
+      "status_route": status, "evidence_dir": evidence.path, "observer_url": observer,
+      "pid": pid, "created_at": created]
+    do {
+      try FileManager.default.createDirectory(at: evidence, withIntermediateDirectories: true)
+      let data = try JSONSerialization.data(withJSONObject: value, options: [.sortedKeys])
+      guard data.count <= 8192 else { return false }
+      let file = temp.appendingPathComponent("shorebird-ios-variant-" + session + ".json")
+      try data.write(to: file, options: [.atomic])
+      try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: file.path)
+      return true
+    } catch { return false }
+  }
+}

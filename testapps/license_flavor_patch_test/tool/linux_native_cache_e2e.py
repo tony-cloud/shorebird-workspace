@@ -573,8 +573,14 @@ class Lifecycle:
         org = self.request('POST', '/api/v1/organizations', {'name': 'Disposable Linux native E2E'})
         app = self.request('POST', '/api/v1/apps', {'organization_id': org['id'], 'display_name': 'Linux native encrypted lifecycle'})
         self.app_id = str(uuid.UUID(app['id']))
-        self.cache = self.work / 'home/.shorebird_cache'
-        self.cache.mkdir(mode=0o700)
+        # fl_shorebird supplies the private HOME cache root; the shared desktop
+        # ConfigureShorebird then appends shorebird_updater/<app_id>.
+        candidate = self.work / 'home/.shorebird_cache/shorebird_updater' / self.app_id
+        try:
+            candidate.mkdir(parents=True, mode=0o700)
+        except FileExistsError:
+            raise FixtureError('Refusing existing updater app cache') from None
+        self.cache = candidate
         self.cache_owned = True
         (self.work / 'app/shorebird.yaml').write_text(
             f'app_id: {self.app_id}\nbase_url: {self.api_url}\nauto_update: true\n'

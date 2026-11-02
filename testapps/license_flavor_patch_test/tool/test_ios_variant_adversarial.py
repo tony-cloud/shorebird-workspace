@@ -319,6 +319,10 @@ class AdversarialTest(unittest.TestCase):
         branch = source.index('if env["OPEN_SHOREBIRD_TEST_CLEANUP_KEYS_ONLY"]')
         self.assertLess(branch, source.index('cacheBefore = try IosVariantCache.snapshot'))
         self.assertLess(source.index('cleanupReceipt = receipt'), source.index('setShorebirdAotPatchKeyProviderV2'))
+        native_boot = source[source.index('static func beforeEngine()'):]
+        self.assertLess(native_boot.index('return\n    }'), native_boot.index('IosVariantLaunchContext.write('))
+        self.assertLess(native_boot.index('IosVariantLaunchContext.write('), native_boot.index('cacheBefore = try'))
+        self.assertLess(native_boot.index('IosVariantLaunchContext.write('), native_boot.index('if let action = env["OPEN_SHOREBIRD_TEST_KEY_ACTION"]'))
         app = source[source.index('@main'):source.index('@objc class IosVariantSceneDelegate:')]
         self.assertIn('class AppDelegate: UIResponder, UIApplicationDelegate', app)
         self.assertNotIn('class AppDelegate: FlutterAppDelegate', app)
@@ -405,7 +409,7 @@ class AdversarialTest(unittest.TestCase):
         source = (self.work / 'app/lib/variant_status.dart').read_text()
         for before, operation, after in ((2, 'final updater = ShorebirdUpdater();', 3),
                 (4, 'final installation = nativeStatus ?', 5),
-                (6, 'final initial = nativeStatus ?', 7), (8, 'final data = updateFixtureData();', 9)):
+                (6, 'final initial = nativeStatus ?', 7), (8, 'final data = updateFixtureData(context);', 9)):
             with self.subTest(operation=operation):
                 self.assertLess(source.index(f'_nativeDiagnosticStage({before}, flags);'), source.index(operation))
                 self.assertLess(source.index(operation), source.index(f'_nativeDiagnosticStage({after}, flags'))
@@ -510,10 +514,32 @@ class NativeDiagnosticTest(unittest.TestCase):
         cls.addClassCleanup(cls.temp.cleanup)
         cls.work = Path(cls.temp.name).resolve()
         source = cls.work / 'Diagnostic.swift'
-        source.write_text((runner.TEMPLATES / 'Diagnostics.swift.template').read_text() + r'''
+        source.write_text((runner.TEMPLATES / 'Diagnostics.swift.template').read_text() +
+            (runner.TEMPLATES / 'LaunchContext.swift.template').read_text() + r'''
 @main struct TestMain {
   static func main() throws {
     let root = URL(fileURLWithPath: CommandLine.arguments[1], isDirectory: true)
+    let temporary = root.appendingPathComponent("app/tmp", isDirectory: true)
+    let evidence = root.appendingPathComponent("app/Library/Application Support/shorebird-ios-variant-fixture", isDirectory: true)
+    try FileManager.default.createDirectory(at: temporary, withIntermediateDirectories: true)
+    let session = "0123456789ab"
+    let endpoint = "http://192.0.2.1:12345/report/" + session
+    var environment = ["OPEN_SHOREBIRD_TEST_NONCE": String(repeating: "a", count: 48),
+      "OPEN_SHOREBIRD_TEST_CHECK": "1", "OPEN_SHOREBIRD_TEST_REPORT_ROUTE": "dart",
+      "OPEN_SHOREBIRD_TEST_STATUS_ROUTE": "native-ffi", "KEY_HEX": "never-log-this-secret"]
+    precondition(IosVariantLaunchContext.write(temporary: temporary, evidence: evidence, session: session,
+      bundle: "org.tonycloud.shorebird-ios-variant." + session, observer: endpoint,
+      environment: environment, pid: 42, created: Date().timeIntervalSince1970))
+    environment["OPEN_SHOREBIRD_TEST_NONCE"] = "invalid"
+    precondition(!IosVariantLaunchContext.write(temporary: temporary, evidence: evidence, session: session,
+      bundle: "org.tonycloud.shorebird-ios-variant." + session, observer: endpoint,
+      environment: environment, pid: 42, created: Date().timeIntervalSince1970))
+    let defaultSession = "abcdefabcdef"
+    precondition(IosVariantLaunchContext.write(temporary: temporary, evidence: evidence, session: defaultSession,
+      bundle: "org.tonycloud.shorebird-ios-variant." + defaultSession,
+      observer: "http://192.0.2.1:12345/report/" + defaultSession,
+      environment: ["OPEN_SHOREBIRD_TEST_NONCE": String(repeating: "b", count: 48)],
+      pid: 42, created: Date().timeIntervalSince1970))
     let context: [String: Any] = ["session": "test-session", "pid": 42, "nonce": String(repeating: "a", count: 48),
       "home_present": false, "status_route": "public", "report_route": "native", "KEY_HEX": "never-log-this-secret"]
     _ = IosVariantDiagnostics.record(root: root, context: context, stage: 0, value: 0)
@@ -549,6 +575,20 @@ class NativeDiagnosticTest(unittest.TestCase):
             self.assertEqual(rows[-1]['error'], payload)
             self.assertEqual(path.stat().st_mode & 0o777, 0o600)
             self.assertNotIn('never-log-this-secret', path.read_text())
+            launch_file = Path(directory) / 'app/tmp/shorebird-ios-variant-0123456789ab.json'
+            launch = json.loads(launch_file.read_text())
+            self.assertEqual(set(launch), {'schema', 'session', 'bundle_id', 'nonce', 'check', 'report_route',
+                'status_route', 'observer_url', 'evidence_dir', 'pid', 'created_at'})
+            self.assertEqual(launch['schema'], 'ios-variant-launch-context-v1')
+            self.assertTrue(launch['check'])
+            self.assertEqual((launch['report_route'], launch['status_route']), ('dart', 'native-ffi'))
+            self.assertEqual(launch['pid'], 42)
+            self.assertEqual(launch['nonce'], 'a' * 48)
+            self.assertEqual(launch_file.stat().st_mode & 0o777, 0o600)
+            self.assertNotIn('never-log-this-secret', launch_file.read_text())
+            defaults = json.loads((Path(directory) / 'app/tmp/shorebird-ios-variant-abcdefabcdef.json').read_text())
+            self.assertFalse(defaults['check'])
+            self.assertEqual((defaults['report_route'], defaults['status_route']), ('native', 'public'))
 
     def test_actual_native_refuses_unsanitized_error_payload_and_arbitrary_frame_uri(self):
         for payload in (dict(error_type='StateError', frames=[], message='never-log-this-secret'),

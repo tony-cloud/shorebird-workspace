@@ -1,0 +1,53 @@
+// Private fixed-session file; no environment fallback, network or native FFI.
+final class FixtureLaunchContext {
+  final String nonce;
+  final bool check;
+  final String reportRoute;
+  final String statusRoute;
+  final String evidenceDirectory;
+  final Uri observer;
+  const FixtureLaunchContext(this.nonce, this.check, this.reportRoute,
+      this.statusRoute, this.evidenceDirectory, this.observer);
+}
+
+FixtureLaunchContext readFixtureLaunchContext() =>
+    _readFixtureLaunchContext(Directory.systemTemp);
+
+FixtureLaunchContext _readFixtureLaunchContext(Directory temporary) {
+  Never invalid() => throw StateError('Invalid or stale native launch context');
+  final temp = Directory(temporary.resolveSymbolicLinksSync());
+  final file = File('${temp.path}/shorebird-ios-variant-$fixtureSession.json');
+  if (FileSystemEntity.typeSync(file.path, followLinks: false) != FileSystemEntityType.file) invalid();
+  final stat = file.statSync();
+  if (stat.size <= 0 || stat.size > 8192) invalid();
+  final bytes = file.readAsBytesSync();
+  if (bytes.length != stat.size || bytes.length > 8192) invalid();
+  final decoded = jsonDecode(utf8.decode(bytes));
+  const fields = <String>{'schema', 'session', 'bundle_id', 'nonce', 'check',
+    'report_route', 'status_route', 'evidence_dir', 'observer_url', 'pid', 'created_at'};
+  if (decoded is! Map<String, dynamic> || decoded.length != fields.length ||
+      !decoded.keys.every(fields.contains)) invalid();
+  if (decoded['schema'] != 'ios-variant-launch-context-v1' ||
+      decoded['session'] != fixtureSession || decoded['bundle_id'] != fixtureBundleId ||
+      decoded['pid'] is! int || decoded['pid'] != pid ||
+      decoded['nonce'] is! String || !RegExp(r'^[a-f0-9]{48}$').hasMatch(decoded['nonce'] as String) ||
+      decoded['check'] is! bool || !const ['native', 'dart', 'file'].contains(decoded['report_route']) ||
+      !const ['public', 'native-ffi'].contains(decoded['status_route']) ||
+      decoded['observer_url'] != fixtureObserverUrl || decoded['created_at'] is! num) invalid();
+  final created = (decoded['created_at'] as num).toDouble();
+  final now = DateTime.now().millisecondsSinceEpoch / 1000;
+  final modified = stat.modified.millisecondsSinceEpoch / 1000;
+  if (!created.isFinite || created <= 0 || created > now + 2 || now - created > 120 ||
+      (modified - created).abs() > 2) invalid();
+  final expected = Directory('${temp.parent.path}/Library/Application Support/shorebird-ios-variant-fixture')
+      .resolveSymbolicLinksSync();
+  final evidence = decoded['evidence_dir'];
+  if (evidence is! String || !evidence.startsWith('/') ||
+      Directory(evidence).resolveSymbolicLinksSync() != expected) invalid();
+  final observer = Uri.parse(decoded['observer_url'] as String);
+  if (observer.scheme != 'http' || !observer.hasAuthority || observer.host.isEmpty ||
+      observer.port <= 0 || observer.port > 65535 || observer.userInfo.isNotEmpty ||
+      observer.hasQuery || observer.hasFragment || observer.path != '/report/$fixtureSession') invalid();
+  return FixtureLaunchContext(decoded['nonce'] as String, decoded['check'] as bool,
+      decoded['report_route'] as String, decoded['status_route'] as String, expected, observer);
+}

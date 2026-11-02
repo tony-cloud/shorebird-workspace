@@ -8,6 +8,7 @@ from pathlib import Path
 import shutil
 import signal
 import select
+import sqlite3
 import sys
 import subprocess
 import tempfile
@@ -285,6 +286,104 @@ class EnvironmentAndInjectionTest(unittest.TestCase):
         lifecycle = e2e.Lifecycle(args)
         lifecycle.ring = mock.Mock(serial=91)
         return lifecycle
+
+    def test_registration_reads_engine_app_namespace_for_both_architectures(self):
+        # Only the filesystem/SQL observation path runs here. The simulated
+        # Runner writes where fl_shorebird + ConfigureShorebird put real state;
+        # no app, API, keyring, or build is started by this regression test.
+        class RegistrationObserved(Exception):
+            pass
+
+        for arch, runtime in (('x64', 'x86_64'), ('arm64', 'aarch64')):
+            with self.subTest(arch=arch), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                for name in ('home', 'app'):
+                    (root / name).mkdir()
+                lifecycle = self.lifecycle(root)
+                lifecycle.args.arch = arch
+                lifecycle.args.runtime_timeout = .2
+                app_id = context()['app_id']
+                lifecycle.request = mock.Mock(side_effect=[
+                    {'token': 'unit-token'}, {'id': 1}, {'id': app_id}])
+                expected = root / 'home/.shorebird_cache/shorebird_updater' / app_id
+                with contextlib.closing(sqlite3.connect(root / 'server.sqlite')) as database:
+                    database.execute('CREATE TABLE patch_events (app_id, client_id, event_type, arch, platform, release_version)')
+                    database.execute('INSERT INTO patch_events VALUES (?, ?, ?, ?, ?, ?)',
+                        (app_id, 'unit-updater-client', 'PatchCheck', runtime, 'linux', '1.0.0+1'))
+                    database.commit()
+
+                def build(patch=False):
+                    if patch:
+                        raise RegistrationObserved
+                    lifecycle.release_version = '1.0.0+1'
+
+                def launch(*_args, **_kwargs):
+                    expected.mkdir(parents=True, exist_ok=True)
+                    (expected / 'state.json').write_text(json.dumps({'client_id': 'unit-updater-client'}))
+
+                with contextlib.ExitStack() as stack:
+                    connect = sqlite3.connect
+                    def owned_connection(*args, **kwargs):
+                        database = connect(*args, **kwargs)
+                        stack.callback(database.close)
+                        return database
+                    stack.enter_context(mock.patch.object(sqlite3, 'connect', side_effect=owned_connection))
+                    for name in ('prepare', 'start_api', 'make_observer', 'probe_provider', 'stop_app'):
+                        stack.enter_context(mock.patch.object(lifecycle, name))
+                    stack.enter_context(mock.patch.object(e2e, 'LocalService'))
+                    stack.enter_context(mock.patch.object(lifecycle, 'build', side_effect=build))
+                    stack.enter_context(mock.patch.object(lifecycle, 'launch', side_effect=launch))
+                    rows = stack.enter_context(mock.patch.object(lifecycle, 'rows', wraps=lifecycle.rows))
+                    with self.assertRaises(RegistrationObserved):
+                        lifecycle.execute()
+                    self.assertEqual(rows.call_args.args[1], (app_id, 'unit-updater-client', 'PatchCheck'))
+                    lifecycle.stop_app.assert_called_once_with()
+                self.assertEqual(lifecycle.cache, expected)
+                self.assertFalse((expected.parent.parent / 'state.json').exists())
+
+    def test_v1_and_inherited_v2_bootstrap_own_only_empty_app_cache_inside_work(self):
+        import linux_variant_e2e
+        for kind in (e2e.Lifecycle, linux_variant_e2e.Lifecycle):
+            with self.subTest(kind=kind), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                work = root / 'owned'
+                (work / 'home').mkdir(parents=True)
+                (work / 'app').mkdir()
+                unrelated = root / 'unrelated'
+                unrelated.write_text('preserve')
+                lifecycle = kind(mock.Mock(arch='x64', work=work))
+                lifecycle.work_owned = True
+                app_id = context()['app_id']
+                lifecycle.request = mock.Mock(side_effect=[
+                    {'token': 'unit-token'}, {'id': 1}, {'id': app_id}])
+                lifecycle.bootstrap()
+                expected = work / 'home/.shorebird_cache/shorebird_updater' / app_id
+                self.assertEqual(lifecycle.cache, expected)
+                self.assertTrue(lifecycle.cache_owned)
+                self.assertEqual(list(expected.iterdir()), [])
+                self.assertEqual(expected.stat().st_mode & 0o777, 0o700)
+                self.assertIn('app_id: ' + app_id + '\n', (work / 'app/shorebird.yaml').read_text())
+                lifecycle.cleanup()
+                self.assertFalse(work.exists())
+                self.assertEqual(unrelated.read_text(), 'preserve')
+
+    def test_bootstrap_refuses_existing_app_cache_without_claiming_it(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / 'app').mkdir()
+            app_id = context()['app_id']
+            expected = root / 'home/.shorebird_cache/shorebird_updater' / app_id
+            expected.mkdir(parents=True)
+            sentinel = expected / 'state.json'
+            sentinel.write_text('preserve')
+            lifecycle = self.lifecycle(root)
+            lifecycle.request = mock.Mock(side_effect=[
+                {'token': 'unit-token'}, {'id': 1}, {'id': app_id}])
+            with self.assertRaisesRegex(e2e.FixtureError, 'Refusing existing updater app cache'):
+                lifecycle.bootstrap()
+            self.assertFalse(lifecycle.cache_owned)
+            self.assertIsNone(lifecycle.cache)
+            self.assertEqual(sentinel.read_text(), 'preserve')
 
     def test_private_runtime_home_and_no_inherited_provisioning_proxy_or_credentials(self):
         with tempfile.TemporaryDirectory() as temp:

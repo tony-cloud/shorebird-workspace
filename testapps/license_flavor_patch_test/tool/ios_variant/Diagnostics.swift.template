@@ -15,7 +15,7 @@ enum IosVariantDiagnostics {
     15: "report-allocation-after", 16: "report-lookup-before", 17: "report-lookup-after",
     18: "report-call-before", 19: "report-call-after", 20: "error", 21: "function-complete",
     22: "root-isolate-heartbeat", 23: "native-report-entered", 24: "native-report-written",
-    25: "native-report-http-started", 26: "dart-environment-read", 90: "error-detail-before", 92: "error-detail-after"]
+    25: "native-report-http-started", 26: "dart-environment-read", 27: "launch-context-before", 28: "launch-context-after", 90: "error-detail-before", 92: "error-detail-after"]
 
   static func record(root: URL, context: [String: Any], stage: Int64, value: Int64) -> Bool {
     lock.lock()

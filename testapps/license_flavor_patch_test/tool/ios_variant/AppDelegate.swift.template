@@ -7,6 +7,8 @@ __CACHE_CONTROLS__
 
 __DIAGNOSTICS__
 
+__LAUNCH_CONTEXT_SWIFT__
+
 // Disposable independently authenticated provisioning control. Keys arrive only
 // in a private child environment, never assets, output, receipts or Dart code.
 enum IosVariantFixture {
@@ -119,6 +121,13 @@ enum IosVariantFixture {
       }
       return
     }
+    // Cleanup returned above. Publish only normal-launch routing data before
+    // any key/cache control and before Flutter, using native HOME/temp APIs.
+    precondition(IosVariantLaunchContext.write(
+      temporary: URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true),
+      evidence: evidenceDirectory, session: session, bundle: bundleID,
+      observer: "__REPORT_URL__", environment: env,
+      pid: Int(ProcessInfo.processInfo.processIdentifier), created: bootTime), "Could not bind native launch context")
     do {
       cacheBefore = try IosVariantCache.snapshot(cacheRoot)
       if let action = env["OPEN_SHOREBIRD_TEST_CACHE_ACTION"] {
