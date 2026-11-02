@@ -339,8 +339,11 @@ def scan_cache(cache, *, patch_hash, forbidden_secrets=()):
     for path in cache.rglob('*'):
         if path.is_symlink():
             raise FixtureError('Unexpected cache symlink')
+        # Required signed-response verification persists authentication.json
+        # before install; cold boots authenticate that record again. It remains
+        # subject to every plaintext/key check in the portable scan below.
         if path.is_file() and not (path.relative_to(cache).as_posix() in ('state.json', 'pointers.json') or
-                re.fullmatch(r'patches/[1-9][0-9]*/(?:state.json|transport.aesgcm)',
+                re.fullmatch(r'patches/[1-9][0-9]*/(?:state\.json|transport\.aesgcm|authentication\.json)',
                              path.relative_to(cache).as_posix())):
             raise FixtureError('Unexpected updater cache file')
     # The portable key-directory check sees an absent directory: no disk keys.

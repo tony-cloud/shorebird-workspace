@@ -591,6 +591,45 @@ class EnvironmentAndInjectionTest(unittest.TestCase):
 
 
 class CacheAndExecutionBoundaryTest(unittest.TestCase):
+    def test_persisted_signed_response_authentication_is_audited_without_exporting_payload(self):
+        # response_auth::persist_patch_authentication writes this alongside every
+        # installed response-verified patch. Use the actual server/Rust fixture.
+        response = json.loads((e2e.ROOT / 'updater/library/test_fixtures/server_response_v1.json').read_text())
+        authentication = json.dumps(response['response']['authentication']).encode()
+        with tempfile.TemporaryDirectory() as temp:
+            cache = Path(temp)
+            patch = cache / 'patches/3'
+            patch.mkdir(parents=True)
+            (patch / 'transport.aesgcm').write_bytes(b'ciphertext')
+            (patch / 'state.json').write_text('{"kind":"InstalledEncryptedTransportV1"}')
+            (patch / 'authentication.json').write_bytes(authentication)
+            result = e2e.scan_cache(cache, patch_hash='e' * 64)
+            entry = next(f for f in result['files'] if f['path'] == 'patches/3/authentication.json')
+            self.assertEqual(entry['sha256'], e2e.sha256(authentication))
+            self.assertEqual(entry['size'], len(authentication))
+            self.assertNotIn(response['response']['authentication']['payload'], json.dumps(result))
+            self.assertNotIn(response['response']['authentication']['signature'], json.dumps(result))
+
+            # Recognizing this metadata file must not bypass the portable
+            # plaintext-image/key scan or admit neighboring/temporary paths.
+            for content, reason in ((b'\x7fELFnative', 'Plaintext executable'),
+                                    (b'prefix secret-key suffix', 'Plaintext secret'),
+                                    (b'native-image', 'Plaintext executable')):
+                (patch / 'authentication.json').write_bytes(content)
+                with self.subTest(content=content), self.assertRaisesRegex(e2e.FixtureError, reason):
+                    e2e.scan_cache(cache, patch_hash=e2e.sha256(b'native-image'),
+                                   forbidden_secrets=(b'secret-key',))
+            (patch / 'authentication.json').write_bytes(authentication)
+            for relative in ('patches/3/authentication.json.tmp', 'patches/0/authentication.json',
+                             'patches/3/nested/authentication.json', 'patches/3/authenticationXjson',
+                             'patches/3/stateXjson', 'patches/3/transportXaesgcm'):
+                unknown = cache / relative
+                unknown.parent.mkdir(parents=True, exist_ok=True)
+                unknown.write_bytes(authentication)
+                with self.subTest(path=relative), self.assertRaisesRegex(e2e.FixtureError, 'Unexpected updater cache file'):
+                    e2e.scan_cache(cache, patch_hash='e' * 64)
+                unknown.unlink()
+
     def test_cache_final_files_only_and_plaintext_key_or_elf_rejected(self):
         with tempfile.TemporaryDirectory() as temp:
             cache = Path(temp)
