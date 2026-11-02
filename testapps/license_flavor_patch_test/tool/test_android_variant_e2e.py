@@ -303,6 +303,17 @@ class CleanupTest(unittest.TestCase):
                 self.assertEqual(ledger['confirmed_owned_reverse_mappings'],[])
                 self.assertNotIn('uncertain adb response',json.dumps(ledger))
 
+    def test_opt_in_retain_keeps_private_work_of_a_failed_run_only(self):
+        for result, retained in (('failed', True), ('passed', False)):
+            with self.subTest(result=result), tempfile.TemporaryDirectory() as directory, \
+                    patch.dict('os.environ', {'SHOREBIRD_E2E_RETAIN_WORK_ON_FAILURE': '1'}):
+                lifecycle=self.lifecycle(directory,'owned-package-absent')
+                lifecycle.manifest['result']=result
+                lifecycle.cleanup()
+                ledger=json.loads((lifecycle.args.results/'cleanup-ledger.json').read_text())
+                self.assertEqual(ledger['retained_work'],retained)
+                self.assertEqual(lifecycle.work.exists(),retained)
+
     def test_confirmed_absence_resolves_uncertain_uninstall_without_replaying_it(self):
         with tempfile.TemporaryDirectory() as directory:
             lifecycle=self.lifecycle(directory,'owned-package-absent')

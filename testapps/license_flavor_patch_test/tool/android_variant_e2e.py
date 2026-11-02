@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 from pathlib import Path
 import re
 import secrets
@@ -663,7 +664,10 @@ class Lifecycle(v1.Lifecycle):
                 host_clean = attempt('close-owned-' + name, service.close) and host_clean
         for index,log in enumerate(self.logs):
             host_clean = attempt('close-private-log-' + str(index), log.close) and host_clean
-        if self.work_owned and device_clean and host_clean:
+        retain = os.environ.get('SHOREBIRD_E2E_RETAIN_WORK_ON_FAILURE') == '1' and self.manifest.get('result') != 'passed'
+        if retain:
+            ledger['actions'].append({'action':'retain-private-work-for-diagnosis','result':'completed'})
+        if self.work_owned and device_clean and host_clean and not retain:
             if attempt('remove-owned-private-work', lambda:v1.remove_owned_work(self.work)):
                 self.work_owned = False
             else:
