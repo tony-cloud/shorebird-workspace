@@ -515,6 +515,8 @@ class EnvironmentAndInjectionTest(unittest.TestCase):
                 self.assertEqual(evidence['timed_out'], timeout)
                 self.assertEqual(evidence['classification'], 'missing_sky_engine')
                 self.assertEqual(evidence['log_sha256'], e2e.sha256(payload))
+                self.assertEqual(evidence['exception_types'], [])
+                self.assertEqual(evidence['known_messages'], [])
                 lifecycle.cleanup()
                 self.assertFalse(work.exists())
                 encoded = json.dumps(lifecycle.manifest)

@@ -78,6 +78,21 @@ HEX64 = re.compile(r'[0-9a-f]{64}\Z')
 MAX_BODY = 32768
 PUBLIC_FLUTTER_STORAGE = 'https://storage.googleapis.com'
 FAILURE_SCAN_BYTES = 64 * 1024
+EXCEPTION_TOKEN = re.compile(r'\b[A-Z][A-Za-z0-9]{2,60}(?:Exception|Error)\b')
+PUB_PACKAGE = re.compile(r'[a-z][a-z0-9_]{0,63}\Z')
+PUB_MENTION = re.compile(r'(?:\bdepends on |\b[Bb]ecause (?:every version of |no versions of )?)([a-z][a-z0-9_]{0,63})\b')
+PUB_STOP_WORDS = frozenset({'every', 'no', 'any', 'all', 'it', 'its', 'the', 'this', 'that', 'which', 'version',
+                            'versions', 'of', 'from', 'and', 'or', 'sdk', 'your', 'current', 'project'})
+# Fixed shorebird_cli release-path messages (shorebird/packages/shorebird_cli/lib/src/commands/release/
+# windows_releaser.dart and release_command.dart); only these enum keys are ever emitted.
+KNOWN_MESSAGES = (
+    (b'no release directory found at', 'release_directory_missing'),
+    (b'unable to determine the flutter version from', 'flutter_version_undetermined'),
+    (b'unable to parse a flutter version from the output of', 'flutter_version_unparsable'),
+    (b'unable to determine revision for flutter version', 'flutter_revision_unresolved'),
+    (b'failed to build release artifacts', 'release_build_failed'),
+)
+MAX_EXCEPTION_TYPES, MAX_PUB_PACKAGES = 5, 10
 
 
 class FixtureError(RuntimeError):
@@ -100,9 +115,10 @@ def command_failure(name, code, timed_out, path):
     """Retain only bounded, predefined diagnostics; never log text or captures."""
     size = path.stat().st_size
     with path.open('rb') as source:
-        head = source.read(FAILURE_SCAN_BYTES).lower()
+        raw_head = source.read(FAILURE_SCAN_BYTES)
         source.seek(max(0, size - FAILURE_SCAN_BYTES))
-        tail = source.read(FAILURE_SCAN_BYTES).lower()
+        raw_tail = source.read(FAILURE_SCAN_BYTES)
+    head, tail = raw_head.lower(), raw_tail.lower()
     def contains(value):
         return value in head or value in tail
     classification = 'unknown'
@@ -116,10 +132,38 @@ def command_failure(name, code, timed_out, path):
         classification = 'flutter_sdk_unavailable'
     elif contains(b'version solving failed'):
         classification = 'pub_solver'
-    return {'operation': name, 'exit_code': code, 'timed_out': timed_out,
-            'log_bytes': size, 'log_sha256': file_hash(path),
-            'classification': classification,
-            'classification_scan_truncated': size > 2 * FAILURE_SCAN_BYTES}
+    result = {'operation': name, 'exit_code': code, 'timed_out': timed_out,
+              'log_bytes': size, 'log_sha256': file_hash(path),
+              'classification': classification,
+              'classification_scan_truncated': size > 2 * FAILURE_SCAN_BYTES}
+    result.update(error_signature(raw_head, raw_tail, classification))
+    return result
+
+
+def error_signature(head, tail, classification):
+    """Bounded identifiers only: exception type names, pub package names, fixed enum keys."""
+    raw = head + b'\n' + tail
+    text = raw.decode('ascii', 'ignore')
+    exceptions = []
+    for token in (m.group(0) for m in EXCEPTION_TOKEN.finditer(text)):
+        if token not in exceptions:
+            exceptions.append(token)
+        if len(exceptions) == MAX_EXCEPTION_TYPES:
+            break
+    lowered = raw.lower()
+    signature = {'exception_types': exceptions,
+                 'known_messages': [key for needle, key in KNOWN_MESSAGES if needle in lowered]}
+    if classification == 'pub_solver':
+        packages = []
+        for match in PUB_MENTION.finditer(text):
+            name = match.group(1)
+            if name in PUB_STOP_WORDS or not PUB_PACKAGE.match(name) or name in packages:
+                continue
+            packages.append(name)
+            if len(packages) == MAX_PUB_PACKAGES:
+                break
+        signature['pub_conflict_packages'] = packages
+    return signature
 
 
 def stage_local_engine_packages(host, flutter):
@@ -1239,10 +1283,13 @@ def main(argv=None):
         print('Windows lifecycle failed; sanitized stage evidence retained.', flush=True)
         # Only fixed enums, numbers and authored FixtureError text are printed.
         detail = manifest.get('command_failure') or {}
-        print('Windows lifecycle failure: type={} after_stage={} reason={} command={} exit_code={} timed_out={} classification={}'.format(
+        print('Windows lifecycle failure: type={} after_stage={} reason={} command={} exit_code={} timed_out={} classification={} exception_types={} pub_conflict_packages={} known_messages={}'.format(
             manifest['failure']['type'], manifest['failure']['after_stage'],
             manifest['failure'].get('reason', 'unavailable'), detail.get('operation', 'none'),
-            detail.get('exit_code'), detail.get('timed_out'), detail.get('classification', 'none')), flush=True)
+            detail.get('exit_code'), detail.get('timed_out'), detail.get('classification', 'none'),
+            ','.join(detail.get('exception_types', [])) or 'none',
+            ','.join(detail.get('pub_conflict_packages', [])) or 'none',
+            ','.join(detail.get('known_messages', [])) or 'none'), flush=True)
     finally:
         try:
             if lifecycle:

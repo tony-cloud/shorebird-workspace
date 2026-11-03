@@ -919,10 +919,13 @@ def main(argv=None):
         print('Linux lifecycle failed; sanitized stage evidence retained.', flush=True)
         # Only fixed enums, numbers and authored FixtureError text are printed.
         detail = manifest.get('command_failure') or {}
-        print('Linux lifecycle failure: type={} after_stage={} reason={} command={} exit_code={} timed_out={} classification={}'.format(
+        print('Linux lifecycle failure: type={} after_stage={} reason={} command={} exit_code={} timed_out={} classification={} exception_types={} pub_conflict_packages={} known_messages={}'.format(
             manifest['failure']['type'], manifest['failure']['after_stage'],
             manifest['failure'].get('reason', 'unavailable'), detail.get('operation', 'none'),
-            detail.get('exit_code'), detail.get('timed_out'), detail.get('classification', 'none')), flush=True)
+            detail.get('exit_code'), detail.get('timed_out'), detail.get('classification', 'none'),
+            ','.join(detail.get('exception_types', [])) or 'none',
+            ','.join(detail.get('pub_conflict_packages', [])) or 'none',
+            ','.join(detail.get('known_messages', [])) or 'none'), flush=True)
     finally:
         try:
             if lifecycle:

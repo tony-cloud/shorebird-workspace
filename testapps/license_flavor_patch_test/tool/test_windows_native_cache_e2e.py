@@ -5,6 +5,7 @@ from email.message import Message
 import importlib.util
 import io
 import json
+import re
 import os
 from pathlib import Path
 import shutil
@@ -443,6 +444,37 @@ class CommandDiagnosticsTest(unittest.TestCase):
             self.assertTrue(result['classification_scan_truncated'])
             self.assertEqual(result['log_sha256'], e2e.sha256(content))
 
+    def test_error_signature_extracts_capped_identifiers_without_leaking_text(self):
+        secret = 'Bearer sk-live-SECRET https://private.invalid/?sig=abc C:\\Users\\private\\file.txt'
+        lines = [secret, 'Unhandled PathNotFoundException: ' + secret,
+                 'No release directory found at C:\\Users\\private\\build', 'Failed to build release artifacts: x']
+        lines += ['Error%dError thing' % i for i in range(3)]
+        lines += ['Type%cException' % c for c in 'ABCDEFGH']
+        lines += ['Because pkg%c depends on dep%c ^1.0.0 and fake-name_X depends on Bad.Name' % (c, c) for c in 'abcdefghijklmn']
+        lines += ['Because every version of flutter_lints depends on lints ^6.0.0, version solving failed.']
+        content = '\n'.join(lines).encode()
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / 'private.log'
+            path.write_bytes(content)
+            result = e2e.command_failure('release', 70, False, path)
+            self.assertEqual(result['classification'], 'pub_solver')
+            self.assertEqual(len(result['exception_types']), 5)
+            self.assertEqual(result['exception_types'][0], 'PathNotFoundException')
+            self.assertEqual(len(set(result['exception_types'])), 5)
+            self.assertEqual(len(result['pub_conflict_packages']), 10)
+            self.assertTrue(all(re.fullmatch(r'[a-z][a-z0-9_]{0,63}', n) for n in result['pub_conflict_packages']))
+            self.assertEqual(result['known_messages'], ['release_directory_missing', 'release_build_failed'])
+            encoded = json.dumps(result)
+            for leak in ('SECRET', 'private', 'sk-live', 'https', 'sig=', 'Bearer', 'file.txt', '1.0.0', 'Bad'):
+                self.assertNotIn(leak, encoded)
+            path.write_bytes(b'Because every version of flutter_lints depends on lints ^6.0.0, version solving failed.')
+            result = e2e.command_failure('generate-windows', 1, False, path)
+            self.assertEqual(result['pub_conflict_packages'], ['flutter_lints', 'lints'])
+            path.write_bytes(b'plain output')
+            result = e2e.command_failure('release', 70, False, path)
+            self.assertEqual((result['exception_types'], result['known_messages']), ([], []))
+            self.assertNotIn('pub_conflict_packages', result)
+
     def test_failed_and_timed_out_commands_retain_no_secrets_after_cleanup(self):
         for timeout in (False, True):
             with self.subTest(timeout=timeout), tempfile.TemporaryDirectory() as temp:
@@ -473,7 +505,8 @@ class CommandDiagnosticsTest(unittest.TestCase):
                 for secret in ('private-token', 'private.invalid', 'private-password', 'private-command', 'private-argument'):
                     self.assertNotIn(secret, encoded)
                 self.assertEqual(set(evidence), {'operation', 'exit_code', 'timed_out', 'log_bytes',
-                    'log_sha256', 'classification', 'classification_scan_truncated'})
+                    'log_sha256', 'classification', 'classification_scan_truncated',
+                    'exception_types', 'known_messages'})
 
 
 class ExecutionBoundaryTest(unittest.TestCase):
