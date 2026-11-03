@@ -3211,7 +3211,22 @@ assert!(windows_sdk_versions.all? && windows_sdk_versions.uniq.length == 1, 'Dar
 windows_sdk_generate = jobs.fetch('custom-dart-sdk-windows').fetch('steps').find { |step| step['name'] == 'Generate patched Dart SDK build files' }.fetch('run')
 assert!(windows_sdk_generate.include?('gn.RunGnOnConfiguredConfigurations(options, dict(os.environ))') && windows_sdk_generate.include?("sys.argv[0] = 'tools/gn.py'"), 'Windows SDK GN must preserve its source root and inherit native Python PATH and Visual Studio environment through the public build helper')
 windows_engine_build = jobs.fetch('windows-engine').fetch('steps').find { |step| step['name'] == 'Build Windows engine' }
-assert!(windows_engine_build.fetch('shell') == 'pwsh' && windows_engine_build.fetch('run').include?('Get-Command link.exe -CommandType Application') && windows_engine_build.fetch('run').include?('$linker.StartsWith($env:GYP_MSVS_OVERRIDE_PATH'), 'Windows engine updater must use the native Visual Studio linker rather than Git Bash GNU link.exe')
+assert!(windows_engine_build.fetch('shell') == 'pwsh' && windows_engine_build.fetch('run').include?('Get-Command link.exe -All -CommandType Application') && windows_engine_build.fetch('run').include?('$linker.StartsWith($env:GYP_MSVS_OVERRIDE_PATH'), 'Windows engine updater must use the native Visual Studio linker rather than Git Bash GNU link.exe')
+[['windows-engine', 'Hostx64\\x64'], ['windows-engine-arm64', 'HostARM64\\ARM64']].each do |linker_job, linker_dir|
+  linker_run = jobs.fetch(linker_job).fetch('steps').find { |step| step['name'] == 'Build Windows engine' }.fetch('run')
+  assert!(linker_run.include?("'bin\\#{linker_dir}'") && linker_run.include?('$candidates.Count -ne 1') && linker_run.include?('$env:VCToolsInstallDir'),
+          "#{linker_job} must resolve exactly one MSVC link.exe for its host/target and fail on zero or several candidates")
+end
+%w[windows linux].each do |lp|
+  [['', lp == 'windows' ? 'windows-engine' : 'linux-engine'], ['_arm64', lp == 'windows' ? 'windows-engine-arm64' : 'linux-engine-arm64']].each do |sfx, jn|
+    job_steps = jobs.fetch(jn).fetch('steps')
+    %w[provider lifecycle].each do |kind|
+      sid = "#{lp}_native_#{kind}#{sfx}"
+      assert!(job_steps.any? { |step| step['id'] == sid } && job_steps.any? { |step| step['if'] == "${{ always() && steps.#{sid}.outcome != 'skipped' }}" && step.dig('with', 'if-no-files-found') == 'error' },
+              "#{jn} #{kind} evidence upload must be skipped only when its producing step was skipped and must still require files")
+    end
+  end
+end
 windows_configure = jobs.fetch('windows-engine').fetch('steps').find { |step| step['name'] == 'Configure Windows engine' }.fetch('run')
 assert!(windows_configure.include?('--windows-cpu=x64') && !windows_configure.match?(/--windows(?:\s|$)/), 'native Windows engine must use the host recipe so Flutter applies its ANGLE Vulkan dependency mappings')
 assert!(flutter_engine_archives_build.include?('if (build_analyze_snapshot) {') && read_repo_file(repo_root, 'flutter/engine/src/flutter/BUILD.gn').include?('if (build_analyze_snapshot) {'), 'global host artifact groups must exclude Dart analyzers unsupported on 32-bit Windows Android toolchains')

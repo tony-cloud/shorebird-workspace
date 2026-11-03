@@ -1782,6 +1782,7 @@ jobs:
           (cd updater && cargo build --release --locked -p patch --bin patch)
 
       - name: Compile Linux session keyring provider contract
+        id: linux_native_provider
         run: |
           set -euo pipefail
           fixture="$GITHUB_WORKSPACE/testapps/license_flavor_patch_test/tool/linux_native"
@@ -1796,6 +1797,7 @@ jobs:
             2>&1 | tee "$results/build.log"
 
       - name: Run Linux encrypted native lifecycle
+        id: linux_native_lifecycle
         timeout-minutes: 75
         run: |
           set -euo pipefail
@@ -1830,7 +1832,7 @@ jobs:
           PYREPORT
 
       - name: Upload Linux native provider test evidence
-        if: ${{ always() }}
+        if: ${{ always() && steps.linux_native_provider.outcome != 'skipped' }}
         uses: actions/upload-artifact@v4
         with:
           name: linux-native-provider-tests
@@ -1838,7 +1840,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload Linux encrypted lifecycle evidence
-        if: ${{ always() }}
+        if: ${{ always() && steps.linux_native_lifecycle.outcome != 'skipped' }}
         uses: actions/upload-artifact@v4
         with:
           name: linux-native-cache-e2e
@@ -3379,8 +3381,16 @@ jobs:
         shell: pwsh
         working-directory: flutter/engine/src
         run: |
-          # Git Bash prepends its GNU link.exe ahead of the MSVC linker.
-          $linker = (Get-Command link.exe -CommandType Application).Source
+          # Git ships a GNU link.exe (usr/bin) that must never be selected. Accept
+          # exactly one MSVC link.exe for this host/target from the active toolset.
+          if (!$env:VCToolsInstallDir) { throw 'VCToolsInstallDir is not set; Visual Studio developer environment is missing' }
+          $expectedLinkerDir = [IO.Path]::GetFullPath((Join-Path $env:VCToolsInstallDir 'bin\Hostx64\x64'))
+          $found = @(Get-Command link.exe -All -CommandType Application -ErrorAction SilentlyContinue | ForEach-Object { $_.Source })
+          $candidates = @($found | Where-Object { [string]::Equals([IO.Path]::GetDirectoryName($_), $expectedLinkerDir, [StringComparison]::OrdinalIgnoreCase) } | Select-Object -Unique)
+          if ($candidates.Count -ne 1) {
+            throw "Expected exactly one MSVC Hostx64/x64 link.exe under $expectedLinkerDir, found $($candidates.Count) (all link.exe on PATH: $($found -join '; '))"
+          }
+          $linker = $candidates[0]
           if (!$linker.StartsWith($env:GYP_MSVS_OVERRIDE_PATH, [StringComparison]::OrdinalIgnoreCase)) {
             throw "Expected the Visual Studio linker, found $linker"
           }
@@ -3503,6 +3513,7 @@ jobs:
           } finally { Pop-Location }
 
       - name: Run Windows DPAPI provider contract
+        id: windows_native_provider
         shell: pwsh
         run: |
           $fixture = (Resolve-Path testapps/license_flavor_patch_test/tool/windows_native).Path
@@ -3523,6 +3534,7 @@ jobs:
           }
 
       - name: Run Windows encrypted native lifecycle
+        id: windows_native_lifecycle
         shell: pwsh
         timeout-minutes: 75
         run: |
@@ -3538,7 +3550,7 @@ jobs:
           }
 
       - name: Upload Windows native provider test evidence
-        if: ${{ always() }}
+        if: ${{ always() && steps.windows_native_provider.outcome != 'skipped' }}
         uses: actions/upload-artifact@v4
         with:
           name: windows-native-provider-tests
@@ -3546,7 +3558,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload Windows encrypted lifecycle evidence
-        if: ${{ always() }}
+        if: ${{ always() && steps.windows_native_lifecycle.outcome != 'skipped' }}
         uses: actions/upload-artifact@v4
         with:
           name: windows-native-cache-e2e
@@ -4721,6 +4733,7 @@ jobs:
           (cd updater && cargo build --release --locked -p patch --bin patch)
 
       - name: Compile Linux session keyring provider contract
+        id: linux_native_provider_arm64
         run: |
           set -euo pipefail
           fixture="$GITHUB_WORKSPACE/testapps/license_flavor_patch_test/tool/linux_native"
@@ -4735,6 +4748,7 @@ jobs:
             2>&1 | tee "$results/build.log"
 
       - name: Run Linux encrypted native lifecycle
+        id: linux_native_lifecycle_arm64
         timeout-minutes: 75
         run: |
           set -euo pipefail
@@ -4772,7 +4786,7 @@ jobs:
           "$NATIVE_PYTHON" scripts/verify_native_desktop_arch.py --platform linux --arch arm64 --require-native-host --lifecycle-report "$results/results.json"
 
       - name: Upload Linux native provider test evidence
-        if: ${{ always() }}
+        if: ${{ always() && steps.linux_native_provider_arm64.outcome != 'skipped' }}
         uses: actions/upload-artifact@v4
         with:
           name: linux-native-provider-tests-arm64
@@ -4780,7 +4794,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload Linux encrypted lifecycle evidence
-        if: ${{ always() }}
+        if: ${{ always() && steps.linux_native_lifecycle_arm64.outcome != 'skipped' }}
         uses: actions/upload-artifact@v4
         with:
           name: linux-native-cache-e2e-arm64
@@ -5180,8 +5194,16 @@ jobs:
         shell: pwsh
         working-directory: flutter/engine/src
         run: |
-          # Git Bash prepends its GNU link.exe ahead of the MSVC linker.
-          $linker = (Get-Command link.exe -CommandType Application).Source
+          # Git ships a GNU link.exe (usr/bin) that must never be selected. Accept
+          # exactly one MSVC link.exe for this host/target from the active toolset.
+          if (!$env:VCToolsInstallDir) { throw 'VCToolsInstallDir is not set; Visual Studio developer environment is missing' }
+          $expectedLinkerDir = [IO.Path]::GetFullPath((Join-Path $env:VCToolsInstallDir 'bin\HostARM64\ARM64'))
+          $found = @(Get-Command link.exe -All -CommandType Application -ErrorAction SilentlyContinue | ForEach-Object { $_.Source })
+          $candidates = @($found | Where-Object { [string]::Equals([IO.Path]::GetDirectoryName($_), $expectedLinkerDir, [StringComparison]::OrdinalIgnoreCase) } | Select-Object -Unique)
+          if ($candidates.Count -ne 1) {
+            throw "Expected exactly one MSVC HostARM64/ARM64 link.exe under $expectedLinkerDir, found $($candidates.Count) (all link.exe on PATH: $($found -join '; '))"
+          }
+          $linker = $candidates[0]
           if (!$linker.StartsWith($env:GYP_MSVS_OVERRIDE_PATH, [StringComparison]::OrdinalIgnoreCase)) {
             throw "Expected the Visual Studio linker, found $linker"
           }
@@ -5315,6 +5337,7 @@ jobs:
           } finally { Pop-Location }
 
       - name: Run Windows DPAPI provider contract
+        id: windows_native_provider_arm64
         shell: pwsh
         run: |
           $fixture = (Resolve-Path testapps/license_flavor_patch_test/tool/windows_native).Path
@@ -5337,6 +5360,7 @@ jobs:
           }
 
       - name: Run Windows encrypted native lifecycle
+        id: windows_native_lifecycle_arm64
         shell: pwsh
         timeout-minutes: 75
         run: |
@@ -5355,7 +5379,7 @@ jobs:
           }
 
       - name: Upload Windows native provider test evidence
-        if: ${{ always() }}
+        if: ${{ always() && steps.windows_native_provider_arm64.outcome != 'skipped' }}
         uses: actions/upload-artifact@v4
         with:
           name: windows-native-provider-tests-arm64
@@ -5363,7 +5387,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload Windows encrypted lifecycle evidence
-        if: ${{ always() }}
+        if: ${{ always() && steps.windows_native_lifecycle_arm64.outcome != 'skipped' }}
         uses: actions/upload-artifact@v4
         with:
           name: windows-native-cache-e2e-arm64
