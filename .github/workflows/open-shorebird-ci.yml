@@ -216,6 +216,7 @@ jobs:
           python3 -m py_compile dart-sdk/tools/test_aot_structural_patch.py
           python3 -m py_compile dart-sdk/tools/test_aot_structural_public_api.py
           python3 -m py_compile dart-sdk/tools/test_aot_structural_closed_world.py
+          python3 -m py_compile dart-sdk/tools/test_aot_structural_compile_smoke.py
           python3 -m py_compile dart-sdk/tools/test_aot_structural_smi_cast.py
           python3 -m py_compile scripts/verify_vm_offsets.py
           python3 -m py_compile dart-sdk/tools/test_aot_full_replacement.py
@@ -1153,6 +1154,12 @@ jobs:
       - name: Run PRODUCT structural Smi cast regression
         run: python3 dart-sdk/tools/test_aot_structural_smi_cast.py --build-dir dart-sdk/xcodebuild/ReleaseARM64 --product
 
+      - name: Run structural gen_snapshot compile smoke (guard collapse, large program)
+        run: python3 dart-sdk/tools/test_aot_structural_compile_smoke.py --build-dir dart-sdk/xcodebuild/ReleaseARM64
+
+      - name: Run PRODUCT structural gen_snapshot compile smoke
+        run: python3 dart-sdk/tools/test_aot_structural_compile_smoke.py --build-dir dart-sdk/xcodebuild/ReleaseARM64 --product
+
       - name: Run PRODUCT full replacement regression
         run: python3 dart-sdk/tools/test_aot_full_replacement.py --build-dir dart-sdk/xcodebuild/ReleaseARM64 --product
 
@@ -1378,6 +1385,12 @@ jobs:
 
       - name: Run PRODUCT structural Smi cast regression
         run: python3 dart-sdk/tools/test_aot_structural_smi_cast.py --build-dir dart-sdk/xcodebuild/ReleaseX64 --product
+
+      - name: Run structural gen_snapshot compile smoke (guard collapse, large program)
+        run: python3 dart-sdk/tools/test_aot_structural_compile_smoke.py --build-dir dart-sdk/xcodebuild/ReleaseX64
+
+      - name: Run PRODUCT structural gen_snapshot compile smoke
+        run: python3 dart-sdk/tools/test_aot_structural_compile_smoke.py --build-dir dart-sdk/xcodebuild/ReleaseX64 --product
 
       - name: Run PRODUCT full replacement regression
         run: python3 dart-sdk/tools/test_aot_full_replacement.py --build-dir dart-sdk/xcodebuild/ReleaseX64 --product

@@ -213,6 +213,7 @@ required_files = %w[
   dart-sdk/tools/test_aot_patchable_direct_calls.py
   dart-sdk/tools/test_aot_structural_public_api.py
   dart-sdk/tools/test_aot_structural_closed_world.py
+  dart-sdk/tools/test_aot_structural_compile_smoke.py
   dart-sdk/tools/test_aot_structural_smi_cast.py
   scripts/verify_vm_offsets.py
   shorebird/README.md
@@ -3261,6 +3262,12 @@ assert!(offsets_job['timeout-minutes'].to_i.between?(60, 360), 'VM offsets verif
 assert!(offsets_runs.include?('gclient sync --no-history') && offsets_runs.include?('./scripts/write_gclient.sh linux') && offsets_runs.include?('python3 scripts/verify_vm_offsets.py --dart-sdk dart-sdk') && offsets_runs.include?('python3 scripts/verify_vm_offsets.py --self-test'), 'VM offsets verification must sync the SDK toolchain and run the extractor comparison')
 verify_vm_offsets = read_repo_file(repo_root, 'scripts/verify_vm_offsets.py')
 assert!(verify_vm_offsets.include?('dart_enable_aot_patching=true') && verify_vm_offsets.include?('dart_enable_shorebird_interpreter=true') && verify_vm_offsets.include?('DART_SHOREBIRD_INTERPRETER') && verify_vm_offsets.include?('vm_offsets.g.dart') && verify_vm_offsets.include?("CI_ARCHS = ['simarm', 'ia32', 'simriscv32', 'simarm64']"), 'VM offsets verifier must build with the interpreter GN args, handle the interpreter conditional and cover the 32-bit blocks plus the arm64 control')
+assert!(run_text_by_job.fetch('source-checks').include?('python3 -m py_compile dart-sdk/tools/test_aot_structural_compile_smoke.py'), 'source checks must syntax-check the structural compile smoke harness')
+%w[custom-dart-sdk-macos custom-dart-sdk-macos-x64].each do |name|
+  build_dir = name == 'custom-dart-sdk-macos' ? 'xcodebuild/ReleaseARM64' : 'xcodebuild/ReleaseX64'
+  smoke = jobs.fetch(name).fetch('steps').map { |step| step['run'].to_s }.select { |run| run.start_with?("python3 dart-sdk/tools/test_aot_structural_compile_smoke.py --build-dir dart-sdk/#{build_dir}") }
+  assert!(smoke.length == 2 && smoke.any? { |run| run.end_with?('--product') }, "#{name} must run the structural gen_snapshot compile smoke in both modes")
+end
 assert!(run_text_by_job.fetch('custom-dart-sdk').include?('dart-sdk/bin/dart pub get'), 'encrypted runtime gate requires the real public envelope producer')
 {
   'custom-dart-sdk' => 'out/ReleaseX64/dart-sdk/bin/dart',
