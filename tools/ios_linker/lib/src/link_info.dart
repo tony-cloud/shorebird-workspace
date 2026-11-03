@@ -41,7 +41,13 @@ class CodeEntry {
   int get end => textOffset + size;
 }
 
+/// Sidecar format version written by gen_snapshot --print_link_info_to.
+const linkInfoHeader = '#osb-link-info 2';
+
 class LinkInfo {
+  /// Compiler identity: `snapshot_hash` and `features` of the gen_snapshot
+  /// that wrote the file. A release and its patches must agree.
+  final Map<String, String> identity = {};
   final Map<String, int> meta = {};
   final Map<String, int> classCid = {};
   final Map<String, int> staticId = {};
@@ -60,8 +66,12 @@ class LinkInfo {
     for (final line in text.split('\n')) {
       if (line.isEmpty) continue;
       if (first) {
-        if (!line.startsWith('#osb-link-info 1')) {
+        if (!line.startsWith('#osb-link-info ')) {
           throw FormatException('$path is not a link info file');
+        }
+        if (line != linkInfoHeader) {
+          throw FormatException(
+              '$path has format "$line", this tool reads "$linkInfoHeader"');
         }
         first = false;
         continue;
@@ -69,6 +79,8 @@ class LinkInfo {
       info.lines.add(line);
       final c = line.split('\t');
       switch (c[0]) {
+        case 'id':
+          info.identity[c[1]] = c[2];
         case 'meta':
           info.meta[c[1]] = int.parse(c[2]);
         case 'class':
@@ -97,6 +109,10 @@ class LinkInfo {
               : <int>[];
       }
     }
+    if (!info.identity.containsKey('snapshot_hash') ||
+        !info.identity.containsKey('features')) {
+      throw FormatException('$path has no compiler identity lines');
+    }
     info.codes.sort((a, b) => a.textOffset.compareTo(b.textOffset));
     return info;
   }
@@ -119,4 +135,17 @@ class LinkInfo {
   }
 
   int get codeBytes => codes.fold(0, (s, e) => s + e.size);
+
+  /// Size of the instructions image, when the writer recorded it.
+  int? get textImageSize => meta['text_image_size'];
+
+  /// Null when [other] was written by the same compiler, else a reason.
+  String? identityMismatch(LinkInfo other) {
+    for (final k in const ['snapshot_hash', 'features']) {
+      if (identity[k] != other.identity[k]) {
+        return '$k differs: "${identity[k]}" vs "${other.identity[k]}"';
+      }
+    }
+    return null;
+  }
 }

@@ -1,7 +1,11 @@
 # iOS native-reuse code push: compiler and linker
 
-Status 2026-11-04. Implemented and validated on host (macOS arm64, product AOT,
-no compressed pointers, the same target features as iOS). The runtime half
+Status 2026-11-04. Implemented and validated on host gen_snapshot builds
+(product AOT, arm64) in three configurations: the iOS configuration (no
+compressed pointers, which is what Flutter iOS uses), compressed pointers,
+and the iOS engine's Shorebird defines (section 9.4). iOS releases are read
+from the real `App.framework/App` Mach-O built the way flutter_tools builds
+it (section 6.1). The runtime half
 (native execution of linked code, ARM64 simulation of the rest) is described in
 [`RUNTIME.md`](RUNTIME.md). This document owns the release/patch layout
 contract, the link table and the `vmcode` container; section 6 is the format
@@ -34,11 +38,12 @@ Code:
 | --- | --- |
 | Release | Normal TFA-optimized AOT. `--print_link_info_to=App.link` writes the layout sidecar. The release binary is **byte-identical to stock** (verified for all three test programs). Optional `--link_dd_targets` adds DD slots. |
 | Patch | A complete optimized AOT snapshot of the new program, compiled twice with `--link_base`. Pass 1 uses the release sidecar. Pass 2 uses the release sidecar plus pool hints from pass 1. |
-| Link | `ios_linker link` compares every compiled code entry of release and patch and writes `out.vmcode` = link header + the patch ELF. |
+| Link | `ios_linker link` compares every compiled code entry of release and patch and writes `out.vmcode` = link header + the patch ELF. The release is the shipped `App.framework/App` (Mach-O) or an ELF. `--min-link-percent` refuses to write a vmcode below a threshold. |
 | Check | `ios_linker check` re-verifies the table from the two binaries alone, word by word and branch by branch. |
 | Download | Updater `patch` tool (bidiff + zstd) of `out.vmcode` against the release data+text blob. |
 
-Results (section 9): identical patches link 100%; changing a displayed string
+Results (section 9; identical in every configuration within 0.2 points):
+identical patches link 100%; changing a displayed string
 links 100%; one caller edit 99.1%; a shared helper behind 80 callers 97.9%.
 Behind 320 callers it is 93.0% without DD and 99.99% with DD (only the helper
 itself, 32 bytes, stays unlinked). On the real Flutter app
@@ -81,12 +86,35 @@ for correctness.
 
 ### 3.1 Sidecar (`App.link`)
 
-The sidecar is line-oriented, tab-separated, UTF-8, with the header
-`#osb-link-info 1`. Keys never contain tabs or newlines.
+The sidecar is line-oriented, tab-separated, UTF-8. Keys never contain tabs
+or newlines. The first line is the format version, `#osb-link-info 2`;
+the next two lines identify the compiler:
+
+```
+#osb-link-info 2
+id	snapshot_hash	3ad6e28b542fa7486e0b0fce6bbd5671
+id	features	product no-asan no-msan no-tsan no-shared_data no-code_comments no-dwarf_stack_traces arm64 macos no-compressed-pointers
+```
+
+- **Version policy.** The version changes whenever a line kind or column
+  meaning changes. gen_snapshot (`--link_base`) and `ios_linker` accept only
+  their own version and fail with a message naming both versions. Version 1
+  (no identity lines) is rejected.
+- **Identity.** `snapshot_hash` is `Version::SnapshotString()` and
+  `features` is the AOT snapshot features string (mode, sanitizers, arch,
+  target OS, compressed pointers). `--link_base` aborts unless both equal the
+  running gen_snapshot's, and `ios_linker link`/`check`/`pool-hints` refuse a
+  release and patch sidecar that differ (exit 4). A layout recorded by one
+  compiler is never interpreted by another.
+- **Determinism.** The sidecar contains no paths of its own, timestamps or
+  addresses. Two runs on the same kernel produce byte-identical sidecars, and
+  the ELF run and the assembly run (`--snapshot_kind=app-aot-assembly`)
+  produce the same bytes (verified for every release in section 9).
 
 | Line | Columns | Recorded when |
 | --- | --- | --- |
-| `meta` | name, value (`num_cids`, `num_statics`, `stub_pool_length`, `pool_length`, `dispatch_table_size`) | as produced |
+| `id` | `snapshot_hash` or `features`, value | first |
+| `meta` | name, value (`num_cids`, `num_statics`, `stub_pool_length`, `pool_length`, `dispatch_table_size`, `text_image_size`) | as produced |
 | `class` | cid, class key, instance size, next field offset, type-arguments offset, super cid, **subtree end** | after class finalization and id assignment, **before tree shaking** |
 | `field` | offset, unboxed size (0 = boxed), field key | same |
 | `static` | field id, field key | same, from a heap walk over all `Field`s |
@@ -160,6 +188,14 @@ always made with the patch's real cids.
      never collide with a subclass field that keeps its release offset.
 5. Instance size = rounded end. Unused words are tagged slots initialized to
    null by allocation, so the GC sees null.
+
+A field the release boxed although it is unboxable now is boxed in the patch
+too (boxing is always valid). The stock layout boxes unboxable fields that
+end past the unboxed-field bitmap: 64 words, which is 256 bytes with
+compressed pointers and 512 without. Without this rule the compressed build
+linked `dart:ui`'s `PointerData` (scale and rotation at 256/260) at new
+offsets, and an *identical* Flutter patch linked only 99.69%; with it, 100%.
+`test/runtime/v3.dart`/`v4.dart` (a 40-double class) cover it at run time.
 
 Measured: adding a field to `Model` changed only the code that allocates or
 reads `Model` (p4). The runtime fixture added two fields (double and int) to
@@ -368,17 +404,32 @@ renumbers are irrelevant, because selectors are matched by key.
 | `ios_linker` command | Use |
 | --- | --- |
 | `pool-hints --base-link --patch-link PASS1 --out F` | second-pass pool assignment |
-| `link --base-elf --base-link --patch-elf --patch-link --out out.vmcode [--report --table]` | link table + vmcode. Exit 2 if a VM stub does not link (toolchain mismatch; RUNTIME.md §8.2). |
-| `check --vmcode --base-elf --patch-elf [--base-link --patch-link]` | independent verification (section 8) |
-| `dd-select --elf --link --max-bytes N --out F` | release DD target selection (section 7) |
-| `diff-base --elf --out F` | release data+text blob for bidiff |
+| `link --base --base-link --patch-elf --patch-link --out out.vmcode [--report --table] [--min-link-percent P]` | link table + vmcode. Exit 2 if a VM stub does not link (toolchain mismatch; RUNTIME.md §8.2), 3 below `P` (no vmcode is written), 4 for a sidecar version or compiler identity mismatch. |
+| `check --vmcode --base --patch-elf [--base-link --patch-link] [--min-link-percent P]` | independent verification (section 8). Exit 1 on any failure, 3 if the only failure is the gate. |
+| `dd-select --base --link --max-bytes N --out F` | release DD target selection (section 7) |
+| `diff-base --base [--link] --out F` | release data+text blob for bidiff |
+| `compare-text --a --b [--link]` | compare two instructions images (ELF or Mach-O), per code entry with `--link`; exit 0 if all entries are identical |
+
+`--base` is the release binary: the Mach-O `App.framework/App` or an ELF
+(`--base-elf`/`--elf` are aliases). The text image size of a Mach-O comes
+from the sidecar's `text_image_size`. The patch is always the ELF that
+gen_snapshot wrote.
+
+`--min-link-percent` is a policy knob for the CLI. Link percent is
+`linked code bytes / patch code bytes`. `check` recomputes it from the
+vmcode header, verifies the header's linked bytes against the table total and
+its patch code bytes against the patch sidecar, so a tampered or stale header
+cannot pass the gate.
 
 Drivers:
 
-- `tools/ios_linker/scripts/run_matrix.py [--wide] [--dd]`: the controlled
-  fixture.
-- `run_flutter_app.py [--dd]`: the real app.
-- `run_runtime_test.py`: executes constrained patches.
+- `tools/ios_linker/scripts/run_matrix.py [--wide] [--dd]
+  [--release-format elf|macho] [--min-link-percent P] [--work DIR]`: the
+  controlled fixture. `GEN_SNAPSHOT` selects the gen_snapshot.
+- `run_flutter_app.py` (same options): the real app.
+- `run_runtime_test.py`: executes constrained patches. `DART_OUT` selects the
+  build.
+- `run_negative_tests.py`: gate and format/identity negative controls.
 
 ## 6. vmcode format (contract with the runtime)
 
@@ -417,10 +468,60 @@ All integers are little-endian.
 - **Stubs.** Entries cover stubs, allocation stubs and type-testing stubs as
   well as functions. All `stub:` (VM) stubs are guaranteed linked, or `link`
   fails.
+- **Release image.** For iOS, the release text image and its SHA-256 at
+  offset 48 are the bytes of the shipped `App.framework/App` at
+  `_kDartSnapshotText`, `release text image size` bytes long (section 6.1).
+  They are not the bytes of an ELF built from the same kernel: three header
+  words differ. The runtime hashes the loaded `_kDartSnapshotText` region.
 - **Header size.** The header size grows with *n*: 16 bytes per link, so
   about 88 KB for the 5,498-entry Flutter app, padded to 96 KB. Upstream's
   measured header was a count plus pairs. This format adds sizes, hashes and
   a version for fail-closed loading.
+
+### 6.1 iOS release input: the App.framework Mach-O
+
+flutter_tools builds an iOS release as
+`gen_snapshot --deterministic --snapshot_kind=app-aot-assembly
+--assembly=snapshot_assembly.S` (no `--strip`), then
+`xcrun cc -arch arm64 -miphoneos-version-min=15.0 -isysroot <iPhoneOS SDK> -c`,
+`xcrun clang ... -dynamiclib -fapplication-extension -install_name
+@rpath/App.framework/App`, `dsymutil`, and `strip -x`; Xcode signs it when it
+is embedded. Two options were considered:
+
+1. Read the real `App.framework/App` and locate `_kDartSnapshotText`.
+2. Have gen_snapshot also write an ELF in the same run with identical text
+   offsets.
+
+**Decision: option 1.** It is implemented (`lib/src/macho.dart`,
+`lib/src/snapshot_binary.dart`; thin or fat, arm64 slice) and it is the only
+option that yields the bytes the device executes. Evidence, for every Mach-O
+release in section 9 (2 fixtures × direct/DD and the Flutter app × direct/DD,
+in the iOS and the Shorebird-defines builds):
+
+- The sidecar from the assembly run is **byte-identical** to the sidecar
+  from an ELF run with the same flags. Code offsets are a property of
+  `ImageWriter::WriteText`, not of the output format. The assembly with
+  `--print_link_info_to` is byte-identical to stock assembly.
+- `_kDartSnapshotText` (external, `__TEXT,__text`) starts the section, and
+  the section size equals `text_image_size` exactly
+  (`_kDartSnapshotData` likewise fills `__TEXT,__const`).
+- Mach-O text versus ELF text: **all code entries byte-identical** (1,838 /
+  2,078 / 5,498 entries); exactly three 8-byte words differ, at image offsets
+  80, 88 and 96, in the image header before the first entry. Those words are
+  the assembler-resolved relocations to BSS and the build id. So the release
+  hash must come from the Mach-O (option 2 would have produced a wrong hash
+  unless it also emulated the static linker).
+- Ad-hoc signed versus unsigned (after `strip -x`): text **identical**.
+  Distribution signing likewise only adds `LC_CODE_SIGNATURE` data in
+  `__LINKEDIT`. App Store FairPlay encryption covers file pages but is
+  decrypted on mapping, so the in-memory text equals the pre-upload binary.
+  The release input must therefore be the binary from the build or archive,
+  not one extracted from an App Store download.
+- `__TEXT` of a dylib has no dyld fixups (text relocations are not allowed
+  on arm64 iOS), so the loaded bytes equal the file bytes.
+
+Option 2 would have needed gen_snapshot changes (one writer cannot emit both
+kinds) and would still differ in those header words.
 
 ## 7. DD selection, cost model, and when a release must add DD
 
@@ -504,27 +605,42 @@ as remaining work.
    - sorted, non-overlapping ranges,
    - that ranges are whole entries.
 
-   **All 43 vmcode files of the final suite passed with 0 failures** (40
-   matrix/app cases + 3 runtime pairs; for example 304,300 words and 24,176
-   external branches on the Flutter app).
+   **All 147 vmcode files of the final suite (suite3: 24 steps) passed with
+   0 failures**: 132 matrix/app cases over three gen_snapshot builds and
+   ELF/Mach-O releases, plus 15 runtime pairs. For example, the Flutter app
+   check covers 304,300 words and 24,176 external branches.
 2. **Runtime execution of constrained patches** (`run_runtime_test.py`,
    `tools/ios_linker/test/runtime/v{1,2}.dart`). This exercises class id
    holes, superclass field additions with subclasses, unboxed doubles, new
    subclasses on dispatch rows, new statics, lazy statics, closures, switch
    patterns, exceptions, and collections. The release, a stock build of
    the patch source, and the two-pass constrained patch build run on
-   `dartaotruntime`. **Outputs match** for v1→v2 (88.9% linked), v1→v1 (100%)
-   and v2→v1 (98.65%).
+   `dartaotruntime`. **Outputs match** for v1→v2 (88.9% linked), v1→v1 (100%),
+   v2→v1 (98.65%), v3→v3 (100%) and v3→v4 (99.1%; a 40-double class that
+   crosses the unboxed-field bitmap, plus a new field), in all three builds.
 
    This validates the compiler side. Native execution of linked release code
    is the runtime worker's part.
 3. **Release unchanged.** `--print_link_info_to` releases are byte-identical
-   to stock ELFs for all three programs.
+   to stock ELFs for all three programs, and to stock assembly for the
+   Mach-O releases.
+4. **Mach-O release proofs** (section 6.1), recorded per release in
+   `summary.json` under `release_proofs`.
+5. **Negative controls** (`run_negative_tests.py`, 12/12 pass): the gate
+   above and below the actual percentage for `link` (exit 3, no vmcode
+   written; a gated vmcode is byte-identical to an ungated one) and `check`
+   (exit 3 / 0); a tampered header linked-bytes field (check exit 1); checking
+   a Mach-O-linked vmcode against the ELF (release hash mismatch, exit 1); a
+   format-1 sidecar (`link` exit 4, gen_snapshot abort); a sidecar from the
+   compressed-pointer build (`link` exit 4 "features differs", gen_snapshot
+   abort "written for a different target").
 
 ## 9. Measurements
 
-Host gen_snapshot `ProductARM64` from this branch, product, arm64, no
-compressed pointers, `--deterministic --strip`, ELF. Kernels:
+Unless stated otherwise: host gen_snapshot `ProductARM64` from this branch,
+product, arm64, no compressed pointers, `--deterministic --strip`, ELF
+release. Sections 9.1–9.3 are this configuration; 9.4 compares the others.
+Kernels:
 
 - Fixture: engine `gen_kernel_aot`, `--aot --target=flutter --target-os=ios`,
   Flutter product platform.
@@ -533,58 +649,63 @@ compressed pointers, `--deterministic --strip`, ELF. Kernels:
 Reuse is code-byte weighted: linked payload bytes / patch payload bytes.
 Download is the updater `patch` (bidiff + zstd) of `out.vmcode` against the
 release data+text blob. Raw outputs are under `.agents/ios-linker-20261104/`
-(`matrix/*/summary.json`, `flutter_app/*/summary.json`, `suite/step*.txt`).
+(`{,arm64c/,sb/}{matrix,flutter_app}/*/summary.json`, `suite3/*.txt`).
+suite3 ran on the final code before a clang-format-only change to
+`object.cc`/`link_info.cc`; that change alters the snapshot hash, so the
+Mach-O fixture and the negative controls were rerun on the final binaries
+with identical link percentages and 12/12 passes.
 
-### Fixture, 80 callers
+### 9.1 Fixture, 80 callers
 
 Release ELF 738,264 bytes (identical to stock), 360,040 code bytes, diff
 base 730,368. With DD: ELF 754,648, code 365,400.
 
 | Change | Direct: reuse | Unlinked entries (bytes) | Download | DD: reuse | DD: unlinked | Upstream (direct) |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| None | 100.00000% | 0 (0) | 13,949 | 100.00000% | 0 | 100.00000% |
-| Displayed string | 100.00000% | 0 (0) | 15,722 | 100.00000% | 0 | 100.00000% |
-| One caller's argument | 99.09232% | 8 (3,268) | 14,044 | 99.10345% | 8 | 99.15865% |
-| Shared helper | 97.93023% | 89 (7,452) | 13,491 | 97.95840% | 89 | 98.16536% |
-| Add a field and use it | 97.75880% | 91 (8,072) | 41,329 | 97.78729% | 91 | 98.00547% |
-| Add a function | 99.73672% | 7 (948) | 38,160 | 99.73839% | 7 | 99.70944% |
-| Remove a caller | 99.11435% | 7 (3,188) | 32,598 | 99.12515% | 7 | n/a |
+| None | 100.00000% | 0 (0) | 13,967 | 100.00000% | 0 | 100.00000% |
+| Displayed string | 100.00000% | 0 (0) | 15,585 | 100.00000% | 0 | 100.00000% |
+| One caller's argument | 99.09232% | 8 (3,268) | 13,943 | 99.10345% | 8 | 99.15865% |
+| Shared helper | 97.93023% | 89 (7,452) | 13,483 | 97.95840% | 89 | 98.16536% |
+| Add a field and use it | 97.75880% | 91 (8,072) | 41,293 | 97.78729% | 91 | 98.00547% |
+| Add a function | 99.73672% | 7 (948) | 38,236 | 99.73839% | 7 | 99.70944% |
+| Remove a caller | 99.11435% | 7 (3,188) | 32,578 | 99.12515% | 7 | n/a |
 
 vmcode: 771,032 bytes direct; 787,416 with DD.
 
-### Fixture, 320 callers
+### 9.2 Fixture, 320 callers
 
 Release ELF 803,800 bytes (identical to stock), 379,240 code bytes, diff
 base 774,480. With DD: ELF 803,800, code 387,168, diff base 782,432.
 
 | Change | Direct | Unlinked | Download | DD | DD unlinked | DD download |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| None | 100% | 0 | 15,250 | 100% | 0 | 14,959 |
-| Displayed string | 100% | 0 | 16,931 | 100% | 0 | 16,655 |
-| One caller's argument | 97.36595% | 8 (9,988) | 31,470 | 97.41571% | 8 (10,004) | 30,659 |
-| Shared helper | 92.97226% | 329 (26,652) | 13,399 | **99.99173%** | **1 (32)** | 14,932 |
-| Add a field | 92.81113% | 331 (27,272) | 41,354 | 97.24652% | 11 (10,664) | 41,244 |
-| Add a function | 99.75004% | 7 (948) | 38,017 | 99.75310% | 7 (956) | 38,555 |
-| Remove a caller | 97.38686% | 7 (9,908) | 31,398 | 97.43826% | 7 (9,916) | 30,551 |
+| None | 100% | 0 | 15,345 | 100% | 0 | 14,986 |
+| Displayed string | 100% | 0 | 16,942 | 100% | 0 | 16,673 |
+| One caller's argument | 97.36595% | 8 (9,988) | 31,455 | 97.41571% | 8 (10,004) | 30,680 |
+| Shared helper | 92.97226% | 329 (26,652) | 13,511 | **99.99173%** | **1 (32)** | 14,938 |
+| Add a field | 92.81113% | 331 (27,272) | 41,355 | 97.24652% | 11 (10,664) | 41,043 |
+| Add a function | 99.75004% | 7 (948) | 37,996 | 99.75310% | 7 (956) | 38,241 |
+| Remove a caller | 97.38686% | 7 (9,908) | 31,488 | 97.43826% | 7 (9,916) | 30,577 |
 
 Upstream, 320 callers, shared helper: 93.88595% direct, 99.98141% DD (2
 unlinked entries). In the "one caller" and "add a field" cases most unlinked
 bytes are `compute` itself (about 9.9 KB, calling 320 callers), which changed.
 
-### Real Flutter app (`patch_perf_bench`, TFA)
+### 9.3 Real Flutter app (`patch_perf_bench`, TFA)
 
 Release ELF 2,311,128 bytes (identical to stock), 1,217,200 code bytes in
-5,498 entries. Sidecar 3,603,306 bytes (323,243 with zstd -19). vmcode
+5,498 entries. Sidecar 3,603,518 bytes (323,243 with zstd -19 for format
+1; the identity lines add about 200 bytes). vmcode
 2,409,432 bytes.
 
 | Change | Reuse | Unlinked | Download | DD reuse | DD download |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| None | 100.0000% | 0 | 42,351 | 100.0000% | 51,319 |
-| Constant in `patchedKernel` | 99.5005% | 8 (6,080) | 42,228 | 99.5334% | 51,116 |
-| UI string in a widget | 100.0000% | 0 | 48,359 | 100.0000% | 57,441 |
-| Virtual method body (inlined into `patchedKernel`) | 99.5005% | 8 (6,080) | 42,475 | 99.5334% | 51,290 |
-| Add a field and use it | 99.3037% | 14 (8,476) | 93,945 | 99.3387% | 111,294 |
-| Widget padding constant | 100.0000% | 0 | 42,529 | 100.0000% | 51,500 |
+| None | 100.0000% | 0 | 42,629 | 100.0000% | 51,518 |
+| Constant in `patchedKernel` | 99.5005% | 8 (6,080) | 42,122 | 99.5334% | 51,287 |
+| UI string in a widget | 100.0000% | 0 | 48,244 | 100.0000% | 57,528 |
+| Virtual method body (inlined into `patchedKernel`) | 99.5005% | 8 (6,080) | 42,095 | 99.5334% | 51,107 |
+| Add a field and use it | 99.3037% | 14 (8,476) | 94,067 | 99.3387% | 111,300 |
+| Widget padding constant | 100.0000% | 0 | 42,112 | 100.0000% | 51,512 |
 
 Downloads are not comparable byte-for-byte with upstream's (83–113 KB).
 Upstream diffs an unstripped iOS snapshot plus their header against its own
@@ -592,22 +713,90 @@ diff base. Ours uses stripped ELFs. Even for an identical patch the data
 section differs: placeholder pool slots, a larger static table, and object
 order. The header also scales with the link count.
 
+### 9.4 Configurations: Mach-O releases, compressed pointers, engine defines
+
+Builds (all from this branch, product, arm64, host gen_snapshot, macOS
+target):
+
+- **iOS** `ProductARM64`: no compressed pointers.
+- **C** `ProductARM64C`: `dart_use_compressed_pointers=true`.
+- **SB** `ProductARM64SB`: iOS plus the iOS engine's Dart defines
+  `dart_enable_shorebird_interpreter=true` and `dart_enable_aot_patching=true`
+  (`DART_BYTECODE_INTERPRETER`, `DART_SHOREBIRD_INTERPRETER`,
+  `DART_ENABLE_AOT_PATCHING`).
+
+All three use `verify_sdk_hash=false`, so they accept the engine's kernels
+(SDK hash `2513af5688`) although the branch head differs.
+
+**Compressed pointers are not the iOS configuration.** Flutter's engine GN
+(`flutter/engine/src/flutter/tools/gn`) enables
+`dart_use_compressed_pointers` only for `target_os == 'android'` on x64/arm64:
+"iOS is excluded due to its inability to allocate address space without
+allocating memory". The engine's `ios_release` `args.gn` does not set it, and
+its `gen_snapshot_arm64` writes the features
+`product ... arm64 ios no-compressed-pointers`. The C build is therefore
+robustness coverage (and the Android shape), not the iOS path.
+
+Link percentage per case (`Mach-O` = release read from the signed
+App.framework; differences from 9.1–9.3 are in **bold**):
+
+| Case | iOS ELF | iOS Mach-O | SB Mach-O | C ELF |
+| --- | ---: | ---: | ---: | ---: |
+| 80: none / string | 100 / 100 | 100 / 100 | 100 / 100 | 100 / 100 |
+| 80: one caller | 99.09232 | 99.09232 | **99.09391** | **99.11255** |
+| 80: shared helper | 97.93023 | 97.93023 | **97.93386** | **97.98464** |
+| 80: add a field | 97.75880 | 97.75880 | **97.76272** | **97.81503** |
+| 80: add a function | 99.73672 | 99.73672 | **99.73718** | **99.73799** |
+| 80: remove a caller | 99.11435 | 99.11435 | **99.11590** | **99.13393** |
+| 320 DD: shared helper | 99.99173 | 99.99173 | **99.99175** | **99.99196** |
+| 320 DD: add a field | 97.24652 | 97.24652 | **97.25101** | **97.31131** |
+| App: none / UI string / padding | 100 | 100 | 100 | 100 |
+| App: constant, virtual method | 99.50049 | 99.50049 | **99.50105** | **99.50405** |
+| App: add a field | 99.30369 | 99.30369 | **99.30446** | **99.30995** |
+| App DD: constant | 99.53336 | 99.53336 | **99.53387** | **99.53557** |
+| App DD: add a field | 99.33872 | 99.33872 | **99.33944** | **99.34334** |
+
+The release format does not change linking (Mach-O and ELF tables are equal;
+only the release hash differs). The SB and C builds compile slightly different code
+(SB +0.1% code bytes; C +3.8% code bytes for pointer decompression, with a
+smaller data section), hence the small percentage differences. Downloads with Mach-O releases are
+within ±0.5% of the ELF ones (for example app f1 42,204 vs 42,122). The C
+build's identical app patch was 99.69% before the boxed-field rule of 3.3.
+
+Release sizes, Flutter app: Mach-O `App.framework/App` 2,371,296 bytes
+(signed; text 1,217,328, data 1,077,808), ELF 2,311,128; C ELF 2,098,136.
+
+**Engine equivalence.** On the same 80-caller kernel with
+`--deterministic --snapshot_kind=app-aot-elf`, the engine's
+`ios_release/universal/gen_snapshot_arm64` and our SB build produce the same
+1,838 code entries. **1,836 are byte-identical** (B/BL displacements
+normalized for the shift); two differ in size: `stub:WriteBarrier` (992 vs 976
+bytes) and `stub:ArrayWriteBarrier` (1,060 vs 1,024). The cause is the only
+target-OS codegen switch for arm64, `TargetCPUFeatures::atomic_memory_supported()`
+(`runtime/vm/cpu_arm64.h`): true for a macOS target (ARMv8.5 LSE atomics),
+false for iOS (LL/SC loops). The other `DART_TARGET_OS_MACOS_IOS` uses are
+the features string, FFI ABI naming (same arm64 Apple calling convention),
+and Mach-O writer details unused with assembly output. Our ProductARM64
+build without the SB defines differs more (360,176 vs 360,864 text bytes), so
+an iOS release and its patches must use the engine-equivalent defines; the
+sidecar identity check enforces "same compiler" anyway. Building
+gen_snapshot with `--os ios` in the standalone SDK fails before linking
+(`il_arm64.cc: use of undeclared identifier 'NAN'` against the iPhoneOS 27
+SDK), so the iOS-targeted binary has to come from the engine build of this
+branch (remaining work).
+
 ## 10. Gaps
 
-1. **iOS release binary format.** The tool reads ELF.
-   - iOS releases are built as assembly and linked into a Mach-O
-     `App.framework/App`. The text image layout is the same and offsets are
-     relative to the same symbol, but the linker needs a Mach-O reader. The
-     alternative is a release ELF from the same gen_snapshot run, which needs
-     `--elf` and `--assembly` in one invocation or a determinism guarantee.
-   - The diff base must likewise be the shipped blobs.
+1. **Not yet run with an iOS-targeted gen_snapshot from this branch.** The
+   engine-equivalent SB host build differs from the engine's iOS
+   gen_snapshot only in the two write-barrier stubs (9.4). Our host build
+   targets macOS, so its releases use LSE atomics there, which is fine on a
+   host but not what an iOS release contains. The engine has to be built
+   from this branch before an iOS release is produced with these flags.
 2. **The runtime has not consumed this format yet.** RUNTIME.md's spike uses
-   identity linking. Integrating section 6 is its next step.
-3. **The host build is not the iOS toolchain.** The engine's
-   `gen_snapshot_arm64` (iOS) needs this branch rolled into the engine.
-   Snapshot target features match (product, arm64, uncompressed pointers), but
-   iOS-only codegen differences were not tested.
-4. **Keys are heuristic.**
+   identity linking. Integrating section 6 is its next step. Nothing has run
+   on a device.
+3. **Keys are heuristic.**
    - Collisions or instability only cost reuse, never correctness.
    - Known weak spots: closures keyed by relative token offset (an edit
      inside the parent moves later closures); `const:` keys depend on
@@ -615,54 +804,62 @@ order. The header also scales with the link count.
    - Obfuscation and `--split-debug-info` were not exercised. Keys are
      recorded before `Obfuscate()`, but obfuscated names would need the
      release's obfuscation map.
-5. **Pool hints are positional per function.** They help when a function
+4. **Pool hints are positional per function.** They help when a function
    keeps its request sequence length. Larger edits fall back to appending.
-6. **Dispatch rows** have no reserved cid windows. A new subclass that
+5. **Dispatch rows** have no reserved cid windows. A new subclass that
    lengthens a popular row can force it to move.
-7. **`--deterministic` and the data section.** Data is deterministic per
+6. **`--deterministic` and the data section.** Data is deterministic per
    input, but the patch's data differs from the release's even for identical
    input. This affects download size only.
-8. **Instruction dedup.** gen_snapshot dedups identical instruction payloads.
+7. **Instruction dedup.** gen_snapshot dedups identical instruction payloads.
    One payload is recorded under one canonical code key; others pair by
    content. That works, but the key of the canonical owner can vary.
-9. **DD.**
+8. **DD.**
    - Selection is not restricted to app code, and there is no hotness input.
    - Only arm64 codegen has the DD path; other architectures are unchanged.
    - The checked entry is always used.
-10. **Sidecar size and format.** 3.6 MB of text for a small Flutter app. A
-    binary or compressed form and dropping the `uses` lines (needed only for
-    pool hints) are easy wins.
-11. **Link-percentage gate.** No minimum-percentage policy exists yet.
-    Upstream warns below 90% and fails below 20%.
+9. **Sidecar size.** 3.6 MB of text for a small Flutter app. A binary or
+   compressed form and dropping the `uses` lines (needed only for pool hints)
+   are easy wins. Any such change bumps the format version.
+10. **Gate policy.** `--min-link-percent` exists in `link` and `check`; the
+    threshold is a product decision for the CLI. Upstream warns below 90% and
+    fails below 20%.
+11. **Fat or arm64e releases.** The Mach-O reader takes the plain arm64 slice
+    of a fat file and rejects other CPU types. Flutter iOS device builds are
+    thin arm64.
 
 ## 11. Remaining work
 
 1. **CLI (`shorebird/packages/shorebird_cli`).** On iOS release:
    - pass `--print_link_info_to` (and `--link_dd_targets` when enabled)
      through flutter_tools;
-   - upload `App.link`, the DD target file, the kernel and toolchain identity
-     as the release supplement.
+   - upload the release supplement (item 3).
 
    On iOS patch:
    - download the supplement;
    - run the two-pass patch build with `--link_base` (gen_snapshot already
      has the kernel, so the passes need no extra frontend run);
-   - run `ios_linker link` and `check`, enforce a minimum link percentage,
-     build the diff, and upload `vmcode`.
+   - run `ios_linker link --base App.framework/App ... --min-link-percent P`
+     and `check`, build the diff against `diff-base --base App.framework/App
+     --link App.link`, and upload `vmcode`.
 
    `shorebird/packages/open_aot_patch_tools` is the natural home for the Dart
    tool.
 2. **flutter_tools** (`packages/flutter_tools/lib/src/base/build.dart`
-   `AOTSnapshotter`): add the flags, keep `App.link` next to the snapshot and
-   out of the app bundle, and copy the release supplement back in at patch
-   time.
-3. **Release supplement contents.** Each file (`App.link`, `App.dd`,
-   `app.dill`) is identified by SHA-256, together with the gen_snapshot
-   version / SDK hash and the release text SHA-256 used in the vmcode header.
-4. **Engine updater.** Verify the header hash against the installed
-   `App.framework`, verify the ELF hash, then hand the table to the runtime
-   (RUNTIME.md §9).
-5. **Mach-O input** for `ios_linker` (gap 1), and an on-device run once the
-   runtime consumes the table.
+   `AOTSnapshotter`): add `--print_link_info_to` next to the existing
+   assembly flags, keep `App.link` next to the snapshot and out of the app
+   bundle, and copy the release supplement back in at patch time. The
+   framework build steps stay unchanged (6.1).
+3. **Release supplement contents.** `App.link`, `App.dd` (when DD is on),
+   `app.dill`, and the release `App.framework/App` as built (before App Store
+   processing), each with its SHA-256; plus the sidecar's identity lines and
+   the release text SHA-256 that the vmcode header will carry. Storing the
+   binary avoids depending on rebuilding it bit-for-bit.
+4. **Engine build of this branch** (gap 1): roll the branch into the engine,
+   rerun `run_matrix.py`/`run_flutter_app.py --release-format macho` with
+   `GEN_SNAPSHOT` pointing at the engine's iOS `gen_snapshot_arm64`.
+5. **Engine updater.** Verify the header hash against the loaded
+   `_kDartSnapshotText` region, verify the ELF hash, then hand the table to
+   the runtime (RUNTIME.md §9). Then an on-device run.
 6. **DD policy** per section 7, and a device measurement of the per-call
    cost.

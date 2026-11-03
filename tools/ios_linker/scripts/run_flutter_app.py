@@ -6,7 +6,8 @@ release build (--aot --tfa, product, iOS). Each patch case edits the app source
 in a private copy (same file URIs as the release), then follows the same
 release/patch/link/check/download pipeline as run_matrix.py.
 
-usage: run_flutter_app.py [--dd] [--dd-max-bytes N] [--app DIR] [CASE...]
+usage: run_flutter_app.py [--dd] [--dd-max-bytes N] [--release-format elf|macho]
+                          [--min-link-percent P] [--work DIR] [CASE...]
 """
 import argparse
 import json
@@ -47,10 +48,13 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--dd', action='store_true')
     ap.add_argument('--dd-max-bytes', type=int, default=10000)
+    ap.add_argument('--release-format', choices=['elf', 'macho'], default='elf')
+    ap.add_argument('--min-link-percent', type=float)
     ap.add_argument('--work', default=str(m.WS / '.agents/ios-linker-20261104/flutter_app'))
     ap.add_argument('cases', nargs='*')
     a = ap.parse_args()
-    work = Path(a.work) / ('dd' if a.dd else 'direct')
+    work = Path(a.work) / (('dd' if a.dd else 'direct')
+                           + ('_macho' if a.release_format == 'macho' else ''))
     app = Path(a.work) / 'app'
     if not app.exists():
         shutil.copytree(APP_SRC, app, symlinks=True)
@@ -67,11 +71,11 @@ def main():
     if a.dd:
         m.gen([f'--elf={rel}/App.analysis.aot', f'--print_link_info_to={rel}/App.analysis.link',
                rel / 'app.dill'], log)
-        print(m.tool(['dd-select', '--elf', rel / 'App.analysis.aot', '--link', rel / 'App.analysis.link',
+        print(m.tool(['dd-select', '--base', rel / 'App.analysis.aot', '--link', rel / 'App.analysis.link',
                       '--max-bytes', str(a.dd_max_bytes), '--out', rel / 'App.dd'], log).splitlines()[0])
         flags = [f'--link_dd_targets={rel}/App.dd']
-    m.gen([f'--elf={rel}/App.aot', f'--print_link_info_to={rel}/App.link'] + flags + [rel / 'app.dill'], log)
-    m.tool(['diff-base', '--elf', rel / 'App.aot', '--out', rel / 'App.diffbase'], log)
+    base, base_link, proofs = m.build_release(rel, rel / 'app.dill', flags, a.release_format, log)
+    m.tool(['diff-base', '--base', base, '--link', base_link, '--out', rel / 'App.diffbase'], log)
 
     results = {}
     for name in a.cases or list(CASES):
@@ -88,20 +92,9 @@ def main():
         finally:
             for p, t in pristine.items():
                 (app / p).write_text(t)
-        m.gen([f'--elf={out}/out.pass1.aot', f'--link_base={rel}/App.link',
-               f'--print_link_info_to={out}/out.pass1.link'] + flags + [out / 'app.dill'], log)
-        hints = m.tool(['pool-hints', '--base-link', rel / 'App.link', '--patch-link',
-                        out / 'out.pass1.link', '--out', out / 'constraints.link'], log)
-        m.gen([f'--elf={out}/out.aot', f'--link_base={out}/constraints.link',
-               f'--print_link_info_to={out}/out.link'] + flags + [out / 'app.dill'], log)
-        m.tool(['link', '--base-elf', rel / 'App.aot', '--base-link', rel / 'App.link',
-                '--patch-elf', out / 'out.aot', '--patch-link', out / 'out.link',
-                '--out', out / 'out.vmcode', '--report', out / 'report.json',
-                '--table', out / 'link_table.tsv'], log)
-        check = m.tool(['check', '--vmcode', out / 'out.vmcode', '--base-elf', rel / 'App.aot',
-                        '--patch-elf', out / 'out.aot', '--base-link', rel / 'App.link',
-                        '--patch-link', out / 'out.link'], log)
-        m.run([m.PATCH_TOOL, rel / 'App.diffbase', out / 'out.vmcode', out / 'out.download'], log)
+        m.patch_case(out, rel, base, base_link, flags, log, a.min_link_percent)
+        hints = (out / 'pool_hints.txt').read_text()
+        check = (out / 'check.txt').read_text()
         r = json.loads((out / 'report.json').read_text())
         row = {k: r[k] for k in ('link_percent', 'unlinked_entries', 'unlinked_code_bytes',
                                  'patch_code_bytes', 'unlinked_by_reason')}
@@ -116,10 +109,12 @@ def main():
     summary = {
         'profile': work.name,
         'release_stock_elf': (rel / 'App.stock.aot').stat().st_size,
-        'release_elf': (rel / 'App.aot').stat().st_size,
+        'release_format': a.release_format,
+        'release_binary': base.stat().st_size,
+        'release_proofs': proofs,
         'release_diff_base': (rel / 'App.diffbase').stat().st_size,
-        'release_link_info': (rel / 'App.link').stat().st_size,
-        'release_code_bytes': sum(int(l.split('\t')[3]) for l in (rel / 'App.link').read_text().splitlines()
+        'release_link_info': base_link.stat().st_size,
+        'release_code_bytes': sum(int(l.split('\t')[3]) for l in base_link.read_text().splitlines()
                                   if l.startswith('code\t')),
         'cases': results,
     }

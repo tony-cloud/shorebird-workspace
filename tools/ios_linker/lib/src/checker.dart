@@ -13,9 +13,9 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'arm64.dart';
-import 'elf.dart';
 import 'hash.dart';
 import 'link_info.dart';
+import 'snapshot_binary.dart';
 import 'vmcode.dart';
 
 class CheckReport {
@@ -23,21 +23,28 @@ class CheckReport {
   int wordsCompared = 0;
   int externalBranches = 0;
   int internalPcRel = 0;
+  double linkPercent = 0;
   final List<String> failures = [];
   bool get ok => failures.isEmpty;
 
+  /// True when the only failure is the --min-link-percent gate.
+  bool belowMinimum = false;
+  bool get belowMinimumOnly => belowMinimum && failures.length == 1;
+
   @override
   String toString() =>
-      'links=$links words=$wordsCompared external_branches=$externalBranches '
+      'links=$links link_percent=${linkPercent.toStringAsFixed(5)} '
+      'words=$wordsCompared external_branches=$externalBranches '
       'internal_pcrel=$internalPcRel failures=${failures.length}';
 }
 
 CheckReport checkVmcode({
   required String vmcodePath,
-  required String baseElfPath,
+  required String basePath,
   required String patchElfPath,
   String? baseLinkPath,
   String? patchLinkPath,
+  double? minLinkPercent,
 }) {
   final report = CheckReport();
   void fail(String m) {
@@ -46,9 +53,30 @@ CheckReport checkVmcode({
 
   final vmBytes = File(vmcodePath).readAsBytesSync();
   final vm = Vmcode.decode(vmBytes);
-  final patchElfBytes = File(patchElfPath).readAsBytesSync();
-  final baseText = dartTextImage(Elf(File(baseElfPath).readAsBytesSync()));
-  final patchText = dartTextImage(Elf(patchElfBytes));
+  final baseInfo = baseLinkPath == null ? null : LinkInfo.read(baseLinkPath);
+  final patchInfo =
+      patchLinkPath == null ? null : LinkInfo.read(patchLinkPath);
+  if (baseInfo != null && patchInfo != null) {
+    final mismatch = baseInfo.identityMismatch(patchInfo);
+    if (mismatch != null) fail('compiler mismatch: $mismatch');
+  }
+  final patchBin = SnapshotBinary.read(patchElfPath,
+      textImageSize: patchInfo?.textImageSize);
+  if (patchBin.format != 'elf') fail('patch is not an ELF snapshot');
+  final patchElfBytes = patchBin.bytes;
+  // Without a sidecar a Mach-O release image extends to the next symbol or
+  // section end; the header's size bounds it exactly.
+  final baseBin = SnapshotBinary.read(basePath,
+      textImageSize: baseInfo?.textImageSize ?? vm.baseTextSize);
+  final baseText = baseBin.textImage;
+  final patchText = patchBin.textImage;
+  if (vm.baseTextSize != baseText.length) {
+    fail('release image size in header (${vm.baseTextSize}) is not the '
+        'release image size (${baseText.length})');
+  }
+  if (vm.patchTextSize != patchText.length) {
+    fail('patch image size in header is wrong');
+  }
 
   if (vm.elf.length != patchElfBytes.length ||
       hex(sha256(vm.elf)) != hex(sha256(patchElfBytes))) {
@@ -63,6 +91,26 @@ CheckReport checkVmcode({
 
   final links = vm.links;
   report.links = links.length;
+  final tableBytes = links.fold<int>(0, (s, l) => s + l.size);
+  if (tableBytes != vm.linkedCodeBytes) {
+    fail('header linked bytes ${vm.linkedCodeBytes} != table total '
+        '$tableBytes');
+  }
+  if (patchInfo != null && patchInfo.codeBytes != vm.patchCodeBytes) {
+    fail('header patch code bytes ${vm.patchCodeBytes} != sidecar total '
+        '${patchInfo.codeBytes}');
+  }
+  if (vm.patchCodeBytes <= 0 || vm.linkedCodeBytes > vm.patchCodeBytes) {
+    fail('header code byte counts are inconsistent');
+  }
+  report.linkPercent = vm.patchCodeBytes <= 0
+      ? 0
+      : 100.0 * vm.linkedCodeBytes / vm.patchCodeBytes;
+  if (minLinkPercent != null && report.linkPercent < minLinkPercent) {
+    report.belowMinimum = true;
+    fail('link percent ${report.linkPercent.toStringAsFixed(5)} is below '
+        '--min-link-percent $minLinkPercent');
+  }
   for (var i = 1; i < links.length; i++) {
     if (links[i].patchOffset < links[i - 1].patchOffset + links[i - 1].size) {
       fail('links not sorted or overlapping at $i');
@@ -70,8 +118,8 @@ CheckReport checkVmcode({
   }
 
   // Optional cross-check: links cover whole code entries.
-  if (patchLinkPath != null) {
-    final p = LinkInfo.read(patchLinkPath);
+  if (patchInfo != null) {
+    final p = patchInfo;
     final sizes = {for (final e in p.codes) e.textOffset: e.size};
     for (final l in links) {
       if (sizes[l.patchOffset] != l.size) {
@@ -79,8 +127,8 @@ CheckReport checkVmcode({
       }
     }
   }
-  if (baseLinkPath != null) {
-    final b = LinkInfo.read(baseLinkPath);
+  if (baseInfo != null) {
+    final b = baseInfo;
     final sizes = {for (final e in b.codes) e.textOffset: e.size};
     for (final l in links) {
       if (sizes[l.baseOffset] != l.size) {

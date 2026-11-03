@@ -12,12 +12,21 @@ gen_snapshot link layout support and tools/ios_linker. For every case:
   download: updater `patch` (bidiff + zstd) of out.vmcode against the
             release data+text blob
 
-usage: run_matrix.py [--wide] [--dd] [--work DIR] [CASE...]
+With --release-format macho the release is built the way flutter_tools
+builds an iOS release (assembly snapshot, assembled and linked into
+App.framework/App with the iPhoneOS SDK, dSYM extracted, strip -x, then
+ad-hoc signed) and the linker reads the release text from that Mach-O. An
+ELF from the same compiler flags is built alongside to prove that the code
+bytes and the sidecar are identical in both forms.
+
+usage: run_matrix.py [--wide] [--dd] [--release-format elf|macho]
+                     [--min-link-percent P] [--work DIR] [CASE...]
 """
 import argparse
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import time
@@ -133,16 +142,89 @@ def tool(args, log):
     return run([DART, TOOL] + args, log)
 
 
+# flutter_tools (base/build.dart) iOS: --deterministic, assembly, no --strip
+# (the framework binary is stripped after dSYM extraction).
+IOS_MIN_VERSION = '15.0'  # FlutterDarwinPlatform.ios.deploymentTarget()
+
+
+def build_release(rel, dill, flags, release_format, log):
+    """Builds the release; returns (release binary, release sidecar, proofs)."""
+    if release_format == 'elf':
+        gen([f'--elf={rel}/App.aot', f'--print_link_info_to={rel}/App.link'] + flags + [dill], log)
+        stock = rel / 'App.stock.aot'
+        proofs = {'elf_identical_to_stock': stock.exists() and
+                  stock.read_bytes() == (rel / 'App.aot').read_bytes()}
+        return rel / 'App.aot', rel / 'App.link', proofs
+    proofs = {}
+    run([GEN, '--deterministic', '--snapshot_kind=app-aot-assembly', f'--assembly={rel}/App.stock.S']
+        + flags + [dill], log)
+    run([GEN, '--deterministic', '--snapshot_kind=app-aot-assembly', f'--assembly={rel}/App.S',
+         f'--print_link_info_to={rel}/App.link'] + flags + [dill], log)
+    proofs['assembly_identical_to_stock'] = (rel / 'App.S').read_bytes() == (rel / 'App.stock.S').read_bytes()
+    # Same flags as ELF (for the equality proof only).
+    run([GEN, '--deterministic', '--snapshot_kind=app-aot-elf', f'--elf={rel}/App.aot',
+         f'--print_link_info_to={rel}/App.elf.link'] + flags + [dill], log)
+    proofs['sidecar_identical_elf_vs_assembly'] = (rel / 'App.link').read_bytes() == (rel / 'App.elf.link').read_bytes()
+    sdk = run(['xcrun', '--sdk', 'iphoneos', '--show-sdk-path'], log).strip()
+    common = ['-arch', 'arm64', f'-miphoneos-version-min={IOS_MIN_VERSION}', '-isysroot', sdk]
+    run(['xcrun', 'cc'] + common + ['-c', rel / 'App.S', '-o', rel / 'App.o'], log)
+    fw = rel / 'App.framework'
+    if fw.exists():
+        shutil.rmtree(fw)
+    fw.mkdir()
+    run(['xcrun', 'clang'] + common + ['-dynamiclib', '-Xlinker', '-rpath', '-Xlinker',
+         '@executable_path/Frameworks', '-Xlinker', '-rpath', '-Xlinker', '@loader_path/Frameworks',
+         '-fapplication-extension', '-install_name', '@rpath/App.framework/App', '-o', fw / 'App',
+         rel / 'App.o'], log)
+    run(['xcrun', 'dsymutil', '-o', rel / 'App.framework.dSYM', fw / 'App'], log)
+    run(['xcrun', 'strip', '-x', fw / 'App', '-o', fw / 'App'], log)
+    shutil.copy(fw / 'App', rel / 'App.unsigned')
+    # Ad-hoc signature: like distribution signing it only adds LC_CODE_SIGNATURE
+    # data in __LINKEDIT; __TEXT is unchanged (checked below).
+    run(['codesign', '-f', '-s', '-', fw / 'App'], log)
+    out = run([DART, TOOL, 'compare-text', '--a', fw / 'App', '--b', rel / 'App.aot',
+               '--link', rel / 'App.link'], log)
+    proofs['macho_vs_elf'] = out.strip().splitlines()
+    out = run([DART, TOOL, 'compare-text', '--a', fw / 'App', '--b', rel / 'App.unsigned',
+               '--link', rel / 'App.link'], log)
+    proofs['signed_vs_unsigned'] = out.strip().splitlines()
+    return fw / 'App', rel / 'App.link', proofs
+
+
+def patch_case(out, rel, base, base_link, flags, log, min_link_percent=None):
+    """Two-pass patch build against base_link, link, check, download."""
+    gen([f'--elf={out}/out.pass1.aot', f'--link_base={base_link}',
+         f'--print_link_info_to={out}/out.pass1.link'] + flags + [out / 'app.dill'], log)
+    hints = tool(['pool-hints', '--base-link', base_link, '--patch-link',
+                  out / 'out.pass1.link', '--out', out / 'constraints.link'], log)
+    (out / 'pool_hints.txt').write_text(hints)
+    gen([f'--elf={out}/out.aot', f'--link_base={out}/constraints.link',
+         f'--print_link_info_to={out}/out.link'] + flags + [out / 'app.dill'], log)
+    gate = [] if min_link_percent is None else ['--min-link-percent', str(min_link_percent)]
+    tool(['link', '--base', base, '--base-link', base_link,
+          '--patch-elf', out / 'out.aot', '--patch-link', out / 'out.link',
+          '--out', out / 'out.vmcode', '--report', out / 'report.json',
+          '--table', out / 'link_table.tsv'] + gate, log)
+    check = tool(['check', '--vmcode', out / 'out.vmcode', '--base', base,
+                  '--patch-elf', out / 'out.aot', '--base-link', base_link,
+                  '--patch-link', out / 'out.link'] + gate, log)
+    (out / 'check.txt').write_text(check)
+    run([PATCH_TOOL, rel / 'App.diffbase', out / 'out.vmcode', out / 'out.download'], log)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--wide', action='store_true', help='320 callers instead of 80')
     ap.add_argument('--dd', action='store_true', help='release with DD slots')
     ap.add_argument('--dd-max-bytes', type=int, default=10000)
+    ap.add_argument('--release-format', choices=['elf', 'macho'], default='elf')
+    ap.add_argument('--min-link-percent', type=float)
     ap.add_argument('--work', default=str(WS / '.agents/ios-linker-20261104/matrix'))
     ap.add_argument('cases', nargs='*')
     a = ap.parse_args()
     fanout = 320 if a.wide else 80
-    profile = ('dd' if a.dd else 'direct') + ('_wide' if a.wide else '')
+    profile = (('dd' if a.dd else 'direct') + ('_wide' if a.wide else '')
+               + ('_macho' if a.release_format == 'macho' else ''))
     work = Path(a.work) / profile
     fixture = Path(a.work) / 'fixture'
     work.mkdir(parents=True, exist_ok=True)
@@ -161,12 +243,11 @@ def main():
         # Pass 1: analysis build; select DD targets from the call graph.
         gen([f'--elf={rel}/App.analysis.aot', f'--print_link_info_to={rel}/App.analysis.link',
              rel / 'app.dill'], log)
-        tool(['dd-select', '--elf', rel / 'App.analysis.aot', '--link', rel / 'App.analysis.link',
+        tool(['dd-select', '--base', rel / 'App.analysis.aot', '--link', rel / 'App.analysis.link',
               '--max-bytes', str(a.dd_max_bytes), '--out', rel / 'App.dd'], log)
         base_flags = [f'--link_dd_targets={rel}/App.dd']
-    gen([f'--elf={rel}/App.aot', f'--print_link_info_to={rel}/App.link'] + base_flags +
-        [rel / 'app.dill'], log)
-    tool(['diff-base', '--elf', rel / 'App.aot', '--out', rel / 'App.diffbase'], log)
+    base, base_link, proofs = build_release(rel, rel / 'app.dill', base_flags, a.release_format, log)
+    tool(['diff-base', '--base', base, '--link', base_link, '--out', rel / 'App.diffbase'], log)
 
     results = {}
     for name in selected:
@@ -176,21 +257,10 @@ def main():
         log.write_text('')
         (out / 'source.dart').write_text(all_cases[name])
         kernel(all_cases[name], fixture, out / 'app.dill', log)
-        gen([f'--elf={out}/out.pass1.aot', f'--link_base={rel}/App.link',
-             f'--print_link_info_to={out}/out.pass1.link'] + base_flags + [out / 'app.dill'], log)
-        hints = tool(['pool-hints', '--base-link', rel / 'App.link', '--patch-link',
-                      out / 'out.pass1.link', '--out', out / 'constraints.link'], log)
-        gen([f'--elf={out}/out.aot', f'--link_base={out}/constraints.link',
-             f'--print_link_info_to={out}/out.link'] + base_flags + [out / 'app.dill'], log)
-        link = tool(['link', '--base-elf', rel / 'App.aot', '--base-link', rel / 'App.link',
-                     '--patch-elf', out / 'out.aot', '--patch-link', out / 'out.link',
-                     '--out', out / 'out.vmcode', '--report', out / 'report.json',
-                     '--table', out / 'link_table.tsv'], log)
-        check = tool(['check', '--vmcode', out / 'out.vmcode', '--base-elf', rel / 'App.aot',
-                      '--patch-elf', out / 'out.aot', '--base-link', rel / 'App.link',
-                      '--patch-link', out / 'out.link'], log)
-        run([PATCH_TOOL, rel / 'App.diffbase', out / 'out.vmcode', out / 'out.download'], log)
+        patch_case(out, rel, base, base_link, base_flags, log, a.min_link_percent)
         report = json.loads((out / 'report.json').read_text())
+        hints = (out / 'pool_hints.txt').read_text()
+        check = (out / 'check.txt').read_text()
         row = {
             'link_percent': report['link_percent'],
             'unlinked_entries': report['unlinked_entries'],
@@ -212,10 +282,12 @@ def main():
         'profile': profile,
         'fanout': fanout,
         'release_stock_elf': (rel / 'App.stock.aot').stat().st_size,
-        'release_elf': (rel / 'App.aot').stat().st_size,
+        'release_format': a.release_format,
+        'release_binary': base.stat().st_size,
+        'release_proofs': proofs,
         'release_diff_base': (rel / 'App.diffbase').stat().st_size,
-        'release_link_info': (rel / 'App.link').stat().st_size,
-        'release_code_bytes': sum(int(l.split('\t')[3]) for l in (rel / 'App.link').read_text().splitlines()
+        'release_link_info': base_link.stat().st_size,
+        'release_code_bytes': sum(int(l.split('\t')[3]) for l in base_link.read_text().splitlines()
                                   if l.startswith('code\t')),
         'cases': results,
     }

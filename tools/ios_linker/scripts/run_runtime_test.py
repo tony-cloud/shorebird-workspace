@@ -11,12 +11,17 @@ placement, selector offsets) independently of the native-reuse runtime.
 usage: run_runtime_test.py [--work DIR] RELEASE.dart PATCH.dart [...pairs]
 """
 import argparse
+import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 
 WS = Path('/Volumes/TonyCL6APFS/git/shorebird-workspace')
-OUT = WS / '.agents/wt/linker/dart-sdk/xcodebuild/ProductARM64'
+# DART_OUT selects the build (gen_snapshot + dartaotruntime), e.g.
+# xcodebuild/ProductARM64C for compressed pointers.
+OUT = Path(os.environ.get('DART_OUT', WS / '.agents/wt/linker/dart-sdk/xcodebuild/ProductARM64'))
+VM_PLATFORM = WS / '.agents/wt/linker/dart-sdk/xcodebuild/ProductARM64/vm_platform.dill'
 HOST_SDK = WS / '.agents/builds/engine-ios-closed-world-20261104/out/host_release_arm64/dart-sdk'
 TOOL = WS / 'tools/ios_linker/bin/ios_linker.dart'
 
@@ -32,12 +37,23 @@ def run(cmd, capture=True):
 def kernel(src, dill, fixture):
     fixture.write_text(Path(src).read_text())
     run([HOST_SDK / 'bin/dartaotruntime', HOST_SDK / 'bin/snapshots/gen_kernel_aot.dart.snapshot',
-         '--aot', f'--platform={OUT}/vm_platform.dill', '-Ddart.vm.product=true',
+         '--aot', f'--platform={VM_PLATFORM}', '-Ddart.vm.product=true',
          f'--output={dill}', fixture])
 
 
 def gen(args):
     return run([OUT / 'gen_snapshot', '--deterministic', '--snapshot_kind=app-aot-elf'] + args)
+
+
+def runtime_copy(work):
+    # macOS kills a binary rebuilt in place whose old signature is cached
+    # (SIGKILL, exit -9). Run a fresh copy (new inode), ad-hoc signed.
+    rt = work / 'dartaotruntime'
+    if rt.exists():
+        rt.unlink()
+    shutil.copy2(OUT / 'dartaotruntime', rt)
+    run(['codesign', '-f', '-s', '-', rt])
+    return rt
 
 
 def main():
@@ -63,12 +79,13 @@ def main():
              '--patch-link', d / 'pass1.link', '--out', d / 'constraints.link'])
         gen([f'--elf={d}/out.aot', f'--link_base={d}/constraints.link',
              f'--print_link_info_to={d}/out.link', d / 'patch.dill'])
-        link = run([HOST_SDK / 'bin/dart', TOOL, 'link', '--base-elf', d / 'App.aot',
+        link = run([HOST_SDK / 'bin/dart', TOOL, 'link', '--base', d / 'App.aot',
                     '--base-link', d / 'App.link', '--patch-elf', d / 'out.aot',
                     '--patch-link', d / 'out.link', '--out', d / 'out.vmcode'])
         check = run([HOST_SDK / 'bin/dart', TOOL, 'check', '--vmcode', d / 'out.vmcode',
-                     '--base-elf', d / 'App.aot', '--patch-elf', d / 'out.aot'])
-        rt = OUT / 'dartaotruntime'
+                     '--base', d / 'App.aot', '--patch-elf', d / 'out.aot',
+                     '--base-link', d / 'App.link', '--patch-link', d / 'out.link'])
+        rt = runtime_copy(work)
         release_out = run([rt, d / 'App.aot'])
         stock_out = run([rt, d / 'stock.aot'])
         patch_out = run([rt, d / 'out.aot'])

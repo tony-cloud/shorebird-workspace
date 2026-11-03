@@ -6,23 +6,32 @@ import 'dart:typed_data';
 
 import '../lib/src/checker.dart';
 import '../lib/src/dd_select.dart';
-import '../lib/src/elf.dart';
 import '../lib/src/hash.dart';
 import '../lib/src/link_info.dart';
 import '../lib/src/linker.dart';
 import '../lib/src/pool_hints.dart';
+import '../lib/src/snapshot_binary.dart';
 import '../lib/src/vmcode.dart';
 
 const usage = '''
 usage:
-  ios_linker link --base-elf F --base-link F --patch-elf F --patch-link F
+  ios_linker link --base F --base-link F --patch-elf F --patch-link F
                   --out out.vmcode [--report report.json] [--table table.tsv]
-                  [--allow-unlinked-stubs true]
-  ios_linker check --vmcode F --base-elf F --patch-elf F
-                  [--base-link F] [--patch-link F]
+                  [--min-link-percent P] [--allow-unlinked-stubs true]
+  ios_linker check --vmcode F --base F --patch-elf F
+                  [--base-link F] [--patch-link F] [--min-link-percent P]
   ios_linker pool-hints --base-link F --patch-link PASS1 --out constraints.link
-  ios_linker diff-base --elf F --out F   (release data + text blobs)
-  ios_linker dd-select --elf F --link F --max-bytes N --out targets.dd
+  ios_linker diff-base --base F [--link F] --out F (release data + text blobs)
+  ios_linker dd-select --base F --link F --max-bytes N --out targets.dd
+  ios_linker compare-text --a F --b F [--link F]
+
+--base is the release binary: the ELF gen_snapshot wrote, or the Mach-O
+App.framework/App built from its assembly (the text image is located at
+_kDartSnapshotText; its size comes from the sidecar). --base-elf and --elf
+are accepted as aliases.
+
+Exit codes: 0 ok, 1 check failed / texts differ, 2 VM stubs unlinked,
+3 below --min-link-percent, 4 sidecar/compiler mismatch, 64 usage.
 ''';
 
 Map<String, String> parseArgs(List<String> args) {
@@ -43,39 +52,70 @@ Map<String, String> parseArgs(List<String> args) {
 String need(Map<String, String> o, String k) =>
     o[k] ?? (throw ArgumentError('missing --$k\n$usage'));
 
-int main(List<String> argv) {
+String baseArg(Map<String, String> o) =>
+    o['base'] ?? o['base-elf'] ?? o['elf'] ?? need(o, 'base');
+
+double? minPercentArg(Map<String, String> o) {
+  final v = o['min-link-percent'];
+  if (v == null) return null;
+  final p = double.parse(v);
+  if (p < 0 || p > 100) throw ArgumentError('--min-link-percent out of range');
+  return p;
+}
+
+// Dart ignores main's return value; the process exit code is set explicitly.
+void main(List<String> argv) {
+  exitCode = mainWithExitCode(argv);
+}
+
+int mainWithExitCode(List<String> argv) {
   if (argv.isEmpty) {
     stderr.write(usage);
     return 64;
   }
   final o = parseArgs(argv.sublist(1));
-  switch (argv.first) {
+  try {
+    return run(argv.first, o);
+  } on FormatException catch (e) {
+    stderr.writeln('${argv.first}: ${e.message}');
+    return 4;
+  }
+}
+
+int run(String command, Map<String, String> o) {
+  switch (command) {
     case 'link':
       return link(o);
     case 'check':
       final r = checkVmcode(
         vmcodePath: need(o, 'vmcode'),
-        baseElfPath: need(o, 'base-elf'),
+        basePath: baseArg(o),
         patchElfPath: need(o, 'patch-elf'),
         baseLinkPath: o['base-link'],
         patchLinkPath: o['patch-link'],
+        minLinkPercent: minPercentArg(o),
       );
       stdout.writeln('check: $r');
       for (final f in r.failures) {
         stdout.writeln('  FAIL $f');
       }
-      return r.ok ? 0 : 1;
+      if (r.ok) return 0;
+      return r.belowMinimumOnly ? 3 : 1;
     case 'pool-hints':
       final base = LinkInfo.read(need(o, 'base-link'));
       final pass1 = LinkInfo.read(need(o, 'patch-link'));
+      final mismatch = base.identityMismatch(pass1);
+      if (mismatch != null) throw FormatException('compiler mismatch: $mismatch');
       final hints = computePoolHints(base, pass1);
       File(need(o, 'out')).writeAsStringSync(constraintsWithHints(base, hints));
       stdout.writeln('pool-hints: assigned=${hints.assigned} '
           'mismatched_positions=${hints.considered}');
       return 0;
     case 'dd-select':
-      final snap = Snapshot(LinkInfo.read(need(o, 'link')),
-          dartTextImage(Elf(File(need(o, 'elf')).readAsBytesSync())));
+      final info = LinkInfo.read(need(o, 'link'));
+      final bin =
+          SnapshotBinary.read(baseArg(o), textImageSize: info.textImageSize);
+      final snap = Snapshot(info, bin.textImage);
       final sel = selectDD(snap, int.parse(need(o, 'max-bytes')));
       final sb = StringBuffer('# DD targets: max-bytes=${o['max-bytes']} '
           'call-sites=${sel.callSites}\n');
@@ -86,28 +126,97 @@ int main(List<String> argv) {
       sel.treeBytes.forEach((k, v) => stdout.writeln('  $v\t$k'));
       return 0;
     case 'diff-base':
-      final elf = Elf(File(need(o, 'elf')).readAsBytesSync());
+      final size = o['link'] == null
+          ? null
+          : LinkInfo.read(o['link']!).textImageSize;
+      final bin = SnapshotBinary.read(baseArg(o), textImageSize: size);
       final out = BytesBuilder(copy: false)
-        ..add(elf.symbolBytes(elf.symbols.containsKey('_kDartSnapshotData')
-            ? '_kDartSnapshotData'
-            : '_kDartIsolateSnapshotData'))
-        ..add(dartTextImage(elf));
+        ..add(bin.dataImage)
+        ..add(bin.textImage);
       File(need(o, 'out')).writeAsBytesSync(out.takeBytes());
+      stdout.writeln('diff-base: ${bin.format} data=${bin.dataImage.length} '
+          'text=${bin.textImage.length}');
       return 0;
+    case 'compare-text':
+      return compareText(o);
     default:
       stderr.write(usage);
       return 64;
   }
 }
 
+/// Compares the instructions images of two binaries (ELF or Mach-O). With
+/// --link, also compares every code entry the sidecar lists. Exit 0 when
+/// all code entries (or, without --link, the whole images) are identical.
+int compareText(Map<String, String> o) {
+  final info = o['link'] == null ? null : LinkInfo.read(o['link']!);
+  final a = SnapshotBinary.read(need(o, 'a'), textImageSize: info?.textImageSize);
+  final b = SnapshotBinary.read(need(o, 'b'), textImageSize: info?.textImageSize);
+  final ta = a.textImage, tb = b.textImage;
+  stdout.writeln('a: ${a.format} text=${ta.length} at file+${a.textFileOffset} '
+      'sha256=${hex(sha256(ta))}');
+  stdout.writeln('b: ${b.format} text=${tb.length} at file+${b.textFileOffset} '
+      'sha256=${hex(sha256(tb))}');
+  final n = ta.length < tb.length ? ta.length : tb.length;
+  final diffs = <int>[];
+  for (var i = 0; i + 8 <= n; i += 8) {
+    for (var j = 0; j < 8; j++) {
+      if (ta[i + j] != tb[i + j]) {
+        diffs.add(i);
+        break;
+      }
+    }
+  }
+  final classify = (int off) {
+    final e = info?.entryAt(off);
+    return e == null ? 'outside code' : 'in ${e.key}';
+  };
+  stdout.writeln('differing 8-byte words: ${diffs.length}');
+  for (final d in diffs.take(10)) {
+    stdout.writeln('  +$d (${classify(d)})');
+  }
+  if (info == null) return ta.length == tb.length && diffs.isEmpty ? 0 : 1;
+  var bytes = 0, differing = 0;
+  for (final e in info.codes) {
+    bytes += e.size;
+    if (e.end > n) {
+      differing++;
+      continue;
+    }
+    for (var i = e.textOffset; i < e.end; i++) {
+      if (ta[i] != tb[i]) {
+        differing++;
+        break;
+      }
+    }
+  }
+  stdout.writeln('code entries: ${info.codes.length} ($bytes bytes), '
+      'differing: $differing');
+  return differing == 0 ? 0 : 1;
+}
+
 int link(Map<String, String> o) {
-  final baseElf = Elf(File(need(o, 'base-elf')).readAsBytesSync());
-  final patchElfBytes = File(need(o, 'patch-elf')).readAsBytesSync();
-  final patchElf = Elf(patchElfBytes);
-  final baseText = dartTextImage(baseElf);
-  final patchText = dartTextImage(patchElf);
-  final base = Snapshot(LinkInfo.read(need(o, 'base-link')), baseText);
-  final patch = Snapshot(LinkInfo.read(need(o, 'patch-link')), patchText);
+  final baseInfo = LinkInfo.read(need(o, 'base-link'));
+  final patchInfo = LinkInfo.read(need(o, 'patch-link'));
+  final mismatch = baseInfo.identityMismatch(patchInfo);
+  if (mismatch != null) {
+    stderr.writeln('link: release and patch were compiled by different '
+        'gen_snapshots ($mismatch)');
+    return 4;
+  }
+  final minPercent = minPercentArg(o);
+  final baseBin =
+      SnapshotBinary.read(baseArg(o), textImageSize: baseInfo.textImageSize);
+  final patchBin = SnapshotBinary.read(need(o, 'patch-elf'),
+      textImageSize: patchInfo.textImageSize);
+  if (patchBin.format != 'elf') {
+    throw const FormatException('the patch must be an ELF snapshot');
+  }
+  final patchElfBytes = patchBin.bytes;
+  final baseText = baseBin.textImage;
+  final patchText = patchBin.textImage;
+  final base = Snapshot(baseInfo, baseText);
+  final patch = Snapshot(patchInfo, patchText);
   final result = computeLinks(base, patch);
 
   final links = [
@@ -126,7 +235,9 @@ int link(Map<String, String> o) {
     patchCodeBytes: result.patchCodeBytes,
   );
   final encoded = vm.encode();
-  File(need(o, 'out')).writeAsBytesSync(encoded);
+  final outPath = need(o, 'out');
+  final outFile = File(outPath);
+  if (outFile.existsSync()) outFile.deleteSync();
 
   final reasons = <String, List<int>>{};
   result.unlinked.forEach((p, r) {
@@ -154,11 +265,17 @@ int link(Map<String, String> o) {
       if (patch.entries[p].entry.key.startsWith('stub:'))
         patch.entries[p].entry.key
   ];
+  var exit = 0;
   if (unlinkedStubs.isNotEmpty && o['allow-unlinked-stubs'] == null) {
     stderr.writeln('link: ${unlinkedStubs.length} VM stubs do not link '
         '(toolchain mismatch?): ${unlinkedStubs.take(5).join(', ')}');
-    File(need(o, 'out')).deleteSync();
-    return 2;
+    exit = 2;
+  } else if (minPercent != null && result.linkPercent < minPercent) {
+    stderr.writeln('link: ${result.linkPercent.toStringAsFixed(5)}% is below '
+        '--min-link-percent $minPercent; no vmcode written');
+    exit = 3;
+  } else {
+    outFile.writeAsBytesSync(encoded);
   }
 
   if (o['table'] != null) {
@@ -193,7 +310,10 @@ int link(Map<String, String> o) {
       'unlinked_entries': result.unlinked.length,
       'unlinked_code_bytes': unlinkedBytes,
       'subgraph_hash_agreements': result.subgraphHashAgreements,
-      'vmcode_bytes': encoded.length,
+      'release_format': baseBin.format,
+      'min_link_percent': minPercent,
+      'exit_code': exit,
+      'vmcode_bytes': exit == 0 ? encoded.length : null,
       'vmcode_header_bytes': vm.elfOffset,
       'unlinked_by_reason': {
         for (final r in reasons.entries)
@@ -202,5 +322,5 @@ int link(Map<String, String> o) {
       'unlinked': unlinked,
     }));
   }
-  return 0;
+  return exit;
 }

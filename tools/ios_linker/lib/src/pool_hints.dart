@@ -81,7 +81,7 @@ PoolHints computePoolHints(LinkInfo base, LinkInfo pass1) {
 /// The release link info with the extra pool assignments placed before the
 /// release's own pool lines (the first definition of a key wins).
 String constraintsWithHints(LinkInfo base, PoolHints hints) {
-  final out = StringBuffer('#osb-link-info 1\n');
+  final out = StringBuffer('$linkInfoHeader\n');
   for (final l in hints.lines) {
     out.writeln(l);
   }
