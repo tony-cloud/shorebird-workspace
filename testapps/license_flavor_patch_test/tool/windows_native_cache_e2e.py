@@ -91,6 +91,18 @@ KNOWN_MESSAGES = (
     (b'unable to parse a flutter version from the output of', 'flutter_version_unparsable'),
     (b'unable to determine revision for flutter version', 'flutter_revision_unresolved'),
     (b'failed to build release artifacts', 'release_build_failed'),
+    # shorebird_cli release_command.dart `_installTargetFlutter` (logs before exiting 70).
+    (b'unable to install flutter', 'flutter_install_failed'),
+    # artifact_builder.dart `_runFlutterBuild` ('Failed to build $description.' with description 'windows app').
+    (b'failed to build windows app', 'windows_build_failed'),
+    # flutter_tools version.dart VersionCheckError texts and git's own fatal messages.
+    (b'command exited with code', 'flutter_git_command_failed'),
+    (b'could not determine the remote upstream', 'flutter_remote_upstream_unknown'),
+    (b'tracking a non-standard remote', 'flutter_nonstandard_remote'),
+    (b'detected dubious ownership', 'git_dubious_ownership'),
+    (b'not a git repository', 'git_not_repository'),
+    (b'no names found', 'git_no_tags'),
+    (b'filename too long', 'git_path_too_long'),
 )
 MAX_EXCEPTION_TYPES, MAX_PUB_PACKAGES = 5, 10
 
@@ -164,6 +176,49 @@ def error_signature(head, tail, classification):
                 break
         signature['pub_conflict_packages'] = packages
     return signature
+
+
+# Sanitized pre-release probe of the Flutter checkouts the CLI will use. Only the
+# check name, the exit code and a fixed classification key are ever printed.
+GIT_PROBES = (
+    ('status', ['status', '--porcelain=v1', '-uno']),
+    ('head', ['rev-parse', '--verify', 'HEAD']),
+    ('log', ['-c', 'log.showSignature=false', 'log', '-n', '1', '--pretty=format:%ad', '--date=iso']),
+    ('tags_at_head', ['tag', '--points-at', 'HEAD']),
+    ('latest_tag', ['for-each-ref', '--sort=-v:refname', '--count=1', '--format=%(refname:short)',
+                    'refs/tags/[0-9]*.*.*']),
+    ('upstream', ['rev-parse', '--abbrev-ref', '--symbolic', '@{u}']),
+    ('origin_url', ['remote', 'get-url', 'origin']),
+)
+EMPTY_STDOUT_MEANS = {'tags_at_head': None, 'latest_tag': 'git_no_tags'}
+
+
+def classify_probe(name, code, stdout, stderr):
+    """Map a git/flutter probe result to a fixed enum key; raw text is never returned."""
+    text = (stdout + b'\n' + stderr).lower()
+    if b'detected dubious ownership' in text:
+        return 'git_dubious_ownership'
+    if b'not a git repository' in text:
+        return 'git_not_repository'
+    if b'filename too long' in text:
+        return 'git_path_too_long'
+    if name == 'flutter_version':
+        if code == 0:
+            return 'flutter_version_ok'
+        return 'flutter_version_check_error' if b'versioncheckerror' in text else 'flutter_version_failed'
+    if code is None:
+        return 'probe_timed_out'
+    if name == 'origin_url' and code:
+        return 'git_missing_remote'
+    if name == 'upstream' and code:
+        return 'git_no_upstream'
+    if name in ('head', 'log') and code:
+        return 'git_no_commit'
+    if code:
+        return 'git_failed'
+    if name in EMPTY_STDOUT_MEANS and not stdout.strip():
+        return EMPTY_STDOUT_MEANS[name] or 'git_ok'
+    return 'git_ok'
 
 
 def stage_local_engine_packages(host, flutter):
@@ -981,8 +1036,35 @@ class Lifecycle:
             'patch_verification: strict\npatch_response_verification: required\n'
             'native_patch_max_bytes: 268435456\n')
 
+    def probe(self, name, command, cwd, env):
+        process = self.job.spawn([str(x) for x in command], cwd=cwd, env=env,
+                                 stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        try:
+            out, err = process.communicate(timeout=120)
+            code = process.returncode
+        except subprocess.TimeoutExpired:
+            out, err, code = b'', b'', None
+        finally:
+            stop_process(process)
+        return code, classify_probe(name, code, out, err)
+
+    def diagnose_flutter_toolchain(self):
+        """Print fixed classifications for the checkouts `release` depends on (no raw output)."""
+        env = self.environment()
+        roots = {'work_flutter': self.work / 'flutter',
+                 'vended_flutter': self.work / 'cli/bin/cache/flutter' / self.manifest['sources']['flutter']['head']}
+        for label, root in roots.items():
+            for name, args in GIT_PROBES:
+                code, key = self.probe(name, ['git', '-C', root, *args], ROOT, env)
+                print('flutter-toolchain-probe root={} check={} exit={} class={}'.format(label, name, code, key), flush=True)
+            code, key = self.probe('flutter_version', [root / 'bin/flutter.bat', '--version', '--machine'],
+                                   self.work / 'app', env)
+            print('flutter-toolchain-probe root={} check=flutter_version exit={} class={}'.format(label, code, key), flush=True)
+
     def build(self, patch=False):
         kind = 'patch' if patch else 'release'
+        if not patch:
+            self.diagnose_flutter_toolchain()
         if patch:
             current = tree_hashes(self.work / 'app/windows')
             # Flutter creates ephemeral output below windows/flutter. Only sources

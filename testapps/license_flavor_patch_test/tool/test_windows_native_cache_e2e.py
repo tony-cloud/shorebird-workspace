@@ -450,6 +450,42 @@ class CommandDiagnosticsTest(unittest.TestCase):
             self.assertTrue(result['classification_scan_truncated'])
             self.assertEqual(result['log_sha256'], e2e.sha256(content))
 
+    def test_probe_classification_emits_only_fixed_keys(self):
+        secret = b'C:\\Users\\private token=SECRET'
+        cases = (
+            ('status', 128, b'', b'fatal: detected dubious ownership in repository at ' + secret, 'git_dubious_ownership'),
+            ('head', 128, b'', b'fatal: not a git repository ' + secret, 'git_not_repository'),
+            ('log', 128, b'', b'fatal: bad revision HEAD', 'git_no_commit'),
+            ('latest_tag', 0, b'', b'', 'git_no_tags'),
+            ('latest_tag', 0, b'3.41.0\n', b'', 'git_ok'),
+            ('tags_at_head', 0, b'', b'', 'git_ok'),
+            ('origin_url', 2, b'', b'error: No such remote ' + secret, 'git_missing_remote'),
+            ('upstream', 128, b'', b'fatal: no upstream configured', 'git_no_upstream'),
+            ('status', 1, b'', b'Filename too long', 'git_path_too_long'),
+            ('status', 0, b' M x', b'', 'git_ok'),
+            ('status', None, b'', b'', 'probe_timed_out'),
+            ('flutter_version', 0, b'{"x":1}', b'', 'flutter_version_ok'),
+            ('flutter_version', 1, b'', b'VersionCheckError: Command exited ' + secret, 'flutter_version_check_error'),
+            ('flutter_version', 1, b'', b'boom ' + secret, 'flutter_version_failed'),
+        )
+        allowed = set()
+        for name, code, out, err, expected in cases:
+            key = e2e.classify_probe(name, code, out, err)
+            self.assertEqual(key, expected, name)
+            self.assertNotIn(b'SECRET', key.encode())
+            allowed.add(key)
+        self.assertTrue(all(re.fullmatch(r'[a-z_]+', key) for key in allowed))
+
+    def test_flutter_and_git_failure_texts_map_to_known_message_keys(self):
+        text = (b'VersionCheckError: Command exited with code 128: git log\nfatal: detected dubious ownership in repository\n'
+                b'The tool could not determine the remote upstream\nfatal: not a git repository\n'
+                b'The Flutter SDK is tracking a non-standard remote "x"\nUnable to install Flutter abc.\nFailed to build windows app.\n')
+        result = e2e.error_signature(text, b'', 'unknown')
+        self.assertEqual(result['exception_types'], ['VersionCheckError'])
+        self.assertEqual(result['known_messages'], [
+            'flutter_install_failed', 'windows_build_failed', 'flutter_git_command_failed', 'flutter_remote_upstream_unknown',
+            'flutter_nonstandard_remote', 'git_dubious_ownership', 'git_not_repository'])
+
     def test_error_signature_extracts_capped_identifiers_without_leaking_text(self):
         secret = 'Bearer sk-live-SECRET https://private.invalid/?sig=abc C:\\Users\\private\\file.txt'
         lines = [secret, 'Unhandled PathNotFoundException: ' + secret,
