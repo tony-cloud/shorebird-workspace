@@ -45,6 +45,14 @@ class ScorerC implements Scorer {
   int score(int k) => k - 7;
 }
 
+/// Single-implementation base class used on AOT hot paths (the unpatched app has
+/// no subclass). With closed-world devirtualization the calls to [weight] are
+/// direct; the V2o patch adds an override ([HeavyChip]) and so forces the
+/// per-class guard fallback.
+class Chip {
+  int get weight => 3;
+}
+
 class Point {
   Point(this.x, this.y);
   final double x;
@@ -57,6 +65,7 @@ class Workset {
   final List<Scorer> scorers = [ScorerA(), ScorerB(), ScorerC()];
   final List<int> list = List<int>.generate(1000, (i) => i);
   final Map<int, int> map = {for (var i = 0; i < 1000; i++) i: i * 2};
+  final Chip chip = Chip();
 }
 
 /// Trivial unchanged AOT callee used by the interpreter->AOT transition test.

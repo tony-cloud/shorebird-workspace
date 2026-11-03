@@ -53,7 +53,7 @@ if base:
             b = base['metrics'][k]['median']
             v['ratio_to_V0'] = (v['median'] / b) if b else None
 json.dump(dict(meta=meta, variants=table), open(out, 'w'), indent=1)
-labels = [l for l in ('V0', 'V1', 'V2', 'V3', 'V3p') if l in table]
+labels = [l for l in ('V0', 'V1', 'V2', 'V2o', 'V3', 'V3p') if l in table]
 print('| metric | unit | ' + ' | '.join(f'{l} med / p90 (x V0)' for l in labels) + ' |')
 print('|---|---|' + '---|' * len(labels))
 for k in table[labels[0]]['metrics']:

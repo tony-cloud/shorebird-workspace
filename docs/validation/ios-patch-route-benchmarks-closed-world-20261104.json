@@ -1,0 +1,1325 @@
+{
+ "meta": {
+  "date": "2026-11-04",
+  "device": {
+   "model": "iPad Pro 13-inch (M4) (iPad16,5)",
+   "udid": "00008132-000C396801D9001C",
+   "display_refresh_hz": 120
+  },
+  "signing": "Apple Development: Jun Lu (ZW835K3227), team 43FN6K7B4C, get-task-allow=true, development provisioning (no JIT entitlement, no debugger attached); all variants release mode (--release / shorebird release ios exported with method=development)",
+  "engine": ".agents/builds/engine-ios-closed-world-20261104 (ios_release + host_release_arm64): APFS clone of engine-ios-direct-calls-20261103 rebuilt at dart-sdk 2513af5688a (on top of 9bca9efe122: dart: retention fix, closed-world devirtualization with per-class override guard, Smi-cast stub fix; 2513af5688a fixes a gen_snapshot crash in the guard diamond). Only dart_version and dart_sdk_verification_hash differ in args.gn from the direct-calls engine.",
+  "toolchain": "Flutter fork d1fc719e1d (flutter_tools from prepared IOS-5 toolchain), prebuilt shorebird CLI 1.6.134 and Go server from /Volumes/TonySD2TAPFS/.../ios-final-replay-clock-20261102, Dart eaefa0a0",
+  "protocol": "3 cold launches per variant (app terminated/relaunched via devicectl), per launch: 3 warm-up + 15 timed reps (<=25 s budget) per microbenchmark, 15 reps for transitions, 3 s scroll warm-up then 10 s FrameTiming collection; table value = median over runs of per-run median / p90",
+  "variants": {
+   "V0": "flutter build ios --release, --aot --tfa (TFA+inlining), no shorebird.yaml asset so no updater/patch runtime. App.framework/App 2.55 MB.",
+   "V1": "shorebird release ios, runtime_profile interpreter-structural (aot_patch_structural_updates: true), unpatched. Patchable AOT (--no-tfa, structural annotations, no devirtualization). App 47.1 MB. NOTE: interpreter-body profile (default) could not be used: patch install rejected with 'Bytecode patch introduces a library absent from the base snapshot' for this app (see docs).",
+   "V2": "V1 + real CLI 'shorebird patch ios' (real server, real updater download over LAN, AES-256-GCM envelope, signature verified) changing exactly one function (patchedKernel body: tag literal 1->2). Confirmed active via kernel_tag==2.",
+   "V2o": "V1 + real CLI patch that changes the same tag function and adds `class HeavyChip extends Chip { get weight => 5 }` (an override of an existing, AOT-hot-path base class Chip.weight); kernel_tag 3 confirms it is active."
+  },
+  "bench_source_change": "This round the bench app adds Chip (single-implementation class), an AOT micro aot_hotpath_getter (2M getter calls) and a 1000-call Chip.weight loop in Item.build; V0/V1/V2 all include it, so absolute frame numbers are not identical to earlier datasets; use same-session V0 ratios.",
+  "transport": "The iPad XCUITest Local Network allow helper failed (\"Timed out while enabling automation mode\") on every attempt, so the device reached the local server through a cloudflared quick tunnel (no Local Network prompt). Release artifacts were uploaded over LAN and patch/update traffic went over the tunnel (server base URL switched per phase). Transport does not affect the measured on-device numbers.",
+  "protocol_deviations": [
+   "3 cold launches per variant; display was awake for all frame windows (all runs >=1204 frames).",
+   "V3 not measured.",
+   "V0 was run in the same session as V1/V2/V2o (V0 build with this engine)."
+  ],
+  "app_framework_bytes": {
+   "V0": 2387872,
+   "V1_and_V2_and_V2o": 48996848,
+   "direct_calls_dataset": {
+    "V0": 2387872,
+    "V1": 44969968
+   },
+   "method": "ls -l of Runner.app/Frameworks/App.framework/App in the unpacked V0 Runner.app / V1 ipa"
+  },
+  "engine_framework_bytes": {
+   "Flutter.framework/Flutter": 25115544
+  }
+ },
+ "variants": {
+  "V0": {
+   "runs": 3,
+   "kernel_tags": [
+    1
+   ],
+   "metrics": {
+    "micro/numeric_loop": {
+     "median": 6192.0,
+     "p90": 6481.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      6192.0,
+      6197.0,
+      6157.0
+     ],
+     "run_p90s": [
+      6474.0,
+      6481.0,
+      6751.0
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 1.0
+    },
+    "micro/virtual_interface_calls": {
+     "median": 2122.0,
+     "p90": 2257.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      2038.0,
+      2217.0,
+      2122.0
+     ],
+     "run_p90s": [
+      2194.0,
+      2259.0,
+      2257.0
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 1.0
+    },
+    "micro/list_map_ops": {
+     "median": 4816.0,
+     "p90": 4903.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      4806.0,
+      4816.0,
+      4855.0
+     ],
+     "run_p90s": [
+      4893.0,
+      4903.0,
+      4927.0
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 1.0
+    },
+    "micro/string_building": {
+     "median": 13175.0,
+     "p90": 13442.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      13199.0,
+      13153.0,
+      13175.0
+     ],
+     "run_p90s": [
+      13442.0,
+      13343.0,
+      13449.0
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 1.0
+    },
+    "micro/object_allocation": {
+     "median": 6923.0,
+     "p90": 7026.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      6713.0,
+      6923.0,
+      6966.0
+     ],
+     "run_p90s": [
+      6843.0,
+      7026.0,
+      7067.0
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 1.0
+    },
+    "micro/aot_hotpath_getter": {
+     "median": 655.0,
+     "p90": 673.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      643.0,
+      655.0,
+      659.0
+     ],
+     "run_p90s": [
+      652.0,
+      676.0,
+      673.0
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 1.0
+    },
+    "transition/aot_calls_kernel_tag": {
+     "median": 1.485,
+     "p90": 1.9,
+     "unit": "ns_per_call",
+     "run_medians": [
+      1.485,
+      1.455,
+      1.525
+     ],
+     "run_p90s": [
+      1.64,
+      1.9,
+      1.925
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 1.0
+    },
+    "transition/kernel_calls_aot_leaf": {
+     "median": 0.79,
+     "p90": 0.895,
+     "unit": "ns_per_call",
+     "run_medians": [
+      0.79,
+      0.775,
+      0.8
+     ],
+     "run_p90s": [
+      1.045,
+      0.795,
+      0.895
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 1.0
+    },
+    "transition/kernel_loop_reference": {
+     "median": 2.065,
+     "p90": 2.205,
+     "unit": "ns_per_iteration",
+     "run_medians": [
+      2.05,
+      2.13,
+      2.065
+     ],
+     "run_p90s": [
+      2.17,
+      2.205,
+      2.325
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 1.0
+    },
+    "frames/build_ms": {
+     "median": 0.704,
+     "p90": 1.007,
+     "unit": "ms",
+     "run_medians": [
+      0.6944999999999999,
+      0.71,
+      0.704
+     ],
+     "run_p90s": [
+      0.996,
+      1.007,
+      1.017
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 1.0
+    },
+    "frames/raster_ms": {
+     "median": 0.3995,
+     "p90": 0.545,
+     "unit": "ms",
+     "run_medians": [
+      0.393,
+      0.3995,
+      0.405
+     ],
+     "run_p90s": [
+      0.535,
+      0.545,
+      0.555
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 1.0
+    },
+    "frames/total_span_ms": {
+     "median": 1.289,
+     "p90": 1.634,
+     "unit": "ms",
+     "run_medians": [
+      1.2825,
+      1.289,
+      1.334
+     ],
+     "run_p90s": [
+      1.623,
+      1.634,
+      1.667
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 1.0
+    },
+    "frames/over_8_4ms": {
+     "median": 0,
+     "p90": 0,
+     "unit": "count",
+     "run_medians": [
+      0,
+      0,
+      0
+     ],
+     "run_p90s": [
+      0,
+      0,
+      0
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": null
+    },
+    "frames/over_16_7ms": {
+     "median": 0,
+     "p90": 0,
+     "unit": "count",
+     "run_medians": [
+      0,
+      0,
+      0
+     ],
+     "run_p90s": [
+      0,
+      0,
+      0
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": null
+    },
+    "frames/count": {
+     "median": 1210,
+     "p90": 1210,
+     "unit": "frames",
+     "run_medians": [
+      1210,
+      1210,
+      1209
+     ],
+     "run_p90s": [
+      1210,
+      1210,
+      1209
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 1.0
+    }
+   }
+  },
+  "V1": {
+   "runs": 3,
+   "kernel_tags": [
+    1
+   ],
+   "metrics": {
+    "micro/numeric_loop": {
+     "median": 6261.0,
+     "p90": 6728.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      6303.0,
+      6261.0,
+      6245.0
+     ],
+     "run_p90s": [
+      6499.0,
+      6728.0,
+      6912.0
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 1.011143410852713
+    },
+    "micro/virtual_interface_calls": {
+     "median": 7166.0,
+     "p90": 7290.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      7166.0,
+      7502.0,
+      7097.0
+     ],
+     "run_p90s": [
+      7290.0,
+      7567.0,
+      7221.0
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 3.3770028275212063
+    },
+    "micro/list_map_ops": {
+     "median": 8703.0,
+     "p90": 8949.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      8703.0,
+      8668.0,
+      8847.0
+     ],
+     "run_p90s": [
+      8819.0,
+      8949.0,
+      8975.0
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 1.8071013289036544
+    },
+    "micro/string_building": {
+     "median": 18747.0,
+     "p90": 18898.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      18848.0,
+      18696.0,
+      18747.0
+     ],
+     "run_p90s": [
+      19243.0,
+      18894.0,
+      18898.0
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 1.4229222011385199
+    },
+    "micro/object_allocation": {
+     "median": 11907.0,
+     "p90": 12093.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      11907.0,
+      11879.0,
+      11958.0
+     ],
+     "run_p90s": [
+      11968.0,
+      12093.0,
+      12128.0
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 1.7199191102123357
+    },
+    "micro/aot_hotpath_getter": {
+     "median": 2535.0,
+     "p90": 2559.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      3049.0,
+      2535.0,
+      2489.0
+     ],
+     "run_p90s": [
+      3072.0,
+      2559.0,
+      2523.0
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 3.8702290076335877
+    },
+    "transition/aot_calls_kernel_tag": {
+     "median": 1.67,
+     "p90": 1.82,
+     "unit": "ns_per_call",
+     "run_medians": [
+      1.675,
+      1.655,
+      1.67
+     ],
+     "run_p90s": [
+      1.82,
+      1.76,
+      1.87
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 1.1245791245791246
+    },
+    "transition/kernel_calls_aot_leaf": {
+     "median": 1.805,
+     "p90": 2.105,
+     "unit": "ns_per_call",
+     "run_medians": [
+      1.83,
+      1.805,
+      1.59
+     ],
+     "run_p90s": [
+      2.25,
+      2.105,
+      1.67
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 2.2848101265822782
+    },
+    "transition/kernel_loop_reference": {
+     "median": 2.07,
+     "p90": 2.325,
+     "unit": "ns_per_iteration",
+     "run_medians": [
+      2.07,
+      2.035,
+      2.095
+     ],
+     "run_p90s": [
+      2.37,
+      2.08,
+      2.325
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 1.0024213075060533
+    },
+    "frames/build_ms": {
+     "median": 1.714,
+     "p90": 2.189,
+     "unit": "ms",
+     "run_medians": [
+      1.719,
+      1.709,
+      1.714
+     ],
+     "run_p90s": [
+      2.219,
+      2.189,
+      2.174
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 2.434659090909091
+    },
+    "frames/raster_ms": {
+     "median": 0.379,
+     "p90": 0.445,
+     "unit": "ms",
+     "run_medians": [
+      0.379,
+      0.384,
+      0.378
+     ],
+     "run_p90s": [
+      0.441,
+      0.445,
+      0.449
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 0.948685857321652
+    },
+    "frames/total_span_ms": {
+     "median": 2.2945,
+     "p90": 2.796,
+     "unit": "ms",
+     "run_medians": [
+      2.29,
+      2.2945,
+      2.314
+     ],
+     "run_p90s": [
+      2.799,
+      2.79,
+      2.796
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 1.7800620636152058
+    },
+    "frames/over_8_4ms": {
+     "median": 0,
+     "p90": 0,
+     "unit": "count",
+     "run_medians": [
+      0,
+      0,
+      0
+     ],
+     "run_p90s": [
+      0,
+      0,
+      0
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": null
+    },
+    "frames/over_16_7ms": {
+     "median": 0,
+     "p90": 0,
+     "unit": "count",
+     "run_medians": [
+      0,
+      0,
+      0
+     ],
+     "run_p90s": [
+      0,
+      0,
+      0
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": null
+    },
+    "frames/count": {
+     "median": 1210,
+     "p90": 1210,
+     "unit": "frames",
+     "run_medians": [
+      1210,
+      1210,
+      1209
+     ],
+     "run_p90s": [
+      1210,
+      1210,
+      1209
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 1.0
+    }
+   }
+  },
+  "V2": {
+   "runs": 3,
+   "kernel_tags": [
+    2
+   ],
+   "metrics": {
+    "micro/numeric_loop": {
+     "median": 119810.0,
+     "p90": 120938.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      121207.0,
+      119810.0,
+      118271.0
+     ],
+     "run_p90s": [
+      122246.0,
+      120938.0,
+      119823.0
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 19.349160206718345
+    },
+    "micro/virtual_interface_calls": {
+     "median": 97302.0,
+     "p90": 98916.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      97302.0,
+      96933.0,
+      97758.0
+     ],
+     "run_p90s": [
+      97534.0,
+      98916.0,
+      100328.0
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 45.853911404335534
+    },
+    "micro/list_map_ops": {
+     "median": 45060.0,
+     "p90": 46111.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      44881.0,
+      46313.0,
+      45060.0
+     ],
+     "run_p90s": [
+      45718.0,
+      47128.0,
+      46111.0
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 9.356312292358805
+    },
+    "micro/string_building": {
+     "median": 41294.0,
+     "p90": 41539.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      41180.0,
+      41294.0,
+      41790.0
+     ],
+     "run_p90s": [
+      41352.0,
+      41539.0,
+      41940.0
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 3.13426944971537
+    },
+    "micro/object_allocation": {
+     "median": 209621.0,
+     "p90": 211024.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      210714.0,
+      209621.0,
+      209095.0
+     ],
+     "run_p90s": [
+      212791.0,
+      211024.0,
+      210055.0
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 30.27892532139246
+    },
+    "micro/aot_hotpath_getter": {
+     "median": 2978.0,
+     "p90": 2986.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      3004.0,
+      2550.0,
+      2978.0
+     ],
+     "run_p90s": [
+      3035.0,
+      2576.0,
+      2986.0
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 4.546564885496183
+    },
+    "transition/aot_calls_kernel_tag": {
+     "median": 30.965,
+     "p90": 32.425,
+     "unit": "ns_per_call",
+     "run_medians": [
+      31.77,
+      30.965,
+      30.835
+     ],
+     "run_p90s": [
+      32.425,
+      31.385,
+      32.835
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 20.85185185185185
+    },
+    "transition/kernel_calls_aot_leaf": {
+     "median": 24.365,
+     "p90": 25.01,
+     "unit": "ns_per_call",
+     "run_medians": [
+      24.365,
+      24.675,
+      24.14
+     ],
+     "run_p90s": [
+      25.015,
+      25.01,
+      24.33
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 30.84177215189873
+    },
+    "transition/kernel_loop_reference": {
+     "median": 39.835,
+     "p90": 40.33,
+     "unit": "ns_per_iteration",
+     "run_medians": [
+      39.935,
+      39.835,
+      38.98
+     ],
+     "run_p90s": [
+      40.475,
+      40.33,
+      39.22
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 19.290556900726394
+    },
+    "frames/build_ms": {
+     "median": 2.084,
+     "p90": 3.861,
+     "unit": "ms",
+     "run_medians": [
+      2.084,
+      1.902,
+      2.549
+     ],
+     "run_p90s": [
+      3.861,
+      3.868,
+      3.012
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 2.960227272727273
+    },
+    "frames/raster_ms": {
+     "median": 0.082,
+     "p90": 0.18,
+     "unit": "ms",
+     "run_medians": [
+      0.082,
+      0.082,
+      0.151
+     ],
+     "run_p90s": [
+      0.169,
+      0.18,
+      0.183
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 0.20525657071339173
+    },
+    "frames/total_span_ms": {
+     "median": 2.3905,
+     "p90": 4.144,
+     "unit": "ms",
+     "run_medians": [
+      2.3905,
+      2.224,
+      2.835
+     ],
+     "run_p90s": [
+      4.144,
+      4.181,
+      3.307
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 1.8545384018619084
+    },
+    "frames/over_8_4ms": {
+     "median": 0,
+     "p90": 0,
+     "unit": "count",
+     "run_medians": [
+      0,
+      0,
+      0
+     ],
+     "run_p90s": [
+      0,
+      0,
+      0
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": null
+    },
+    "frames/over_16_7ms": {
+     "median": 0,
+     "p90": 0,
+     "unit": "count",
+     "run_medians": [
+      0,
+      0,
+      0
+     ],
+     "run_p90s": [
+      0,
+      0,
+      0
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": null
+    },
+    "frames/count": {
+     "median": 1206,
+     "p90": 1206,
+     "unit": "frames",
+     "run_medians": [
+      1206,
+      1205,
+      1208
+     ],
+     "run_p90s": [
+      1206,
+      1205,
+      1208
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 0.996694214876033
+    }
+   }
+  },
+  "V2o": {
+   "runs": 3,
+   "kernel_tags": [
+    3
+   ],
+   "metrics": {
+    "micro/numeric_loop": {
+     "median": 119292.0,
+     "p90": 121629.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      115990.0,
+      121391.0,
+      119292.0
+     ],
+     "run_p90s": [
+      117070.0,
+      122210.0,
+      121629.0
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 19.265503875968992
+    },
+    "micro/virtual_interface_calls": {
+     "median": 97157.0,
+     "p90": 97815.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      97157.0,
+      97929.0,
+      96732.0
+     ],
+     "run_p90s": [
+      97815.0,
+      98453.0,
+      97533.0
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 45.78557964184731
+    },
+    "micro/list_map_ops": {
+     "median": 44463.0,
+     "p90": 45003.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      44463.0,
+      44846.0,
+      44318.0
+     ],
+     "run_p90s": [
+      44641.0,
+      45003.0,
+      45230.0
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 9.232350498338871
+    },
+    "micro/string_building": {
+     "median": 40871.0,
+     "p90": 41253.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      40749.0,
+      40871.0,
+      41495.0
+     ],
+     "run_p90s": [
+      41253.0,
+      41175.0,
+      43144.0
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 3.1021631878557874
+    },
+    "micro/object_allocation": {
+     "median": 210682.0,
+     "p90": 216499.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      208208.0,
+      210682.0,
+      297968.0
+     ],
+     "run_p90s": [
+      209074.0,
+      216499.0,
+      309031.0
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 30.432182579806444
+    },
+    "micro/aot_hotpath_getter": {
+     "median": 2998.0,
+     "p90": 3016.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      2998.0,
+      2682.0,
+      4192.0
+     ],
+     "run_p90s": [
+      3016.0,
+      2711.0,
+      4360.0
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 4.577099236641222
+    },
+    "transition/aot_calls_kernel_tag": {
+     "median": 102.745,
+     "p90": 104.59,
+     "unit": "ns_per_call",
+     "run_medians": [
+      90.7,
+      102.745,
+      121.755
+     ],
+     "run_p90s": [
+      92.255,
+      104.59,
+      128.74
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 69.1885521885522
+    },
+    "transition/kernel_calls_aot_leaf": {
+     "median": 26.89,
+     "p90": 27.24,
+     "unit": "ns_per_call",
+     "run_medians": [
+      22.55,
+      26.89,
+      32.935
+     ],
+     "run_p90s": [
+      23.71,
+      27.24,
+      33.24
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 34.037974683544306
+    },
+    "transition/kernel_loop_reference": {
+     "median": 44.145,
+     "p90": 44.325,
+     "unit": "ns_per_iteration",
+     "run_medians": [
+      38.43,
+      44.145,
+      51.105
+     ],
+     "run_p90s": [
+      38.61,
+      44.325,
+      55.18
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 21.377723970944313
+    },
+    "frames/build_ms": {
+     "median": 1.8885,
+     "p90": 3.89,
+     "unit": "ms",
+     "run_medians": [
+      1.8995,
+      1.808,
+      1.8885
+     ],
+     "run_p90s": [
+      3.89,
+      3.882,
+      3.91
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 2.682528409090909
+    },
+    "frames/raster_ms": {
+     "median": 0.091,
+     "p90": 0.179,
+     "unit": "ms",
+     "run_medians": [
+      0.091,
+      0.083,
+      0.091
+     ],
+     "run_p90s": [
+      0.179,
+      0.171,
+      0.195
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 0.22778473091364204
+    },
+    "frames/total_span_ms": {
+     "median": 2.145,
+     "p90": 4.217,
+     "unit": "ms",
+     "run_medians": [
+      2.145,
+      2.082,
+      2.1725000000000003
+     ],
+     "run_p90s": [
+      4.186,
+      4.217,
+      4.245
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 1.6640806826997674
+    },
+    "frames/over_8_4ms": {
+     "median": 0,
+     "p90": 0,
+     "unit": "count",
+     "run_medians": [
+      0,
+      0,
+      1
+     ],
+     "run_p90s": [
+      0,
+      0,
+      1
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": null
+    },
+    "frames/over_16_7ms": {
+     "median": 0,
+     "p90": 0,
+     "unit": "count",
+     "run_medians": [
+      0,
+      0,
+      0
+     ],
+     "run_p90s": [
+      0,
+      0,
+      0
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": null
+    },
+    "frames/count": {
+     "median": 1204,
+     "p90": 1204,
+     "unit": "frames",
+     "run_medians": [
+      1204,
+      1207,
+      1204
+     ],
+     "run_p90s": [
+      1204,
+      1207,
+      1204
+     ],
+     "runs_used": 3,
+     "ratio_to_V0": 0.9950413223140496
+    }
+   }
+  }
+ },
+ "ratio_series": {
+  "micro/numeric_loop": {
+   "V1": {
+    "original_ratio": 1.002757054816737,
+    "direct_calls_ratio": 1.0,
+    "closed_world_ratio": 1.011143410852713
+   },
+   "V2": {
+    "original_ratio": 20.00129743756082,
+    "direct_calls_ratio": 17.848996832101374,
+    "closed_world_ratio": 19.349160206718345
+   },
+   "V2o": {
+    "closed_world_ratio": 19.265503875968992
+   }
+  },
+  "micro/virtual_interface_calls": {
+   "V1": {
+    "original_ratio": 3.3208722741433023,
+    "direct_calls_ratio": 3.02363184079602,
+    "closed_world_ratio": 3.3770028275212063
+   },
+   "V2": {
+    "original_ratio": 43.88963061860258,
+    "direct_calls_ratio": 40.60489220563847,
+    "closed_world_ratio": 45.853911404335534
+   },
+   "V2o": {
+    "closed_world_ratio": 45.78557964184731
+   }
+  },
+  "micro/list_map_ops": {
+   "V1": {
+    "original_ratio": 6.710304054054054,
+    "direct_calls_ratio": 1.6656280428432326,
+    "closed_world_ratio": 1.8071013289036544
+   },
+   "V2": {
+    "original_ratio": 17.44826858108108,
+    "direct_calls_ratio": 8.923855890944498,
+    "closed_world_ratio": 9.356312292358805
+   },
+   "V2o": {
+    "closed_world_ratio": 9.232350498338871
+   }
+  },
+  "micro/string_building": {
+   "V1": {
+    "original_ratio": 2.8769834909440615,
+    "direct_calls_ratio": 1.5142567665364017,
+    "closed_world_ratio": 1.4229222011385199
+   },
+   "V2": {
+    "original_ratio": 4.958006090719667,
+    "direct_calls_ratio": 3.197568389057751,
+    "closed_world_ratio": 3.13426944971537
+   },
+   "V2o": {
+    "closed_world_ratio": 3.1021631878557874
+   }
+  },
+  "micro/object_allocation": {
+   "V1": {
+    "original_ratio": 25.923676470588234,
+    "direct_calls_ratio": 1.657196423420825,
+    "closed_world_ratio": 1.7199191102123357
+   },
+   "V2": {
+    "original_ratio": 30.853235294117646,
+    "direct_calls_ratio": 31.03706374387078,
+    "closed_world_ratio": 30.27892532139246
+   },
+   "V2o": {
+    "closed_world_ratio": 30.432182579806444
+   }
+  },
+  "micro/aot_hotpath_getter": {
+   "V1": {
+    "original_ratio": null,
+    "direct_calls_ratio": null,
+    "closed_world_ratio": 3.8702290076335877
+   },
+   "V2": {
+    "original_ratio": null,
+    "direct_calls_ratio": null,
+    "closed_world_ratio": 4.546564885496183
+   },
+   "V2o": {
+    "closed_world_ratio": 4.577099236641222
+   }
+  },
+  "transition/aot_calls_kernel_tag": {
+   "V1": {
+    "original_ratio": 54.47330960854092,
+    "direct_calls_ratio": 1.1849315068493151,
+    "closed_world_ratio": 1.1245791245791246
+   },
+   "V2": {
+    "original_ratio": 85.61565836298932,
+    "direct_calls_ratio": 21.486301369863014,
+    "closed_world_ratio": 20.85185185185185
+   },
+   "V2o": {
+    "closed_world_ratio": 69.1885521885522
+   }
+  },
+  "transition/kernel_calls_aot_leaf": {
+   "V1": {
+    "original_ratio": 77.93301435406698,
+    "direct_calls_ratio": 1.8303030303030303,
+    "closed_world_ratio": 2.2848101265822782
+   },
+   "V2": {
+    "original_ratio": 23.138755980861244,
+    "direct_calls_ratio": 29.345454545454547,
+    "closed_world_ratio": 30.84177215189873
+   },
+   "V2o": {
+    "closed_world_ratio": 34.037974683544306
+   }
+  },
+  "transition/kernel_loop_reference": {
+   "V1": {
+    "original_ratio": 1.0,
+    "direct_calls_ratio": 0.9814814814814815,
+    "closed_world_ratio": 1.0024213075060533
+   },
+   "V2": {
+    "original_ratio": 19.414814814814815,
+    "direct_calls_ratio": 18.476851851851848,
+    "closed_world_ratio": 19.290556900726394
+   },
+   "V2o": {
+    "closed_world_ratio": 21.377723970944313
+   }
+  },
+  "frames/build_ms": {
+   "V1": {
+    "original_ratio": 2.80250347705146,
+    "direct_calls_ratio": 3.012931034482759,
+    "closed_world_ratio": 2.434659090909091
+   },
+   "V2": {
+    "original_ratio": 3.191933240611961,
+    "direct_calls_ratio": 3.0488505747126435,
+    "closed_world_ratio": 2.960227272727273
+   },
+   "V2o": {
+    "closed_world_ratio": 2.682528409090909
+   }
+  },
+  "frames/raster_ms": {
+   "V1": {
+    "original_ratio": 0.1925754060324826,
+    "direct_calls_ratio": 1.0544959128065396,
+    "closed_world_ratio": 0.948685857321652
+   },
+   "V2": {
+    "original_ratio": 0.18793503480278423,
+    "direct_calls_ratio": 0.22070844686648503,
+    "closed_world_ratio": 0.20525657071339173
+   },
+   "V2o": {
+    "closed_world_ratio": 0.22778473091364204
+   }
+  },
+  "frames/total_span_ms": {
+   "V1": {
+    "original_ratio": 1.6034482758620692,
+    "direct_calls_ratio": 2.141075604053001,
+    "closed_world_ratio": 1.7800620636152058
+   },
+   "V2": {
+    "original_ratio": 1.7607758620689657,
+    "direct_calls_ratio": 1.872564302416212,
+    "closed_world_ratio": 1.8545384018619084
+   },
+   "V2o": {
+    "closed_world_ratio": 1.6640806826997674
+   }
+  },
+  "frames/over_8_4ms": {
+   "V1": {
+    "original_ratio": null,
+    "direct_calls_ratio": null,
+    "closed_world_ratio": null
+   },
+   "V2": {
+    "original_ratio": null,
+    "direct_calls_ratio": null,
+    "closed_world_ratio": null
+   },
+   "V2o": {
+    "closed_world_ratio": null
+   }
+  },
+  "frames/over_16_7ms": {
+   "V1": {
+    "original_ratio": null,
+    "direct_calls_ratio": null,
+    "closed_world_ratio": null
+   },
+   "V2": {
+    "original_ratio": null,
+    "direct_calls_ratio": null,
+    "closed_world_ratio": null
+   },
+   "V2o": {
+    "closed_world_ratio": null
+   }
+  },
+  "frames/count": {
+   "V1": {
+    "original_ratio": 0.9975186104218362,
+    "direct_calls_ratio": 1.0,
+    "closed_world_ratio": 1.0
+   },
+   "V2": {
+    "original_ratio": 0.9975186104218362,
+    "direct_calls_ratio": 0.9983457402812241,
+    "closed_world_ratio": 0.996694214876033
+   },
+   "V2o": {
+    "closed_world_ratio": 0.9950413223140496
+   }
+  }
+ },
+ "caveats": [
+  "Single iPad, 3 cold launches/variant.",
+  "aot_hotpath_getter did not exist in earlier datasets.",
+  "V2o differs from V2 only by the added override; frame/micro differences between V2 and V2o are the guard-fallback effect plus the interpreted HeavyChip use in the tag function."
+ ]
+}

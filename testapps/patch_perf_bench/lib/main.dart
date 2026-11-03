@@ -68,6 +68,19 @@ Map<String, Object?> runMicro(Workset w) {
     s['unit'] = 'us_per_rep';
     out[name] = s;
   }
+  // AOT-only hot path: calls through a single-implementation base class.
+  const chipCalls = 2000000;
+  final cs = Stats(timeReps(() {
+    var acc = 0;
+    final chip = w.chip;
+    for (var i = 0; i < chipCalls; i++) {
+      acc += chip.weight ^ i;
+    }
+    return acc;
+  })).toJson();
+  cs['ops_per_rep'] = chipCalls;
+  cs['unit'] = 'us_per_rep';
+  out['aot_hotpath_getter'] = cs;
   return out;
 }
 
@@ -133,7 +146,11 @@ class Item extends StatelessWidget {
   Widget build(BuildContext context) {
     context.dependOnInheritedWidgetOfExactType<Tick>();
     itemBuilds++;
-    final work = patchedKernel(7, 2000, workset);
+    var work = patchedKernel(7, 2000, workset);
+    final chip = workset.chip;
+    for (var j = 0; j < 1000; j++) {
+      work += chip.weight ^ j; // AOT hot path through a single-implementation class
+    }
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       child: DecoratedBox(
