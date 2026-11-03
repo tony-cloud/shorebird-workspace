@@ -131,7 +131,9 @@ class PreparedFixtureTest(unittest.TestCase):
         path.write_text(json.dumps(report))
         now = time.time()
         os.utime(path, (now, now))
-        result = runner.validate_status(self.work, self.state, path, now - .01, 'update')
+        # setUp may have run within 10 ms; the launch must not predate preparation.
+        launched = max(self.state['created'], now - .01)
+        result = runner.validate_status(self.work, self.state, path, launched, 'update')
         self.assertEqual(len(result['verification']['checks']), 16)
         with self.assertRaisesRegex(ValueError, 'stale'):
             runner.validate_status(self.work, self.state, path, now + 1, 'update')
