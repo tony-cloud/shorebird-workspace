@@ -2804,7 +2804,7 @@ jobs:
     name: Build macOS engine artifacts
     needs: source-checks
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 300
+    timeout-minutes: 240
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.full_sdk_build }}
     strategy:
       fail-fast: false
@@ -2918,21 +2918,28 @@ jobs:
           out="out/macos_release_${{ matrix.arch }}"
           diag="$GITHUB_WORKSPACE/artifacts/macos-build-diagnostics"
           mkdir -p "$diag"
-          # Resource sampler: earlier macOS arm64 builds lost runner contact with no
-          # retrievable logs, so record disk/memory pressure every 2 minutes (full
-          # sample to a file, compact line to the live log every 10 minutes).
+          # Resource sampler. Earlier macOS runs lost the runner with no retrievable
+          # logs, so record disk/memory/swap and the largest ld/clang processes every
+          # 2 minutes (file) and echo a compact line to the live log every 4 minutes.
+          # The loop runs in a background subshell that inherits errexit/pipefail, so
+          # relax both: a SIGPIPE from a pipeline must never kill the sampler.
           (
+            set +e +o pipefail
             n=0
             while true; do
               {
                 date -u +%FT%TZ
                 df -h / "$GITHUB_WORKSPACE" | tail -n +2
-                vm_stat | head -n 8
-                memory_pressure 2>/dev/null | tail -n 2 || true
-                ps -Ao pid,rss,etime,comm -r | head -n 6
+                vm_stat | sed -n 1,8p
+                sysctl vm.swapusage
+                memory_pressure 2>/dev/null | tail -n 2
+                ps -Ao pid,rss,etime,comm -r 2>/dev/null | sed -n 1,6p
+                ps -Ao pid,rss,etime,comm -r 2>/dev/null | awk 'NR > 1 && $4 ~ /(^|\/)(ld|clang|clang\+\+|rustc)$/ && shown < 4 { print "top-rss:", $0; shown++ }'
               } >> "$diag/resources.log" 2>&1
-              if (( n % 5 == 0 )); then
-                echo "[sampler] $(date -u +%T) free=$(df -Pk "$GITHUB_WORKSPACE" | awk 'NR==2{printf "%d GiB", $4/1048576}') $(memory_pressure 2>/dev/null | grep -i 'free percentage' || true)"
+              if (( n % 2 == 0 )); then
+                swap="$(sysctl -n vm.swapusage 2>/dev/null | sed -E 's/.*used = ([0-9.]+[MG]).*/\1/')"
+                top="$(ps -Ao rss,comm -r 2>/dev/null | awk 'NR > 1 && $2 ~ /(^|\/)(ld|clang|clang\+\+|rustc)$/ { printf "%s:%dMiB", $2, $1 / 1024; exit }')"
+                echo "[sampler] $(date -u +%T) free=$(df -Pk "$GITHUB_WORKSPACE" | awk 'NR==2{printf "%d GiB", $4/1048576}') swap_used=${swap:-?} $(memory_pressure 2>/dev/null | grep -i 'free percentage' || true) top=${top:-none}"
               fi
               n=$((n + 1))
               sleep 120
@@ -2940,26 +2947,16 @@ jobs:
           ) &
           sampler=$!
           trap 'kill "$sampler" 2>/dev/null || true' EXIT
-          show_samples() {
-            echo "::group::resource samples after $1 (last 60 lines)"
-            tail -n 60 "$diag/resources.log" || true
-            echo "::endgroup::"
-          }
-          # The engine has no concurrent_links GN arg (only concurrent_toolchain_jobs,
-          # already memory-capped by flutter/tools/gn), so bound ninja directly. On
-          # the hosted arm64 runner (~3 vCPU / 7 GB) run compiles at ncpu jobs
-          # (default is ncpu+2) and the link-heavy unit-test phase at 2 jobs.
+          # Shipped-artifact targets only (same gn args and LTO as the release
+          # build). The link-heavy unit-test binaries are built and run by the
+          # macos-engine-tests matrix, one target per runner. The engine has no
+          # concurrent_links GN arg, so bound ninja directly: on the hosted arm64
+          # runner (~3 vCPU / 7 GB) run compiles at ncpu jobs (default is ncpu+2).
           artifact_jobs=()
-          test_jobs=()
           if [ "${{ matrix.arch }}" = arm64 ] && [ "${RUNNER_ENVIRONMENT:-github-hosted}" = github-hosted ]; then
-            ncpu="$(sysctl -n hw.ncpu)"
-            artifact_jobs=(-j "$ncpu")
-            test_jobs=(-j 2)
+            artifact_jobs=(-j "$(sysctl -n hw.ncpu)")
           fi
-          echo "ninja job caps: artifacts=${artifact_jobs[*]:-default} tests=${test_jobs[*]:-default}"
-          # Phase 1: shipped artifacts. Phase 2: unit-test binaries (the heaviest
-          # link steps). Same targets as before, split so a failure is attributable
-          # and disk use is recorded between phases.
+          echo "ninja job caps: artifacts=${artifact_jobs[*]:-default}"
           ninja -C "$out" ${artifact_jobs[@]+"${artifact_jobs[@]}"} \
             flutter/shell/platform/darwin/macos:zip_macos_flutter_framework \
             flutter/build/archives:flutter_patched_sdk \
@@ -2967,15 +2964,9 @@ jobs:
             flutter/tools/font_subset:font_subset
           df -h / | tail -n 1
           du -sh "$out" 2>/dev/null || true
-          show_samples "artifact phase"
-          ninja -C "$out" ${test_jobs[@]+"${test_jobs[@]}"} \
-            flutter/shell/common/shorebird:shorebird_unittests \
-            flutter/shell/platform/embedder:embedder_unittests \
-            flutter/runtime:runtime_unittests \
-            flutter/shell/platform/darwin/macos:flutter_desktop_darwin_unittests
-          df -h / | tail -n 1
-          du -sh "$out" 2>/dev/null || true
-          show_samples "unit-test phase"
+          echo "::group::resource samples after artifact build (last 60 lines)"
+          tail -n 60 "$diag/resources.log" || true
+          echo "::endgroup::"
 
       - name: Upload macOS build diagnostics
         if: always()
@@ -2995,40 +2986,6 @@ jobs:
             shorebird_enable_aot_patching=true \
             shorebird_use_interpreter=false \
             flutter_prebuilt_dart_sdk=false
-
-      - name: Test macOS interpreter integration
-        run: |
-          set -euo pipefail
-          out="$PWD/flutter/engine/src/out/macos_release_${{ matrix.arch }}"
-          results="$PWD/artifacts/macos-interpreter-tests"
-          mkdir -p "$results"
-          export FLUTTER_BUILD_DIRECTORY="$out"
-          export DYLD_LIBRARY_PATH="$out${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
-          test -x "$out/runtime_unittests"
-          rm -f "$results/runtime-list.txt" "$results/runtime.xml" "$results/runtime-tests.log" "$results/runtime-list-stderr.log"
-          runtime_filter='DartIsolateTest.UncommittedInterpreterGroupSuppressesApplicationShutdownCallback:DartIsolateTest.CommittedInterpreterGroupRetainsApplicationShutdownCallback'
-          (
-            cd "$out"
-            "$out/runtime_unittests" --gtest_filter="$runtime_filter" --gtest_list_tests > "$results/runtime-list.txt" 2> "$results/runtime-list-stderr.log"
-            "$out/runtime_unittests" --gtest_filter="$runtime_filter" --gtest_repeat=1 --gtest_output="xml:$results/runtime.xml" > "$results/runtime-tests.log" 2>&1
-          )
-          "$out/shorebird_unittests" --gtest_list_tests > "$results/shorebird-list.txt" 2> "$results/shorebird-list-stderr.log"
-          "$out/shorebird_unittests" --gtest_output="xml:$results/shorebird.xml" > "$results/shorebird-tests.log" 2>&1
-          embedder_filter='ShorebirdInterpreterEmbedderTest.*:EmbedderTest.InvalidAOTDataSourcesMustReturnError:EmbedderTest.CanCreateAndCollectAValidElfSource:EmbedderTest.CanLaunchAndShutdownWithAValidElfSource'
-          "$out/embedder_unittests" --gtest_filter="$embedder_filter" --gtest_list_tests > "$results/embedder-list.txt" 2> "$results/embedder-list-stderr.log"
-          "$out/embedder_unittests" --gtest_filter="$embedder_filter" --gtest_output="xml:$results/embedder.xml" > "$results/embedder-tests.log" 2>&1
-          cocoa_filter='FlutterEngineTest.FullInterpreterNeverUsesNativeOrElfRoute:FlutterEngineTest.LegacyProfileKeepsPublicInitializerAndElfRoute:FlutterDartProjectShorebirdTest.*'
-          "$out/flutter_desktop_darwin_unittests" --gtest_filter="$cocoa_filter" --gtest_list_tests > "$results/cocoa-list.txt" 2> "$results/cocoa-list-stderr.log"
-          "$out/flutter_desktop_darwin_unittests" --gtest_filter="$cocoa_filter" --gtest_output="xml:$results/cocoa.xml" > "$results/cocoa-tests.log" 2>&1
-          python3 scripts/verify_macos_interpreter_engine_tests.py "$results" --arch=${{ matrix.arch }}
-
-      - name: Upload macOS interpreter test evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-interpreter-engine-tests-${{ matrix.arch }}
-          path: artifacts/macos-interpreter-tests/
-          if-no-files-found: error
 
       - name: Package macOS engine artifacts
         run: |
@@ -3150,9 +3107,265 @@ jobs:
             macos-engine-${{ matrix.arch }}.tar.gz.sha256
           if-no-files-found: error
 
+  macos-engine-tests:
+    name: Test macOS engine (${{ matrix.arch }}, ${{ matrix.suite }})
+    needs: source-checks
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 360
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.full_sdk_build }}
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [arm64, x64]
+        suite: [shorebird, embedder, runtime, cocoa]
+        include:
+          - arch: arm64
+            runner: ${{ inputs.macos_heavy_runner || 'macos-15' }}
+            rust_target: aarch64-apple-darwin
+          - arch: x64
+            runner: ${{ inputs.macos_x64_heavy_runner || 'macos-15-intel' }}
+            rust_target: x86_64-apple-darwin
+    steps:
+      - name: Checkout workspace
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install depot_tools
+        run: |
+          if [ ! -d depot_tools ]; then
+            git clone --depth 1 \
+              https://chromium.googlesource.com/chromium/tools/depot_tools.git \
+              depot_tools
+          fi
+          echo "$GITHUB_WORKSPACE/depot_tools" >> "$GITHUB_PATH"
+
+      - name: Verify depot_tools build tools
+        run: |
+          python3 --version
+          gclient help >/dev/null
+          ninja --version
+
+      - name: Install Apple Rust targets
+        run: rustup target add ${{ matrix.rust_target }}
+
+      - name: Reclaim macOS runner disk
+        run: |
+          set -uo pipefail
+          echo "Runner resources before cleanup:"
+          df -h / "$GITHUB_WORKSPACE" || true
+          sysctl -n hw.ncpu hw.memsize || true
+          # Best-effort reclaim of caches this job never uses; failures are non-fatal.
+          rm -rf "$HOME/Library/Developer/Xcode/DerivedData" "$HOME/Library/Caches/"* 2>/dev/null || true
+          xcrun simctl delete unavailable >/dev/null 2>&1 || true
+          echo "Runner resources after cleanup:"
+          df -h / "$GITHUB_WORKSPACE" || true
+
+      - name: Check runner capacity
+        run: CI_MIN_FREE_DISK_GB="$ENGINE_MIN_FREE_DISK_GB" ./scripts/check_ci_capacity.sh
+
+      - name: Write gclient config
+        env:
+          INCLUDE_ENGINE_DEPS: "1"
+        run: ./scripts/write_gclient.sh macos
+
+      - name: Sync open-source links
+        run: ./scripts/sync_open_sources.sh
+
+      - name: gclient sync
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_gclient_sync }}
+        run: gclient sync --no-history
+
+      - name: gclient sync Flutter engine deps
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_gclient_sync }}
+        working-directory: flutter
+        run: gclient sync --no-history
+
+      - name: Verify Dart tool SDK
+        run: ./scripts/verify_dart_tool_sdk.sh
+
+      - name: Configure macOS engine
+        working-directory: flutter/engine/src
+        run: |
+          ./flutter/tools/gn \
+            --mac \
+            --runtime-mode=release \
+            --mac-cpu=${{ matrix.arch }} \
+            --target-dir=macos_release_${{ matrix.arch }} \
+            --no-prebuilt-dart-sdk \
+            --enable-unittests \
+            --gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=true shorebird_enable_aot_patching=true shorebird_use_interpreter=false flutter_prebuilt_dart_sdk=false'
+
+      - name: Build macOS engine test target
+        working-directory: flutter/engine/src
+        env:
+          SUITE: ${{ matrix.suite }}
+        run: |
+          set -euo pipefail
+          out="out/macos_release_${{ matrix.arch }}"
+          diag="$GITHUB_WORKSPACE/artifacts/macos-build-diagnostics"
+          mkdir -p "$diag"
+          # Resource sampler. Earlier macOS runs lost the runner with no retrievable
+          # logs, so record disk/memory/swap and the largest ld/clang processes every
+          # 2 minutes (file) and echo a compact line to the live log every 4 minutes.
+          # The loop runs in a background subshell that inherits errexit/pipefail, so
+          # relax both: a SIGPIPE from a pipeline must never kill the sampler.
+          (
+            set +e +o pipefail
+            n=0
+            while true; do
+              {
+                date -u +%FT%TZ
+                df -h / "$GITHUB_WORKSPACE" | tail -n +2
+                vm_stat | sed -n 1,8p
+                sysctl vm.swapusage
+                memory_pressure 2>/dev/null | tail -n 2
+                ps -Ao pid,rss,etime,comm -r 2>/dev/null | sed -n 1,6p
+                ps -Ao pid,rss,etime,comm -r 2>/dev/null | awk 'NR > 1 && $4 ~ /(^|\/)(ld|clang|clang\+\+|rustc)$/ && shown < 4 { print "top-rss:", $0; shown++ }'
+              } >> "$diag/resources.log" 2>&1
+              if (( n % 2 == 0 )); then
+                swap="$(sysctl -n vm.swapusage 2>/dev/null | sed -E 's/.*used = ([0-9.]+[MG]).*/\1/')"
+                top="$(ps -Ao rss,comm -r 2>/dev/null | awk 'NR > 1 && $2 ~ /(^|\/)(ld|clang|clang\+\+|rustc)$/ { printf "%s:%dMiB", $2, $1 / 1024; exit }')"
+                echo "[sampler] $(date -u +%T) free=$(df -Pk "$GITHUB_WORKSPACE" | awk 'NR==2{printf "%d GiB", $4/1048576}') swap_used=${swap:-?} $(memory_pressure 2>/dev/null | grep -i 'free percentage' || true) top=${top:-none}"
+              fi
+              n=$((n + 1))
+              sleep 120
+            done
+          ) &
+          sampler=$!
+          trap 'kill "$sampler" 2>/dev/null || true' EXIT
+          case "$SUITE" in
+            shorebird) target=flutter/shell/common/shorebird:shorebird_unittests ;;
+            embedder) target=flutter/shell/platform/embedder:embedder_unittests ;;
+            runtime) target=flutter/runtime:runtime_unittests ;;
+            cocoa) target=flutter/shell/platform/darwin/macos:flutter_desktop_darwin_unittests ;;
+            *) echo "unknown macOS test suite: $SUITE" >&2; exit 1 ;;
+          esac
+          # One test target per runner. Full LTO linking is memory-hungry, so the
+          # hosted arm64 runner (~3 vCPU / 7 GB) builds with a single ninja job;
+          # the hosted x64 runner (4 vCPU / 14 GB) uses three. Self-hosted runners
+          # keep the ninja default.
+          test_jobs=()
+          if [ "${RUNNER_ENVIRONMENT:-github-hosted}" = github-hosted ]; then
+            if [ "${{ matrix.arch }}" = arm64 ]; then
+              test_jobs=(-j 1)
+            else
+              test_jobs=(-j 3)
+            fi
+          fi
+          echo "ninja job caps: tests=${test_jobs[*]:-default} target=$target"
+          ninja -C "$out" ${test_jobs[@]+"${test_jobs[@]}"} "$target"
+          df -h / | tail -n 1
+          du -sh "$out" 2>/dev/null || true
+          echo "::group::resource samples after test build (last 60 lines)"
+          tail -n 60 "$diag/resources.log" || true
+          echo "::endgroup::"
+
+      - name: Upload macOS test build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-test-build-diagnostics-${{ matrix.arch }}-${{ matrix.suite }}
+          path: artifacts/macos-build-diagnostics/
+          if-no-files-found: error
+
+      - name: Verify macOS engine args
+        run: |
+          ./scripts/verify_engine_args.sh \
+            flutter/engine/src/out/macos_release_${{ matrix.arch }}/args.gn \
+            dart_dynamic_modules=false \
+            dart_enable_aot_patching=true \
+            dart_enable_shorebird_interpreter=true \
+            shorebird_enable_aot_patching=true \
+            shorebird_use_interpreter=false \
+            flutter_prebuilt_dart_sdk=false
+
+      - name: Test macOS interpreter integration
+        env:
+          SUITE: ${{ matrix.suite }}
+        run: |
+          set -euo pipefail
+          out="$PWD/flutter/engine/src/out/macos_release_${{ matrix.arch }}"
+          results="$PWD/artifacts/macos-interpreter-tests"
+          mkdir -p "$results"
+          export FLUTTER_BUILD_DIRECTORY="$out"
+          export DYLD_LIBRARY_PATH="$out${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
+          runtime_filter='DartIsolateTest.UncommittedInterpreterGroupSuppressesApplicationShutdownCallback:DartIsolateTest.CommittedInterpreterGroupRetainsApplicationShutdownCallback'
+          embedder_filter='ShorebirdInterpreterEmbedderTest.*:EmbedderTest.InvalidAOTDataSourcesMustReturnError:EmbedderTest.CanCreateAndCollectAValidElfSource:EmbedderTest.CanLaunchAndShutdownWithAValidElfSource'
+          cocoa_filter='FlutterEngineTest.FullInterpreterNeverUsesNativeOrElfRoute:FlutterEngineTest.LegacyProfileKeepsPublicInitializerAndElfRoute:FlutterDartProjectShorebirdTest.*'
+          case "$SUITE" in
+            runtime)
+              test -x "$out/runtime_unittests"
+              rm -f "$results/runtime-list.txt" "$results/runtime.xml" "$results/runtime-tests.log" "$results/runtime-list-stderr.log"
+              (
+                cd "$out"
+                "$out/runtime_unittests" --gtest_filter="$runtime_filter" --gtest_list_tests > "$results/runtime-list.txt" 2> "$results/runtime-list-stderr.log"
+                "$out/runtime_unittests" --gtest_filter="$runtime_filter" --gtest_repeat=1 --gtest_output="xml:$results/runtime.xml" > "$results/runtime-tests.log" 2>&1
+              )
+              ;;
+            shorebird)
+              "$out/shorebird_unittests" --gtest_list_tests > "$results/shorebird-list.txt" 2> "$results/shorebird-list-stderr.log"
+              "$out/shorebird_unittests" --gtest_output="xml:$results/shorebird.xml" > "$results/shorebird-tests.log" 2>&1
+              ;;
+            embedder)
+              "$out/embedder_unittests" --gtest_filter="$embedder_filter" --gtest_list_tests > "$results/embedder-list.txt" 2> "$results/embedder-list-stderr.log"
+              "$out/embedder_unittests" --gtest_filter="$embedder_filter" --gtest_output="xml:$results/embedder.xml" > "$results/embedder-tests.log" 2>&1
+              ;;
+            cocoa)
+              "$out/flutter_desktop_darwin_unittests" --gtest_filter="$cocoa_filter" --gtest_list_tests > "$results/cocoa-list.txt" 2> "$results/cocoa-list-stderr.log"
+              "$out/flutter_desktop_darwin_unittests" --gtest_filter="$cocoa_filter" --gtest_output="xml:$results/cocoa.xml" > "$results/cocoa-tests.log" 2>&1
+              ;;
+            *)
+              echo "unknown macOS test suite: $SUITE" >&2
+              exit 1
+              ;;
+          esac
+          python3 scripts/verify_macos_interpreter_engine_tests.py "$results" --arch=${{ matrix.arch }} --suite="$SUITE"
+
+      - name: Upload macOS interpreter test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-interpreter-engine-tests-${{ matrix.arch }}-${{ matrix.suite }}
+          path: artifacts/macos-interpreter-tests/
+          if-no-files-found: error
+
+  macos-engine-tests-verify:
+    name: Verify macOS interpreter test inventory (${{ matrix.arch }})
+    needs: [source-checks, macos-engine-tests]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.full_sdk_build }}
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [arm64, x64]
+    steps:
+      - name: Checkout workspace
+        uses: actions/checkout@v4
+
+      - name: Download macOS interpreter test evidence
+        uses: actions/download-artifact@v4
+        with:
+          pattern: macos-interpreter-engine-tests-${{ matrix.arch }}-*
+          path: macos-test-evidence/${{ matrix.arch }}
+          merge-multiple: true
+
+      - name: Verify complete macOS interpreter test inventory
+        run: |
+          set -euo pipefail
+          for suite in shorebird embedder runtime cocoa; do
+            test -s "macos-test-evidence/${{ matrix.arch }}/$suite.xml"
+          done
+          python3 scripts/verify_macos_interpreter_engine_tests.py macos-test-evidence/${{ matrix.arch }} --arch=${{ matrix.arch }}
+
   macos-engine-universal:
     name: Assemble universal macOS engine
-    needs: [source-checks, macos-engine]
+    needs: [source-checks, macos-engine, macos-engine-tests, macos-engine-tests-verify]
     runs-on: ${{ inputs.macos_heavy_runner || 'macos-15' }}
     timeout-minutes: 30
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.full_sdk_build }}
@@ -5637,6 +5850,8 @@ jobs:
       - android-host-tools
       - ios-engine
       - macos-engine
+      - macos-engine-tests
+      - macos-engine-tests-verify
       - macos-engine-universal
       - windows-engine
       - custom-dart-sdk-windows

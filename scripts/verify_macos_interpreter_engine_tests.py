@@ -107,10 +107,12 @@ def main():
         "arm64": "arm64", "aarch64": "arm64", "x86_64": "x64",
         "amd64": "x64",
     }.get(platform.machine().lower()))
+    parser.add_argument("--suite", action="append", choices=sorted(REQUIRED),
+                        help="validate only this suite (repeatable); default validates every suite")
     args = parser.parse_args()
     if args.arch is None:
         parser.error("--arch is required when validating on an unknown host")
-    for suite in REQUIRED:
+    for suite in sorted(args.suite or REQUIRED):
         inventory = listed_tests(args.evidence / f"{suite}-list.txt",
                                  platform="macos", required=required_tests(suite, args.arch))
         count = validate_report(args.evidence / f"{suite}.xml", inventory)

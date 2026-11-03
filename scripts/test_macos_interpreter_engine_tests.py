@@ -47,6 +47,14 @@ class MacosInventoryTest(unittest.TestCase):
             self.assertEqual(listed_tests(self.inventory(REQUIRED[suite]), platform='macos',
                                          required=required_tests(suite, 'x64')), REQUIRED[suite])
 
+    def test_suite_selection_is_limited_to_known_suites(self):
+        import subprocess, sys
+        script = Path(__file__).with_name('verify_macos_interpreter_engine_tests.py')
+        result = subprocess.run([sys.executable, str(script), '.', '--arch=arm64', '--suite=bogus'],
+                                capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('invalid choice', result.stderr)
+
     def test_unknown_architecture_is_rejected(self):
         with self.assertRaises(ValueError):
             required_tests('shorebird', 'unknown')

@@ -496,6 +496,24 @@ Set `run_gclient_sync=false` only for debugging a runner image that already has
 all gclient-managed dependencies restored.
 
 
+### macOS engine job layout
+
+`macos-engine` builds and packages only the shipped artifacts
+(`zip_macos_flutter_framework`, `flutter_patched_sdk`, the gen/analyze snapshot
+tools and `font_subset`) with the unchanged gn configuration and LTO.
+`macos-engine-tests` is an arch (arm64, x64) by test-target (shorebird, embedder,
+runtime, cocoa) matrix that builds exactly one gtest binary per runner (`-j 1` on
+hosted arm64, `-j 3` on hosted x64), runs that target's exact gtest filters and
+validates its own inventory. `macos-engine-tests-verify` downloads every
+per-target evidence artifact for an architecture and runs the unrestricted
+`verify_macos_interpreter_engine_tests.py`, so the full required inventory
+(including the natively executed `MacArchitectures/*/Arm64` and `/X64` cases)
+is still enforced. `macos-engine-universal` and `artifact-mirror` (and therefore
+publication) need all three jobs. Both build jobs run a resource sampler
+(disk, memory pressure, `vm.swapusage`, top-RSS `ld`/`clang`) and upload its
+log with `if: always()` immediately after the build step, so a lost runner still
+leaves earlier diagnostics.
+
 ### Native platform distribution coverage
 
 The Android engine matrix builds arm, arm64, and x64 with independent Linux

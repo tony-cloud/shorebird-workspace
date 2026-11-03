@@ -1672,6 +1672,8 @@ required_jobs = %w[
   web-sdk
   ios-engine
   macos-engine
+  macos-engine-tests
+  macos-engine-tests-verify
   macos-engine-universal
   windows-engine
   android-host-tools
@@ -1735,7 +1737,7 @@ assert!(
   )
 end
 
-%w[custom-dart-sdk custom-dart-sdk-macos custom-dart-sdk-macos-x64 custom-dart-sdk-windows linux-engine android-engine ios-engine macos-engine windows-engine android-host-tools].each do |job_name|
+%w[custom-dart-sdk custom-dart-sdk-macos custom-dart-sdk-macos-x64 custom-dart-sdk-windows linux-engine android-engine ios-engine macos-engine macos-engine-tests windows-engine android-host-tools].each do |job_name|
   condition = jobs.fetch(job_name).fetch('if', '').to_s
   assert!(
     condition.include?("github.event_name != 'workflow_dispatch'") &&
@@ -1774,6 +1776,7 @@ end
   'android-engine' => 'ENGINE_MIN_FREE_DISK_GB',
   'ios-engine' => 'ENGINE_MIN_FREE_DISK_GB',
   'macos-engine' => 'ENGINE_MIN_FREE_DISK_GB',
+  'macos-engine-tests' => 'ENGINE_MIN_FREE_DISK_GB',
   'windows-engine' => 'ENGINE_MIN_FREE_DISK_GB',
   'android-host-tools' => 'ENGINE_MIN_FREE_DISK_GB',
 }.each do |job_name, disk_env_var|
@@ -1790,7 +1793,7 @@ assert!(
     artifact_mirror_condition.include?('full_sdk_build'),
   'artifact-mirror must run on default push/PR CI and allow manual full_sdk_build opt-out'
 )
-%w[cli-artifacts linux-engine android-engine ios-engine macos-engine macos-engine-universal windows-engine android-host-tools].each do |dependency|
+%w[cli-artifacts linux-engine android-engine ios-engine macos-engine macos-engine-tests macos-engine-tests-verify macos-engine-universal windows-engine android-host-tools].each do |dependency|
   assert!(
     Array(jobs.fetch('artifact-mirror').fetch('needs', [])).include?(dependency),
     "artifact-mirror must depend on #{dependency}"
@@ -2245,7 +2248,8 @@ native_test_evidence_uploads = {
   'cli-artifacts' => ['native-archive-tests-${{ matrix.artifact_os }}-${{ matrix.artifact_arch }}', 'native-mapping-build-tests-${{ matrix.artifact_os }}-${{ matrix.artifact_arch }}'],
   'linux-engine' => %w[linux-native-cache-engine-tests linux-native-provider-tests linux-native-cache-e2e linux-native-variant-e2e],
   'windows-engine' => %w[windows-native-cache-engine-tests windows-native-provider-tests windows-native-cache-e2e windows-native-variant-e2e],
-  'macos-engine' => ['macos-interpreter-engine-tests-${{ matrix.arch }}', 'macos-build-diagnostics-${{ matrix.arch }}'],
+  'macos-engine' => ['macos-build-diagnostics-${{ matrix.arch }}'],
+  'macos-engine-tests' => ['macos-interpreter-engine-tests-${{ matrix.arch }}-${{ matrix.suite }}', 'macos-test-build-diagnostics-${{ matrix.arch }}-${{ matrix.suite }}'],
   'custom-dart-sdk' => ['linux-elf-memory-loader-tests'],
   'custom-dart-sdk-windows' => ['windows-elf-memory-loader-tests'],
   'custom-dart-sdk-linux-arm64' => ['linux-elf-memory-loader-tests-arm64'],
@@ -2295,17 +2299,70 @@ run_text_by_job = jobs.transform_values { |job| job_runs(job).join("\n") }
 end
 assert!(run_text_by_job.fetch('custom-dart-sdk').include?('pkg/dart2bytecode/test/native_assets_profile_test.dart'), 'Linux SDK must test native-assets carrier profile and imported-component contracts')
 macos_steps = jobs.fetch('macos-engine').fetch('steps')
-macos_tests = macos_steps.index { |step| step['name'] == 'Test macOS interpreter integration' }
-macos_package = macos_steps.index { |step| step['name'] == 'Package macOS engine artifacts' }
-assert!(macos_tests && macos_package && macos_tests < macos_package, 'macOS interpreter integration tests must precede packaging')
-macos_test_step = macos_steps.fetch(macos_tests)
+macos_tests_job = jobs.fetch('macos-engine-tests')
+macos_tests_steps = macos_tests_job.fetch('steps')
+# The shipped-artifact job builds only phase-1 shipped targets (same LTO/gn args);
+# the link-heavy unit-test binaries moved to the per-target macos-engine-tests matrix.
+macos_build_run = macos_steps.find { |step| step['name'] == 'Build macOS engine' }.fetch('run')
+%w[flutter/shell/platform/darwin/macos:zip_macos_flutter_framework flutter/build/archives:flutter_patched_sdk create_macos_gen_snapshots create_macos_analyze_snapshots flutter/tools/font_subset:font_subset].each do |target|
+  assert!(macos_build_run.include?(target), "macOS artifact build must build shipped target #{target}")
+end
+%w[shorebird_unittests embedder_unittests runtime_unittests flutter_desktop_darwin_unittests].each do |binary|
+  assert!(!macos_build_run.include?(binary) && macos_steps.none? { |step| step['run'].to_s.include?(binary) }, "macOS artifact job must not link or run #{binary}; macos-engine-tests owns it")
+end
+assert!(macos_steps.none? { |step| step['name'] == 'Test macOS interpreter integration' }, 'macOS interpreter integration consumes only test binaries and belongs to macos-engine-tests')
+assert!(macos_build_run.include?('artifact_jobs=(-j "$(sysctl -n hw.ncpu)")') && !macos_build_run.include?('-j 1') && jobs.fetch('macos-engine')['timeout-minutes'].to_i <= 300, 'macOS artifact build keeps ncpu ninja jobs on hosted arm64')
+assert!(!workflow_text.include?('--no-lto'), 'macOS release builds and tests must keep the default LTO configuration')
+%w[macos-engine macos-engine-tests].each do |name|
+  configure_run = jobs.fetch(name).fetch('steps').find { |step| step['name'] == 'Configure macOS engine' }.fetch('run')
+  assert!(configure_run.include?('--enable-unittests') && configure_run.include?("--gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=true shorebird_enable_aot_patching=true shorebird_use_interpreter=false flutter_prebuilt_dart_sdk=false'") && configure_run.include?('--no-prebuilt-dart-sdk'), "#{name} must use the identical gn configuration (LTO unchanged)")
+  verify_args = jobs.fetch(name).fetch('steps').find { |step| step['name'] == 'Verify macOS engine args' }
+  assert!(verify_args && verify_args.fetch('run').include?('verify_engine_args.sh'), "#{name} must verify built engine args")
+end
+# Resource sampler: must survive SIGPIPE/errexit, record swap and top-RSS ld/clang, log compactly, and upload diagnostics after the build even on failure.
+{
+  'macos-engine' => ['Build macOS engine', 'Upload macOS build diagnostics', 'macos-build-diagnostics-${{ matrix.arch }}'],
+  'macos-engine-tests' => ['Build macOS engine test target', 'Upload macOS test build diagnostics', 'macos-test-build-diagnostics-${{ matrix.arch }}-${{ matrix.suite }}'],
+}.each do |name, (build_name, upload_name, artifact_name)|
+  steps = jobs.fetch(name).fetch('steps')
+  build_index = steps.index { |step| step['name'] == build_name }
+  upload_index = steps.index { |step| step['name'] == upload_name }
+  assert!(build_index && upload_index == build_index + 1, "#{name} must upload diagnostics immediately after its build step")
+  assert!(steps.fetch(upload_index)['if'].to_s.include?('always()') && steps.fetch(upload_index).dig('with', 'name') == artifact_name && steps.fetch(upload_index).dig('with', 'path') == 'artifacts/macos-build-diagnostics/', "#{name} diagnostics must upload even when the build fails or times out")
+  run = steps.fetch(build_index).fetch('run')
+  sampler = run[/^\(\n(.*?)^\) &\n/m, 1].to_s
+  assert!(!sampler.empty? && sampler.lines.first.strip == 'set +e +o pipefail', "#{name} sampler subshell must disable errexit and pipefail before looping")
+  assert!(!sampler.match?(/\|\s*head\b/) && sampler.include?('sed -n 1,6p') && sampler.include?('sysctl vm.swapusage') && sampler.include?('top-rss:') && sampler.include?('ld|clang') && sampler.include?('[sampler]') && sampler.include?('sleep 120') && sampler.include?('n % 2 == 0'), "#{name} sampler must avoid head SIGPIPE, record swap and top ld/clang RSS, and log compactly at most every 5 minutes")
+  assert!(run.include?('mkdir -p "$diag"') && run.include?('trap \'kill "$sampler" 2>/dev/null || true\' EXIT'), "#{name} must own and clean up its sampler")
+end
+# Test matrix: one test target per runner, same runner mapping as macos-engine.
+macos_matrix = macos_tests_job.dig('strategy', 'matrix')
+assert!(macos_matrix['arch'] == %w[arm64 x64] && macos_matrix['suite'] == %w[shorebird embedder runtime cocoa], 'macOS test matrix must cover both architectures and all four test targets')
+macos_matrix_runners = macos_matrix.fetch('include').to_h { |entry| [entry['arch'], entry['runner']] }
+assert!(macos_matrix_runners == jobs.fetch('macos-engine').dig('strategy', 'matrix', 'include').to_h { |entry| [entry['arch'], entry['runner']] }, 'macOS test runners must map architectures exactly like macos-engine')
+assert!(macos_tests_job['runs-on'] == '${{ matrix.runner }}' && macos_tests_job['timeout-minutes'].to_i.between?(1, 360), 'macOS test jobs must fit the hosted job limit')
+macos_test_build_run = macos_tests_steps.find { |step| step['name'] == 'Build macOS engine test target' }.fetch('run')
+%w[
+  shorebird)\ target=flutter/shell/common/shorebird:shorebird_unittests
+  embedder)\ target=flutter/shell/platform/embedder:embedder_unittests
+  runtime)\ target=flutter/runtime:runtime_unittests
+  cocoa)\ target=flutter/shell/platform/darwin/macos:flutter_desktop_darwin_unittests
+].each do |mapping|
+  assert!(macos_test_build_run.include?(mapping), "macOS test build must map suite to target: #{mapping}")
+end
+assert!(macos_test_build_run.include?('test_jobs=(-j 1)') && macos_test_build_run.include?('test_jobs=(-j 3)') && macos_test_build_run.include?('ninja -C "$out" ${test_jobs[@]+"${test_jobs[@]}"} "$target"'), 'macOS test builds must link one target at a time with -j 1 on hosted arm64 and -j 3 on hosted x64')
+assert!(macos_test_build_run.index('test_jobs=(-j 1)') < macos_test_build_run.index('test_jobs=(-j 3)') && macos_test_build_run[/if \[ "\$\{\{ matrix.arch \}\}" = arm64 \]; then\n\s+test_jobs=\(-j 1\)/], 'the -j 1 cap must apply to hosted arm64')
+macos_tests = macos_tests_steps.index { |step| step['name'] == 'Test macOS interpreter integration' }
+macos_build_test_index = macos_tests_steps.index { |step| step['name'] == 'Build macOS engine test target' }
+assert!(macos_tests && macos_build_test_index && macos_build_test_index < macos_tests, 'macOS interpreter integration tests must run after the test target is built')
+macos_test_step = macos_tests_steps.fetch(macos_tests)
 assert!(!macos_test_step.key?('if') && !macos_test_step['continue-on-error'], 'macOS interpreter tests must be unconditional and required')
 macos_run = macos_test_step.fetch('run')
 assert!(macos_run.include?('set -euo pipefail') && macos_run.include?('scripts/verify_macos_interpreter_engine_tests.py'), 'macOS tests must propagate failures and validate executed inventories')
-assert!(macos_run.include?('python3 scripts/verify_macos_interpreter_engine_tests.py "$results" --arch=${{ matrix.arch }}'), 'macOS inventory validator must receive the actual matrix architecture')
+assert!(macos_run.include?('python3 scripts/verify_macos_interpreter_engine_tests.py "$results" --arch=${{ matrix.arch }} --suite="$SUITE"'), 'macOS per-target inventory validator must receive the actual matrix architecture and suite')
 assert!(run_text_by_job.fetch('source-checks').include?('python3 scripts/test_macos_interpreter_engine_tests.py -v'), 'source checks must execute macOS architecture inventory regression controls')
 %w[shorebird_unittests embedder_unittests runtime_unittests flutter_desktop_darwin_unittests].each do |binary|
-  assert!(macos_run.include?(binary) && run_text_by_job.fetch('macos-engine').include?(":#{binary}"), "macOS engine must build and execute #{binary}")
+  assert!(macos_run.include?(binary) && run_text_by_job.fetch('macos-engine-tests').include?(":#{binary}"), "macOS engine tests must build and execute #{binary}")
 end
 runtime_controls = %w[DartIsolateTest.UncommittedInterpreterGroupSuppressesApplicationShutdownCallback DartIsolateTest.CommittedInterpreterGroupRetainsApplicationShutdownCallback]
 assert!(macos_run[/^runtime_filter='([^']+)'$/, 1].to_s.split(':') == runtime_controls, 'macOS runtime isolate gate must execute the exact committed/uncommitted interpreter shutdown controls')
@@ -2316,6 +2373,14 @@ macos_commands = macos_run.lines.map(&:strip)
   'rm -f "$results/runtime-list.txt" "$results/runtime.xml" "$results/runtime-tests.log" "$results/runtime-list-stderr.log"',
   '"$out/runtime_unittests" --gtest_filter="$runtime_filter" --gtest_list_tests > "$results/runtime-list.txt" 2> "$results/runtime-list-stderr.log"',
   '"$out/runtime_unittests" --gtest_filter="$runtime_filter" --gtest_repeat=1 --gtest_output="xml:$results/runtime.xml" > "$results/runtime-tests.log" 2>&1',
+  %q{embedder_filter='ShorebirdInterpreterEmbedderTest.*:EmbedderTest.InvalidAOTDataSourcesMustReturnError:EmbedderTest.CanCreateAndCollectAValidElfSource:EmbedderTest.CanLaunchAndShutdownWithAValidElfSource'},
+  %q{cocoa_filter='FlutterEngineTest.FullInterpreterNeverUsesNativeOrElfRoute:FlutterEngineTest.LegacyProfileKeepsPublicInitializerAndElfRoute:FlutterDartProjectShorebirdTest.*'},
+  '"$out/shorebird_unittests" --gtest_list_tests > "$results/shorebird-list.txt" 2> "$results/shorebird-list-stderr.log"',
+  '"$out/shorebird_unittests" --gtest_output="xml:$results/shorebird.xml" > "$results/shorebird-tests.log" 2>&1',
+  '"$out/embedder_unittests" --gtest_filter="$embedder_filter" --gtest_list_tests > "$results/embedder-list.txt" 2> "$results/embedder-list-stderr.log"',
+  '"$out/embedder_unittests" --gtest_filter="$embedder_filter" --gtest_output="xml:$results/embedder.xml" > "$results/embedder-tests.log" 2>&1',
+  '"$out/flutter_desktop_darwin_unittests" --gtest_filter="$cocoa_filter" --gtest_list_tests > "$results/cocoa-list.txt" 2> "$results/cocoa-list-stderr.log"',
+  '"$out/flutter_desktop_darwin_unittests" --gtest_filter="$cocoa_filter" --gtest_output="xml:$results/cocoa.xml" > "$results/cocoa-tests.log" 2>&1',
 ].each do |command|
   assert!(macos_commands.include?(command), "macOS runtime isolate gate must preserve fresh inventory/XML/log evidence and execute controls: #{command}")
 end
@@ -2326,8 +2391,22 @@ runtime_controls.each do |control|
   name = control.split('.').last
   assert!(runtime_source.match?(/TEST_F\s*\(\s*DartIsolateTest\s*,\s*#{Regexp.escape(name)}\s*\)/) && macos_validator.include?(control), "macOS runtime isolate control must exist in source and required execution oracle: #{control}")
 end
-macos_upload = macos_steps.find { |step| step['name'] == 'Upload macOS interpreter test evidence' }
-assert!(macos_upload && macos_upload['if'].to_s.include?('always()') && macos_upload.dig('with', 'name') == 'macos-interpreter-engine-tests-${{ matrix.arch }}' && macos_upload.dig('with', 'path') == 'artifacts/macos-interpreter-tests/', 'macOS interpreter test logs and XML must survive test failure')
+macos_upload = macos_tests_steps.find { |step| step['name'] == 'Upload macOS interpreter test evidence' }
+assert!(macos_upload && macos_upload['if'].to_s.include?('always()') && macos_upload.dig('with', 'name') == 'macos-interpreter-engine-tests-${{ matrix.arch }}-${{ matrix.suite }}' && macos_upload.dig('with', 'path') == 'artifacts/macos-interpreter-tests/', 'macOS interpreter test logs and XML must survive test failure')
+# Aggregation keeps the strict all-suite inventory (including both MacArchitectures Arm64/X64 natively executed cases).
+macos_verify_job = jobs.fetch('macos-engine-tests-verify')
+macos_verify_run = job_runs(macos_verify_job).join("\n")
+macos_verify_download = macos_verify_job.fetch('steps').find { |step| step['uses'].to_s.start_with?('actions/download-artifact@') }
+assert!(Array(macos_verify_job['needs']).sort == %w[macos-engine-tests source-checks] && macos_verify_download.dig('with', 'pattern') == 'macos-interpreter-engine-tests-${{ matrix.arch }}-*' && macos_verify_download.dig('with', 'merge-multiple') == true, 'macOS inventory aggregation must wait for and download every per-target evidence artifact for its architecture')
+assert!(macos_verify_run.include?('for suite in shorebird embedder runtime cocoa') && macos_verify_run.include?('python3 scripts/verify_macos_interpreter_engine_tests.py macos-test-evidence/${{ matrix.arch }} --arch=${{ matrix.arch }}') && !macos_verify_run.include?('--suite') && macos_verify_job.fetch('steps').none? { |step| step.key?('continue-on-error') || step.key?('if') }, 'macOS inventory aggregation must run the unrestricted all-suite validator with no skips')
+assert!(macos_validator.include?('"X64"') && macos_validator.include?('"Arm64"') && macos_validator.include?('MacArchitectures/MacInterpreterSelectionV2Test.'), 'macOS validator must still require natively executed MacArchitectures Arm64 and X64 controls')
+# Acceptance gates must wait for the artifact build, every test target, and the aggregated inventory.
+%w[macos-engine macos-engine-tests macos-engine-tests-verify].each do |gate|
+  %w[macos-engine-universal artifact-mirror].each do |consumer|
+    assert!(Array(jobs.fetch(consumer)['needs']).include?(gate), "#{consumer} must wait for #{gate}")
+  end
+end
+assert!(Array(jobs.fetch('publish-sdk-release')['needs']).include?('artifact-mirror'), 'publication must remain gated by the artifact mirror and therefore the macOS tests')
 {
   'custom-dart-sdk' => 'x64',
   'custom-dart-sdk-macos' => 'arm64',
@@ -3135,7 +3214,7 @@ assert!(artifact_mirror_run_text.include?('cp -al downloaded-artifacts/. "$manif
     assert!(artifact_mirror_run_text.include?("--require '#{artifact}/*#{artifact}.tar.gz'"), "release manifest must require #{artifact}")
   end
 end
-%w[android-engine macos-engine android-host-tools].each do |name|
+%w[android-engine macos-engine macos-engine-tests macos-engine-tests-verify android-host-tools].each do |name|
   assert!(jobs.dig(name, 'strategy', 'fail-fast') == false, "#{name} must complete independent platform matrix members")
 end
 assert!(matrix_entries(jobs.fetch('android-engine')).map { |entry| entry.fetch('arch') }.sort == %w[arm arm64 x64], 'Android engine matrix must build all three supported ABIs')
@@ -3291,7 +3370,7 @@ assert!(inputs.dig('windows_heavy_runner', 'default') == 'windows-2022', 'Window
 %w[custom-dart-sdk-windows windows-engine android-host-tools].each do |name|
   assert!(jobs.dig(name, 'env', 'DEPOT_TOOLS_WIN_TOOLCHAIN') == '0' && jobs.dig(name, 'env', 'MSYS') == 'winsymlinks:nativestrict', "#{name} must use the installed public Windows toolchain and native directory links")
 end
-%w[linux-engine android-engine ios-engine macos-engine windows-engine android-host-tools].each do |name|
+%w[linux-engine android-engine ios-engine macos-engine macos-engine-tests windows-engine android-host-tools].each do |name|
   assert!(step_uses(jobs.fetch(name), 'dtolnay/rust-toolchain@stable'), "#{name} must select stable Rust before installing targets")
 end
 assert!(run_text_by_job.fetch('macos-engine-universal').include?('create_macos_framework.py') && run_text_by_job.fetch('macos-engine-universal').include?('lipo macos-composed/framework/FlutterMacOS.framework/Versions/A/FlutterMacOS -verify_arch arm64') && run_text_by_job.fetch('macos-engine-universal').include?('lipo macos-composed/framework/FlutterMacOS.framework/Versions/A/FlutterMacOS -verify_arch x86_64'), 'macOS assembly must compose and verify a universal framework')
