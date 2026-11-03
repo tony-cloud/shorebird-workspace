@@ -48,6 +48,18 @@ median over runs of per-run median / p90. Ratio is to V0.
   for V1-V3 vs 0.43 ms for V0 (unexplained). Heavier build() work would hit the
   interpreter factor directly.
 
+## Update: direct calls to patchable functions
+
+The ~75-80 ns per call was a code-generation artifact: every call to a patchable
+function went through the `CallStaticFunction` stub and a `PatchStaticCall` runtime
+call (stack walk and static-call-table lookup). AOT call sites now load the target
+`Function` from the object pool and call through `Function::entry_point`, which
+the bytecode patch installer already swaps. Host (M-series, product AOT,
+`--no-tfa --shorebird-structural-patching`, median of 3 runs of
+`.agents/patch-call-diag/bench.dart`, ns/iter): non-inlined static call 88.6 to
+1.9, constructor allocation 88.9 to 2.7, closure call 88.7 to 3.3, List/Map mix
+93.6 to 38.9. The device numbers above predate this change.
+
 ## Deviations and limits
 
 - The default `interpreter-body` release was built but its patch was rejected on
