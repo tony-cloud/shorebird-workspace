@@ -117,7 +117,7 @@ precondition(!next.record(outcome: "released", reason: "key_available"))
 print("PASS: fresh, concurrent, bounded, allowlisted, atomic, fail-closed ledger")
 ''')
         compiled=subprocess.run([swiftc,'-swift-version','5',str(source),'-o',str(binary)],
-            stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,timeout=60)
+            stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,timeout=600)  # cold swiftc on a busy hosted runner can exceed 60 s
         self.assertEqual(compiled.returncode,0,compiled.stdout)
         result=subprocess.run([str(binary),str(self.root/'ledger-output')],
             stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,timeout=15)
