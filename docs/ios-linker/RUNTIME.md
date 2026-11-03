@@ -1,14 +1,16 @@
 # iOS mixed-mode runtime: executing a linked AOT patch
 
-Status: design plus a working host spike (macOS arm64), 2026-11-04.
-Owner of this doc: runtime worker. The compiler, linker, and link-header side
-lives in `COMPILER_LINKER.md`, which does not exist yet. Section 9 defines what
-the runtime needs from it.
+Status: design plus a working host implementation (macOS arm64), 2026-11-04.
+Owner of this doc: runtime worker. The compiler, linker and vmcode side lives
+in `COMPILER_LINKER.md`; section 9 describes how the runtime consumes its
+vmcode v1 output and where the two documents differ.
 
-Spike code: `tony-cloud/dart-sdk` branch `tonycloud/ios-mixed-runtime-20261104`
-(base `2513af5688a`, head `1ff86e826d9`), worktree
-`.agents/wt/runtime/dart-sdk`. The spike program and generator are in
-`runtime/tests/mixed_mode/`.
+Code: `tony-cloud/dart-sdk` branch `tonycloud/ios-mixed-runtime-20261104`
+(base `2513af5688a`, head `702d29f676c`; it merges the linker branch
+`tonycloud/ios-aot-linker-20261104` at `86442b439ab`), worktree
+`.agents/wt/runtime/dart-sdk`. The test program is in
+`runtime/tests/mixed_mode/`; the repeatable test is
+`tools/test_aot_mixed_mode.py` (section 10.5).
 
 ## 0. Verdict
 
@@ -33,8 +35,23 @@ The spike passes these checks:
 
 A stress mode that simulates all Dart code (94% of code bytes, everything
 except the stubs) also passes. Linked code keeps native speed. Simulated code
-is about 60–150× slower than native, which is in line with upstream's public
+is about 60–130× slower than native, which is in line with upstream's public
 statements ("up to 100x", "~112x" for its first alpha).
+
+**End to end with the real linker (section 10.5).** The runtime consumes the
+linker's vmcode v1:
+
+- `tools/ios_linker` builds the release and the patch, then runs link and
+  check.
+- The mixed runtime runs the vmcode against the stripped, signed Mach-O
+  release. Its output equals a stock build of the patch.
+- The runtime's linked and unlinked entry counts equal the linker's report.
+- This holds for the template pair and all 14 cases of the 80/320-caller
+  fixture, in Product (the iOS configuration: no compressed pointers),
+  Release and Product with compressed pointers.
+
+Every malformed or mismatched input falls back to the unpatched release
+(19 cases, each checked for its reason).
 
 Correctness came out simpler than feared because simulated and native frames
 share one machine stack. Two things decide whether this is shippable:
@@ -242,7 +259,8 @@ keyed by offsets into the *patch's* instructions. `MixedMode::ToPatchPc` maps:
 
 - a gate to its bound patch pc;
 - a release-text pc to the patch pc at the same offset. In general this goes
-  through the link table; in the spike it is the identity offset.
+  through the link records (per-entry deltas, section 9); identity linking
+  (testing) uses deltas as well.
 
 It is applied in:
 
@@ -289,8 +307,14 @@ Each is two range compares in a mixed build; non-mixed builds are unchanged.
 1. When the instructions table of the registered patch image is created
    (start pc, end pc and all entry offsets are known before any `Code` is
    read), `MixedMode::LinkImage` decides, for every entry, whether it is
-   linked. The spike computes this by identity (section 9); production will
-   read the link table.
+   linked:
+   - from the vmcode's link records (section 9), each verified against the
+     code;
+   - or, as a testing aid, by identity for a plain patch ELF.
+
+   This runs before any cluster is allocated. If linking fails, the
+   deserializer stops with "mixed-mode patch rejected: …" and the embedder
+   creates the isolate group again from the release.
 2. `ReadInstructions` rewrites `entry_point_`, `unchecked_entry_point_`,
    `monomorphic_entry_point_` and `monomorphic_unchecked_entry_point_`:
    - **linked**: release address;
@@ -302,13 +326,21 @@ Each is two range compares in a mixed build; non-mixed builds are unchanged.
 3. `InstructionsTable` stays in patch space, and `PayloadStartOf` translates,
    so `ReversePc`, stack maps and handler lookup are unchanged.
 
-Embedder (spike: `bin/main_impl.cc`; production: the engine):
+Embedder (host: `bin/main_impl.cc`, `MixedModeLoad`; production: the engine):
 
-- Map the patch ELF with its executable segment **read-only**
-  (`elf_loader_map_text_read_only`).
 - Load the release normally (dlopen of the signed Mach-O).
-- Call `Dart_MixedModeRegisterImages(patch_text, release_text)` before the
-  isolate group is created.
+- Read the patch. For a vmcode container, `ParseVmcode`:
+  - validates the header and the zero padding;
+  - checks the SHA-256 of the ELF;
+  - checks the SHA-256 of the loaded release `_kDartSnapshotText` region,
+    `release text image size` bytes long, against header offset 48.
+- Map the patch ELF at the header's ELF offset, with its executable segment
+  **read-only** (`elf_loader_map_text_read_only`).
+- Call `Dart_MixedModeRegisterImages(patch_text, release_text, links,
+  link_count, &error)` before the isolate group is created. It validates the
+  records structurally.
+- On any failure, run the release unpatched
+  ("mixed: patch rejected (reason); running the release").
 
 A mixed build must keep native `dlopen` loading. `snapshot_utils.cc` disables
 it under `DART_INCLUDE_SIMULATOR` and maps the Mach-O by hand, which hardened
@@ -332,9 +364,10 @@ runtime kills (SIGKILL, no crash report). The spike fixes the guard for
      code that executes, plus handler pcs.
    - Measured: 117 gates for the targeted patch, 3951 when simulating all Dart
      code.
-   - Policy: 64–128K gates (0.5–1 MiB of text). The CLI rejects patches whose
-     unlinked entry count × 4 + call sites could exceed it, and the runtime
-     fails closed (`FATAL`, then the engine falls back to the release).
+   - Policy: 64–128K gates (0.5–1 MiB of text; the host build has 131072).
+     The runtime refuses a patch when 4 × unlinked entries + call sites in
+     unlinked code + 1024 exceeds the gate count, so it never runs out
+     later. The refusal falls back to the release.
 4. **One patch per process.** Gates are process-global. Isolate groups
    spawned from the same snapshot share them; a different snapshot never
    matches `IsPatchImage`.
@@ -348,27 +381,81 @@ runtime kills (SIGKILL, no crash report). The spike fixes the guard for
    question upstream already faces with the same technique. This is not a
    technical blocker, and I am not giving legal advice.
 
-## 9. Contract with the compiler worker (link table)
+## 9. Contract with the linker: consuming vmcode v1
 
-The runtime needs, for the final patch ELF:
+The container is the one in `COMPILER_LINKER.md` section 6: a 128-byte
+header, records `{patch_offset, release_offset, size, flags}` sorted by patch
+offset (one per *linked* entry), zero padding, and the patch ELF at a
+16 KiB-aligned offset.
 
-- For every **instructions-table entry** of the patch (the `InstructionsTable`
-  rodata order, which includes stubs and entries without `Code`):
-  `(patch_offset, size, base_offset | UNLINKED)`. Offsets are relative to the
-  start of the respective text image (`_kDartSnapshotText`).
-  - A pair list "patch offset → base offset" like upstream's header is
-    enough if the runtime may assume that sizes are equal and that absent
-    entries are unlinked.
-- A guarantee that a linked entry's bytes equal the base bytes and that the
-  link rule (section 8.1) holds. The runtime can re-check bytes cheaply in
-  debug builds; it cannot re-derive layout compatibility.
-- The VM-stub / C-entry stubs must be linked (section 8.2).
-- Container: header + padding + ELF at an aligned offset (as measured
-  upstream). The runtime only needs the ELF offset and the table.
+What the runtime checks, all failing closed to the release:
 
-For runtime-side translation (`ToPatchPc` for release pcs), the runtime builds
-a sorted array of linked base ranges and binary-searches it. The spike uses an
-identity offset because its two compiles share one layout.
+| Where | Check | Reason printed |
+| --- | --- | --- |
+| Embedder | Magic `OSBVMC\0\x01`, length ≥ 128 | `bad vmcode magic` |
+| Embedder | Version 1 | `unsupported vmcode version` |
+| Embedder | Header fields: ELF offset (twice), alignment, entry size 16, links offset 128, flags 0, table ≤ ELF offset, ELF size | `malformed vmcode header` |
+| Embedder | Padding all zero | `malformed vmcode padding` |
+| Embedder | SHA-256 of the ELF (offset 80) | `vmcode ELF hash mismatch` |
+| Embedder | SHA-256 of the loaded release text (offset 48) | `patch was linked against a different release` |
+| `RegisterImages` | Records: flags 0, 4-byte aligned, sorted and disjoint, inside both images | `malformed link record`, `link records are not sorted or overlap`, `link record outside the patch or release image` |
+| `RegisterImages` | A release image is mapped when there are records | `patch links release code but no release image is mapped` |
+| `LinkImage` | Each record starts a patch instructions entry | `link record does not start a patch code entry` |
+| `LinkImage` | Its size is the entry's payload; only `brk #0` alignment padding may follow | `link record size differs from the patch code entry` |
+| `LinkImage` | Word-wise verification (below) | `linked code does not match the release copy` |
+| `LinkImage` | Gate budget (section 8.3) | `patch needs more gates than the runtime provides` |
+| After loading | `InvokeDartCode`, `JumpToFrame`, `RunExceptionHandler` and `FfiCallbackTrampoline` linked | `a stub entered from C++ is not linked to the release` |
+
+**Word-wise verification.** The linker normalizes B/BL displacements, so the
+patch and release bytes of a linked entry may differ in those words. For each
+word of a linked entry the runtime requires one of:
+
+- the words are equal and are not a pc-relative reference that leaves the
+  entry;
+- the word is a B or BL that leaves the entry, the release copy is the same
+  kind of branch, and it reaches the release copy of a *linked* patch entry at
+  the same offset.
+
+Any other pc-relative reference leaving the entry (b.cond, cbz, tbz, ldr
+literal, adr, adrp) rejects the patch. This re-checks the linker's rule 3 on
+the device, with the bytes the CPU will execute. It cannot re-check layout
+compatibility (pools, cids, field offsets), which is the linker's proof.
+
+**Translation.** Linked entries have a per-entry delta (release − patch).
+Release pcs map back to patch pcs through the linked release ranges, sorted
+and binary-searched (`BaseToPatch`).
+
+### 9.1 Notes against COMPILER_LINKER.md (root `558fe31`)
+
+1. **Matches.** The record layout, the one-record-per-linked-entry coverage,
+   payload offsets relative to `_kDartSnapshotText`, sizes equal to the
+   payload, the VM-stub guarantee and the ADRP refusal all match. The runtime
+   additionally refuses the patch itself when a C-entry stub is unlinked.
+2. **Record size versus entry span.** A record's size is the payload. The
+   instructions table only gives entry starts, so the runtime accepts a
+   trailing gap of fewer than 16 bytes made of `brk #0` words (the last
+   payload before the image end). It was found when the first real vmcode
+   was rejected.
+3. **Release hash.** Earlier, the linker hashed the ELF `_kDartSnapshotText`.
+   The shipped Mach-O differs from the ELF in three `InstructionsSection`
+   header words (`bss_offset`, `instructions_relocated_address`,
+   `build_id_offset`; text offsets 0x50–0x67), so that hash never matched at
+   runtime. The current linker (section 6.1) hashes the shipped Mach-O text,
+   which is what the runtime hashes. Fixed upstream of this note.
+4. **Mach-O `--base` input and symbols.** The linker bounds the text region
+   by the next symbol in the section. gen_snapshot's direct
+   `app-aot-macho-dylib` output keeps local function symbols even with
+   `--strip`, so `link --base App.dylib` fails ("only 128 bytes before the
+   next symbol"). Real App.frameworks are stripped by Xcode, and the test
+   strips with `strip -x`. Using the sidecar size and ignoring local symbols
+   would make the linker robust to unstripped input.
+5. **Hashes cover the ELF and the release, not the header or records.** The
+   runtime does not trust records: it validates them structurally and against
+   the code (above). The engine should still verify a signature over the
+   whole vmcode file before use.
+6. **Host versus device.** iOS codegen differs from macOS in the write-barrier
+   stubs (atomic memory is unsupported on iOS). Host results prove the
+   mechanism, not iOS link percentages.
 
 ## 10. Spike
 
@@ -381,7 +468,8 @@ identity offset because its two compiles share one layout.
 | Simulator | `RunMixed`, `MixedBranch`, return-address invariant |
 | VM hooks | Deserializer hooks; `PayloadStartOf`; stack-frame, suspend-state and resume pc translation; `Thread::mixed_area_` (appended after all generated-code fields, so offsets used by gen_snapshot are unchanged) |
 | Build | GN `dart_mixed_mode` / `dart_mixed_area_offset` |
-| Embedder | Read-only ELF text, release load, `Dart_MixedModeRegisterImages`, native dlopen kept |
+| Embedder | Read-only ELF text, release load, vmcode parsing and SHA-256 checks, `Dart_MixedModeRegisterImages`, retry with the release on rejection, native dlopen kept |
+| Tests | `tools/test_aot_mixed_mode.py` (section 10.5) |
 
 The spike's link table is computed in the runtime by identity: equal bytes at
 equal image offsets plus the PC-relative closure. The base is the *same
@@ -474,28 +562,153 @@ What these numbers mean:
   2. Simulator speed: a pre-decoded or threaded interpreter, keeping the
      interface.
   3. Transition cost: save only the Dart-ABI-live registers (q8–q15 low halves
-     are callee-saved; most q registers are dead at call boundaries); a
-     per-call-site return-gate cache instead of the hash map.
+     are callee-saved; most q registers are dead at call boundaries). The
+     return-gate and branch-target caches are done (section 10.6).
+
+### 10.5 vmcode v1 end to end, fail-closed cases, configurations
+
+`tools/test_aot_mixed_mode.py --release-dir <dir> --mixed-dir <mixed dir>
+[--linker …/ios_linker.dart --dart <dart>] [--bench]` (macOS arm64). The
+release dir provides gen_snapshot, dartaotruntime and vm_platform.dill.
+
+**Part A** uses the template (release K=3, patch K=5, an unrelated release
+K=4). It covers:
+
+- the release run natively;
+- the patch with identity linking (11/11 checks, with scavenges);
+- the patch as a vmcode built from the runtime's own link records;
+- the stress mode;
+- 19 fail-closed cases. Each one must run the release (K=3, or K=4) and print
+  the expected reason:
+  - gate exhaustion;
+  - truncated vmcode; bad magic; bad version; malformed header; nonzero
+    padding;
+  - ELF hash mismatch; a different release; a release hash mismatch;
+  - record not at an entry start; record size mismatch; nonzero flags;
+    overlapping records; record outside the release;
+  - unmapped release (vmcode and identity);
+  - C-entry stubs unlinked (no records, and identity "unlink all");
+  - a record that links changed code.
+
+**Part B** runs the linker at root `558fe31` (sidecar format 2) on each
+release/patch pair:
+
+1. Release: ELF and sidecar, plus a stripped, signed Mach-O dylib (the
+   `--base`).
+2. Patch: pass 1, `pool-hints`, constrained final build.
+3. `link`, then `check`.
+4. The mixed runtime runs the vmcode.
+
+The test requires:
+
+- the vmcode's release hash to equal the dylib text hash;
+- output equal to a stock build of the patch;
+- runtime linked/unlinked counts equal to `report.json`.
+
+Pairs:
+
+- the template (K=3 → K=5);
+- a pure-Dart port of the 80- and 320-caller fixture, cases p0–p6
+  (`run_matrix.py`'s fixture uses `dart:ui`).
+
+`patch_perf_bench` is a Flutter app, so it is not practical on the host
+runtime; it belongs with the device run.
+
+Results: **38/38 PASS in each configuration**, exit 0.
+
+| Configuration | Mixed runtime | Identity (template) | vmcode cases |
+| --- | --- | --- | --- |
+| Product, uncompressed (iOS configuration) | `ProductMixedARM64` (area offset 3864) | 1493 linked / 20 unlinked, 98.44% bytes | 15/15 |
+| Release | `ReleaseMixedARM64` (3904) | 3679 / 20, 99.36% | 15/15 |
+| Product, compressed pointers (robustness only) | `ProductMixedARM64C` (3872) | 1499 / 20, 98.45% | 15/15 |
+
+Product (uncompressed) linker results. Runtime counts equal the report in
+every row; output equals stock in every row.
+
+| Pair / case | Linked | Unlinked | Linked bytes |
+| --- | ---: | ---: | ---: |
+| template K=3 → K=5 | 1493 | 20 | 98.44% |
+| 80 callers p0 identical | 1541 | 0 | 100% |
+| 80 p1 string | 1541 | 0 | 100% |
+| 80 p2 one caller | 1537 | 4 | 99.15% |
+| 80 p3 shared leaf | 1456 | 85 | 97.79% |
+| 80 p4 field layout | 1456 | 85 | 97.79% |
+| 80 p5 new function | 1539 | 3 | 99.90% |
+| 80 p6 remove caller | 1537 | 3 | 99.18% |
+| 320 callers p0 / p1 | 1781 | 0 | 100% |
+| 320 p2 one caller | 1776 | 4 | 97.14% |
+| 320 p3 shared leaf | 1456 | 325 | 92.03% |
+| 320 p4 field layout | 1456 | 325 | 92.03% |
+| 320 p5 new function | 1779 | 3 | 99.91% |
+| 320 p6 remove caller | 1777 | 3 | 97.16% |
+
+The Release configuration leaves 25 entries unlinked even for the identical
+patch p0 (98.30%), against 0 in Product. That comes from the linker, and the
+runtime agrees with it.
+
+### 10.6 Simulator speed-ups
+
+These are cheap and keep the decoder unchanged:
+
+- a per-simulator branch-target cache (destination → simulated entry range,
+  or native target);
+- a return-gate cache;
+- fast paths for `mov xd, xm` and 64-bit `ldr`/`str` with an unsigned
+  offset.
+
+All are guarded by a link generation counter. Product (compressed), median of
+3, interleaved A/B runs:
+
+| Benchmark | Before | After | Change |
+| --- | ---: | ---: | ---: |
+| `numLoopB` simulated arithmetic loop | 2976 ms | 2287 ms | −23% |
+| `callLoopSimToNative` | 742 ms | 525 ms | −29% |
+| `callLoopSimToSim` | 577 ms | 465 ms | −19% |
+| `applyN(changedLeaf)` native → simulated closure | 1043 ms | 805 ms | −23% |
+
+After these changes, the Product (uncompressed) mixed/native ratios are:
+
+| Benchmark | Ratio |
+| --- | ---: |
+| `numLoopB` | 59.6× |
+| `callLoopSimToNative` | 128× |
+| `callLoopSimToSim` | 111× |
+| `applyN(changedLeaf)` (native baseline 16.5 ms) | 37.5× |
+| Linked code | 1.0× |
+
+The profile is now spread over the bitfield, multiply, add/sub-shifted and
+immediate decoders, so further fast paths give diminishing returns. The next
+real step is a pre-decoded (or threaded) interpreter that caches decoded
+instructions per entry. That is future work.
+
+Side observation: with compressed pointers, the *native* closure-call loop
+`applyN` takes 168 ms against 16.5 ms uncompressed. That is not a mixed-mode
+cost, and iOS does not use compressed pointers.
 
 ## 11. Remaining work
 
 ### Runtime (dart-sdk)
 
-1. Replace identity linking with the compiler worker's link table, and build
-   the base→patch range array (`ToPatchPc`, `PatchToBase`).
-2. Production gate count and capacity checks; fail closed to the release.
-3. Make the profiler simulator-aware (section 6); sampling still runs
+Done:
+
+- vmcode v1 consumption;
+- fail-closed rejection;
+- Product, Release and compressed configurations;
+- the repeatable test;
+- the first simulator speed-ups.
+
+Next:
+
+1. Make the profiler simulator-aware (section 6); sampling already runs
    correctly without it.
-4. Verify with **compressed pointers**, which Flutter uses on iOS arm64
-   (`HEAP_BITS` decoding in the simulator exists for simarm64c), and with
-   **product** mode.
-5. Simulator performance (pre-decode, threaded dispatch) and leaner
-   transitions.
-6. Deferred loading units: either refuse them in patches or link per unit,
+2. A pre-decoded or threaded interpreter, and leaner transitions (save only
+   the Dart-ABI-live registers).
+3. Deferred loading units: either refuse them in patches or link each unit,
    since `ReadInstructions` for deferred units goes through the same hook.
-7. Tests: port the spike program into a VM test with a patch-generation step,
-   and add a mixed simarm64-style stress test (simulate all non-stub code) to
-   CI.
+4. Turn `tools/test_aot_mixed_mode.py` into a CI step (it needs a macOS
+   arm64 bot with the mixed and baseline builds).
+5. Device: the iOS engine build with `dart_mixed_mode`, and a run of
+   `patch_perf_bench` on the iPad (coordinator-scheduled).
 
 ### Engine (`flutter/engine/src/flutter`)
 
@@ -513,15 +726,19 @@ What these numbers mean:
 3. Build: `dart_mixed_mode = true` for the iOS engine runtime only. Never set
    it for gen_snapshot. The gate offset (`dart_mixed_area_offset`) must be
    generated or checked by the build, not hand-set.
-4. Fallback: on any link or capacity failure, boot the release unpatched and
-   report to the updater.
+4. Fallback: on any rejection, boot the release unpatched and report to the
+   updater. The host embedder shows the shape: reject before the isolate
+   group, or retry `Dart_CreateIsolateGroup` with the release when the
+   deserializer reports "mixed-mode patch rejected".
 5. Device validation on iPad: signed IPA, release mode, frame timings. This
    is scheduled by the coordinator, not done here.
 
 ### CLI / linker
 
-1. Link percentage and "hot unlinked" warnings.
-2. Hard-fail when C-entry stubs are unlinked or the gate budget is exceeded.
+1. "Hot unlinked" warnings. The link-percent gate and stub hard-fail exist
+   (exit codes 3 and 2).
+2. A gate-budget check at link time, mirroring section 8.3.
+3. Accept unstripped Mach-O releases (section 9.1, note 4).
 
 ## 12. Risks
 
@@ -531,7 +748,8 @@ What these numbers mean:
 | Simulator speed | Medium | Pre-decoded interpreter (3–5× expected) |
 | Hidden native consumers of patch addresses, like `resume_pc`, the async `Suspend` return and `SuspendState::Clone` | Medium | Return-gate invariant, plus all entry fields rewritten at the source. Stress mode (all Dart code simulated) is the regression net |
 | Layout drift between release and patch makes "identical bytes" use wrong pools or cids | High if wrong | Compiler-side proof plus link rule; runtime byte re-check in debug |
-| Gate exhaustion | Low | Budget check at patch time; fail closed |
+| Gate exhaustion | Low | Budget check when linking; fail closed (tested) |
+| Malformed or mismatched vmcode | Low | Hashes plus structural and word-wise record checks; fail closed (19 tested cases) |
 | App Store policy | Not technical | Same technique as upstream; product decision |
 | Build fragility: `DART_INCLUDE_SIMULATOR` side effects (snapshot loader guard), hardened runtime, the 27.0 SDK `.tbd`/lld mismatch | Low | Guards fixed; SDK pinned |
 
