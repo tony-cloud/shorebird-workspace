@@ -79,6 +79,12 @@ MAX_BODY = 32768
 PUBLIC_FLUTTER_STORAGE = 'https://storage.googleapis.com'
 FAILURE_SCAN_BYTES = 64 * 1024
 EXCEPTION_TOKEN = re.compile(r'\b[A-Z][A-Za-z0-9]{2,60}(?:Exception|Error)\b')
+# MSBuild/CMake/linker/compiler diagnostic codes (e.g. LNK1181, MSB8066, C1083): fixed identifiers, no paths.
+BUILD_CODE = re.compile(r'\b(?:MSB|LNK|CMAKE|CS|RC|NU|NMAKE|CL|D|C|MIDL|VCR)\d{3,5}\b')
+MAX_BUILD_CODES = 8
+# Flutter's lenient `_gitCommitDate` prints this benign block (a VersionCheckError text) when the pinned engine
+# commit is absent from the checkout; it does not fail the command and must not be reported as the cause.
+BENIGN_COMMIT_DATE = re.compile(rb'failed to find the latest git commit date:.*?returning [^\n]*instead\.', re.S | re.I)
 PUB_PACKAGE = re.compile(r'[a-z][a-z0-9_]{0,63}\Z')
 PUB_MENTION = re.compile(r'(?:\bdepends on |\b[Bb]ecause (?:every version of |no versions of )?)([a-z][a-z0-9_]{0,63})\b')
 PUB_STOP_WORDS = frozenset({'every', 'no', 'any', 'all', 'it', 'its', 'the', 'this', 'that', 'which', 'version',
@@ -103,6 +109,28 @@ KNOWN_MESSAGES = (
     (b'not a git repository', 'git_not_repository'),
     (b'no names found', 'git_no_tags'),
     (b'filename too long', 'git_path_too_long'),
+    # Windows native build (flutter build windows -> CMake/MSBuild -> flutter assemble) failure shapes.
+    (b'unable to find suitable visual studio toolchain', 'vs_toolchain_missing'),
+    (b'cmake error', 'cmake_error'),
+    (b'error msb', 'msbuild_error'),
+    (b'error lnk', 'linker_error'),
+    (b'fatal error c', 'compiler_fatal_error'),
+    (b'cannot open input file', 'link_input_missing'),
+    (b'cannot open include file', 'include_file_missing'),
+    (b'flutter_assemble', 'flutter_assemble_step'),
+    (b'tool_backend', 'tool_backend_step'),
+    (b'gen_snapshot', 'gen_snapshot_mentioned'),
+    (b'target kernel_snapshot failed', 'kernel_snapshot_failed'),
+    (b'dart compiler exited unexpectedly', 'dart_compiler_crashed'),
+    (b'failed to download', 'artifact_download_failed'),
+    (b'engine_stamp.json', 'engine_stamp_mentioned'),
+    (b'access violation', 'access_violation'),
+    (b'0xc0000005', 'exception_0xc0000005'),
+    (b'stack overflow', 'stack_overflow'),
+    (b'out of memory', 'out_of_memory'),
+    (b'access is denied', 'access_denied'),
+    (b'being used by another process', 'file_in_use'),
+    (b'timed out', 'timed_out_mentioned'),
 )
 MAX_EXCEPTION_TYPES, MAX_PUB_PACKAGES = 5, 10
 
@@ -154,7 +182,7 @@ def command_failure(name, code, timed_out, path):
 
 def error_signature(head, tail, classification):
     """Bounded identifiers only: exception type names, pub package names, fixed enum keys."""
-    raw = head + b'\n' + tail
+    raw = BENIGN_COMMIT_DATE.sub(b'', head + b'\n' + tail)
     text = raw.decode('ascii', 'ignore')
     exceptions = []
     for token in (m.group(0) for m in EXCEPTION_TOKEN.finditer(text)):
@@ -163,7 +191,11 @@ def error_signature(head, tail, classification):
         if len(exceptions) == MAX_EXCEPTION_TYPES:
             break
     lowered = raw.lower()
-    signature = {'exception_types': exceptions,
+    codes = []
+    for match in BUILD_CODE.finditer(text):
+        if match.group(0) not in codes and len(codes) < MAX_BUILD_CODES:
+            codes.append(match.group(0))
+    signature = {'exception_types': exceptions, 'build_codes': codes,
                  'known_messages': [key for needle, key in KNOWN_MESSAGES if needle in lowered]}
     if classification == 'pub_solver':
         packages = []
@@ -205,6 +237,8 @@ def classify_probe(name, code, stdout, stderr):
     if name == 'flutter_version':
         if code == 0:
             return 'flutter_version_ok'
+        if b'engine_stamp.json' in text and b'failed to download' in text:
+            return 'flutter_engine_stamp_download_failed'
         return 'flutter_version_check_error' if b'versioncheckerror' in text else 'flutter_version_failed'
     if code is None:
         return 'probe_timed_out'
@@ -1057,7 +1091,7 @@ class Lifecycle:
             for name, args in GIT_PROBES:
                 code, key = self.probe(name, ['git', '-C', root, *args], ROOT, env)
                 print('flutter-toolchain-probe root={} check={} exit={} class={}'.format(label, name, code, key), flush=True)
-            code, key = self.probe('flutter_version', [root / 'bin/flutter.bat', '--version', '--machine'],
+            code, key = self.probe('flutter_version', [root / 'bin/flutter.bat', *local_engine_flags(self.args), '--version', '--machine'],
                                    self.work / 'app', env)
             print('flutter-toolchain-probe root={} check=flutter_version exit={} class={}'.format(label, code, key), flush=True)
 
@@ -1369,11 +1403,12 @@ def main(argv=None):
         print('Windows lifecycle failed; sanitized stage evidence retained.', flush=True)
         # Only fixed enums, numbers and authored FixtureError text are printed.
         detail = manifest.get('command_failure') or {}
-        print('Windows lifecycle failure: type={} after_stage={} reason={} command={} exit_code={} timed_out={} classification={} exception_types={} pub_conflict_packages={} known_messages={}'.format(
+        print('Windows lifecycle failure: type={} after_stage={} reason={} command={} exit_code={} timed_out={} classification={} exception_types={} build_codes={} pub_conflict_packages={} known_messages={}'.format(
             manifest['failure']['type'], manifest['failure']['after_stage'],
             manifest['failure'].get('reason', 'unavailable'), detail.get('operation', 'none'),
             detail.get('exit_code'), detail.get('timed_out'), detail.get('classification', 'none'),
             ','.join(detail.get('exception_types', [])) or 'none',
+            ','.join(detail.get('build_codes', [])) or 'none',
             ','.join(detail.get('pub_conflict_packages', [])) or 'none',
             ','.join(detail.get('known_messages', [])) or 'none'), flush=True)
     finally:

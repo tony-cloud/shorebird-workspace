@@ -467,6 +467,7 @@ class CommandDiagnosticsTest(unittest.TestCase):
             ('flutter_version', 0, b'{"x":1}', b'', 'flutter_version_ok'),
             ('flutter_version', 1, b'', b'VersionCheckError: Command exited ' + secret, 'flutter_version_check_error'),
             ('flutter_version', 1, b'', b'boom ' + secret, 'flutter_version_failed'),
+            ('flutter_version', 1, b'', b'Failed to download https://x/engine_stamp.json. Exception: 404', 'flutter_engine_stamp_download_failed'),
         )
         allowed = set()
         for name, code, out, err, expected in cases:
@@ -485,6 +486,20 @@ class CommandDiagnosticsTest(unittest.TestCase):
         self.assertEqual(result['known_messages'], [
             'flutter_install_failed', 'windows_build_failed', 'flutter_git_command_failed', 'flutter_remote_upstream_unknown',
             'flutter_nonstandard_remote', 'git_dubious_ownership', 'git_not_repository'])
+
+    def test_benign_commit_date_block_and_build_codes(self):
+        benign = (b'Failed to find the latest git commit date: VersionCheckError: Command exited with code 128: git log abc\n'
+                  b'Standard out: \nStandard error: fatal: bad object abc\n\nReturning 1970-01-01 08:00:00.000 instead.\n')
+        build = (b'C:\\private\\x.vcxproj : error MSB8066: custom build exited with code 1\n'
+                 b'LINK : fatal error LNK1181: cannot open input file C:\\private\\flutter_windows.dll.lib\n'
+                 b'CMake Error at secret/path\nFailed to build windows app.\n')
+        result = e2e.error_signature(benign + build, b'', 'unknown')
+        self.assertEqual(result['exception_types'], [])
+        self.assertEqual(result['build_codes'], ['MSB8066', 'LNK1181'])
+        self.assertIn('windows_build_failed', result['known_messages'])
+        self.assertNotIn('flutter_git_command_failed', result['known_messages'])
+        self.assertTrue({'cmake_error', 'msbuild_error', 'link_input_missing'} <= set(result['known_messages']))
+        self.assertNotIn('private', json.dumps(result))
 
     def test_error_signature_extracts_capped_identifiers_without_leaking_text(self):
         secret = 'Bearer sk-live-SECRET https://private.invalid/?sig=abc C:\\Users\\private\\file.txt'
@@ -514,7 +529,7 @@ class CommandDiagnosticsTest(unittest.TestCase):
             self.assertEqual(result['pub_conflict_packages'], ['flutter_lints', 'lints'])
             path.write_bytes(b'plain output')
             result = e2e.command_failure('release', 70, False, path)
-            self.assertEqual((result['exception_types'], result['known_messages']), ([], []))
+            self.assertEqual((result['exception_types'], result['known_messages'], result['build_codes']), ([], [], []))
             self.assertNotIn('pub_conflict_packages', result)
 
     def test_failed_and_timed_out_commands_retain_no_secrets_after_cleanup(self):
@@ -548,7 +563,7 @@ class CommandDiagnosticsTest(unittest.TestCase):
                     self.assertNotIn(secret, encoded)
                 self.assertEqual(set(evidence), {'operation', 'exit_code', 'timed_out', 'log_bytes',
                     'log_sha256', 'classification', 'classification_scan_truncated',
-                    'exception_types', 'known_messages'})
+                    'exception_types', 'build_codes', 'known_messages'})
 
 
 class ExecutionBoundaryTest(unittest.TestCase):
