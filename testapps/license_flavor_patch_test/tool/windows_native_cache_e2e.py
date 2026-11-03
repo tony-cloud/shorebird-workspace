@@ -879,6 +879,10 @@ class Lifecycle:
         command = '@echo off\r\n"%~dp0cache\\dart-sdk\\bin\\dart.exe" "--packages=%~dp0..\\packages\\flutter_tools\\.dart_tool\\package_config.json" "%~dp0..\\packages\\flutter_tools\\bin\\flutter_tools.dart" %*\r\n'
         for base in (self.work / 'flutter', vended):
             (base / 'bin/flutter.bat').write_text(command)
+        # The CLI calls installRevision even for this fully staged toolchain. Without
+        # the precache stamp it would run an unrelated `flutter precache` (network,
+        # no local-engine flags) and exit silently; mark the explicit staging complete.
+        (vended / '.shorebird_precache').write_text('fixture: prebuilt local toolchain staged after preflight\n')
         self.cli = self.work / 'cli/bin/shorebird-e2e.exe'
         self.run_command([self.args.tooling_dart, 'compile', 'exe',
                           '--packages=' + str(self.work / 'cli/.dart_tool/package_config.json'),

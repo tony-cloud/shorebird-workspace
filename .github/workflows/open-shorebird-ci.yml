@@ -5537,7 +5537,7 @@ jobs:
           "$NATIVE_PYTHON" scripts/verify_native_desktop_arch.py --platform windows --arch arm64 --require-native-host \
             --binary flutter/engine/src/out/windows_release_arm64/dart-sdk/bin/dart.exe \
             --binary flutter/engine/src/out/windows_release_arm64/flutter_windows.dll \
-            --build-tool "$NATIVE_BUILD_LINKER" --build-tool "$(command -v python3)" \
+            --build-tool "$NATIVE_BUILD_LINKER" --build-tool "$NATIVE_PYTHON" \
             --build-tool flutter/engine/src/flutter/third_party/gn/gn.exe \
             --build-tool flutter/engine/src/flutter/buildtools/windows-x64/clang/bin/clang-cl.exe
 

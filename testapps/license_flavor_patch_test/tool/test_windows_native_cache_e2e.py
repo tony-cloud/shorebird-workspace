@@ -327,6 +327,11 @@ class ToolchainPreparationTest(unittest.TestCase):
                 e2e.stage_local_engine_packages(host, flutter)
             self.assertEqual((original / 'preserve').read_text(), 'original')
 
+    def test_precache_stamp_name_matches_cli_guard(self):
+        # The vended copy is stamped so the CLI skips an unrelated `flutter precache`.
+        source = (Path(__file__).resolve().parents[3] / 'shorebird/packages/shorebird_cli/lib/src/shorebird_flutter.dart').read_text()
+        self.assertIn("precacheStampName = '.shorebird_precache'", source)
+
     def test_prepare_stages_generated_package_before_vended_copy_and_commands(self):
         for stale_metadata in (False, True):
             with self.subTest(stale_metadata=stale_metadata):
@@ -388,6 +393,7 @@ class ToolchainPreparationTest(unittest.TestCase):
                     self.assertEqual(e2e.tree_hashes(package), e2e.tree_hashes(generated))
                     self.assertFalse((package / 'stale').exists())
                     self.assertFalse(os.path.samefile(package / 'pubspec.yaml', generated / 'pubspec.yaml'))
+                self.assertTrue((work / 'cli/bin/cache/flutter/flutter-ref/.shorebird_precache').is_file())
                 for key in ('FLUTTER_STORAGE_BASE_URL', 'SHOREBIRD_FLUTTER_STORAGE_BASE_URL'):
                     self.assertEqual(kwargs['env'][key], 'https://storage.googleapis.com')
                 if kwargs['name'] == 'generate-windows':
