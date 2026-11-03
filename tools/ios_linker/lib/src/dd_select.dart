@@ -23,7 +23,19 @@ class DDSelection {
   int get estimatedCodeBytes => callSites * 8;
 }
 
-DDSelection selectDD(Snapshot snapshot, int maxBytes) {
+/// Whether function [key] (`fn:package:<name>/...`) belongs to one of
+/// [packages]. DD selection with `--only-packages` considers only these, so
+/// the SDK, Flutter and third-party dependencies never become DD targets.
+bool keyInPackages(String key, Set<String> packages) {
+  const prefix = 'fn:package:';
+  if (!key.startsWith(prefix)) return false;
+  final slash = key.indexOf('/', prefix.length);
+  return slash > 0 && packages.contains(key.substring(prefix.length, slash));
+}
+
+/// [onlyPackages], when given, restricts the candidates to those packages.
+DDSelection selectDD(Snapshot snapshot, int maxBytes,
+    {Set<String>? onlyPackages}) {
   final n = snapshot.entries.length;
   final preds = List<List<int>>.generate(n, (_) => []);
   final sitesInto = List<int>.filled(n, 0);
@@ -38,6 +50,7 @@ DDSelection selectDD(Snapshot snapshot, int maxBytes) {
   bool eligible(int i) {
     final key = snapshot.entries[i].entry.key;
     return key.startsWith('fn:') &&
+        (onlyPackages == null || keyInPackages(key, onlyPackages)) &&
         !key.contains('<closure') &&
         !key.contains('<tearoff>') &&
         sitesInto[i] > 0;
