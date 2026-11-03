@@ -212,6 +212,7 @@ required_files = %w[
   dart-sdk/tools/test_aot_no_tfa_startup.py
   dart-sdk/tools/test_aot_patchable_direct_calls.py
   dart-sdk/tools/test_aot_structural_public_api.py
+  dart-sdk/tools/test_aot_structural_closed_world.py
   shorebird/README.md
   shorebird/OPEN_SOURCE_REPLACEMENTS.md
   shorebird/docs/account/api-keys/README.md
@@ -3238,6 +3239,12 @@ assert!(run_text_by_job.fetch('source-checks').include?('python3 -m py_compile d
 macos_steps = jobs.fetch('custom-dart-sdk-macos').fetch('steps')
 public_api = macos_steps.map { |step| step['run'].to_s }.select { |run| run.start_with?('python3 dart-sdk/tools/test_aot_structural_public_api.py --build-dir dart-sdk/xcodebuild/ReleaseARM64') }
 assert!(public_api.length == 2 && public_api.any? { |run| run.end_with?('--product') }, 'custom-dart-sdk-macos must run the structural public dart: API regression in both modes')
+assert!(run_text_by_job.fetch('source-checks').include?('python3 -m py_compile dart-sdk/tools/test_aot_structural_closed_world.py'), 'source checks must syntax-check the structural closed-world harness')
+%w[custom-dart-sdk-macos custom-dart-sdk-macos-x64].each do |name|
+  build_dir = name == 'custom-dart-sdk-macos' ? 'xcodebuild/ReleaseARM64' : 'xcodebuild/ReleaseX64'
+  closed_world = jobs.fetch(name).fetch('steps').map { |step| step['run'].to_s }.select { |run| run.start_with?("python3 dart-sdk/tools/test_aot_structural_closed_world.py --build-dir dart-sdk/#{build_dir}") }
+  assert!(closed_world.length == 2 && closed_world.any? { |run| run.end_with?('--product') }, "#{name} must run the structural closed-world devirtualization regression in both modes")
+end
 assert!(run_text_by_job.fetch('custom-dart-sdk').include?('dart-sdk/bin/dart pub get'), 'encrypted runtime gate requires the real public envelope producer')
 {
   'custom-dart-sdk' => 'out/ReleaseX64/dart-sdk/bin/dart',
