@@ -216,6 +216,8 @@ jobs:
           python3 -m py_compile dart-sdk/tools/test_aot_structural_patch.py
           python3 -m py_compile dart-sdk/tools/test_aot_structural_public_api.py
           python3 -m py_compile dart-sdk/tools/test_aot_structural_closed_world.py
+          python3 -m py_compile dart-sdk/tools/test_aot_structural_smi_cast.py
+          python3 -m py_compile scripts/verify_vm_offsets.py
           python3 -m py_compile dart-sdk/tools/test_aot_full_replacement.py
           python3 -m py_compile dart-sdk/tools/test_aot_no_tfa_startup.py
           python3 -m py_compile dart-sdk/tools/test_aot_patchable_direct_calls.py
@@ -717,6 +719,64 @@ jobs:
             shorebird-server-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz.sha256
           if-no-files-found: error
 
+  verify-vm-offsets:
+    name: Verify VM runtime offsets
+    needs: source-checks
+    runs-on: ubuntu-latest
+    # Hosted-runner budget: the official extractor compiles the whole VM twice
+    # (JIT and AOT runtime) per configuration. The full 16-configuration run is
+    # several hours on a 4-core runner, so CI regenerates the 12 32-bit blocks
+    # (simarm, ia32, simriscv32; release+product; JIT+AOT) plus the simarm64
+    # control (also the only source of vm_offsets.g.dart). The other 64-bit
+    # blocks are macOS-generated; run
+    # `python3 scripts/verify_vm_offsets.py --archs all` on a large machine for
+    # the complete check.
+    timeout-minutes: 300
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.full_sdk_build }}
+    steps:
+      - name: Checkout workspace
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install depot_tools
+        run: |
+          if [ ! -d depot_tools ]; then
+            git clone --depth 1 \
+              https://chromium.googlesource.com/chromium/tools/depot_tools.git \
+              depot_tools
+          fi
+          echo "$GITHUB_WORKSPACE/depot_tools" >> "$GITHUB_PATH"
+
+      - name: Verify depot_tools build tools
+        run: |
+          python3 --version
+          gclient help >/dev/null
+          ninja --version
+
+      - name: Free Ubuntu runner disk
+        run: ./scripts/free_ci_disk_linux.sh
+
+      - name: Check runner capacity
+        run: CI_MIN_FREE_DISK_GB="$SDK_MIN_FREE_DISK_GB" ./scripts/check_ci_capacity.sh
+
+      - name: Write gclient config
+        run: ./scripts/write_gclient.sh linux
+
+      - name: Sync open-source links
+        run: ./scripts/sync_open_sources.sh
+
+      - name: gclient sync
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_gclient_sync }}
+        run: gclient sync --no-history
+
+      - name: Verify offsets extractor self-test
+        run: python3 scripts/verify_vm_offsets.py --self-test
+
+      - name: Regenerate and compare VM runtime offsets
+        run: python3 scripts/verify_vm_offsets.py --dart-sdk dart-sdk
+
   custom-dart-sdk:
     name: Build custom Dart SDK
     needs: source-checks
@@ -1087,6 +1147,12 @@ jobs:
       - name: Run PRODUCT structural closed-world devirtualization regression
         run: python3 dart-sdk/tools/test_aot_structural_closed_world.py --build-dir dart-sdk/xcodebuild/ReleaseARM64 --product
 
+      - name: Run structural Smi cast regression
+        run: python3 dart-sdk/tools/test_aot_structural_smi_cast.py --build-dir dart-sdk/xcodebuild/ReleaseARM64
+
+      - name: Run PRODUCT structural Smi cast regression
+        run: python3 dart-sdk/tools/test_aot_structural_smi_cast.py --build-dir dart-sdk/xcodebuild/ReleaseARM64 --product
+
       - name: Run PRODUCT full replacement regression
         run: python3 dart-sdk/tools/test_aot_full_replacement.py --build-dir dart-sdk/xcodebuild/ReleaseARM64 --product
 
@@ -1306,6 +1372,12 @@ jobs:
 
       - name: Run PRODUCT structural closed-world devirtualization regression
         run: python3 dart-sdk/tools/test_aot_structural_closed_world.py --build-dir dart-sdk/xcodebuild/ReleaseX64 --product
+
+      - name: Run structural Smi cast regression
+        run: python3 dart-sdk/tools/test_aot_structural_smi_cast.py --build-dir dart-sdk/xcodebuild/ReleaseX64
+
+      - name: Run PRODUCT structural Smi cast regression
+        run: python3 dart-sdk/tools/test_aot_structural_smi_cast.py --build-dir dart-sdk/xcodebuild/ReleaseX64 --product
 
       - name: Run PRODUCT full replacement regression
         run: python3 dart-sdk/tools/test_aot_full_replacement.py --build-dir dart-sdk/xcodebuild/ReleaseX64 --product
