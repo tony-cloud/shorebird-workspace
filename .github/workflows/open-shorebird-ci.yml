@@ -3258,6 +3258,28 @@ jobs:
             fi
           fi
           echo "ninja job caps: tests=${test_jobs[*]:-default} target=$target"
+          # Two phases. Memory pressure comes from the full-LTO links, not the
+          # compiles, so first build the target's object files at ncpu jobs, then
+          # link the target with the capped job count. The object list is passed in
+          # xargs batches (never one huge argument list). If `ninja -t inputs` is
+          # unavailable or yields nothing, or the optional compile phase fails,
+          # fall back to building the target with the capped job count alone; the
+          # capped build below reports any real error.
+          objects="$diag/test-objects.txt"
+          : > "$objects"
+          ninja --version
+          if ninja -C "$out" -t inputs "$target" > "$diag/test-inputs.txt" 2> "$diag/test-inputs-stderr.log"; then
+            grep -E '\.o$' "$diag/test-inputs.txt" > "$objects" || true
+          fi
+          if [ -s "$objects" ] && [ "${#test_jobs[@]}" -gt 0 ]; then
+            echo "[build] phase 1: compiling $(wc -l < "$objects" | tr -d ' ') object files at -j $(sysctl -n hw.ncpu)"
+            if ! xargs -n 2000 ninja -C "$out" -j "$(sysctl -n hw.ncpu)" < "$objects"; then
+              echo "[build] fallback: object pre-build failed; continuing with capped target build"
+            fi
+          else
+            echo "[build] fallback: no object list from ninja -t inputs (or uncapped runner); building target directly"
+          fi
+          echo "[build] phase 2: linking $target"
           ninja -C "$out" ${test_jobs[@]+"${test_jobs[@]}"} "$target"
           df -h / | tail -n 1
           du -sh "$out" 2>/dev/null || true
