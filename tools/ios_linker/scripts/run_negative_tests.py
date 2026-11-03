@@ -67,6 +67,27 @@ def main():
     rc, _ = call(tool + check + ['--min-link-percent', below])
     expect(f'check --min-link-percent {below:.3f}', 0, rc)
 
+    # Runtime gate budget: refuse exactly when the runtime would.
+    need = json.loads((pat / 'report.json').read_text())['gates_needed']
+    rc, o = call(tool + ['link'] + link_args + ['--out', out / 'g.vmcode', '--gate-count', need - 1])
+    expect(f'link --gate-count {need - 1} (needs {need})', 5, rc,
+           f"vmcode written: {(out / 'g.vmcode').exists()}")
+    results.append(not (out / 'g.vmcode').exists())
+    rc, _ = call(tool + ['link'] + link_args + ['--out', out / 'g.vmcode', '--gate-count', need])
+    expect(f'link --gate-count {need}', 0, rc)
+    rc, _ = call(tool + check + ['--gate-count', need - 1])
+    expect(f'check --gate-count {need - 1}', 5, rc)
+
+    # Unstripped Mach-O (gen_snapshot app-aot-macho-dylib keeps local code
+    # symbols): the release text is bounded by the sidecar size.
+    dylib = out / 'App.dylib'
+    rc, o = call([a.gen, '--deterministic', '--snapshot_kind=app-aot-macho-dylib', '--strip',
+                  f'--macho={dylib}', f'--print_link_info_to={out}/dylib.link', rel / 'app.dill'])
+    expect('gen_snapshot app-aot-macho-dylib', 0, rc)
+    rc, o = call(tool + ['compare-text', '--a', dylib, '--b', rel / 'App.aot', '--link', rel / 'App.link'])
+    expect('unstripped dylib text vs ELF, all code entries equal', 0, rc,
+           next((l.strip() for l in o.splitlines() if l.startswith('code entries')), o[-200:]))
+
     tampered = bytearray((out / 'lo.vmcode').read_bytes())
     tampered[120] ^= 0x10  # linked code bytes
     (out / 'tampered.vmcode').write_bytes(bytes(tampered))

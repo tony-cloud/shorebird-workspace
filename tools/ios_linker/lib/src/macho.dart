@@ -147,36 +147,45 @@ class MachO {
   MachOSymbol? findSnapshotSymbol(String label) =>
       byName[label] ?? byName['_$label'];
 
-  /// The region of [label]: from the symbol to the next symbol in the same
-  /// section that starts at a higher address, or to the section end.
-  /// [size], when given (e.g. the sidecar's text_image_size), must fit in
-  /// that region and narrows it.
+  /// The region of [label] (an external symbol).
+  ///
+  /// With [size] (the sidecar's `text_image_size`) the region is exactly
+  /// [size] bytes and only has to fit in the symbol's section; other symbols
+  /// are ignored, so unstripped binaries (local code symbols inside the
+  /// image, e.g. gen_snapshot's app-aot-macho-dylib) work. Without [size]
+  /// the region ends at the next *external* symbol in the section that
+  /// starts at a higher address, or at the section end.
   ({int fileOffset, int vmaddr, int size, MachOSection section}) region(
       String label,
       {int? size}) {
     final sym = findSnapshotSymbol(label);
     if (sym == null) throw StateError('symbol $label not found');
     final sect = sections[sym.section - 1];
-    var end = sect.end;
-    for (final s in symbols) {
-      if (s.section == sym.section && s.value > sym.value && s.value < end) {
-        end = s.value;
-      }
-    }
-    final available = end - sym.value;
-    if (size != null) {
-      if (size > available) {
-        throw StateError('$label: requested $size bytes, only $available '
-            'before the next symbol or section end');
-      }
-    }
     if (sect.offset == 0) {
       throw StateError('$label lies in a zero-fill section');
+    }
+    int end;
+    if (size != null) {
+      end = sym.value + size;
+      if (end > sect.end) {
+        throw StateError('$label: $size bytes do not fit in '
+            '${sect.segment},${sect.name} (${sect.end - sym.value} available)');
+      }
+    } else {
+      end = sect.end;
+      for (final s in symbols) {
+        if (s.external &&
+            s.section == sym.section &&
+            s.value > sym.value &&
+            s.value < end) {
+          end = s.value;
+        }
+      }
     }
     return (
       fileOffset: sect.offset + (sym.value - sect.addr),
       vmaddr: sym.value,
-      size: size ?? available,
+      size: end - sym.value,
       section: sect,
     );
   }

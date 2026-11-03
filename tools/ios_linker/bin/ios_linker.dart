@@ -6,6 +6,7 @@ import 'dart:typed_data';
 
 import '../lib/src/checker.dart';
 import '../lib/src/dd_select.dart';
+import '../lib/src/gate_budget.dart';
 import '../lib/src/hash.dart';
 import '../lib/src/link_info.dart';
 import '../lib/src/linker.dart';
@@ -17,12 +18,16 @@ const usage = '''
 usage:
   ios_linker link --base F --base-link F --patch-elf F --patch-link F
                   --out out.vmcode [--report report.json] [--table table.tsv]
-                  [--min-link-percent P] [--allow-unlinked-stubs true]
+                  [--min-link-percent P] [--gate-count N]
+                  [--allow-unlinked-stubs true]
   ios_linker check --vmcode F --base F --patch-elf F
                   [--base-link F] [--patch-link F] [--min-link-percent P]
+                  [--gate-count N]
   ios_linker pool-hints --base-link F --patch-link PASS1 --out constraints.link
   ios_linker diff-base --base F [--link F] --out F (release data + text blobs)
+  ios_linker info --base F [--link F]   (JSON: format, text/data sizes and SHA-256)
   ios_linker dd-select --base F --link F --max-bytes N --out targets.dd
+                  [--only-packages a,b]   (DD targets only from these packages)
   ios_linker compare-text --a F --b F [--link F]
 
 --base is the release binary: the ELF gen_snapshot wrote, or the Mach-O
@@ -30,8 +35,14 @@ App.framework/App built from its assembly (the text image is located at
 _kDartSnapshotText; its size comes from the sidecar). --base-elf and --elf
 are accepted as aliases.
 
+--gate-count is the runtime's gate capacity (default $defaultGateCount; 0
+disables the check). A patch needing more gates than that (4 x unlinked
+entries + call sites in unlinked entries + $gateReserve) is refused, as the
+runtime would refuse it. check needs --patch-link for this.
+
 Exit codes: 0 ok, 1 check failed / texts differ, 2 VM stubs unlinked,
-3 below --min-link-percent, 4 sidecar/compiler mismatch, 64 usage.
+3 below --min-link-percent, 4 sidecar/compiler mismatch, 5 over the runtime
+gate budget, 64 usage.
 ''';
 
 Map<String, String> parseArgs(List<String> args) {
@@ -68,6 +79,15 @@ void main(List<String> argv) {
   exitCode = mainWithExitCode(argv);
 }
 
+/// Gate capacity of the target runtime; 0 disables the budget check.
+int gateCountArg(Map<String, String> o) {
+  final v = o['gate-count'];
+  if (v == null) return defaultGateCount;
+  final n = int.parse(v);
+  if (n < 0) throw ArgumentError('--gate-count must be >= 0');
+  return n;
+}
+
 int mainWithExitCode(List<String> argv) {
   if (argv.isEmpty) {
     stderr.write(usage);
@@ -94,13 +114,16 @@ int run(String command, Map<String, String> o) {
         baseLinkPath: o['base-link'],
         patchLinkPath: o['patch-link'],
         minLinkPercent: minPercentArg(o),
+        gateCount: gateCountArg(o),
       );
       stdout.writeln('check: $r');
       for (final f in r.failures) {
         stdout.writeln('  FAIL $f');
       }
       if (r.ok) return 0;
-      return r.belowMinimumOnly ? 3 : 1;
+      if (r.failures.length == 1 && r.belowMinimum) return 3;
+      if (r.failures.length == 1 && r.overGateBudget) return 5;
+      return 1;
     case 'pool-hints':
       final base = LinkInfo.read(need(o, 'base-link'));
       final pass1 = LinkInfo.read(need(o, 'patch-link'));
@@ -116,7 +139,18 @@ int run(String command, Map<String, String> o) {
       final bin =
           SnapshotBinary.read(baseArg(o), textImageSize: info.textImageSize);
       final snap = Snapshot(info, bin.textImage);
-      final sel = selectDD(snap, int.parse(need(o, 'max-bytes')));
+      final only = o['only-packages'];
+      final packages = only == null
+          ? null
+          : {
+              for (final p in only.split(','))
+                if (p.trim().isNotEmpty) p.trim()
+            };
+      if (packages != null && packages.isEmpty) {
+        throw ArgumentError('--only-packages is empty');
+      }
+      final sel = selectDD(snap, int.parse(need(o, 'max-bytes')),
+          onlyPackages: packages);
       final sb = StringBuffer('# DD targets: max-bytes=${o['max-bytes']} '
           'call-sites=${sel.callSites}\n');
       sel.treeBytes.forEach((k, v) => sb.writeln(k));
@@ -136,6 +170,19 @@ int run(String command, Map<String, String> o) {
       File(need(o, 'out')).writeAsBytesSync(out.takeBytes());
       stdout.writeln('diff-base: ${bin.format} data=${bin.dataImage.length} '
           'text=${bin.textImage.length}');
+      return 0;
+    case 'info':
+      final size = o['link'] == null
+          ? null
+          : LinkInfo.read(o['link']!).textImageSize;
+      final bin = SnapshotBinary.read(baseArg(o), textImageSize: size);
+      stdout.writeln(const JsonEncoder.withIndent(' ').convert({
+        'format': bin.format,
+        'text_size': bin.textImage.length,
+        'text_sha256': hex(sha256(bin.textImage)),
+        'data_size': bin.dataImage.length,
+        'data_sha256': hex(sha256(bin.dataImage)),
+      }));
       return 0;
     case 'compare-text':
       return compareText(o);
@@ -265,6 +312,10 @@ int link(Map<String, String> o) {
       if (patch.entries[p].entry.key.startsWith('stub:'))
         patch.entries[p].entry.key
   ];
+  final gateCount = gateCountArg(o);
+  final budget = computeGateBudget(patchInfo, patchText,
+      {for (final l in links) l.patchOffset});
+  stdout.writeln('link: runtime $budget of $gateCount gates');
   var exit = 0;
   if (unlinkedStubs.isNotEmpty && o['allow-unlinked-stubs'] == null) {
     stderr.writeln('link: ${unlinkedStubs.length} VM stubs do not link '
@@ -274,6 +325,11 @@ int link(Map<String, String> o) {
     stderr.writeln('link: ${result.linkPercent.toStringAsFixed(5)}% is below '
         '--min-link-percent $minPercent; no vmcode written');
     exit = 3;
+  } else if (gateCount > 0 && budget.gatesNeeded > gateCount) {
+    stderr.writeln('link: the runtime would refuse this patch: '
+        '${budget.gatesNeeded} gates needed, $gateCount available '
+        '(--gate-count); no vmcode written');
+    exit = 5;
   } else {
     outFile.writeAsBytesSync(encoded);
   }
@@ -313,6 +369,9 @@ int link(Map<String, String> o) {
       'release_format': baseBin.format,
       'min_link_percent': minPercent,
       'exit_code': exit,
+      'gates_needed': budget.gatesNeeded,
+      'gate_count': gateCount,
+      'unlinked_call_sites': budget.unlinkedCallSites,
       'vmcode_bytes': exit == 0 ? encoded.length : null,
       'vmcode_header_bytes': vm.elfOffset,
       'unlinked_by_reason': {

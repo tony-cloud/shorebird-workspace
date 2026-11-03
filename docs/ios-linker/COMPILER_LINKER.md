@@ -404,8 +404,8 @@ renumbers are irrelevant, because selectors are matched by key.
 | `ios_linker` command | Use |
 | --- | --- |
 | `pool-hints --base-link --patch-link PASS1 --out F` | second-pass pool assignment |
-| `link --base --base-link --patch-elf --patch-link --out out.vmcode [--report --table] [--min-link-percent P]` | link table + vmcode. Exit 2 if a VM stub does not link (toolchain mismatch; RUNTIME.md §8.2), 3 below `P` (no vmcode is written), 4 for a sidecar version or compiler identity mismatch. |
-| `check --vmcode --base --patch-elf [--base-link --patch-link] [--min-link-percent P]` | independent verification (section 8). Exit 1 on any failure, 3 if the only failure is the gate. |
+| `link --base --base-link --patch-elf --patch-link --out out.vmcode [--report --table] [--min-link-percent P] [--gate-count N]` | link table + vmcode. Exit 2 if a VM stub does not link (toolchain mismatch; RUNTIME.md §8.2), 3 below `P`, 4 for a sidecar version or compiler identity mismatch, 5 over the runtime gate budget. No vmcode is written for 2, 3 or 5. |
+| `check --vmcode --base --patch-elf [--base-link --patch-link] [--min-link-percent P] [--gate-count N]` | independent verification (section 8). Exit 1 on any failure; 3 or 5 if the only failure is the percentage gate or the gate budget. |
 | `dd-select --base --link --max-bytes N --out F` | release DD target selection (section 7) |
 | `diff-base --base [--link] --out F` | release data+text blob for bidiff |
 | `compare-text --a --b [--link]` | compare two instructions images (ELF or Mach-O), per code entry with `--link`; exit 0 if all entries are identical |
@@ -414,6 +414,15 @@ renumbers are irrelevant, because selectors are matched by key.
 (`--base-elf`/`--elf` are aliases). The text image size of a Mach-O comes
 from the sidecar's `text_image_size`. The patch is always the ELF that
 gen_snapshot wrote.
+
+**Runtime gate budget.** `link` refuses a vmcode the runtime would refuse
+(RUNTIME.md §8.3): it computes `4 × unlinked patch entries + bl/blr call
+sites in unlinked entries + 1024` over the same entry spans as the runtime's
+instructions table and fails (exit 5) above `--gate-count`, which defaults to
+the engine's `GATE_COUNT` (131072) and is 0 to disable. `check` recomputes it
+when given `--patch-link`. The report records `gates_needed`; measured
+1,024–2,442 for every case in section 9 (for example the Flutter app
+add-a-field patch needs 1,356), far below 131,072.
 
 `--min-link-percent` is a policy knob for the CLI. Link percent is
 `linked code bytes / patch code bytes`. `check` recomputes it from the
@@ -462,6 +471,14 @@ All integers are little-endian.
 - **Coverage.** There is one record per *linked* entry. Every patch
   instructions entry not covered by a record is unlinked. Sizes are equal by
   construction and repeated for verification.
+- **Size versus span (padding rule).** A record's size is the payload size
+  (`Instructions::Size`), not the entry's span in the instructions table. The
+  span from the payload end to the next entry start, or to the image end for
+  the last entry, is alignment padding made of `brk #0` words
+  (`0xd4200000`) and is shorter than 16 bytes. Payloads are 4-byte aligned,
+  so in practice only the last entry has padding (to the 16-byte object
+  alignment). `check` verifies this rule on both images when given the
+  sidecars; the runtime accepts exactly this.
 - **Entry points.** Monomorphic and unchecked entry offsets are equal inside
   a linked payload, so `release_offset + (patch_entry - patch_offset)` maps
   any entry point or return address.
@@ -473,6 +490,11 @@ All integers are little-endian.
   `_kDartSnapshotText`, `release text image size` bytes long (section 6.1).
   They are not the bytes of an ELF built from the same kernel: three header
   words differ. The runtime hashes the loaded `_kDartSnapshotText` region.
+- **Integrity.** The hashes cover the patch ELF and the release text, not
+  the header fields or the link records. The runtime validates records
+  structurally and word by word against the code (RUNTIME.md §9), and the
+  engine verifies a signature over the whole vmcode file before use, so the
+  container needs no hash of its own.
 - **Header size.** The header size grows with *n*: 16 bytes per link, so
   about 88 KB for the 5,498-entry Flutter app, padded to 96 KB. Upstream's
   measured header was a count plus pairs. This format adds sizes, hashes and
@@ -493,7 +515,13 @@ is embedded. Two options were considered:
    offsets.
 
 **Decision: option 1.** It is implemented (`lib/src/macho.dart`,
-`lib/src/snapshot_binary.dart`; thin or fat, arm64 slice) and it is the only
+`lib/src/snapshot_binary.dart`; thin or fat, arm64 slice). The text region
+is exactly the sidecar's `text_image_size` bytes from `_kDartSnapshotText`
+and must fit in its section; other symbols are ignored, so unstripped inputs
+work too. gen_snapshot's direct `app-aot-macho-dylib` output keeps local
+code symbols even with `--strip`; its text equals the ELF's in every code
+entry (checked in the negative-controls run). Without a sidecar the region
+ends at the next external symbol or the section end. Option 1 is the only
 option that yields the bytes the device executes. Evidence, for every Mach-O
 release in section 9 (2 fixtures × direct/DD and the Flutter app × direct/DD,
 in the iOS and the Shorebird-defines builds):
@@ -626,7 +654,10 @@ as remaining work.
    Mach-O releases.
 4. **Mach-O release proofs** (section 6.1), recorded per release in
    `summary.json` under `release_proofs`.
-5. **Negative controls** (`run_negative_tests.py`, 12/12 pass): the gate
+5. **Negative controls** (`run_negative_tests.py`, 18/18 pass): the runtime
+   gate budget (`--gate-count` one below the need: `link` exit 5 with no
+   vmcode, `check` exit 5; at the need: exit 0); the unstripped
+   `app-aot-macho-dylib` release read correctly; the percentage gate
    above and below the actual percentage for `link` (exit 3, no vmcode
    written; a gated vmcode is byte-identical to an ungated one) and `check`
    (exit 3 / 0); a tampered header linked-bytes field (check exit 1); checking
@@ -823,7 +854,8 @@ branch (remaining work).
    are easy wins. Any such change bumps the format version.
 10. **Gate policy.** `--min-link-percent` exists in `link` and `check`; the
     threshold is a product decision for the CLI. Upstream warns below 90% and
-    fails below 20%.
+    fails below 20%. `--gate-count` must follow the engine's `GATE_COUNT`
+    if that changes; the runtime remains the final authority.
 11. **Fat or arm64e releases.** The Mach-O reader takes the plain arm64 slice
     of a fat file and rejects other CPU types. Flutter iOS device builds are
     thin arm64.

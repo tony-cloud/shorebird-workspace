@@ -13,6 +13,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'arm64.dart';
+import 'gate_budget.dart';
 import 'hash.dart';
 import 'link_info.dart';
 import 'snapshot_binary.dart';
@@ -31,11 +32,18 @@ class CheckReport {
   bool belowMinimum = false;
   bool get belowMinimumOnly => belowMinimum && failures.length == 1;
 
+  /// Set when the patch sidecar was given and the runtime gate budget is
+  /// exceeded.
+  bool overGateBudget = false;
+  GateBudget? gateBudget;
+
   @override
   String toString() =>
       'links=$links link_percent=${linkPercent.toStringAsFixed(5)} '
       'words=$wordsCompared external_branches=$externalBranches '
-      'internal_pcrel=$internalPcRel failures=${failures.length}';
+      'internal_pcrel=$internalPcRel '
+      '${gateBudget == null ? '' : 'gates_needed=${gateBudget!.gatesNeeded} '}'
+      'failures=${failures.length}';
 }
 
 CheckReport checkVmcode({
@@ -45,6 +53,7 @@ CheckReport checkVmcode({
   String? baseLinkPath,
   String? patchLinkPath,
   double? minLinkPercent,
+  int gateCount = defaultGateCount,
 }) {
   final report = CheckReport();
   void fail(String m) {
@@ -117,24 +126,52 @@ CheckReport checkVmcode({
     }
   }
 
-  // Optional cross-check: links cover whole code entries.
-  if (patchInfo != null) {
-    final p = patchInfo;
-    final sizes = {for (final e in p.codes) e.textOffset: e.size};
+  // Optional cross-checks against the sidecars: a record covers a whole
+  // payload, and the rest of the entry's span (up to the next entry or the
+  // image end, as the runtime's instructions table sees it) is only
+  // `brk #0` alignment padding, fewer than 16 bytes (section 6 padding rule).
+  void checkSpans(LinkInfo info, Uint8List text, String side,
+      int Function(VmcodeLink) offsetOf) {
+    final sizes = {for (final e in info.codes) e.textOffset: e.size};
+    final next = <int, int>{};
+    for (var i = 0; i < info.codes.length; i++) {
+      next[info.codes[i].textOffset] = i + 1 < info.codes.length
+          ? info.codes[i + 1].textOffset
+          : text.length;
+    }
+    final d = ByteData.sublistView(text);
     for (final l in links) {
-      if (sizes[l.patchOffset] != l.size) {
-        fail('link at patch ${l.patchOffset} is not a whole patch entry');
+      final off = offsetOf(l);
+      if (sizes[off] != l.size) {
+        fail('link at $side $off is not a whole $side entry');
+        continue;
+      }
+      final end = off + l.size, spanEnd = next[off]!;
+      final gap = spanEnd - end;
+      var ok = gap >= 0 && gap < 16 && gap % 4 == 0 && spanEnd <= text.length;
+      for (var pc = end; ok && pc < spanEnd; pc += 4) {
+        ok = d.getUint32(pc, Endian.little) == 0xd4200000;
+      }
+      if (!ok) {
+        fail('$side entry $off: span past the payload is not brk padding '
+            '< 16 bytes (gap $gap)');
       }
     }
   }
-  if (baseInfo != null) {
-    final b = baseInfo;
-    final sizes = {for (final e in b.codes) e.textOffset: e.size};
-    for (final l in links) {
-      if (sizes[l.baseOffset] != l.size) {
-        fail('link at release ${l.baseOffset} is not a whole release entry');
-      }
+
+  if (patchInfo != null) {
+    checkSpans(patchInfo, patchText, 'patch', (l) => l.patchOffset);
+    final budget = computeGateBudget(
+        patchInfo, patchText, {for (final l in links) l.patchOffset});
+    report.gateBudget = budget;
+    if (gateCount > 0 && budget.gatesNeeded > gateCount) {
+      report.overGateBudget = true;
+      fail('the runtime would refuse this patch: ${budget.gatesNeeded} gates '
+          'needed, $gateCount available');
     }
+  }
+  if (baseInfo != null) {
+    checkSpans(baseInfo, baseText, 'release', (l) => l.baseOffset);
   }
 
   VmcodeLink? linkContaining(int patchTextOffset) {
