@@ -210,6 +210,7 @@ required_files = %w[
   dart-sdk/DEPS
   dart-sdk/tools/test_aot_structural_patch.py
   dart-sdk/tools/test_aot_no_tfa_startup.py
+  dart-sdk/tools/test_aot_patchable_direct_calls.py
   shorebird/README.md
   shorebird/OPEN_SOURCE_REPLACEMENTS.md
   shorebird/docs/account/api-keys/README.md
@@ -3224,6 +3225,14 @@ assert!(matrix_entries(jobs.fetch('android-host-tools')).length == 6, 'Android h
   regression = name == 'custom-dart-sdk' ? 'scripts/verify_encrypted_aot_runtime.py' : 'tools/test_aot_bytecode_patch.py --build-dir'
   assert!(run_text_by_job.fetch(name).include?('dart_engine_aot_shared') && run_text_by_job.fetch(name).include?(regression), "#{name} must exercise actual unannotated AOT bytecode replacement")
 end
+%w[custom-dart-sdk-macos custom-dart-sdk-macos-x64].each do |name|
+  build_dir = name == 'custom-dart-sdk-macos' ? 'xcodebuild/ReleaseARM64' : 'xcodebuild/ReleaseX64'
+  steps = jobs.fetch(name).fetch('steps')
+  bytecode = steps.index { |step| step['run'].to_s.include?('test_aot_bytecode_patch.py') }
+  direct = steps.index { |step| step['run'] == "python3 dart-sdk/tools/test_aot_patchable_direct_calls.py --build-dir dart-sdk/#{build_dir}" }
+  assert!(bytecode && direct && bytecode < direct, "#{name} must run the patchable direct-call regression after the bytecode replacement regression")
+end
+assert!(run_text_by_job.fetch('source-checks').include?('python3 -m py_compile dart-sdk/tools/test_aot_patchable_direct_calls.py'), 'source checks must syntax-check the patchable direct-call harness')
 assert!(run_text_by_job.fetch('custom-dart-sdk').include?('dart-sdk/bin/dart pub get'), 'encrypted runtime gate requires the real public envelope producer')
 {
   'custom-dart-sdk' => 'out/ReleaseX64/dart-sdk/bin/dart',

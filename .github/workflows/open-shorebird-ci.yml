@@ -216,6 +216,7 @@ jobs:
           python3 -m py_compile dart-sdk/tools/test_aot_structural_patch.py
           python3 -m py_compile dart-sdk/tools/test_aot_full_replacement.py
           python3 -m py_compile dart-sdk/tools/test_aot_no_tfa_startup.py
+          python3 -m py_compile dart-sdk/tools/test_aot_patchable_direct_calls.py
           python3 -m py_compile dart-sdk/tools/test_aot_product_metadata.py
           python3 -m py_compile dart-sdk/tools/test_aot_host_resolvers.py
           python3 -m py_compile dart-sdk/tools/test_interpreter_ffi_calls.py
@@ -1060,6 +1061,9 @@ jobs:
       - name: Run AOT bytecode replacement regression
         run: python3 dart-sdk/tools/test_aot_bytecode_patch.py --build-dir dart-sdk/xcodebuild/ReleaseARM64
 
+      - name: Run AOT patchable direct-call regression
+        run: python3 dart-sdk/tools/test_aot_patchable_direct_calls.py --build-dir dart-sdk/xcodebuild/ReleaseARM64
+
       - name: Run PRODUCT no-TFA startup regression
         run: python3 dart-sdk/tools/test_aot_no_tfa_startup.py --build-dir dart-sdk/xcodebuild/ReleaseARM64
 
@@ -1270,6 +1274,9 @@ jobs:
 
       - name: Run AOT bytecode replacement regression
         run: python3 dart-sdk/tools/test_aot_bytecode_patch.py --build-dir dart-sdk/xcodebuild/ReleaseX64
+
+      - name: Run AOT patchable direct-call regression
+        run: python3 dart-sdk/tools/test_aot_patchable_direct_calls.py --build-dir dart-sdk/xcodebuild/ReleaseX64
 
       - name: Run PRODUCT no-TFA startup regression
         run: python3 dart-sdk/tools/test_aot_no_tfa_startup.py --build-dir dart-sdk/xcodebuild/ReleaseX64
