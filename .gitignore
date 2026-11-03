@@ -28,3 +28,6 @@ test_bytecode.dart
 .DS_Store
 .idea/
 .vscode/
+
+# Temporary fixtures written by scripts/test_ci_arm64_contract.py
+.github/workflows/.arm64-contract-*
