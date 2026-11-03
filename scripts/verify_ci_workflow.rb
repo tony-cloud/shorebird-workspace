@@ -211,6 +211,7 @@ required_files = %w[
   dart-sdk/tools/test_aot_structural_patch.py
   dart-sdk/tools/test_aot_no_tfa_startup.py
   dart-sdk/tools/test_aot_patchable_direct_calls.py
+  dart-sdk/tools/test_aot_structural_public_api.py
   shorebird/README.md
   shorebird/OPEN_SOURCE_REPLACEMENTS.md
   shorebird/docs/account/api-keys/README.md
@@ -3233,6 +3234,10 @@ end
   assert!(bytecode && direct && bytecode < direct, "#{name} must run the patchable direct-call regression after the bytecode replacement regression")
 end
 assert!(run_text_by_job.fetch('source-checks').include?('python3 -m py_compile dart-sdk/tools/test_aot_patchable_direct_calls.py'), 'source checks must syntax-check the patchable direct-call harness')
+assert!(run_text_by_job.fetch('source-checks').include?('python3 -m py_compile dart-sdk/tools/test_aot_structural_public_api.py'), 'source checks must syntax-check the structural public dart: API harness')
+macos_steps = jobs.fetch('custom-dart-sdk-macos').fetch('steps')
+public_api = macos_steps.map { |step| step['run'].to_s }.select { |run| run.start_with?('python3 dart-sdk/tools/test_aot_structural_public_api.py --build-dir dart-sdk/xcodebuild/ReleaseARM64') }
+assert!(public_api.length == 2 && public_api.any? { |run| run.end_with?('--product') }, 'custom-dart-sdk-macos must run the structural public dart: API regression in both modes')
 assert!(run_text_by_job.fetch('custom-dart-sdk').include?('dart-sdk/bin/dart pub get'), 'encrypted runtime gate requires the real public envelope producer')
 {
   'custom-dart-sdk' => 'out/ReleaseX64/dart-sdk/bin/dart',

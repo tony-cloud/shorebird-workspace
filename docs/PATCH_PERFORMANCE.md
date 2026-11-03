@@ -127,3 +127,16 @@ What changed on device:
 - One device, 3 cold launches per variant; V1-V3 perform a startup update check
   (Local Network permission granted). Development signing (get-task-allow) was
   used to copy results out of the app container.
+
+## Structural profile snapshot size after the dart: retention rule (host, 2026-11-03)
+
+Host non-product `widgets.dart` (pure-Dart Flutter-like workload), `--no-tfa
+--shorebird-structural-patching`: the dart: retention rule (private `dart:`
+declarations are no longer roots; see `dart-sdk/docs/shorebird-structural-patching.md`)
+shrinks the AOT ELF snapshot from 14.31 MB to 10.22 MB (-29%); instructions from
+4.86 MB to 3.64 MB, dynamic-invocation forwarder code 0.90 to 0.60 MB, tear-offs
+and method extractors 0.78 to 0.20 MB. Stock TFA AOT is 2.49 MB and plain `--no-tfa`
+3.79 MB. Frame, virtual and mono timings are unchanged within noise (frame 67.8
+vs 67.3 us). The rest of the gap to the 7.6 MB unsound prototype is the cost of keeping every
+public selector (statically, dynamically, via tear-off) callable on the private
+implementation classes (dart:typed_data alone is 0.96 MB).
