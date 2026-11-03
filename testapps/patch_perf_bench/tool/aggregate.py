@@ -3,6 +3,7 @@
 
 usage: aggregate.py RESULTS_DIR OUT_JSON [--meta meta.json]
 Files: <RESULTS_DIR>/<LABEL>_run<N>.json for each variant label.
+Frame metrics use only runs with >= 1000 frames (display awake).
 Per metric: median = median over runs of the per-run median; p90 = median over
 runs of the per-run p90; ratio = variant median / V0 median.
 """
@@ -12,6 +13,7 @@ res, out = sys.argv[1], sys.argv[2]
 meta = {}
 if '--meta' in sys.argv:
     meta = json.load(open(sys.argv[sys.argv.index('--meta') + 1]))
+FRAME_MIN = 1000  # a full 10 s collection at 120 Hz is ~1200 frames; fewer means the display was asleep
 runs = {}
 for f in sorted(glob.glob(os.path.join(res, '*_run*.json'))):
     m = re.match(r'(.+)_run(\d+)\.json', os.path.basename(f))
@@ -24,6 +26,8 @@ def metrics(d):
     for k, v in d['transitions'].items():
         r['transition/' + k] = (v['median'], v['p90'], v['unit'])
     fr = d['frames']
+    if fr['frames'] < FRAME_MIN:  # screen was off / app not presented: no usable frame data
+        return r
     r['frames/build_ms'] = (fr['build_ms']['median'], fr['build_ms']['p90'], 'ms')
     r['frames/raster_ms'] = (fr['raster_ms']['median'], fr['raster_ms']['p90'], 'ms')
     r['frames/total_span_ms'] = (fr['total_span_ms']['median'], fr['total_span_ms']['p90'], 'ms')
@@ -36,10 +40,11 @@ table = {}
 for label, rs in runs.items():
     per = [metrics(d) for d in rs]
     row = {}
-    for k in per[0]:
-        meds = [p[k][0] for p in per]; p90s = [p[k][1] for p in per]
+    for k in max(per, key=len):
+        have = [p for p in per if k in p]  # frame metrics skip runs without a usable frame window
+        meds = [p[k][0] for p in have]; p90s = [p[k][1] for p in have]
         row[k] = dict(median=statistics.median(meds), p90=statistics.median(p90s),
-                      unit=per[0][k][2], run_medians=meds, run_p90s=p90s)
+                      unit=have[0][k][2], run_medians=meds, run_p90s=p90s, runs_used=len(have))
     table[label] = dict(runs=len(rs), kernel_tags=sorted({d['kernel_tag'] for d in rs}), metrics=row)
 base = table.get('V0')
 if base:
