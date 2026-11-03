@@ -1,0 +1,1214 @@
+{
+ "meta": {
+  "date": "2026-11-03",
+  "device": {
+   "model": "iPad Pro 13-inch (M4) (iPad16,5)",
+   "udid": "00008132-000C396801D9001C",
+   "display_refresh_hz": 120
+  },
+  "signing": "Apple Development: Jun Lu (ZW835K3227), team 43FN6K7B4C, get-task-allow=true, development provisioning (no JIT entitlement, no debugger attached); all variants release mode (--release / shorebird release ios exported with method=development)",
+  "engine": ".agents/builds/engine-ios-native-host-gate-ci-final-20261102 (ios_release + host_release_arm64); identical binaries (sha1 of libFlutter, gen_snapshot, host dart) to the IOS-5 staged engine",
+  "toolchain": "Flutter fork d1fc719e1d (flutter_tools from prepared IOS-5 toolchain), prebuilt shorebird CLI 1.6.134 and Go server from /Volumes/TonySD2TAPFS/.../ios-final-replay-clock-20261102, Dart eaefa0a0",
+  "protocol": "3 cold launches per variant (app terminated/relaunched via devicectl), per launch: 3 warm-up + 15 timed reps (<=25 s budget) per microbenchmark, 15 reps for transitions, 3 s scroll warm-up then 10 s FrameTiming collection; table value = median over runs of per-run median / p90",
+  "variants": {
+   "V0": "flutter build ios --release, --aot --tfa (TFA+inlining), no shorebird.yaml asset so no updater/patch runtime. App.framework/App 2.55 MB.",
+   "V1": "shorebird release ios, runtime_profile interpreter-structural (aot_patch_structural_updates: true), unpatched. Patchable AOT (--no-tfa, structural annotations, no devirtualization). App 47.1 MB. NOTE: interpreter-body profile (default) could not be used: patch install rejected with 'Bytecode patch introduces a library absent from the base snapshot' for this app (see docs).",
+   "V2": "V1 + real CLI 'shorebird patch ios' (real server, real updater download over LAN, AES-256-GCM envelope, signature verified) changing exactly one function (patchedKernel body: tag literal 1->2). Confirmed active via kernel_tag==2.",
+   "V3": "shorebird release ios with aot_patch_full_replacement: true (interpreter-full), unpatched. The bundled replacement base runs the whole app in the interpreter from first launch (kernel_tag 1).",
+   "V3p": "V3 + a full-replacement patch (kernel_tag 2); control, expected identical to V3."
+  }
+ },
+ "variants": {
+  "V0": {
+   "runs": 3,
+   "kernel_tags": [
+    1
+   ],
+   "metrics": {
+    "micro/numeric_loop": {
+     "median": 6166.0,
+     "p90": 6679.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      6150.0,
+      6166.0,
+      6235.0
+     ],
+     "run_p90s": [
+      6352.0,
+      7962.0,
+      6679.0
+     ],
+     "ratio_to_V0": 1.0
+    },
+    "micro/virtual_interface_calls": {
+     "median": 2247.0,
+     "p90": 2272.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      2033.0,
+      2279.0,
+      2247.0
+     ],
+     "run_p90s": [
+      2049.0,
+      2405.0,
+      2272.0
+     ],
+     "ratio_to_V0": 1.0
+    },
+    "micro/list_map_ops": {
+     "median": 4736.0,
+     "p90": 4969.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      4794.0,
+      4736.0,
+      4729.0
+     ],
+     "run_p90s": [
+      5024.0,
+      4969.0,
+      4819.0
+     ],
+     "ratio_to_V0": 1.0
+    },
+    "micro/string_building": {
+     "median": 12478.0,
+     "p90": 12675.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      12596.0,
+      12478.0,
+      12431.0
+     ],
+     "run_p90s": [
+      12796.0,
+      12617.0,
+      12675.0
+     ],
+     "ratio_to_V0": 1.0
+    },
+    "micro/object_allocation": {
+     "median": 6800.0,
+     "p90": 6896.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      6613.0,
+      6865.0,
+      6800.0
+     ],
+     "run_p90s": [
+      6685.0,
+      6917.0,
+      6896.0
+     ],
+     "ratio_to_V0": 1.0
+    },
+    "transition/aot_calls_kernel_tag": {
+     "median": 1.405,
+     "p90": 1.96,
+     "unit": "ns_per_call",
+     "run_medians": [
+      1.385,
+      2.01,
+      1.405
+     ],
+     "run_p90s": [
+      1.43,
+      2.1,
+      1.96
+     ],
+     "ratio_to_V0": 1.0
+    },
+    "transition/kernel_calls_aot_leaf": {
+     "median": 1.045,
+     "p90": 1.045,
+     "unit": "ns_per_call",
+     "run_medians": [
+      0.755,
+      1.045,
+      1.045
+     ],
+     "run_p90s": [
+      0.775,
+      1.045,
+      1.045
+     ],
+     "ratio_to_V0": 1.0
+    },
+    "transition/kernel_loop_reference": {
+     "median": 2.025,
+     "p90": 2.475,
+     "unit": "ns_per_iteration",
+     "run_medians": [
+      1.98,
+      2.025,
+      2.03
+     ],
+     "run_p90s": [
+      2.085,
+      2.605,
+      2.475
+     ],
+     "ratio_to_V0": 1.0
+    },
+    "frames/build_ms": {
+     "median": 0.719,
+     "p90": 1.049,
+     "unit": "ms",
+     "run_medians": [
+      0.717,
+      0.723,
+      0.719
+     ],
+     "run_p90s": [
+      1.033,
+      1.049,
+      1.057
+     ],
+     "ratio_to_V0": 1.0
+    },
+    "frames/raster_ms": {
+     "median": 0.431,
+     "p90": 0.581,
+     "unit": "ms",
+     "run_medians": [
+      0.445,
+      0.426,
+      0.431
+     ],
+     "run_p90s": [
+      0.593,
+      0.578,
+      0.581
+     ],
+     "ratio_to_V0": 1.0
+    },
+    "frames/total_span_ms": {
+     "median": 1.392,
+     "p90": 1.718,
+     "unit": "ms",
+     "run_medians": [
+      1.392,
+      1.375,
+      1.405
+     ],
+     "run_p90s": [
+      1.718,
+      1.701,
+      1.731
+     ],
+     "ratio_to_V0": 1.0
+    },
+    "frames/over_8_4ms": {
+     "median": 0,
+     "p90": 0,
+     "unit": "count",
+     "run_medians": [
+      0,
+      0,
+      0
+     ],
+     "run_p90s": [
+      0,
+      0,
+      0
+     ],
+     "ratio_to_V0": null
+    },
+    "frames/over_16_7ms": {
+     "median": 0,
+     "p90": 0,
+     "unit": "count",
+     "run_medians": [
+      0,
+      0,
+      0
+     ],
+     "run_p90s": [
+      0,
+      0,
+      0
+     ],
+     "ratio_to_V0": null
+    },
+    "frames/count": {
+     "median": 1209,
+     "p90": 1209,
+     "unit": "frames",
+     "run_medians": [
+      1209,
+      1209,
+      1209
+     ],
+     "run_p90s": [
+      1209,
+      1209,
+      1209
+     ],
+     "ratio_to_V0": 1.0
+    }
+   }
+  },
+  "V1": {
+   "runs": 3,
+   "kernel_tags": [
+    1
+   ],
+   "metrics": {
+    "micro/numeric_loop": {
+     "median": 6183.0,
+     "p90": 6593.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      6183.0,
+      6162.0,
+      6280.0
+     ],
+     "run_p90s": [
+      6873.0,
+      6403.0,
+      6593.0
+     ],
+     "ratio_to_V0": 1.002757054816737
+    },
+    "micro/virtual_interface_calls": {
+     "median": 7462.0,
+     "p90": 7566.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      7462.0,
+      7360.0,
+      7551.0
+     ],
+     "run_p90s": [
+      7566.0,
+      7478.0,
+      7649.0
+     ],
+     "ratio_to_V0": 3.3208722741433023
+    },
+    "micro/list_map_ops": {
+     "median": 31780.0,
+     "p90": 32295.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      31480.0,
+      31934.0,
+      31780.0
+     ],
+     "run_p90s": [
+      32220.0,
+      32403.0,
+      32295.0
+     ],
+     "ratio_to_V0": 6.710304054054054
+    },
+    "micro/string_building": {
+     "median": 35899.0,
+     "p90": 36196.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      36556.0,
+      35737.0,
+      35899.0
+     ],
+     "run_p90s": [
+      37025.0,
+      36196.0,
+      36152.0
+     ],
+     "ratio_to_V0": 2.8769834909440615
+    },
+    "micro/object_allocation": {
+     "median": 176281.0,
+     "p90": 177022.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      174987.0,
+      176281.0,
+      177166.0
+     ],
+     "run_p90s": [
+      175765.0,
+      177022.0,
+      178623.0
+     ],
+     "ratio_to_V0": 25.923676470588234
+    },
+    "transition/aot_calls_kernel_tag": {
+     "median": 76.535,
+     "p90": 76.96,
+     "unit": "ns_per_call",
+     "run_medians": [
+      76.535,
+      78.26,
+      76.51
+     ],
+     "run_p90s": [
+      76.96,
+      79.775,
+      76.85
+     ],
+     "ratio_to_V0": 54.47330960854092
+    },
+    "transition/kernel_calls_aot_leaf": {
+     "median": 81.44,
+     "p90": 81.91,
+     "unit": "ns_per_call",
+     "run_medians": [
+      81.58,
+      81.44,
+      81.05
+     ],
+     "run_p90s": [
+      81.91,
+      82.32,
+      81.64
+     ],
+     "ratio_to_V0": 77.93301435406698
+    },
+    "transition/kernel_loop_reference": {
+     "median": 2.025,
+     "p90": 2.05,
+     "unit": "ns_per_iteration",
+     "run_medians": [
+      1.995,
+      2.04,
+      2.025
+     ],
+     "run_p90s": [
+      2.025,
+      2.05,
+      2.055
+     ],
+     "ratio_to_V0": 1.0
+    },
+    "frames/build_ms": {
+     "median": 2.0149999999999997,
+     "p90": 3.816,
+     "unit": "ms",
+     "run_medians": [
+      2.0149999999999997,
+      1.969,
+      2.046
+     ],
+     "run_p90s": [
+      3.844,
+      3.816,
+      3.794
+     ],
+     "ratio_to_V0": 2.80250347705146
+    },
+    "frames/raster_ms": {
+     "median": 0.083,
+     "p90": 0.17,
+     "unit": "ms",
+     "run_medians": [
+      0.082,
+      0.083,
+      0.083
+     ],
+     "run_p90s": [
+      0.168,
+      0.17,
+      0.176
+     ],
+     "ratio_to_V0": 0.1925754060324826
+    },
+    "frames/total_span_ms": {
+     "median": 2.232,
+     "p90": 4.126,
+     "unit": "ms",
+     "run_medians": [
+      2.2275,
+      2.232,
+      2.274
+     ],
+     "run_p90s": [
+      4.13,
+      4.126,
+      4.106
+     ],
+     "ratio_to_V0": 1.6034482758620692
+    },
+    "frames/over_8_4ms": {
+     "median": 0,
+     "p90": 0,
+     "unit": "count",
+     "run_medians": [
+      0,
+      0,
+      0
+     ],
+     "run_p90s": [
+      0,
+      0,
+      0
+     ],
+     "ratio_to_V0": null
+    },
+    "frames/over_16_7ms": {
+     "median": 0,
+     "p90": 0,
+     "unit": "count",
+     "run_medians": [
+      0,
+      0,
+      0
+     ],
+     "run_p90s": [
+      0,
+      0,
+      0
+     ],
+     "ratio_to_V0": null
+    },
+    "frames/count": {
+     "median": 1206,
+     "p90": 1206,
+     "unit": "frames",
+     "run_medians": [
+      1206,
+      1207,
+      1205
+     ],
+     "run_p90s": [
+      1206,
+      1207,
+      1205
+     ],
+     "ratio_to_V0": 0.9975186104218362
+    }
+   }
+  },
+  "V2": {
+   "runs": 3,
+   "kernel_tags": [
+    2
+   ],
+   "metrics": {
+    "micro/numeric_loop": {
+     "median": 123328.0,
+     "p90": 123682.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      122846.0,
+      123328.0,
+      125300.0
+     ],
+     "run_p90s": [
+      123620.0,
+      123682.0,
+      126737.0
+     ],
+     "ratio_to_V0": 20.00129743756082
+    },
+    "micro/virtual_interface_calls": {
+     "median": 98620.0,
+     "p90": 99446.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      98238.0,
+      98620.0,
+      99768.0
+     ],
+     "run_p90s": [
+      99446.0,
+      99157.0,
+      100886.0
+     ],
+     "ratio_to_V0": 43.88963061860258
+    },
+    "micro/list_map_ops": {
+     "median": 82635.0,
+     "p90": 83104.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      82879.0,
+      82635.0,
+      82399.0
+     ],
+     "run_p90s": [
+      83167.0,
+      83104.0,
+      82893.0
+     ],
+     "ratio_to_V0": 17.44826858108108
+    },
+    "micro/string_building": {
+     "median": 61866.0,
+     "p90": 63174.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      62135.0,
+      61746.0,
+      61866.0
+     ],
+     "run_p90s": [
+      63174.0,
+      63708.0,
+      61977.0
+     ],
+     "ratio_to_V0": 4.958006090719667
+    },
+    "micro/object_allocation": {
+     "median": 209802.0,
+     "p90": 214351.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      213972.0,
+      209802.0,
+      209304.0
+     ],
+     "run_p90s": [
+      214351.0,
+      216370.0,
+      211530.0
+     ],
+     "ratio_to_V0": 30.853235294117646
+    },
+    "transition/aot_calls_kernel_tag": {
+     "median": 120.29,
+     "p90": 121.345,
+     "unit": "ns_per_call",
+     "run_medians": [
+      115.945,
+      120.29,
+      122.115
+     ],
+     "run_p90s": [
+      116.395,
+      121.345,
+      123.125
+     ],
+     "ratio_to_V0": 85.61565836298932
+    },
+    "transition/kernel_calls_aot_leaf": {
+     "median": 24.18,
+     "p90": 24.815,
+     "unit": "ns_per_call",
+     "run_medians": [
+      24.675,
+      24.16,
+      24.18
+     ],
+     "run_p90s": [
+      24.815,
+      24.555,
+      24.84
+     ],
+     "ratio_to_V0": 23.138755980861244
+    },
+    "transition/kernel_loop_reference": {
+     "median": 39.315,
+     "p90": 40.105,
+     "unit": "ns_per_iteration",
+     "run_medians": [
+      40.615,
+      38.715,
+      39.315
+     ],
+     "run_p90s": [
+      40.995,
+      39.05,
+      40.105
+     ],
+     "ratio_to_V0": 19.414814814814815
+    },
+    "frames/build_ms": {
+     "median": 2.295,
+     "p90": 3.997,
+     "unit": "ms",
+     "run_medians": [
+      2.295,
+      2.2815000000000003,
+      2.3120000000000003
+     ],
+     "run_p90s": [
+      3.997,
+      4.044,
+      3.963
+     ],
+     "ratio_to_V0": 3.191933240611961
+    },
+    "frames/raster_ms": {
+     "median": 0.081,
+     "p90": 0.15,
+     "unit": "ms",
+     "run_medians": [
+      0.081,
+      0.082,
+      0.081
+     ],
+     "run_p90s": [
+      0.145,
+      0.153,
+      0.15
+     ],
+     "ratio_to_V0": 0.18793503480278423
+    },
+    "frames/total_span_ms": {
+     "median": 2.451,
+     "p90": 4.229,
+     "unit": "ms",
+     "run_medians": [
+      2.444,
+      2.451,
+      2.484
+     ],
+     "run_p90s": [
+      4.229,
+      4.283,
+      4.172
+     ],
+     "ratio_to_V0": 1.7607758620689657
+    },
+    "frames/over_8_4ms": {
+     "median": 0,
+     "p90": 0,
+     "unit": "count",
+     "run_medians": [
+      0,
+      0,
+      0
+     ],
+     "run_p90s": [
+      0,
+      0,
+      0
+     ],
+     "ratio_to_V0": null
+    },
+    "frames/over_16_7ms": {
+     "median": 0,
+     "p90": 0,
+     "unit": "count",
+     "run_medians": [
+      0,
+      0,
+      0
+     ],
+     "run_p90s": [
+      0,
+      0,
+      0
+     ],
+     "ratio_to_V0": null
+    },
+    "frames/count": {
+     "median": 1206,
+     "p90": 1206,
+     "unit": "frames",
+     "run_medians": [
+      1205,
+      1206,
+      1208
+     ],
+     "run_p90s": [
+      1205,
+      1206,
+      1208
+     ],
+     "ratio_to_V0": 0.9975186104218362
+    }
+   }
+  },
+  "V3": {
+   "runs": 3,
+   "kernel_tags": [
+    1
+   ],
+   "metrics": {
+    "micro/numeric_loop": {
+     "median": 116779.0,
+     "p90": 117920.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      116779.0,
+      116441.0,
+      117720.0
+     ],
+     "run_p90s": [
+      117920.0,
+      117807.0,
+      119885.0
+     ],
+     "ratio_to_V0": 18.939182614336683
+    },
+    "micro/virtual_interface_calls": {
+     "median": 112380.0,
+     "p90": 113688.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      112380.0,
+      113496.0,
+      111964.0
+     ],
+     "run_p90s": [
+      113688.0,
+      114005.0,
+      112683.0
+     ],
+     "ratio_to_V0": 50.01335113484646
+    },
+    "micro/list_map_ops": {
+     "median": 83698.0,
+     "p90": 84380.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      83698.0,
+      82498.0,
+      83923.0
+     ],
+     "run_p90s": [
+      85809.0,
+      82899.0,
+      84380.0
+     ],
+     "ratio_to_V0": 17.672719594594593
+    },
+    "micro/string_building": {
+     "median": 63037.0,
+     "p90": 63576.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      63037.0,
+      62351.0,
+      63414.0
+     ],
+     "run_p90s": [
+      63576.0,
+      62639.0,
+      63829.0
+     ],
+     "ratio_to_V0": 5.051851258214457
+    },
+    "micro/object_allocation": {
+     "median": 185021.0,
+     "p90": 187530.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      189819.0,
+      184971.0,
+      185021.0
+     ],
+     "run_p90s": [
+      191713.0,
+      187530.0,
+      186301.0
+     ],
+     "ratio_to_V0": 27.208970588235292
+    },
+    "transition/aot_calls_kernel_tag": {
+     "median": 35.24,
+     "p90": 36.795,
+     "unit": "ns_per_call",
+     "run_medians": [
+      35.095,
+      36.04,
+      35.24
+     ],
+     "run_p90s": [
+      36.825,
+      36.795,
+      35.71
+     ],
+     "ratio_to_V0": 25.08185053380783
+    },
+    "transition/kernel_calls_aot_leaf": {
+     "median": 18.705,
+     "p90": 19.035,
+     "unit": "ns_per_call",
+     "run_medians": [
+      18.705,
+      19.185,
+      18.205
+     ],
+     "run_p90s": [
+      19.035,
+      19.36,
+      18.515
+     ],
+     "ratio_to_V0": 17.89952153110048
+    },
+    "transition/kernel_loop_reference": {
+     "median": 38.845,
+     "p90": 39.61,
+     "unit": "ns_per_iteration",
+     "run_medians": [
+      38.845,
+      39.16,
+      38.525
+     ],
+     "run_p90s": [
+      39.61,
+      40.005,
+      39.335
+     ],
+     "ratio_to_V0": 19.182716049382716
+    },
+    "frames/build_ms": {
+     "median": 5.795,
+     "p90": 6.254,
+     "unit": "ms",
+     "run_medians": [
+      5.795,
+      5.7345,
+      6.069
+     ],
+     "run_p90s": [
+      6.254,
+      6.188,
+      6.517
+     ],
+     "ratio_to_V0": 8.05980528511822
+    },
+    "frames/raster_ms": {
+     "median": 0.075,
+     "p90": 0.085,
+     "unit": "ms",
+     "run_medians": [
+      0.075,
+      0.076,
+      0.073
+     ],
+     "run_p90s": [
+      0.085,
+      0.087,
+      0.083
+     ],
+     "ratio_to_V0": 0.1740139211136891
+    },
+    "frames/total_span_ms": {
+     "median": 5.969,
+     "p90": 6.438,
+     "unit": "ms",
+     "run_medians": [
+      5.969,
+      5.8895,
+      6.2265
+     ],
+     "run_p90s": [
+      6.438,
+      6.343,
+      6.682
+     ],
+     "ratio_to_V0": 4.288074712643678
+    },
+    "frames/over_8_4ms": {
+     "median": 8,
+     "p90": 8,
+     "unit": "count",
+     "run_medians": [
+      7,
+      8,
+      9
+     ],
+     "run_p90s": [
+      7,
+      8,
+      9
+     ],
+     "ratio_to_V0": null
+    },
+    "frames/over_16_7ms": {
+     "median": 0,
+     "p90": 0,
+     "unit": "count",
+     "run_medians": [
+      0,
+      0,
+      0
+     ],
+     "run_p90s": [
+      0,
+      0,
+      0
+     ],
+     "ratio_to_V0": null
+    },
+    "frames/count": {
+     "median": 1202,
+     "p90": 1202,
+     "unit": "frames",
+     "run_medians": [
+      1203,
+      1202,
+      1202
+     ],
+     "run_p90s": [
+      1203,
+      1202,
+      1202
+     ],
+     "ratio_to_V0": 0.9942100909842845
+    }
+   }
+  },
+  "V3p": {
+   "runs": 3,
+   "kernel_tags": [
+    2
+   ],
+   "metrics": {
+    "micro/numeric_loop": {
+     "median": 119348.0,
+     "p90": 121396.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      117896.0,
+      119348.0,
+      120370.0
+     ],
+     "run_p90s": [
+      118684.0,
+      121396.0,
+      122572.0
+     ],
+     "ratio_to_V0": 19.355822251054168
+    },
+    "micro/virtual_interface_calls": {
+     "median": 110116.0,
+     "p90": 111504.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      109994.0,
+      110963.0,
+      110116.0
+     ],
+     "run_p90s": [
+      110728.0,
+      111504.0,
+      112504.0
+     ],
+     "ratio_to_V0": 49.0057854917668
+    },
+    "micro/list_map_ops": {
+     "median": 82417.0,
+     "p90": 82858.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      82417.0,
+      82278.0,
+      83235.0
+     ],
+     "run_p90s": [
+      82858.0,
+      82675.0,
+      84921.0
+     ],
+     "ratio_to_V0": 17.402238175675677
+    },
+    "micro/string_building": {
+     "median": 63024.0,
+     "p90": 63277.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      63089.0,
+      62785.0,
+      63024.0
+     ],
+     "run_p90s": [
+      63277.0,
+      62983.0,
+      63309.0
+     ],
+     "ratio_to_V0": 5.050809424587274
+    },
+    "micro/object_allocation": {
+     "median": 187077.0,
+     "p90": 188819.0,
+     "unit": "us_per_rep",
+     "run_medians": [
+      187077.0,
+      186937.0,
+      188090.0
+     ],
+     "run_p90s": [
+      188437.0,
+      188819.0,
+      189152.0
+     ],
+     "ratio_to_V0": 27.511323529411765
+    },
+    "transition/aot_calls_kernel_tag": {
+     "median": 35.88,
+     "p90": 36.735,
+     "unit": "ns_per_call",
+     "run_medians": [
+      36.26,
+      35.69,
+      35.88
+     ],
+     "run_p90s": [
+      36.735,
+      36.825,
+      36.735
+     ],
+     "ratio_to_V0": 25.537366548042705
+    },
+    "transition/kernel_calls_aot_leaf": {
+     "median": 18.54,
+     "p90": 19.045,
+     "unit": "ns_per_call",
+     "run_medians": [
+      18.07,
+      18.82,
+      18.54
+     ],
+     "run_p90s": [
+      18.63,
+      19.605,
+      19.045
+     ],
+     "ratio_to_V0": 17.741626794258373
+    },
+    "transition/kernel_loop_reference": {
+     "median": 39.105,
+     "p90": 39.82,
+     "unit": "ns_per_iteration",
+     "run_medians": [
+      39.105,
+      38.805,
+      39.115
+     ],
+     "run_p90s": [
+      39.45,
+      39.82,
+      39.92
+     ],
+     "ratio_to_V0": 19.31111111111111
+    },
+    "frames/build_ms": {
+     "median": 5.7675,
+     "p90": 6.257,
+     "unit": "ms",
+     "run_medians": [
+      5.5925,
+      5.7675,
+      5.8535
+     ],
+     "run_p90s": [
+      6.075,
+      6.257,
+      6.328
+     ],
+     "ratio_to_V0": 8.021557719054242
+    },
+    "frames/raster_ms": {
+     "median": 0.075,
+     "p90": 0.087,
+     "unit": "ms",
+     "run_medians": [
+      0.074,
+      0.075,
+      0.075
+     ],
+     "run_p90s": [
+      0.085,
+      0.088,
+      0.087
+     ],
+     "ratio_to_V0": 0.1740139211136891
+    },
+    "frames/total_span_ms": {
+     "median": 5.932499999999999,
+     "p90": 6.436,
+     "unit": "ms",
+     "run_medians": [
+      5.761,
+      5.932499999999999,
+      6.029
+     ],
+     "run_p90s": [
+      6.243,
+      6.436,
+      6.507
+     ],
+     "ratio_to_V0": 4.261853448275862
+    },
+    "frames/over_8_4ms": {
+     "median": 6,
+     "p90": 6,
+     "unit": "count",
+     "run_medians": [
+      6,
+      6,
+      7
+     ],
+     "run_p90s": [
+      6,
+      6,
+      7
+     ],
+     "ratio_to_V0": null
+    },
+    "frames/over_16_7ms": {
+     "median": 0,
+     "p90": 0,
+     "unit": "count",
+     "run_medians": [
+      0,
+      0,
+      0
+     ],
+     "run_p90s": [
+      0,
+      0,
+      0
+     ],
+     "ratio_to_V0": null
+    },
+    "frames/count": {
+     "median": 1204,
+     "p90": 1204,
+     "unit": "frames",
+     "run_medians": [
+      1204,
+      1204,
+      1206
+     ],
+     "run_p90s": [
+      1204,
+      1204,
+      1206
+     ],
+     "ratio_to_V0": 0.9958643507030603
+    }
+   }
+  }
+ },
+ "not_built_or_deviations": [
+  {
+   "variant": "V1 (interpreter-body)",
+   "status": "not usable for this app",
+   "reason": "Body-profile patch rejected at install on device: 'Bytecode patch introduces a library absent from the base snapshot' (engine log via OSLogStore; patch reported __patch_install_failure__/BootCrash, app fell back to base). V1/V2 therefore use the interpreter-structural profile, which retains all declarations (App binary 47.1 MB vs 8.2 MB for the body-profile release that was built but could not be patched). Cause (which library is pruned from the AOT snapshot) was not investigated."
+  },
+  {
+   "variant": "V0",
+   "status": "built",
+   "note": "Stock-style release of the fork's Flutter with the same engine; no upstream stock Flutter was used. V0 native code lacks the embedded test key/oslog dump present in V1-V3 (V0 has no updater). V0 was built without the shorebird.yaml asset."
+  },
+  {
+   "variant": "V2",
+   "note": "Real route (CLI patch + local Go server + device updater download over LAN + encrypted envelope), not a harness."
+  }
+ ],
+ "conclusions": {
+  "patchable_aot_vs_stock_aot": "Mixed. Straight-line arithmetic is unchanged (numeric loop 1.00x, in-function loop 1.00x). Virtual/interface dispatch 3.3x, List/Map ops 6.7x, string building 2.9x. Every non-inlined static call or constructor costs ~75-80 ns in V1 vs ~1 ns in V0 (AOT->kernel call 76.5 vs 1.4 ns; kernel->AOT leaf 81 vs 1.0 ns), so allocation of small objects through constructors is 25.9x slower. Frame build time (UI thread) 2.80x (2.0 vs 0.72 ms median), total frame span 1.6x; no frame exceeded 8.4 ms at 120 Hz. App.framework 47 MB vs 2.5 MB.",
+  "interpreter_slowdown": "Interpreted code runs ~19-20x slower than stock AOT on pure arithmetic (V2 20.0x, V3 18.9x), 17.5x on List/Map ops, 5x on string building (dominated by native StringBuffer), 44-50x for virtual calls (interpreter dispatch), 27-31x for allocation. Against patchable AOT (V1) the interpreter is 20x on arithmetic, 3.9x on List/Map, 1.7x on strings, 13x on virtual calls and 1.2x on allocation, because V1 itself pays the call overhead.",
+  "transition_costs": "AOT calling a patched (interpreted) trivial function: 120 ns/call in V2 (vs 76.5 in V1 where it is an AOT call, 1.4 in V0). Interpreted function calling a trivial AOT function: 24 ns/call in V2 (V3 full interpreter: 18.7 ns). In V2 the AOT->interpreter transition therefore costs ~45 ns over the already-slow V1 call path; interpreter->AOT is cheaper than a V1 AOT->AOT call.",
+  "frame_impact": "V0 build 0.72 ms median / 1.05 p90; V1 2.02/3.82; V2 (item build calls the interpreted kernel, 27 items/frame, 2000-iteration loop each) 2.30/4.00; V3 (everything interpreted, framework included) 5.80/6.25 ms, total span 5.97 ms vs 1.39 (4.3x), 6-9 of ~1200 frames over the 8.4 ms 120 Hz budget, none over 16.7 ms. This workload is light; raster durations are 0.07-0.08 ms for V1-V3 vs 0.43 ms for V0 (unexplained, not investigated).",
+  "decision_notes": "Partial patching preserves AOT speed for unpatched arithmetic, but the structural patchable AOT mode taxes every non-inlined static call/constructor by ~75 ns and bloats the binary ~18x, which is the dominant cost; whether that overhead is inherent to indirect calls (an indirect call itself is a few ns) or an unoptimized call path in the patchable build was not investigated and would decide patchable-AOT vs a full optimizing linker. A full interpreter (V3) is ~19x slower on CPU code but, for this light UI workload, still kept all frames under 16.7 ms on an M4 iPad."
+ },
+ "caveats": [
+  "Single physical device (iPad Pro 13-inch M4), 3 cold launches per variant; run-to-run spread is small (see run_medians).",
+  "All kernels live in one patchable function patchedKernel(mode,n,Workset); in V2 the virtual/interface/alloc/collection kernels are interpreted but call unchanged AOT classes/collections (mixed-mode). V3 gives the pure-interpreter numbers.",
+  "patchedKernel and aotLeaf carry @pragma('vm:never-inline') in every variant so call boundaries are real in V0.",
+  "V1-V3 have auto_update enabled and perform a network patch check at startup (Local Network permission granted); V0 has no updater.",
+  "Frame timings from SchedulerBinding.addTimingsCallback over 10 s after 3 s warm-up; screen kept awake via isIdleTimerDisabled. 120 Hz ProMotion display.",
+  "Test AES key is embedded in V1-V3 builds via tool/with_key.sh (disposable, local server only); development signing with get-task-allow=true was needed for container copy-back."
+ ]
+}

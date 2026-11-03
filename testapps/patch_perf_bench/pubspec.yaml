@@ -1,0 +1,16 @@
+name: patch_perf_bench
+description: On-device performance benchmark for the iOS patch routes.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.14.0-edge.eaefa0a0c7cb4e9043770795bf6b8cdcaf1ab612
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+flutter:
+  uses-material-design: false
+  assets:
+    - shorebird.yaml
