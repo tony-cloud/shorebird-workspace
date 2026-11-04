@@ -268,3 +268,49 @@ Frame metrics are missing. Every run recorded 0 frames: a system local-network
 permission dialog from another app (ETS6) stays on top of the screen, so the
 bench app never becomes active. That dialog needs the user, and the frame
 build/raster rows should be re-measured once it is dismissed.
+
+## Signed path: CLI, server, updater, engine on the iPad (2026-11-04)
+
+Same route and iPad as the previous section, but with no dev hook: `shorebird
+release ios` / `shorebird patch ios` with `aot_patch_runtime_mode:
+ios-aot-link`, published to the open-source server, downloaded, inflated and
+signature/hash-checked by the device updater, then booted by the engine
+(`shorebird_mixed_dev_patch=false`). Details: `docs/ios-linker/RUNTIME.md`
+section 14. Dataset: `docs/validation/ios-mixed-mode-signed-device-20261104.json`.
+
+| variant | patch | link % (code bytes) | unlinked | download | `kernel_tag` |
+|---|---|---:|---:|---:|---:|
+| V0 | release 1.0.0+1 | — | — | — | 1 |
+| P0 identical | 1 | 100% | 0 | 41,242 B | 1 |
+| P1 KERNEL_TAG 1→2 | 2 | 99.50107% | 8 (6080 B) | 41,477 B | 2 |
+| P2 Chip.weight 3→4 | 3 | 99.91236% | 2 (1068 B) | 41,605 B | 1 |
+
+The vmcode is 2,409,432 B in every case; downloads are bidiff+zstd against the
+release data+text. Three cold launches each, after one download launch.
+
+Median of the per-run medians (ratio vs V0):
+
+| metric | unit | V0 | P0 | P1 | P2 |
+|---|---|---:|---:|---:|---:|
+| micro/numeric_loop | µs/rep | 6659 | 6169 (0.93×) | 351357 (52.76×) | 6691 (1.0×) |
+| micro/virtual_interface_calls | µs/rep | 2350 | 2257 (0.96×) | 419026 (178.31×) | 2320 (0.99×) |
+| micro/list_map_ops | µs/rep | 5220 | 4935 (0.95×) | 194804 (37.32×) | 5257 (1.01×) |
+| micro/string_building | µs/rep | 14112 | 14186 (1.01×) | 106272 (7.53×) | 14164 (1.0×) |
+| micro/object_allocation | µs/rep | 7645 | 7489 (0.98×) | 273723 (35.8×) | 7573 (0.99×) |
+| micro/aot_hotpath_getter | µs/rep | 726 | 723 (1.0×) | 696 (0.96×) | 115990 (159.77×) |
+| transitions/aot_calls_kernel_tag | ns/call | 1.535 | 1.485 (0.97×) | 184.92 (120.47×) | 1.52 (0.99×) |
+| transitions/kernel_calls_aot_leaf | ns/call | 0.835 | 0.82 (0.98×) | 108.455 (129.89×) | 0.82 (0.98×) |
+| transitions/kernel_loop_reference | ns/iter | 2.26 | 2.245 (0.99×) | 119.89 (53.05×) | 2.23 (0.99×) |
+
+The ratios reproduce the dev-hook run: linked code is native, simulated hot
+code is 36–178× slower (string building 7.5×), and the P2 getter is 160×
+because its inlining callers are unlinked.
+
+Also verified: rollback (the device returns to the previous patch, then to the
+release), and two tampered patches rejected by the updater with the release
+still running (`InstallHashMismatch` for a valid diff of another patch,
+`InvalidPatchBytes` for a flipped byte).
+
+Frames were not measured: the ETS6 local-network dialog of another app was
+still on screen (checked at the start and end), so every run recorded 0
+frames.

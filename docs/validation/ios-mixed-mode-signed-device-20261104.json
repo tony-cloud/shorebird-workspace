@@ -1,0 +1,369 @@
+{
+ "date": "2026-11-04",
+ "device": "iPad Pro 13-inch (M4), UDID 00008132-000C396801D9001C",
+ "route": "ios-aot-link: TFA AOT release; patch = complete AOT ELF + link records (vmcode v1, plain); linked code runs from signed release text, unlinked code in the engine-embedded Dart ARM64 simulator",
+ "path": "shorebird release ios -> shorebird patch ios -> open-source shorebird-server (sqlite/local storage, managed signing key) -> device updater (download, inflate against data+text base, signed-hash and vmcode checks) -> engine LoadMixedPatch; no dev hook (shorebird_mixed_dev_patch=false)",
+ "branches": {
+  "dart-sdk": "tonycloud/ios-mixed-runtime-20261104 @ 263d230e9b01215d45fda9a09a4f122aa8832a85",
+  "flutter (engine + flutter_tools)": "tonycloud/ios-mixed-engine-20261104 @ c0e94d8e7ebd50966b902d6e9b4968d9cc861ece",
+  "shorebird (CLI)": "tonycloud/ios-aot-link-cli-20261104 @ 66baabf8 (dac9f3ad + iosLinkerRef scope fix)",
+  "updater": "655ae32 (copy used by the engine build)",
+  "ios_linker": "root 2b0f4ff tools/ios_linker",
+  "server": "shorebird-server 3479ee0"
+ },
+ "release": {
+  "version": "1.0.0+1",
+  "text_bytes": 1218736,
+  "text_sha256": "5fa06684c2b4dcc3891fc2a48ffd2786ca9cab957977f82772e6a22332866fa0",
+  "data_bytes": 1078336,
+  "supplement_zip_bytes": 7291184,
+  "runner_app_zip_bytes": 10820899,
+  "shorebird_yaml": {
+   "aot_patch_runtime_mode": "ios-aot-link",
+   "patch_verification": "strict",
+   "patch_response_verification": "required"
+  }
+ },
+ "patches": {
+  "P0 (patch 1)": {
+   "edit": "none (identical)",
+   "link_percent": 100.0,
+   "linked": 5498,
+   "unlinked": 0,
+   "vmcode_bytes": 2409432,
+   "download_bytes": 41242,
+   "kernel_tag": 1
+  },
+  "P1 (patch 2)": {
+   "edit": "KERNEL_TAG 1 -> 2",
+   "link_percent": 99.50107,
+   "linked": 5490,
+   "unlinked": 8,
+   "unlinked_bytes": 6080,
+   "gates_needed": 1243,
+   "vmcode_bytes": 2409432,
+   "download_bytes": 41477,
+   "kernel_tag": 2
+  },
+  "P2 (patch 3)": {
+   "edit": "Chip.weight 3 -> 4",
+   "link_percent": 99.91236,
+   "linked": 5496,
+   "unlinked": 2,
+   "unlinked_bytes": 1068,
+   "gates_needed": 1057,
+   "vmcode_bytes": 2409432,
+   "download_bytes": 41605,
+   "kernel_tag": 1
+  },
+  "patch 4 (tamper: object replaced by patch 2 diff)": {
+   "edit": "KERNEL_TAG 1 -> 3",
+   "download_bytes": 41477,
+   "device_state": {
+    "kind": "Bad",
+    "reason": "InstallHashMismatch"
+   },
+   "server_event": "__patch_update_failure__ / corrupt_patch",
+   "kernel_tag_after": [
+    1,
+    1
+   ]
+  },
+  "patch 5 (tamper: one byte flipped in the stored diff)": {
+   "edit": "KERNEL_TAG 1 -> 4",
+   "download_bytes": 41470,
+   "device_state": {
+    "kind": "Bad",
+    "reason": "InvalidPatchBytes"
+   },
+   "server_event": "__patch_update_failure__ / filesystem (zstd: Data corruption detected)",
+   "kernel_tag_after": [
+    1,
+    1
+   ]
+  }
+ },
+ "rollback": "patches rollback 3: launch 1 still ran patch 3 and cleared pointers; launch 2 ran the release and downloaded patch 2; launch 3 booted patch 2 (kernel_tag 2). Rolling back 2 and 1: next launch ran patch 2, the one after ran the release with no patch.",
+ "probe_launches": {
+  "RB3_1": {
+   "kernel_tag": 1,
+   "getter_us": 117091.0,
+   "numeric_us": 6631.0,
+   "updater_pointers": {
+    "next_boot_patch": null,
+    "last_booted_patch": null,
+    "currently_booting_patch": null,
+    "boot_started_at": null
+   }
+  },
+  "RB3_2": {
+   "kernel_tag": 1,
+   "getter_us": 711.0,
+   "numeric_us": 6642.0,
+   "updater_pointers": {
+    "next_boot_patch": 2,
+    "last_booted_patch": null,
+    "currently_booting_patch": null,
+    "boot_started_at": null
+   }
+  },
+  "RB3b_1": {
+   "kernel_tag": 2,
+   "getter_us": 689.0,
+   "numeric_us": 352581.0,
+   "updater_pointers": {
+    "next_boot_patch": 2,
+    "last_booted_patch": 2,
+    "currently_booting_patch": null,
+    "boot_started_at": null
+   }
+  },
+  "RB_ALL_1": {
+   "kernel_tag": 2,
+   "getter_us": 704.0,
+   "numeric_us": 356307.0,
+   "updater_pointers": {
+    "next_boot_patch": null,
+    "last_booted_patch": null,
+    "currently_booting_patch": null,
+    "boot_started_at": null
+   }
+  },
+  "RB_ALL_2": {
+   "kernel_tag": 1,
+   "getter_us": 718.0,
+   "numeric_us": 6710.0,
+   "updater_pointers": {
+    "next_boot_patch": null,
+    "last_booted_patch": null,
+    "currently_booting_patch": null,
+    "boot_started_at": null
+   }
+  },
+  "TAMPER_FLIP_1": {
+   "kernel_tag": 1,
+   "getter_us": 719.0,
+   "numeric_us": 6501.0,
+   "updater_pointers": {
+    "next_boot_patch": null,
+    "last_booted_patch": null,
+    "currently_booting_patch": null,
+    "boot_started_at": null
+   }
+  },
+  "TAMPER_FLIP_2": {
+   "kernel_tag": 1,
+   "getter_us": 729.0,
+   "numeric_us": 6443.0,
+   "updater_pointers": {
+    "next_boot_patch": null,
+    "last_booted_patch": null,
+    "currently_booting_patch": null,
+    "boot_started_at": null
+   }
+  },
+  "TAMPER_SWAP_1": {
+   "kernel_tag": 1,
+   "getter_us": 716.0,
+   "numeric_us": 5930.0,
+   "updater_pointers": {
+    "next_boot_patch": null,
+    "last_booted_patch": null,
+    "currently_booting_patch": null,
+    "boot_started_at": null
+   }
+  },
+  "TAMPER_SWAP_2": {
+   "kernel_tag": 1,
+   "getter_us": 723.0,
+   "numeric_us": 6482.0,
+   "updater_pointers": {
+    "next_boot_patch": null,
+    "last_booted_patch": null,
+    "currently_booting_patch": null,
+    "boot_started_at": null
+   }
+  }
+ },
+ "micro_median_of_run_medians": {
+  "V0": {
+   "runs": 3,
+   "kernel_tag": [
+    1
+   ],
+   "frames": [
+    0,
+    0,
+    0
+   ],
+   "metrics": {
+    "micro/numeric_loop": 6659.0,
+    "micro/virtual_interface_calls": 2350.0,
+    "micro/list_map_ops": 5220.0,
+    "micro/string_building": 14112.0,
+    "micro/object_allocation": 7645.0,
+    "micro/aot_hotpath_getter": 726.0,
+    "transitions/aot_calls_kernel_tag": 1.535,
+    "transitions/kernel_calls_aot_leaf": 0.835,
+    "transitions/kernel_loop_reference": 2.26
+   },
+   "unit": {
+    "micro/numeric_loop": "us_per_rep",
+    "micro/virtual_interface_calls": "us_per_rep",
+    "micro/list_map_ops": "us_per_rep",
+    "micro/string_building": "us_per_rep",
+    "micro/object_allocation": "us_per_rep",
+    "micro/aot_hotpath_getter": "us_per_rep",
+    "transitions/aot_calls_kernel_tag": "ns_per_call",
+    "transitions/kernel_calls_aot_leaf": "ns_per_call",
+    "transitions/kernel_loop_reference": "ns_per_iteration"
+   }
+  },
+  "P0": {
+   "runs": 3,
+   "kernel_tag": [
+    1
+   ],
+   "frames": [
+    0,
+    0,
+    0
+   ],
+   "metrics": {
+    "micro/numeric_loop": 6169.0,
+    "micro/virtual_interface_calls": 2257.0,
+    "micro/list_map_ops": 4935.0,
+    "micro/string_building": 14186.0,
+    "micro/object_allocation": 7489.0,
+    "micro/aot_hotpath_getter": 723.0,
+    "transitions/aot_calls_kernel_tag": 1.485,
+    "transitions/kernel_calls_aot_leaf": 0.82,
+    "transitions/kernel_loop_reference": 2.245
+   },
+   "unit": {
+    "micro/numeric_loop": "us_per_rep",
+    "micro/virtual_interface_calls": "us_per_rep",
+    "micro/list_map_ops": "us_per_rep",
+    "micro/string_building": "us_per_rep",
+    "micro/object_allocation": "us_per_rep",
+    "micro/aot_hotpath_getter": "us_per_rep",
+    "transitions/aot_calls_kernel_tag": "ns_per_call",
+    "transitions/kernel_calls_aot_leaf": "ns_per_call",
+    "transitions/kernel_loop_reference": "ns_per_iteration"
+   }
+  },
+  "P1": {
+   "runs": 3,
+   "kernel_tag": [
+    2
+   ],
+   "frames": [
+    0,
+    0,
+    0
+   ],
+   "metrics": {
+    "micro/numeric_loop": 351357.0,
+    "micro/virtual_interface_calls": 419026.0,
+    "micro/list_map_ops": 194804.0,
+    "micro/string_building": 106272.0,
+    "micro/object_allocation": 273723.0,
+    "micro/aot_hotpath_getter": 696.0,
+    "transitions/aot_calls_kernel_tag": 184.92,
+    "transitions/kernel_calls_aot_leaf": 108.455,
+    "transitions/kernel_loop_reference": 119.89
+   },
+   "unit": {
+    "micro/numeric_loop": "us_per_rep",
+    "micro/virtual_interface_calls": "us_per_rep",
+    "micro/list_map_ops": "us_per_rep",
+    "micro/string_building": "us_per_rep",
+    "micro/object_allocation": "us_per_rep",
+    "micro/aot_hotpath_getter": "us_per_rep",
+    "transitions/aot_calls_kernel_tag": "ns_per_call",
+    "transitions/kernel_calls_aot_leaf": "ns_per_call",
+    "transitions/kernel_loop_reference": "ns_per_iteration"
+   }
+  },
+  "P2": {
+   "runs": 3,
+   "kernel_tag": [
+    1
+   ],
+   "frames": [
+    0,
+    0,
+    0
+   ],
+   "metrics": {
+    "micro/numeric_loop": 6691.0,
+    "micro/virtual_interface_calls": 2320.0,
+    "micro/list_map_ops": 5257.0,
+    "micro/string_building": 14164.0,
+    "micro/object_allocation": 7573.0,
+    "micro/aot_hotpath_getter": 115990.0,
+    "transitions/aot_calls_kernel_tag": 1.52,
+    "transitions/kernel_calls_aot_leaf": 0.82,
+    "transitions/kernel_loop_reference": 2.23
+   },
+   "unit": {
+    "micro/numeric_loop": "us_per_rep",
+    "micro/virtual_interface_calls": "us_per_rep",
+    "micro/list_map_ops": "us_per_rep",
+    "micro/string_building": "us_per_rep",
+    "micro/object_allocation": "us_per_rep",
+    "micro/aot_hotpath_getter": "us_per_rep",
+    "transitions/aot_calls_kernel_tag": "ns_per_call",
+    "transitions/kernel_calls_aot_leaf": "ns_per_call",
+    "transitions/kernel_loop_reference": "ns_per_iteration"
+   }
+  }
+ },
+ "ratio_vs_V0": {
+  "V0": {
+   "micro/numeric_loop": 1.0,
+   "micro/virtual_interface_calls": 1.0,
+   "micro/list_map_ops": 1.0,
+   "micro/string_building": 1.0,
+   "micro/object_allocation": 1.0,
+   "micro/aot_hotpath_getter": 1.0,
+   "transitions/aot_calls_kernel_tag": 1.0,
+   "transitions/kernel_calls_aot_leaf": 1.0,
+   "transitions/kernel_loop_reference": 1.0
+  },
+  "P0": {
+   "micro/numeric_loop": 0.93,
+   "micro/virtual_interface_calls": 0.96,
+   "micro/list_map_ops": 0.95,
+   "micro/string_building": 1.01,
+   "micro/object_allocation": 0.98,
+   "micro/aot_hotpath_getter": 1.0,
+   "transitions/aot_calls_kernel_tag": 0.97,
+   "transitions/kernel_calls_aot_leaf": 0.98,
+   "transitions/kernel_loop_reference": 0.99
+  },
+  "P1": {
+   "micro/numeric_loop": 52.76,
+   "micro/virtual_interface_calls": 178.31,
+   "micro/list_map_ops": 37.32,
+   "micro/string_building": 7.53,
+   "micro/object_allocation": 35.8,
+   "micro/aot_hotpath_getter": 0.96,
+   "transitions/aot_calls_kernel_tag": 120.47,
+   "transitions/kernel_calls_aot_leaf": 129.89,
+   "transitions/kernel_loop_reference": 53.05
+  },
+  "P2": {
+   "micro/numeric_loop": 1.0,
+   "micro/virtual_interface_calls": 0.99,
+   "micro/list_map_ops": 1.01,
+   "micro/string_building": 1.0,
+   "micro/object_allocation": 0.99,
+   "micro/aot_hotpath_getter": 159.77,
+   "transitions/aot_calls_kernel_tag": 0.99,
+   "transitions/kernel_calls_aot_leaf": 0.98,
+   "transitions/kernel_loop_reference": 0.99
+  }
+ },
+ "frames": "not measured: the ETS6 local-network permission dialog (another app) stayed on screen at start and end (results/screen_start.png, screen_end.png); every run recorded 0 frames"
+}

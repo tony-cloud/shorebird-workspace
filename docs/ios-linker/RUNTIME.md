@@ -723,8 +723,8 @@ Done (section 12): the loader, the GN wiring, an ios_release build and the
 first iPad run. Next:
 
 1. Re-measure the frame metrics on the iPad (section 12.4).
-2. Exercise the updater path end to end with the CLI's signed vmcode. The
-   engine side is in place (`.vmcode` boot patch → mixed mode).
+2. Done (section 14): the signed path end to end on the iPad, through the
+   CLI, the open-source server and the updater.
 3. Make the profiler simulator-aware and report link and transition counts
    through FML logging on device.
 4. Fix the iOS 27 SDK linking in the build itself. Local builds currently
@@ -851,3 +851,77 @@ iPad Pro 13-inch (M4); full table in `docs/PATCH_PERFORMANCE.md`; dataset in
 | Hot loop moved into the simulator by a small edit to an inlined or hosting function (P1/P2 on device: 54–164×) | High | Link quality (DD indirection), CLI "hot unlinked" warnings, simulator speed |
 
 Left running: nothing.
+
+## 14. Signed path on the iPad, no dev hook (2026-11-04)
+
+`shorebird release ios` and `shorebird patch ios` with
+`aot_patch_runtime_mode: ios-aot-link`, published to the open-source server,
+delivered by the device updater and booted by the engine. The engine is the
+section 12 build with `shorebird_mixed_dev_patch = false` (the hook is not
+compiled in; `strings Flutter | grep mixed_dev_patch` is empty). Dataset:
+`docs/validation/ios-mixed-mode-signed-device-20261104.json`.
+
+### 14.1 Setup
+
+- CLI: `shorebird` `tonycloud/ios-aot-link-cli-20261104` compiled with the
+  vended Dart, plus one fix (below); `SHOREBIRD_IOS_LINKER` names
+  `tools/ios_linker/bin/ios_linker.dart` (2b0f4ff). Flutter = the engine
+  branch (it carries the flutter_tools commits); engine passed as
+  `--local-engine-src-path … --local-engine=ios_release
+  --local-engine-host=host_release_arm64`.
+- Server: shorebird-server 3479ee0, sqlite + local storage, managed signing
+  key (`PATCH_SIGNING_MASTER_KEY`), `PATCH_DELIVERY_ENCRYPTION=off`.
+  Publishing used the LAN URL; device traffic went through a cloudflared
+  quick tunnel (the app's `base_url`; the server restarted with
+  `SERVER_BASE_URL` = tunnel between publishing and launching, so download
+  URLs are tunnel URLs and the iPad never needs local-network permission).
+- shorebird.yaml: `patch_verification: strict`,
+  `patch_response_verification: required`; the release embeds
+  `patch_public_key`.
+- Scripts: `.agents/signed-ios-e2e-20261104/{serve.py, serve_mode.sh,
+  cycle.sh, launch_probe.sh, env.sh}`.
+
+CLI fix (shorebird `66baabf8`, not pushed): `iosLinkerRef` was missing from
+the root `runScoped` in `bin/shorebird.dart`, so `release ios` with the
+profile failed in `IosReleaser.assertArgsAreValid` ("read(ScopedRef<IosLinker>)
+was called in a scope which does not contain a corresponding value"). The host
+e2e tests did not catch it because they build their own scope.
+
+### 14.2 Results
+
+| step | result |
+| --- | --- |
+| `release ios` | exit 0, release 1.0.0+1; supplement zip 7,291,184 B; text 1,218,736 B sha256 `5fa06684…`, data 1,078,336 B |
+| V0 ×3 | installs and runs unpatched, `kernel_tag` 1; patch checks reach the server through the tunnel |
+| P0 identical (patch 1) | link 100% (5498/5498); vmcode 2,409,432 B; download 41,242 B; installed, `last_booted_patch` 1 |
+| P1 KERNEL_TAG 1→2 (patch 2) | link 99.50107% (8 unlinked, 6080 B, 1243 gates); download 41,477 B; `kernel_tag` 2 on the next launch |
+| P2 Chip.weight 3→4 (patch 3) | link 99.91236% (2 unlinked, 1068 B); download 41,605 B; getter 160× (the inlining callers are simulated) |
+| rollback patch 3 | launch 1 still runs patch 3 and uninstalls it; launch 2 runs the release and downloads patch 2; launch 3 boots patch 2 (`kernel_tag` 2) |
+| rollback patches 2, 1 | next launch runs patch 2 and uninstalls it; the following one runs the release, nothing installed |
+| tamper A (patch 4 object replaced by patch 2's valid diff) | inflates, signed hash differs: `Bad / InstallHashMismatch`; event `corrupt_patch`; release keeps running (`kernel_tag` 1 ×2) |
+| tamper B (patch 5, one byte of the stored diff flipped) | zstd "Data corruption detected": `Bad / InvalidPatchBytes`; release keeps running (`kernel_tag` 1 ×2) |
+
+Micro ratios match the dev-hook run (section 12.4): P0 0.93–1.01×; P1
+7.5–178× on the simulated kernels, transitions 120–130×; P2 getter 160×,
+everything else 0.98–1.01×. Full table in `docs/PATCH_PERFORMANCE.md`.
+
+Download size: even the identical patch costs 41 KB. The vmcode is 2.4 MB, of
+which 98,304 B are the header and link records (5498 × 16 B) that have no
+counterpart in the release; bidiff+zstd against data+text reduces the whole
+file to 1.7%. Real edits add a few hundred bytes.
+
+### 14.3 Findings
+
+1. CLI scope bug above (fixed on the CLI branch).
+2. Updater: a corrupted diff (zstd checksum failure) is reported with
+   `failure_category` `filesystem` instead of `corrupt_patch`; the message
+   also says "Writing reconstructed patch …". The rejection itself is right.
+3. Updater message for an install hash mismatch reads "the binary is different
+   from the version … submitted to Shorebird", which points at the release
+   rather than the patch.
+4. Engine-level vmcode rejection (release text hash, ELF hash, geometry) was
+   not reachable through the signed path without the signing key; it remains
+   covered by the 19 host cases (section 10.5) and the dev-hook REJ run.
+5. Frames were not measured: the ETS6 local-network dialog of another app was
+   still on screen at the start and end of the run.
+
