@@ -925,3 +925,173 @@ file to 1.7%. Real edits add a few hundred bytes.
 5. Frames were not measured: the ETS6 local-network dialog of another app was
    still on screen at the start and end of the run.
 
+## 15. Pre-decoded interpreter for unlinked code (2026-11-04)
+
+Code: `tony-cloud/dart-sdk` branch `tonycloud/ios-fast-interp-20261104`,
+commit `0f4fcf3f694` on top of `263d230e9b0`
+(`tonycloud/ios-mixed-runtime-20261104`). Worktree `.agents/wt/interp/dart-sdk`.
+The core is a new file, `runtime/vm/simulator_arm64_mixed.cc`. Host
+measurements only; the iPad run is scheduled separately.
+
+It replaces the decode-every-instruction simulator loop for unlinked code
+(section 10.6 left this as the next step). There is no JIT and no writable and
+executable memory: decoded instructions are plain data in `calloc`'d tables,
+and the only code that runs is the runtime's own handlers. So the App Store and
+iOS constraints are unchanged.
+
+### 15.1 Design
+
+- **Lazy pre-decoding per entry.** On first use, an unlinked entry is decoded
+  into one 32-byte `FastOp` per instruction (handler pointer plus operands),
+  with an `H_End` op past its end.
+  - The table is published with a release store; readers use acquire loads.
+  - Decoding is serialized by a mutex. Tables are keyed by link generation.
+- **Threaded dispatch.** Each handler ends in a `[[clang::musttail]]` call to
+  the next op's handler. The interpreter state lives in argument registers:
+  `ip`, the `MixedRegs` register file, and three lazy-flag words.
+  Straight-line handlers have no frame. Slow paths (first decode of a branch
+  target, link-register fix-ups, unresolved `br`/`blr`) are separate handlers
+  reached by tail calls.
+- **Register file is the thread's `MixedRegs` area** (no copy in or out).
+  - Slot 32 reads as zero and slot 33 absorbs writes, so XZR needs no branch.
+    `MixedRegs` is now 816 bytes: `v` at 272, `c_stack_top` at 784,
+    `exit_target` at 792.
+  - The old simulator's `registers_` and `vregisters_` point into the same
+    area.
+- **Lazy NZCV.** Flag-setting ops record their operands and kind
+  (sub/add/logic, 32/64-bit). Conditions are evaluated only when read.
+  `cmp`/`tst`/`subs`/`adds`/`ands` followed by `b.cond` is fused into one op;
+  the `b.cond` keeps its own op for branches that land on it.
+- **Superinstructions**, chosen from host profiles of the template, the
+  benchmarks and stress mode:
+  - specific: `mov`+`mov`, `mov`+`b`, `mov`+`uxtw`, `movz`+`mul`, `ldr`/`str`
+    pairs, the stack-limit check (`ldr`+`cmp`+`b.ls`), and the 5-instruction
+    write-barrier filter;
+  - generic: pairs of any two of 20 straight-line bodies (400 handlers).
+  `DART_MIXED_SUPER=0` turns them off.
+- **Fallback.** Anything not covered (SIMD beyond moves and logic, atomics,
+  exclusives, barriers, `adrp`, bitfield inserts, and others) runs through the
+  generic decoder for that one instruction (`Simulator::MixedOldStep`).
+  Control then returns to the threaded ops.
+- **Branches.**
+  - Direct branches inside an entry become op offsets.
+  - Calls to other unlinked entries go through a per-call-site pointer to the
+    callee's table.
+  - `br`/`blr`/`ret` look up the per-gate op table.
+  - Branches to native code exit with the native target. The return-gate
+    invariant and `FixLinkRegister` are unchanged.
+- **Leaner gates.** v0–v7 are always saved and reloaded. v8–v31 are skipped in
+  two cases:
+  - *Entry:* skipped when the gate's `DartMixedGateFlags` byte is set. The
+    interpreter sets it after a conservative backward liveness analysis of the
+    target entry finds that v8–v31 cannot be read. Any FP/SIMD instruction
+    counts as reading all of them, as does any exit from the entry, `br`, or
+    fall-through.
+  - *Exit:* skipped when the exiting entry contains no FP/SIMD instruction or
+    load whose register field is 8 or higher. The skip is signalled in bit 0
+    of `DartMixedRun`'s result.
+  - Why this is sound: the Dart ABI passes and returns FP values only in
+    v0–v7, and no FPU value lives across a Dart call. So any v8–v31 value that
+    native code reads after an exit must have been written by the exiting
+    function itself. That covers a value live across a register-preserving
+    stub, and the d8–d15 that an FFI callback's epilogue restores. The
+    "V-free function, skip all V" variant was rejected: register calls pass
+    doubles in v0–v5.
+- **Verification mode** (`DART_MIXED_INTERP=verify`). Every op is replayed with
+  the generic decoder from the same state. It compares x0–x30, SP, v0–v31,
+  NZCV, the next pc or exit target, and the memory written by fused stores.
+  - When a gate skipped saving v8–v31, they are poisoned before simulating.
+  - When an exit skips reloading them, they are reloaded as poison instead.
+  - So an unsound liveness result shows up as wrong program output.
+  - `DART_MIXED_PROFILE_OUT=<file>` writes per-pc execution counts.
+  - `DART_MIXED_INTERP=simulator` selects the old loop.
+
+### 15.2 Validation
+
+| Command (from the worktree) | Result |
+| --- | --- |
+| `tools/test_aot_mixed_mode.py --release-dir xcodebuild/ProductARM64 --mixed-dir xcodebuild/ProductMixedARM64 --linker <ios_linker 2b0f4ff> --dart tools/sdks/dart-sdk/bin/dart` | exit 0, **38/38 PASS**, `ALL PASSED` |
+| same with `ReleaseARM64` / `ReleaseMixedARM64` | exit 0, **38/38 PASS**, `ALL PASSED` |
+| Mode checks: one patch run in 9 runtime modes, each compared line by line with the default run (11 program checks: GC with simulated frames, exceptions across sim/native frames, async/await) | Product: default, stress, verify, verify+stress, nosuper+stress and simulator+stress all PASS. Release: those plus `--profiler --profile_period=100` PASS |
+| Verify, stress (all Dart code but stubs simulated, Release) | 27,009,060 ops / 43,528,746 instructions, **0 mismatches** |
+
+The matrices use a frozen copy of the root linker (`git archive 2b0f4ff
+tools/ios_linker`). The test template gained the four device-style micros
+(below), so a template patch now has 28 unlinked entries.
+
+`tools/test_aot_mixed_mode.py` also gets a fix: the shifted and resized
+fail-closed cases now pick a link record of at least 32 bytes. Before the fix,
+the middle record was 8 bytes for the new template, and the script crashed.
+
+**Pre-existing failure, not addressed:** `--profiler` combined with stress
+mode crashes the sampler in `ProfilerDartStackWalker::walk` (SIGSEGV at a
+small address). The `263d230e9b0` runtime crashes the same way, with the
+same patch and flags. Section 6 already lists "make the profiler
+simulator-aware" as open work. The profiler without stress passes.
+
+### 15.3 Performance (host, M3 Max)
+
+n = 20M, interleaved runs (native, before, after), median of 5. Product,
+uncompressed. *Before* is `263d230e9b0` built in the same configuration;
+*after* is `0f4fcf3f694`. The native column runs the release natively.
+
+| Benchmark | Native | Before | Ratio | After | Ratio | After/before |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `numLoopB` numeric loop, simulated | 37.7 ms | 2203.5 ms | 58.5× | 167.5 ms | **4.4×** | 0.076 |
+| `callLoopSimToNative` | 4.1 ms | 518.0 ms | 127× | 82.9 ms | **20.4×** | 0.160 |
+| `callLoopSimToSim` | 5.3 ms | 456.0 ms | 85.4× | 38.9 ms | **7.3×** | 0.085 |
+| `applyN(changedLeaf)` native → simulated closure | 16.2 ms | 605.8 ms | 37.5× | 95.9 ms | **5.9×** | 0.158 |
+| `virtualB` virtual + interface calls | 8.7 ms | 1211.3 ms | 140× | 116.3 ms | **13.4×** | 0.096 |
+| `listMapB` List/Map | 11.3 ms | 482.9 ms | 42.7× | 73.9 ms | **6.5×** | 0.153 |
+| `allocB` allocation | 18.5 ms | 778.7 ms | 42.1× | 113.6 ms | **6.1×** | 0.146 |
+| `getterB` inlined getter | 6.6 ms | 1058.2 ms | 161× | 72.8 ms | **11.1×** | 0.069 |
+| linked code (`numLoopN`, `callLoopNative`, `applyN(tinyN)`) | | | 1.0× | | 1.0× | 0.99–1.00 |
+
+Release (median of 3): the same picture, with numLoopB 59.0× → 4.4×,
+SimToNative 133× → 20.6×, SimToSim 109× → 9.5×, virtual 137× → 13.3×,
+List/Map 42× → 6.8×, allocation 45× → 6.3×, and getter 159× → 11.1×.
+
+**Per-instruction cost.**
+
+| Loop | Before | After |
+| --- | --- | --- |
+| `numLoopB` (21 instructions per iteration) | 110 ns/iteration, 5.2 ns per instruction | 8.4 ns/iteration, **0.40 ns per instruction** |
+| `getterB` (10 instructions per iteration) | 5.3 ns per instruction | **0.36 ns per instruction** |
+
+**Transitions.** Call-heavy micros now cost 0.09–0.16× of their previous
+time. In a host profile of `callLoopSimToNative`, the largest remaining items
+are the gate save/restore assembly (30 GPRs, plus v0–v7 and the
+v8–v31 that are not skipped) and the C++ entry (`DartMixedRun`,
+`RunMixedFast`).
+
+**Contributions, as measured during development.**
+
+| Change | Effect |
+| --- | --- |
+| First version: pre-decoded threaded ops, lazy flags, cmp+b.cond fusion | numLoopB 58.7× → 6.5× |
+| Frameless branch handlers, superinstructions, generic pairs | numLoopB 6.5× → 4.0–4.4× |
+| v8–v31 skip at entry | applyN 121 → 103 ms |
+| v8–v31 skip at exit | SimToNative 93 → 83 ms, allocation 133 → 118 ms |
+
+Device ratios scale differently, because the native baselines differ.
+Section 12.4 gave 38–164× before this change.
+
+### 15.4 Risks and limits
+
+- **Coverage of the fast paths.** Uncovered instructions are correct but
+  cost one generic decode each. `DART_MIXED_PROFILE_OUT` shows which ones are
+  hot in a real patch.
+- **The V-register skips rely on the Dart ABI** (FP arguments and results in
+  v0–v7; no FPU value across a Dart call) and on stubs always being native.
+  Verify mode poisons skipped registers on entry and exit, and stress mode
+  passes with it. A future ABI change, such as callee-saved FPU registers in
+  Dart code, would require revisiting `ComputeHighVLiveness` and
+  `EntryMayWriteHighV`.
+- **Memory.** 32 bytes per instruction of each unlinked entry actually
+  executed, kept for the life of the process. Stress mode decodes 239 entries
+  into 442 KB; a normal patch decodes 28 entries into 58 KB.
+- **Profiler.** The stress + profiler crash above predates this change.
+  Samples taken while interpreting are not attributed to Dart frames.
+- **Not yet measured on the device.**
+
+Left running: nothing.
