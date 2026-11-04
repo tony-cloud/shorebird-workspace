@@ -202,3 +202,69 @@ and method extractors 0.78 to 0.20 MB. Stock TFA AOT is 2.49 MB and plain `--no-
 vs 67.3 us). The rest of the gap to the 7.6 MB unsound prototype is the cost of keeping every
 public selector (statically, dynamically, via tear-off) callable on the private
 implementation classes (dart:typed_data alone is 0.96 MB).
+
+## Mixed-mode linked AOT patches on the iPad (2026-11-04)
+
+Route: the release is a normal TFA AOT App.framework, and the patch is a
+complete AOT ELF plus link records (vmcode v1, `docs/ios-linker/`).
+- Linked functions run from the signed release text.
+- Unlinked functions run in the Dart VM's ARM64 simulator, built into the
+  engine.
+- The patch text is mapped read-only.
+
+Setup:
+- Engine: `tony-cloud/flutter` `tonycloud/ios-mixed-engine-20261104`.
+- Dart: `tonycloud/ios-mixed-runtime-20261104`.
+- Same iPad Pro 13-inch (M4).
+- Three cold launches per variant.
+
+The patch was delivered by a test-engine hook (`shorebird_mixed_dev_patch`)
+that reads `Library/Application Support/shorebird/mixed_dev_patch.vmcode`,
+bypassing the updater. Dataset:
+`docs/validation/ios-mixed-mode-device-20261104.json`.
+
+Variants (link percentages from the linker, Mach-O `--base`):
+- **V0**: the release, no patch.
+- **P0**: identical patch. 5498/5498 entries linked (100%).
+- **P1**: `patchedKernel` KERNEL_TAG 1 → 2. 5490/5498 entries linked (99.50%
+  of code bytes). The unlinked function also hosts the micro kernels, so every
+  `micro/` metric except the getter runs simulated.
+- **P2**: `Chip.weight` 3 → 4. 5496/5498 entries linked (99.91%). The getter is
+  inlined into two callers, which are now unlinked.
+- **REJ**: P1 with one ELF byte flipped. It was rejected ("vmcode ELF hash
+  mismatch") and the release ran.
+
+Correctness: `kernel_tag` was 2 in every P1 run, and 1 for V0, P0, P2 and REJ.
+
+Median of the per-run medians (ratio vs V0):
+
+| metric | unit | V0 | P0 | P1 | P2 | REJ |
+|---|---|---:|---:|---:|---:|---:|
+| micro/numeric_loop | µs/rep | 6222 | 6397 (1.03×) | 339106 (54.5×) | 6740 (1.08×) | 6218 (1.0×) |
+| micro/virtual_interface_calls | µs/rep | 2258 | 2301 (1.02×) | 369619 (164×) | 2285 (1.01×) | 2349 (1.04×) |
+| micro/list_map_ops | µs/rep | 4823 | 5180 (1.07×) | 184543 (38.3×) | 5257 (1.09×) | 5200 (1.08×) |
+| micro/string_building | µs/rep | 13104 | 13358 (1.02×) | 97254 (7.4×) | 14116 (1.08×) | 14144 (1.08×) |
+| micro/object_allocation | µs/rep | 6912 | 6691 (0.97×) | 249367 (36.1×) | 7559 (1.09×) | 7311 (1.06×) |
+| micro/aot_hotpath_getter | µs/rep | 700 | 649 (0.93×) | 652 (0.93×) | 112318 (160×) | 700 (1.0×) |
+| transitions/aot_calls_kernel_tag | ns/call | 1.50 | 1.50 (1.0×) | 165.5 (110×) | 1.52 (1.01×) | 1.42 (0.95×) |
+| transitions/kernel_calls_aot_leaf | ns/call | 0.76 | 0.81 (1.07×) | 94.4 (124×) | 0.84 (1.1×) | 0.84 (1.11×) |
+| transitions/kernel_loop_reference | ns/iter | 2.12 | 2.22 (1.05×) | 102.7 (48×) | 2.25 (1.06×) | 2.17 (1.02×) |
+
+Reading:
+- **Linked code runs at native speed.** P0, the untouched metrics of P1 and
+  P2, and REJ are all within 0.93–1.11× of V0, which is run-to-run noise.
+- **V0 on this engine matches earlier rounds.** It shows no cost from carrying
+  the simulator and gates; the engine's text grows by 1.18 MB.
+- **Simulated code costs 38–164× native.** String building is the exception
+  at 7.4×, because it spends most of its time in linked runtime code.
+  Virtual-call-heavy code is the worst case, since every dispatch to a linked
+  target is a simulator → native transition.
+- **A one-line change can move a whole hot loop into the simulator.** This
+  happens when the changed function is inlined into it (P2) or is the loop's
+  host (P1). Link percentage alone hides this: 99.9% linked can still mean a
+  160× slower hot path.
+
+Frame metrics are missing. Every run recorded 0 frames: a system local-network
+permission dialog from another app (ETS6) stays on top of the screen, so the
+bench app never becomes active. That dialog needs the user, and the frame
+build/raster rows should be re-measured once it is dismissed.

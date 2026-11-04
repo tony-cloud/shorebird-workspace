@@ -1,6 +1,6 @@
 # iOS mixed-mode runtime: executing a linked AOT patch
 
-Status: design plus a working host implementation (macOS arm64), 2026-11-04.
+Status: design, host implementation (macOS arm64), engine integration and a first iPad run, 2026-11-04.
 Owner of this doc: runtime worker. The compiler, linker and vmcode side lives
 in `COMPILER_LINKER.md`; section 9 describes how the runtime consumes its
 vmcode v1 output and where the two documents differ.
@@ -52,6 +52,13 @@ linker's vmcode v1:
 
 Every malformed or mismatched input falls back to the unpatched release
 (19 cases, each checked for its reason).
+
+**On the iPad (section 12).** The Flutter engine
+(`tonycloud/ios-mixed-engine-20261104`) loads the vmcode with read-only patch
+text, and a one-function patch's output is visible (`kernel_tag` 2). Linked
+code stays at native speed (0.93–1.11× of V0). Simulated hot code runs 38–164×
+slower, as on the host, and a corrupted patch boots the release. Frame metrics
+are still open.
 
 Correctness came out simpler than feared because simulated and native frames
 share one machine stack. Two things decide whether this is shippable:
@@ -712,26 +719,16 @@ Next:
 
 ### Engine (`flutter/engine/src/flutter`)
 
-1. `runtime/shorebird/patch_cache.{h,cc}` / `patch_mapping.{h,cc}`:
-   - map the downloaded vmcode **read-only**;
-   - parse the link header;
-   - locate the ELF;
-   - verify its hash before use.
-2. `runtime/dart_snapshot.cc`:
-   - for iOS with a patch, take isolate data from the patch and keep the
-     release `App.framework/App` text mapped;
-   - pass both images to `Dart_MixedModeRegisterImages`, or an
-     engine-friendly variant that also takes the link table, before
-     `Dart_CreateIsolateGroup`.
-3. Build: `dart_mixed_mode = true` for the iOS engine runtime only. Never set
-   it for gen_snapshot. The gate offset (`dart_mixed_area_offset`) must be
-   generated or checked by the build, not hand-set.
-4. Fallback: on any rejection, boot the release unpatched and report to the
-   updater. The host embedder shows the shape: reject before the isolate
-   group, or retry `Dart_CreateIsolateGroup` with the release when the
-   deserializer reports "mixed-mode patch rejected".
-5. Device validation on iPad: signed IPA, release mode, frame timings. This
-   is scheduled by the coordinator, not done here.
+Done (section 12): the loader, the GN wiring, an ios_release build and the
+first iPad run. Next:
+
+1. Re-measure the frame metrics on the iPad (section 12.4).
+2. Exercise the updater path end to end with the CLI's signed vmcode. The
+   engine side is in place (`.vmcode` boot patch → mixed mode).
+3. Make the profiler simulator-aware and report link and transition counts
+   through FML logging on device.
+4. Fix the iOS 27 SDK linking in the build itself. Local builds currently
+   patch `toolchain.ninja` to use Xcode's ld.
 
 ### CLI / linker
 
@@ -740,7 +737,105 @@ Next:
 2. A gate-budget check at link time, mirroring section 8.3.
 3. Accept unstripped Mach-O releases (section 9.1, note 4).
 
-## 12. Risks
+## 12. Engine integration and first device run (2026-11-04)
+
+### 12.1 Engine changes
+
+Branch `tony-cloud/flutter` `tonycloud/ios-mixed-engine-20261104` (commit
+`c0e94d8e7eb`). Its DEPS pins dart-sdk `263d230e9b0`.
+
+- **GN.**
+  - `shorebird_mixed_mode` (`common/config.gni`, iOS only) defines
+    `SHOREBIRD_MIXED_MODE`. It is used together with Dart's
+    `dart_mixed_mode`.
+  - The Dart side now adds its mixed defines only in the default (target)
+    toolchain, so the ios_release gen_snapshot (host toolchain) is unchanged:
+    `strings` finds no `DartMixed` symbol in it.
+  - `shorebird_mixed_dev_patch`, for test engines only, enables the
+    development hook described below.
+- **Patch path.**
+  - `ConfigureShorebird` (iOS) turns a `.vmcode` boot patch from the updater
+    into `Settings::shorebird_mixed_patch_path`. It does not install an
+    interpreter patch.
+  - The updater has already verified the signed hash over the whole file,
+    plus the header geometry, the ELF hash and the release text hash against
+    the base stream.
+  - The development hook reads
+    `<home>/Library/Application Support/shorebird/mixed_dev_patch.vmcode`.
+- **Loading.** `DartSnapshot::IsolateSnapshotFromSettings` calls
+  `runtime/shorebird/mixed_patch.cc`, which:
+  - validates the container;
+  - checks the SHA-256 of the ELF and of the mapped release
+    `_kDartSnapshotText` (`release text image size` bytes);
+  - calls `Dart_LoadELF` with read-only text;
+  - calls `Dart_MixedModeRegisterImages`, then `Dart_MixedModeLinkSnapshot`.
+
+  All of this happens before the VM starts. Any failure logs
+  "Shorebird mixed mode: patch … rejected (reason); running the release" and
+  returns the release snapshot. The decision is made once per process. The
+  VM snapshot stays the release's.
+- **Dart API** (new public header `include/dart_mixed_mode_api.h`):
+  - `Dart_MixedModeLinkSnapshot` reads the instructions table from the
+    snapshot header and links before any isolate or heap exists. The
+    deserializer then skips linking.
+  - The C-entry stub check still runs at isolate creation. On iOS those stubs
+    come from the release VM snapshot, so it passes by construction.
+- **Gates.** They now read the `Thread::mixed_area_` offset from a variable,
+  so `dart_mixed_area_offset` is unused and the same source works for every
+  configuration.
+
+### 12.2 Build
+
+- Out dir: `.agents/builds/engine-ios-mixed-20261104/out/ios_release`. Its
+  args are the closed-world args plus:
+  - `dart_mixed_mode`, `shorebird_mixed_mode` and
+    `shorebird_mixed_dev_patch` set to `true`;
+  - `dart_version_git_info = false`.
+- `dart_version_git_info = false` is needed because otherwise the VM's SDK
+  hash is the git hash of the Dart checkout, which no longer matches kernels
+  from the closed-world host frontend server (gen_snapshot fails with
+  "ApiError").
+- Sources: an APFS clone of `flutter/` at `.agents/wt/engine/flutter`. Its
+  `third_party/dart` symlink resolves to the runtime dart-sdk worktree.
+- The engine `__text` grows by 1.18 MB: 1 MiB of gates (131072) plus the
+  simulator.
+
+### 12.3 Patches
+
+The app is `testapps/patch_perf_bench`, built with `flutter build ios
+--release` and `--extra-gen-snapshot-options=--print_link_info_to`. The
+patches go through the same pipeline as `tools/ios_linker` (pass 1,
+pool-hints, constrained build, link with the Mach-O App as `--base`, check).
+
+| Patch | Linked entries | Linked bytes |
+| --- | --- | --- |
+| Identical | 5498/5498 | 100% |
+| `patchedKernel` tag | 5490/5498 | 99.50% |
+| `Chip.weight` | 5496/5498 | 99.91% |
+
+All three pass check. The vmcode file is 2.4 MB.
+
+### 12.4 Device results
+
+iPad Pro 13-inch (M4); full table in `docs/PATCH_PERFORMANCE.md`; dataset in
+`docs/validation/ios-mixed-mode-device-20261104.json`.
+
+- **The patch runs on iOS.** With its text never executable, the P1 runs
+  report `kernel_tag` 2.
+- **Linked code is native.** The identical patch, and every metric a patch
+  does not touch, stay within 0.93–1.11× of V0.
+- **Simulated hot code is 38–164× slower** (string building 7×).
+  Transitions cost about 95–165 ns per call. This matches the host
+  measurements (section 10).
+- **A corrupted patch boots the release** ("vmcode ELF hash mismatch").
+- **Base stream sizes agree.** `Dart_SnapshotDataSize` (1078368) and
+  `Dart_SnapshotInstrSize` (1218736) equal the App's `__TEXT,__const` and
+  `__TEXT,__text` sizes. So the engine's base stream for the updater has the
+  same sizes as `ios_linker diff-base`.
+- **Not measured: frames.** A local-network permission dialog of another app
+  stayed on screen, so the bench app was never active.
+
+## 13. Risks
 
 | Risk | Severity | Mitigation |
 | --- | --- | --- |
@@ -752,5 +847,7 @@ Next:
 | Malformed or mismatched vmcode | Low | Hashes plus structural and word-wise record checks; fail closed (19 tested cases) |
 | App Store policy | Not technical | Same technique as upstream; product decision |
 | Build fragility: `DART_INCLUDE_SIMULATOR` side effects (snapshot loader guard), hardened runtime, the 27.0 SDK `.tbd`/lld mismatch | Low | Guards fixed; SDK pinned |
+
+| Hot loop moved into the simulator by a small edit to an inlined or hosting function (P1/P2 on device: 54–164×) | High | Link quality (DD indirection), CLI "hot unlinked" warnings, simulator speed |
 
 Left running: nothing.

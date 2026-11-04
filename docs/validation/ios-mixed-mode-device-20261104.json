@@ -1,0 +1,307 @@
+{
+ "meta": {
+  "date": "2026-11-04",
+  "device": {
+   "model": "iPad Pro 13-inch (M4), iPad16,5",
+   "udid": "00008132-000C396801D9001C",
+   "refresh_hz": 120
+  },
+  "engine": {
+   "flutter_branch": "tony-cloud/flutter tonycloud/ios-mixed-engine-20261104",
+   "flutter_commit": "c0e94d8e7eb",
+   "dart_sdk": "tony-cloud/dart-sdk tonycloud/ios-mixed-runtime-20261104 @ 263d230e9b0",
+   "out_dir": ".agents/builds/engine-ios-mixed-20261104/out/ios_release",
+   "gn_args_added": [
+    "dart_mixed_mode = true",
+    "shorebird_mixed_mode = true",
+    "shorebird_mixed_dev_patch = true",
+    "dart_version_git_info = false"
+   ],
+   "local_build_workaround": "toolchain.ninja solink uses -fuse-ld=Xcode ld (bundled ld64.lld cannot read the iOS 27 SDK TAPI files), as in earlier rounds",
+   "host": ".agents/builds/engine-ios-closed-world-20261104/out/host_release_arm64 (frontend server)"
+  },
+  "linker": "tools/ios_linker at root 558fe31 (sidecar format 2), Mach-O --base = Runner.app/Frameworks/App.framework/App",
+  "app": "testapps/patch_perf_bench copy without shorebird.yaml, flutter build ios --release, BENCH_VARIANT=V0, release sidecar via --extra-gen-snapshot-options=--print_link_info_to",
+  "patch_delivery": "development hook: vmcode copied with xcrun devicectl to <app home>/Library/Application Support/shorebird/mixed_dev_patch.vmcode (updater bypassed)",
+  "runs_per_variant": 3,
+  "statistic": "median over runs of the per-run median"
+ },
+ "variants": {
+  "V0": {
+   "desc": "release, no patch"
+  },
+  "P0": {
+   "desc": "identical patch",
+   "link": {
+    "link_percent": 100.0,
+    "linked_entries": 5498,
+    "unlinked_entries": 0,
+    "linked_code_bytes": 1218600,
+    "patch_code_bytes": 1218600,
+    "vmcode_bytes": 2409432,
+    "vmcode_header_bytes": 98304
+   }
+  },
+  "P1": {
+   "desc": "one function: patchedKernel KERNEL_TAG 1 -> 2 (the function also hosts the micro kernels)",
+   "link": {
+    "link_percent": 99.50106679796488,
+    "linked_entries": 5490,
+    "unlinked_entries": 8,
+    "linked_code_bytes": 1212520,
+    "patch_code_bytes": 1218600,
+    "vmcode_bytes": 2409432,
+    "vmcode_header_bytes": 98304
+   }
+  },
+  "P2": {
+   "desc": "Chip.weight getter 3 -> 4 (inlined into two callers)",
+   "link": {
+    "link_percent": 99.9123584441162,
+    "linked_entries": 5496,
+    "unlinked_entries": 2,
+    "linked_code_bytes": 1217532,
+    "patch_code_bytes": 1218600,
+    "vmcode_bytes": 2409432,
+    "vmcode_header_bytes": 98304
+   }
+  },
+  "REJ": {
+   "desc": "P1 with one ELF byte flipped",
+   "rejection": "vmcode ELF hash mismatch; running the release"
+  }
+ },
+ "results": {
+  "variants": {
+   "V0": {
+    "runs": 3,
+    "kernel_tag": [
+     1
+    ],
+    "frames": [
+     0,
+     0,
+     0
+    ],
+    "metrics": {
+     "micro/numeric_loop": 6222.0,
+     "micro/virtual_interface_calls": 2258.0,
+     "micro/list_map_ops": 4823.0,
+     "micro/string_building": 13104.0,
+     "micro/object_allocation": 6912.0,
+     "micro/aot_hotpath_getter": 700.0,
+     "transitions/aot_calls_kernel_tag": 1.5,
+     "transitions/kernel_calls_aot_leaf": 0.76,
+     "transitions/kernel_loop_reference": 2.12
+    },
+    "unit": {
+     "micro/numeric_loop": "us_per_rep",
+     "micro/virtual_interface_calls": "us_per_rep",
+     "micro/list_map_ops": "us_per_rep",
+     "micro/string_building": "us_per_rep",
+     "micro/object_allocation": "us_per_rep",
+     "micro/aot_hotpath_getter": "us_per_rep",
+     "transitions/aot_calls_kernel_tag": "ns_per_call",
+     "transitions/kernel_calls_aot_leaf": "ns_per_call",
+     "transitions/kernel_loop_reference": "ns_per_iteration"
+    }
+   },
+   "P0": {
+    "runs": 3,
+    "kernel_tag": [
+     1
+    ],
+    "frames": [
+     0,
+     0,
+     0
+    ],
+    "metrics": {
+     "micro/numeric_loop": 6397.0,
+     "micro/virtual_interface_calls": 2301.0,
+     "micro/list_map_ops": 5180.0,
+     "micro/string_building": 13358.0,
+     "micro/object_allocation": 6691.0,
+     "micro/aot_hotpath_getter": 649.0,
+     "transitions/aot_calls_kernel_tag": 1.495,
+     "transitions/kernel_calls_aot_leaf": 0.81,
+     "transitions/kernel_loop_reference": 2.22
+    },
+    "unit": {
+     "micro/numeric_loop": "us_per_rep",
+     "micro/virtual_interface_calls": "us_per_rep",
+     "micro/list_map_ops": "us_per_rep",
+     "micro/string_building": "us_per_rep",
+     "micro/object_allocation": "us_per_rep",
+     "micro/aot_hotpath_getter": "us_per_rep",
+     "transitions/aot_calls_kernel_tag": "ns_per_call",
+     "transitions/kernel_calls_aot_leaf": "ns_per_call",
+     "transitions/kernel_loop_reference": "ns_per_iteration"
+    }
+   },
+   "P1": {
+    "runs": 3,
+    "kernel_tag": [
+     2
+    ],
+    "frames": [
+     0,
+     0,
+     0
+    ],
+    "metrics": {
+     "micro/numeric_loop": 339106.0,
+     "micro/virtual_interface_calls": 369619.0,
+     "micro/list_map_ops": 184543.0,
+     "micro/string_building": 97254.0,
+     "micro/object_allocation": 249367.0,
+     "micro/aot_hotpath_getter": 652.0,
+     "transitions/aot_calls_kernel_tag": 165.545,
+     "transitions/kernel_calls_aot_leaf": 94.375,
+     "transitions/kernel_loop_reference": 102.68
+    },
+    "unit": {
+     "micro/numeric_loop": "us_per_rep",
+     "micro/virtual_interface_calls": "us_per_rep",
+     "micro/list_map_ops": "us_per_rep",
+     "micro/string_building": "us_per_rep",
+     "micro/object_allocation": "us_per_rep",
+     "micro/aot_hotpath_getter": "us_per_rep",
+     "transitions/aot_calls_kernel_tag": "ns_per_call",
+     "transitions/kernel_calls_aot_leaf": "ns_per_call",
+     "transitions/kernel_loop_reference": "ns_per_iteration"
+    }
+   },
+   "P2": {
+    "runs": 3,
+    "kernel_tag": [
+     1
+    ],
+    "frames": [
+     0,
+     0,
+     0
+    ],
+    "metrics": {
+     "micro/numeric_loop": 6740.0,
+     "micro/virtual_interface_calls": 2285.0,
+     "micro/list_map_ops": 5257.0,
+     "micro/string_building": 14116.0,
+     "micro/object_allocation": 7559.0,
+     "micro/aot_hotpath_getter": 112318.0,
+     "transitions/aot_calls_kernel_tag": 1.515,
+     "transitions/kernel_calls_aot_leaf": 0.835,
+     "transitions/kernel_loop_reference": 2.25
+    },
+    "unit": {
+     "micro/numeric_loop": "us_per_rep",
+     "micro/virtual_interface_calls": "us_per_rep",
+     "micro/list_map_ops": "us_per_rep",
+     "micro/string_building": "us_per_rep",
+     "micro/object_allocation": "us_per_rep",
+     "micro/aot_hotpath_getter": "us_per_rep",
+     "transitions/aot_calls_kernel_tag": "ns_per_call",
+     "transitions/kernel_calls_aot_leaf": "ns_per_call",
+     "transitions/kernel_loop_reference": "ns_per_iteration"
+    }
+   },
+   "REJ": {
+    "runs": 1,
+    "kernel_tag": [
+     1
+    ],
+    "frames": [
+     0
+    ],
+    "metrics": {
+     "micro/numeric_loop": 6218.0,
+     "micro/virtual_interface_calls": 2349.0,
+     "micro/list_map_ops": 5200.0,
+     "micro/string_building": 14144.0,
+     "micro/object_allocation": 7311.0,
+     "micro/aot_hotpath_getter": 700.0,
+     "transitions/aot_calls_kernel_tag": 1.42,
+     "transitions/kernel_calls_aot_leaf": 0.84,
+     "transitions/kernel_loop_reference": 2.17
+    },
+    "unit": {
+     "micro/numeric_loop": "us_per_rep",
+     "micro/virtual_interface_calls": "us_per_rep",
+     "micro/list_map_ops": "us_per_rep",
+     "micro/string_building": "us_per_rep",
+     "micro/object_allocation": "us_per_rep",
+     "micro/aot_hotpath_getter": "us_per_rep",
+     "transitions/aot_calls_kernel_tag": "ns_per_call",
+     "transitions/kernel_calls_aot_leaf": "ns_per_call",
+     "transitions/kernel_loop_reference": "ns_per_iteration"
+    }
+   }
+  },
+  "ratio_vs_V0": {
+   "V0": {
+    "micro/numeric_loop": 1.0,
+    "micro/virtual_interface_calls": 1.0,
+    "micro/list_map_ops": 1.0,
+    "micro/string_building": 1.0,
+    "micro/object_allocation": 1.0,
+    "micro/aot_hotpath_getter": 1.0,
+    "transitions/aot_calls_kernel_tag": 1.0,
+    "transitions/kernel_calls_aot_leaf": 1.0,
+    "transitions/kernel_loop_reference": 1.0
+   },
+   "P0": {
+    "micro/numeric_loop": 1.03,
+    "micro/virtual_interface_calls": 1.02,
+    "micro/list_map_ops": 1.07,
+    "micro/string_building": 1.02,
+    "micro/object_allocation": 0.97,
+    "micro/aot_hotpath_getter": 0.93,
+    "transitions/aot_calls_kernel_tag": 1.0,
+    "transitions/kernel_calls_aot_leaf": 1.07,
+    "transitions/kernel_loop_reference": 1.05
+   },
+   "P1": {
+    "micro/numeric_loop": 54.5,
+    "micro/virtual_interface_calls": 163.69,
+    "micro/list_map_ops": 38.26,
+    "micro/string_building": 7.42,
+    "micro/object_allocation": 36.08,
+    "micro/aot_hotpath_getter": 0.93,
+    "transitions/aot_calls_kernel_tag": 110.36,
+    "transitions/kernel_calls_aot_leaf": 124.18,
+    "transitions/kernel_loop_reference": 48.43
+   },
+   "P2": {
+    "micro/numeric_loop": 1.08,
+    "micro/virtual_interface_calls": 1.01,
+    "micro/list_map_ops": 1.09,
+    "micro/string_building": 1.08,
+    "micro/object_allocation": 1.09,
+    "micro/aot_hotpath_getter": 160.45,
+    "transitions/aot_calls_kernel_tag": 1.01,
+    "transitions/kernel_calls_aot_leaf": 1.1,
+    "transitions/kernel_loop_reference": 1.06
+   },
+   "REJ": {
+    "micro/numeric_loop": 1.0,
+    "micro/virtual_interface_calls": 1.04,
+    "micro/list_map_ops": 1.08,
+    "micro/string_building": 1.08,
+    "micro/object_allocation": 1.06,
+    "micro/aot_hotpath_getter": 1.0,
+    "transitions/aot_calls_kernel_tag": 0.95,
+    "transitions/kernel_calls_aot_leaf": 1.11,
+    "transitions/kernel_loop_reference": 1.02
+   }
+  }
+ },
+ "checks": {
+  "patched_output_visible": "kernel_tag = 2 in all P1 runs; 1 for V0, P0, P2, REJ",
+  "base_stream_sizes": "Dart_SnapshotDataSize 1078368 == __TEXT,__const 1078368; Dart_SnapshotInstrSize 1218736 == __TEXT,__text 1218736 == vmcode release text image size",
+  "engine_size": "Flutter.framework/Flutter __text 11018616 vs 9834200 (closed-world engine): +1.18 MB (1 MiB gates + simulator)"
+ },
+ "caveats": [
+  "Frame metrics are 0 in every run: a system local-network permission dialog of another app (ETS6) stays on screen, so the bench app never becomes active and Flutter renders no frames. Answering that dialog is the user's decision. Micro and transition metrics are unaffected (they run on the UI isolate regardless).",
+  "Runtime link counts are not logged on device (FML INFO and Dart stderr do not reach oslog); the counts are the linker report, and the runtime verifies every record before use."
+ ]
+}
