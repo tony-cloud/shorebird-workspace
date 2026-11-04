@@ -2254,6 +2254,7 @@ native_test_evidence_uploads = {
   'cli-artifacts' => ['native-archive-tests-${{ matrix.artifact_os }}-${{ matrix.artifact_arch }}', 'native-mapping-build-tests-${{ matrix.artifact_os }}-${{ matrix.artifact_arch }}'],
   'linux-engine' => %w[linux-native-cache-engine-tests linux-native-provider-tests linux-native-cache-e2e linux-native-variant-e2e],
   'windows-engine' => %w[windows-native-cache-engine-tests windows-native-provider-tests windows-native-cache-e2e windows-native-variant-e2e],
+  'verify-vm-offsets' => ['vm-offsets-regenerated'],
   'macos-engine' => ['macos-build-diagnostics-${{ matrix.arch }}'],
   'macos-engine-tests' => ['macos-interpreter-engine-tests-${{ matrix.arch }}-${{ matrix.suite }}', 'macos-test-build-diagnostics-${{ matrix.arch }}-${{ matrix.suite }}'],
   'custom-dart-sdk' => ['linux-elf-memory-loader-tests'],
@@ -3261,7 +3262,7 @@ offsets_job = jobs.fetch('verify-vm-offsets')
 offsets_runs = job_runs(offsets_job).join("\n")
 assert!(offsets_job['name'] == 'Verify VM runtime offsets' && offsets_job['needs'] == 'source-checks' && offsets_job['runs-on'] == 'ubuntu-latest', 'VM offsets verification must run on ubuntu-latest after source-checks')
 assert!(offsets_job['timeout-minutes'].to_i.between?(60, 360), 'VM offsets verification needs a bounded timeout')
-assert!(offsets_runs.include?('gclient sync --no-history') && offsets_runs.include?('./scripts/write_gclient.sh linux') && offsets_runs.include?('python3 scripts/verify_vm_offsets.py --dart-sdk dart-sdk') && offsets_runs.include?('python3 scripts/verify_vm_offsets.py --self-test'), 'VM offsets verification must sync the SDK toolchain and run the extractor comparison')
+assert!(offsets_runs.include?('gclient sync --no-history') && offsets_runs.include?('./scripts/write_gclient.sh linux') && offsets_runs.include?('python3 scripts/verify_vm_offsets.py --dart-sdk dart-sdk --emit-dir vm-offsets-regenerated') && offsets_runs.include?('python3 scripts/verify_vm_offsets.py --self-test'), 'VM offsets verification must sync the SDK toolchain and run the extractor comparison')
 verify_vm_offsets = read_repo_file(repo_root, 'scripts/verify_vm_offsets.py')
 assert!(verify_vm_offsets.include?('dart_enable_aot_patching=true') && verify_vm_offsets.include?('dart_enable_shorebird_interpreter=true') && verify_vm_offsets.include?('DART_SHOREBIRD_INTERPRETER') && verify_vm_offsets.include?('vm_offsets.g.dart') && verify_vm_offsets.include?("CI_ARCHS = ['simarm', 'ia32', 'simriscv32', 'simarm64']"), 'VM offsets verifier must build with the interpreter GN args, handle the interpreter conditional and cover the 32-bit blocks plus the arm64 control')
 assert!(run_text_by_job.fetch('source-checks').include?('python3 -m py_compile dart-sdk/tools/test_aot_structural_compile_smoke.py'), 'source checks must syntax-check the structural compile smoke harness')

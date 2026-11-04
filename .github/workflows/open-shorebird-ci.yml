@@ -778,7 +778,16 @@ jobs:
         run: python3 scripts/verify_vm_offsets.py --self-test
 
       - name: Regenerate and compare VM runtime offsets
-        run: python3 scripts/verify_vm_offsets.py --dart-sdk dart-sdk
+        run: python3 scripts/verify_vm_offsets.py --dart-sdk dart-sdk --emit-dir vm-offsets-regenerated
+
+      - name: Upload regenerated VM offsets
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: vm-offsets-regenerated
+          path: vm-offsets-regenerated
+          if-no-files-found: error
+          retention-days: 14
 
   custom-dart-sdk:
     name: Build custom Dart SDK

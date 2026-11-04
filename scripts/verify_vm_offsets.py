@@ -162,8 +162,11 @@ def run(cmd, cwd, **kw):
     subprocess.run(cmd, cwd=cwd, check=True, **kw)
 
 
+EXTRA_GN_ARGS = []
+
+
 def gn_flags():
-    return [f for a in GN_ARGS for f in ('--gn-args', a)]
+    return [f for a in GN_ARGS + EXTRA_GN_ARGS for f in ('--gn-args', a)]
 
 
 def patched_extractor(sdk, archs):
@@ -194,8 +197,14 @@ def main():
     ap.add_argument('--control-arch', default='simarm64',
                     help='64-bit arch rebuilt without the interpreter to verify '
                          'the #else values ("" to skip)')
+    ap.add_argument('--gn-arg', action='append', default=[],
+                    help='extra GN arg for local runs, e.g. mac_sdk_path=...')
+    ap.add_argument('--emit-dir', default='',
+                    help='copy the regenerated header and vm_offsets.g.dart here '
+                         '(raw extractor output) so CI can upload them')
     ap.add_argument('--dart', default='tools/sdks/dart-sdk/bin/dart')
     a = ap.parse_args()
+    EXTRA_GN_ARGS.extend(a.gn_arg)
     if a.self_test:
         self_test()
         return 0
@@ -213,6 +222,11 @@ def main():
     finally:
         script.unlink()
     new_header, new_dart = header.read_text(), dart_file.read_text()
+    if a.emit_dir:
+        out = pathlib.Path(a.emit_dir)
+        out.mkdir(parents=True, exist_ok=True)
+        (out / pathlib.Path(HEADER).name).write_text(new_header)
+        (out / pathlib.Path(DART_FILE).name).write_text(new_dart)
     # Leave the checked-in files untouched in the working tree.
     header.write_text(orig_header)
     dart_file.write_text(orig_dart)
@@ -236,6 +250,7 @@ def main():
                      '--no-rbe', '--gn-args', 'dart_dynamic_modules=false',
                      '--gn-args', 'dart_enable_aot_patching=true',
                      '--gn-args', 'dart_enable_shorebird_interpreter=false',
+                     ] + [f for g in EXTRA_GN_ARGS for f in ('--gn-args', g)] + [
                      'offsets_extractor_aotruntime']
             run(build, sdk)
             exe = sdk / 'out' / f'{mode.capitalize()}{a.control_arch.upper()}' / ('offsets_extractor_aotruntime' + ext)
