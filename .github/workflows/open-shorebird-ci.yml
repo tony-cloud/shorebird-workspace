@@ -1251,7 +1251,7 @@ jobs:
     name: Build custom Dart SDK (macOS x64)
     needs: source-checks
     runs-on: ${{ inputs.macos_x64_heavy_runner || 'macos-15-intel' }}
-    timeout-minutes: 180
+    timeout-minutes: 300
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.full_sdk_build }}
     steps:
       - name: Checkout workspace
