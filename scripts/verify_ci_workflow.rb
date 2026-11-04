@@ -3536,9 +3536,11 @@ ios_package = ios_engine_steps.index { |step| step['name'] == 'Package iOS engin
 assert!(ios_mixed_check && ios_build < ios_mixed_check && ios_mixed_check < ios_package, 'iOS engine must verify mixed mode after building and before packaging')
 ios_mixed_run = ios_engine_steps.fetch(ios_mixed_check).fetch('run')
 assert!(ios_mixed_run.include?('dart_mixed_mode=true shorebird_mixed_mode=true shorebird_mixed_dev_patch=false') &&
-  ios_mixed_run.include?("strings -a \"$engine_binary\" | grep -q 'DART_MIXED_UNLINK_BELOW'") &&
-  ios_mixed_run.include?("strings -a \"$engine_binary\" | grep -q 'mixed-mode patch rejected'") &&
-  ios_mixed_run.include?("if strings -a \"$engine_binary\" | grep -q 'mixed_dev_patch'; then") &&
+  ios_mixed_run.include?("strings -a \"$engine_binary\" > \"$engine_strings\"") &&
+  !ios_mixed_run.include?('| grep -q') &&
+  ios_mixed_run.include?("grep -qF 'DART_MIXED_UNLINK_BELOW' \"$engine_strings\"") &&
+  ios_mixed_run.include?("grep -qF 'mixed-mode patch rejected' \"$engine_strings\"") &&
+  ios_mixed_run.include?("if grep -qF 'mixed_dev_patch' \"$engine_strings\"; then") &&
   ios_mixed_run.include?('flutter/engine/src/out/ios_release/Flutter.framework/Flutter'),
   'iOS engine must contain mixed mode and must not contain the mixed_dev_patch hook')
 

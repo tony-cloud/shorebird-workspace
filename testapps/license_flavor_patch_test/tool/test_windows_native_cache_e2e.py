@@ -501,6 +501,21 @@ class CommandDiagnosticsTest(unittest.TestCase):
         self.assertTrue({'cmake_error', 'msbuild_error', 'link_input_missing'} <= set(result['known_messages']))
         self.assertNotIn('private', json.dumps(result))
 
+    def test_release_excerpt_keeps_build_errors_and_redacts_private_text(self):
+        raw = (b'Building Windows application...\n'
+               b'Target kernel_snapshot_program failed: Exception: C:\\runner\\work\\app\\lib\\main.dart missing\n'
+               b'Error: token=abc123SECRET at https://example.invalid/x?sig=1\n'
+               b'MSB8066: Custom build for C:\\w\\flutter_assemble.rule exited with code 1.\n'
+               b'plain progress line\n')
+        lines = e2e.sanitized_excerpt(raw)
+        self.assertEqual(lines[0], 'Target kernel_snapshot_program failed: Exception: <path> missing')
+        self.assertEqual(len(lines), 3)
+        encoded = json.dumps(lines)
+        for leak in ('SECRET', 'example.invalid', 'runner', 'progress'):
+            self.assertNotIn(leak, encoded)
+        many = b''.join(b'error %d\n' % i for i in range(100))
+        self.assertEqual(len(e2e.sanitized_excerpt(many)), 40)
+
     def test_error_signature_extracts_capped_identifiers_without_leaking_text(self):
         secret = 'Bearer sk-live-SECRET https://private.invalid/?sig=abc C:\\Users\\private\\file.txt'
         lines = [secret, 'Unhandled PathNotFoundException: ' + secret,

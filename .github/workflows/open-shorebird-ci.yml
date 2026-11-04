@@ -2810,11 +2810,15 @@ jobs:
             dart_mixed_mode=true shorebird_mixed_mode=true shorebird_mixed_dev_patch=false
           engine_binary=flutter/engine/src/out/ios_release/Flutter.framework/Flutter
           test -f "$engine_binary"
+          # Search a file rather than a pipe: under pipefail, grep -q exiting
+          # early makes strings fail (strings: failed to flush output).
+          engine_strings="$RUNNER_TEMP/ios-engine-strings.txt"
+          strings -a "$engine_binary" > "$engine_strings"
           # The mixed-mode runtime and loader are linked in.
-          strings -a "$engine_binary" | grep -q 'DART_MIXED_UNLINK_BELOW'
-          strings -a "$engine_binary" | grep -q 'mixed-mode patch rejected'
+          grep -qF 'DART_MIXED_UNLINK_BELOW' "$engine_strings"
+          grep -qF 'mixed-mode patch rejected' "$engine_strings"
           # The development patch hook must never ship.
-          if strings -a "$engine_binary" | grep -q 'mixed_dev_patch'; then
+          if grep -qF 'mixed_dev_patch' "$engine_strings"; then
             echo "iOS engine contains the mixed_dev_patch hook" >&2
             exit 1
           fi

@@ -133,6 +133,34 @@ KNOWN_MESSAGES = (
     (b'timed out', 'timed_out_mentioned'),
 )
 MAX_EXCEPTION_TYPES, MAX_PUB_PACKAGES = 5, 10
+# Sanitized diagnostic excerpt of a failed build (last log bytes only): keyword-matched lines, with URLs,
+# path-like tokens, and long opaque tokens (possible credentials/hashes) replaced, length- and count-bounded.
+EXCERPT_KEYWORDS = (b'target ', b'error', b'exception', b'unhandled', b'failed', b'not found', b'missing',
+                    b'cannot', b'unable', b'gen_snapshot', b'kernel_snapshot', b'tool_backend', b'assemble',
+                    b'engine', b'dart_sdk', b'artifact')
+EXCERPT_CREDENTIAL = re.compile(
+    r'(?i)\b(?:bearer|basic|token|authorization|password|passwd|secret|api[_-]?key|private[_-]?key|key)\b'
+    r'["\']?\s*[:=]?\s*\S+')
+EXCERPT_URL = re.compile(r'[A-Za-z][A-Za-z0-9+.-]*://\S+')
+EXCERPT_PATH = re.compile(r'(?:[A-Za-z]:)?[\\/][^\s\'")\]]*|\S+[\\/]\S+')
+EXCERPT_OPAQUE = re.compile(r'\b[A-Za-z0-9_+=-]{24,}\b')
+MAX_EXCERPT_LINES, MAX_EXCERPT_LINE = 40, 200
+
+
+def sanitized_excerpt(raw):
+    lines = []
+    for line in raw.decode('ascii', 'ignore').splitlines():
+        lowered = line.lower().encode()
+        if not any(key in lowered for key in EXCERPT_KEYWORDS):
+            continue
+        line = EXCERPT_CREDENTIAL.sub('<redacted>', line)
+        line = EXCERPT_URL.sub('<url>', line)
+        line = EXCERPT_PATH.sub('<path>', line)
+        line = EXCERPT_OPAQUE.sub('<opaque>', line)
+        line = re.sub(r'\s+', ' ', re.sub(r'[^\x20-\x7e]', '', line)).strip()[:MAX_EXCERPT_LINE]
+        if line and line not in lines:
+            lines.append(line)
+    return lines[-MAX_EXCERPT_LINES:]
 
 
 class FixtureError(RuntimeError):
@@ -177,6 +205,8 @@ def command_failure(name, code, timed_out, path):
               'classification': classification,
               'classification_scan_truncated': size > 2 * FAILURE_SCAN_BYTES}
     result.update(error_signature(raw_head, raw_tail, classification))
+    if name == 'release':
+        result['excerpt'] = sanitized_excerpt(raw_tail)
     return result
 
 
@@ -1411,6 +1441,8 @@ def main(argv=None):
             ','.join(detail.get('build_codes', [])) or 'none',
             ','.join(detail.get('pub_conflict_packages', [])) or 'none',
             ','.join(detail.get('known_messages', [])) or 'none'), flush=True)
+        for excerpt_line in detail.get('excerpt', []):
+            print('Windows lifecycle failure excerpt: ' + excerpt_line, flush=True)
     finally:
         try:
             if lifecycle:
