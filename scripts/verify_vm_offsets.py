@@ -259,11 +259,13 @@ def main():
             code = next(o for o in cfg['offsets']
                         if o['kind'] == 'array' and o['class'] == 'Code')
             got = int(code['startOffset'])
-            arch = cfg['arch'].upper()
-            prod = 'defined(PRODUCT)' if cfg['product'] else '!defined(PRODUCT)'
+            arch = re.sub(r'^SIM', '', cfg['arch'].upper())  # simarm64 -> TARGET_ARCH_ARM64
+            prod = 'defined ( PRODUCT )' if cfg['product'] else '! defined ( PRODUCT )'
+            # Block keys are the token-normalized condition (no '#if').
             cands = [b for (c, n), b in orig_blocks.items()
-                     if n == 1 and c.startswith(f'#if {prod} && defined(TARGET_ARCH_{arch}) &&')
-                     and c.split(' // ')[0].endswith('&& !defined(DART_COMPRESSED_POINTERS)')]
+                     if n == 1 and c.startswith(
+                         f'{prod} & & defined ( TARGET_ARCH_{arch} ) & &')
+                     and c.endswith('& & ! defined ( DART_COMPRESSED_POINTERS )')]
             want = {non_interpreter_value(b) for b in cands} - {None}
             print(f'control {mode}/{a.control_arch}: non-interpreter Code start '
                   f'offset extractor={got:#x} checked-in #else={sorted(map(hex, want))}')
