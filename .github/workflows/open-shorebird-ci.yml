@@ -220,6 +220,8 @@ jobs:
           python3 -m py_compile dart-sdk/tools/test_aot_structural_smi_cast.py
           python3 -m py_compile scripts/verify_vm_offsets.py
           python3 -m py_compile dart-sdk/tools/test_aot_full_replacement.py
+          python3 -m py_compile dart-sdk/tools/test_aot_mixed_mode.py
+          dart tools/ios_linker/test/dd_select_packages_test.dart
           python3 -m py_compile dart-sdk/tools/test_aot_no_tfa_startup.py
           python3 -m py_compile dart-sdk/tools/test_aot_patchable_direct_calls.py
           python3 -m py_compile dart-sdk/tools/test_aot_product_metadata.py
@@ -1012,7 +1014,7 @@ jobs:
     name: Build custom Dart SDK (macOS arm64)
     needs: source-checks
     runs-on: ${{ inputs.macos_heavy_runner || 'macos-15' }}
-    timeout-minutes: 180
+    timeout-minutes: 240
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.full_sdk_build }}
     steps:
       - name: Checkout workspace
@@ -1177,6 +1179,35 @@ jobs:
 
       - name: Run PRODUCT interpreter callback regression
         run: python3 dart-sdk/tools/test_aot_product_ffi_callbacks.py --build-dir dart-sdk/xcodebuild/ReleaseARM64
+
+      - name: Build PRODUCT baseline and mixed-mode runtime
+        timeout-minutes: 90
+        working-directory: dart-sdk
+        run: |
+          set -euo pipefail
+          python3 tools/gn.py \
+            --mode product \
+            --arch arm64 \
+            --gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=true'
+          ninja -C xcodebuild/ProductARM64 gen_snapshot dartaotruntime vm_platform.dill
+          # The mixed runtime must come from the same sources and arguments
+          # as the baseline (snapshot hash); only dart_mixed_mode differs.
+          mkdir -p xcodebuild/ProductMixedARM64
+          cp xcodebuild/ProductARM64/args.gn xcodebuild/ProductMixedARM64/args.gn
+          printf 'dart_mixed_mode = true\n' >> xcodebuild/ProductMixedARM64/args.gn
+          buildtools/gn gen xcodebuild/ProductMixedARM64
+          ninja -C xcodebuild/ProductMixedARM64 dartaotruntime
+          ../scripts/verify_engine_args.sh xcodebuild/ProductMixedARM64/args.gn dart_mixed_mode=true is_product=true dart_enable_aot_patching=true
+          ../scripts/verify_engine_args.sh xcodebuild/ProductARM64/args.gn is_product=true dart_enable_aot_patching=true
+
+      - name: Run PRODUCT mixed-mode AOT patch regression with the iOS linker
+        timeout-minutes: 45
+        run: >-
+          python3 dart-sdk/tools/test_aot_mixed_mode.py
+          --release-dir dart-sdk/xcodebuild/ProductARM64
+          --mixed-dir dart-sdk/xcodebuild/ProductMixedARM64
+          --linker tools/ios_linker/bin/ios_linker.dart
+          --dart dart-sdk/xcodebuild/ReleaseARM64/dart-sdk/bin/dart
 
       - name: Resolve public encryption tooling
         working-directory: shorebird
@@ -2750,7 +2781,7 @@ jobs:
             --runtime-mode=release \
             --target-dir=ios_release \
             --no-prebuilt-dart-sdk \
-            --gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=true shorebird_use_interpreter=true shorebird_enable_aot_patching=false flutter_prebuilt_dart_sdk=false'
+            --gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=true shorebird_use_interpreter=true shorebird_enable_aot_patching=false flutter_prebuilt_dart_sdk=false dart_mixed_mode=true shorebird_mixed_mode=true shorebird_mixed_dev_patch=false'
 
       - name: Build iOS engine
         working-directory: flutter/engine/src
@@ -2762,6 +2793,22 @@ jobs:
 
       - name: Verify iOS interpreter route
         run: ./scripts/verify_ios_interpreter_route.sh
+
+      - name: Verify iOS mixed-mode engine
+        run: |
+          set -euo pipefail
+          ./scripts/verify_engine_args.sh flutter/engine/src/out/ios_release/args.gn \
+            dart_mixed_mode=true shorebird_mixed_mode=true shorebird_mixed_dev_patch=false
+          engine_binary=flutter/engine/src/out/ios_release/Flutter.framework/Flutter
+          test -f "$engine_binary"
+          # The mixed-mode runtime and loader are linked in.
+          strings -a "$engine_binary" | grep -q 'DART_MIXED_UNLINK_BELOW'
+          strings -a "$engine_binary" | grep -q 'mixed-mode patch rejected'
+          # The development patch hook must never ship.
+          if strings -a "$engine_binary" | grep -q 'mixed_dev_patch'; then
+            echo "iOS engine contains the mixed_dev_patch hook" >&2
+            exit 1
+          fi
 
       - name: Package iOS engine artifacts
         run: |
@@ -2855,6 +2902,9 @@ jobs:
             "dart_enable_shorebird_interpreter": true,
             "shorebird_enable_aot_patching": false,
             "shorebird_use_interpreter": true,
+            "dart_mixed_mode": true,
+            "shorebird_mixed_mode": true,
+            "shorebird_mixed_dev_patch": false,
             "included": [
               "Flutter.framework/",
               "Flutter.xcframework/",

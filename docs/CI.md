@@ -257,8 +257,11 @@ host.
 
 The open CI currently does not publish `aot-tools.dill`. That file is a
 different Shorebird linker artifact used by the legacy native-AOT iOS linker
-path. The open App Store-safe iOS path uses encrypted Dart bytecode interpreter
-artifacts instead, and Android/Linux/macOS/Windows patch creation uses the
+path. The iOS route under development for performance is the linked AOT patch
+run by the mixed-mode interpreter (above); the encrypted Dart bytecode
+interpreter remains the fallback and the currently published iOS route,
+and is superseded for iOS performance once the mixed-mode route is device
+accepted. Both iOS routes use encrypted artifacts instead, and Android/Linux/macOS/Windows patch creation uses the
 public updater `patch` binaries above.
 The CLI cache does not download `aot-tools.dill` by default. Set
 `SHOREBIRD_ENABLE_LEGACY_AOT_TOOLS=1` only when deliberately validating the
@@ -377,6 +380,35 @@ tests. The jobs upload `custom-dart-sdk-linux-x64`,
 and run `tools/test_aot_bytecode_patch.py`: an unannotated AOT caller must
 observe the replacement function, while rejected patches preserve prior bodies.
 That native harness currently requires Unix linker flags and does not run on Windows.
+
+`custom-dart-sdk-macos` additionally covers the iOS linked-AOT plus mixed-mode
+interpreter route (`docs/ios-linker/RUNTIME.md` sections 10-15):
+
+- `Build PRODUCT baseline and mixed-mode runtime` builds `xcodebuild/ProductARM64`
+  (`gen_snapshot`, `dartaotruntime`, `vm_platform.dill`) with the same GN
+  arguments as the Release build, then copies its `args.gn` to
+  `xcodebuild/ProductMixedARM64`, appends `dart_mixed_mode = true`, runs
+  `buildtools/gn gen` and builds `dartaotruntime` there. The two builds must
+  share sources and arguments (snapshot hash); only `dart_mixed_mode` differs.
+- `Run PRODUCT mixed-mode AOT patch regression with the iOS linker` runs
+  `dart-sdk/tools/test_aot_mixed_mode.py` with `--release-dir
+  dart-sdk/xcodebuild/ProductARM64 --mixed-dir
+  dart-sdk/xcodebuild/ProductMixedARM64 --linker
+  tools/ios_linker/bin/ios_linker.dart` and the freshly built Release `dart`.
+  Part A (identity linking, fail-closed cases) and part B (the linker end to
+  end) both run; locally the same invocation passed 38 of 38 checks.
+- The job timeout is 240 minutes to cover the two extra PRODUCT builds. The
+  Release configuration and the compressed-pointer robustness build are not run
+  in CI.
+
+`source-checks` byte-compiles `test_aot_mixed_mode.py` and runs the plain-script
+linker unit test `tools/ios_linker/test/dd_select_packages_test.dart` (the
+package has no `package:test` dependency, so `dart test` does not apply).
+`tools/ios_linker/scripts/run_negative_tests.py` is not in CI: it needs the
+`run_matrix.py` Mach-O profile, which depends on an iPhoneOS SDK, a Flutter host
+SDK and a closed-world engine build at fixed local paths. The gate and
+format/identity failures it covers remain local-only evidence
+(`docs/ios-linker/COMPILER_LINKER.md` section 8).
 Each archive contains the Dart SDK,
 `gen_snapshot`, `dartaotruntime`, `args.gn`, and a `manifest.json` that records
 the root workflow commit, Dart SDK source commit, and patch-related build
@@ -408,7 +440,11 @@ runner infrastructure) is unconfirmed until a diagnostics artifact is captured.
 - `host_release_arm64` with `--shorebird-interpreter`,
   `dart_dynamic_modules=false`, `dart_enable_aot_patching=true`, and
   `dart_enable_shorebird_interpreter=true`
-- `ios_release` with `--shorebird-interpreter`
+- `ios_release` with `--shorebird-interpreter` and the linked-AOT mixed-mode
+  arguments `dart_mixed_mode=true shorebird_mixed_mode=true
+  shorebird_mixed_dev_patch=false` (`flutter/engine/src/flutter/tools/gn` leaves
+  all three off by default, so CI passes them explicitly; the development patch
+  hook never ships)
 
 `macos-engine` builds `macos_release_arm64` with `dart_dynamic_modules=false`,
   `dart_enable_aot_patching=true`, `shorebird_enable_aot_patching=true`, and
@@ -428,6 +464,15 @@ the iOS and host `args.gn` files, and a `manifest.json` that records
 `shorebird_enable_aot_patching=false`, `shorebird_use_interpreter=true`, and
 the Flutter engine revision; the workflow also uploads a `.sha256` sidecar for
 the engine archive.
+
+`ios-engine` also runs `Verify iOS mixed-mode engine` between the build and the
+packaging step. It checks the three mixed-mode GN values in `ios_release/args.gn`
+and then inspects the built `Flutter.framework/Flutter` with `strings`: the
+mixed-mode runtime (`DART_MIXED_UNLINK_BELOW`) and loader (`mixed-mode patch
+rejected`) strings must be present, and `mixed_dev_patch` must be absent. The
+manifest also records `dart_mixed_mode`, `shorebird_mixed_mode` and
+`shorebird_mixed_dev_patch`. This is a build/static check of the engine; it does
+not run a patch.
 Before checksum upload, CI extracts the iOS engine archive and verifies
 `Flutter.framework`, `Flutter.xcframework`, `ios-release/artifacts.zip`, the
 mirror copy under `mirror/shorebird/flutter_infra_release/flutter/<engine>`,

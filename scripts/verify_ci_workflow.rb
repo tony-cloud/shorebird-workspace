@@ -2657,7 +2657,7 @@ end
 assert!(
   run_text_by_job.fetch('ios-engine').include?('rustup target add aarch64-apple-ios aarch64-apple-darwin') &&
     run_text_by_job.fetch('ios-engine').include?('--no-prebuilt-dart-sdk') &&
-    run_text_by_job.fetch('ios-engine').include?("--gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=true shorebird_use_interpreter=true shorebird_enable_aot_patching=false flutter_prebuilt_dart_sdk=false'") &&
+    run_text_by_job.fetch('ios-engine').include?("--gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=true shorebird_use_interpreter=true shorebird_enable_aot_patching=false flutter_prebuilt_dart_sdk=false dart_mixed_mode=true shorebird_mixed_mode=true shorebird_mixed_dev_patch=false'") &&
     run_text_by_job.fetch('ios-engine').include?('create_macos_gen_snapshots') &&
     run_text_by_job.fetch('ios-engine').include?('create_macos_analyze_snapshots') &&
     run_text_by_job.fetch('ios-engine').include?('verify_ios_interpreter_route.sh') &&
@@ -2671,7 +2671,9 @@ assert!(
     run_text_by_job.fetch('ios-engine').include?('"dart_enable_aot_patching": true') &&
     run_text_by_job.fetch('ios-engine').include?('"dart_enable_shorebird_interpreter": true') &&
     run_text_by_job.fetch('ios-engine').include?('"shorebird_enable_aot_patching": false') &&
-    run_text_by_job.fetch('ios-engine').include?('"shorebird_use_interpreter": true'),
+    run_text_by_job.fetch('ios-engine').include?('"shorebird_use_interpreter": true') &&
+    run_text_by_job.fetch('ios-engine').include?('"dart_mixed_mode": true') &&
+    run_text_by_job.fetch('ios-engine').include?('"shorebird_mixed_dev_patch": false'),
   'Apple engine job must build, verify, package, and describe the iOS interpreter host snapshotter'
 )
 assert!(
@@ -3495,6 +3497,49 @@ arm64_labels.each do |platform, label|
 end
 assert!(run_text_by_job.fetch('cli-artifacts').include?('--target "${{ matrix.rust_target }}"') && run_text_by_job.fetch('cli-artifacts').include?('--require-native-host'), 'CLI patch producers must use explicit Rust targets and native machine checks')
 assert!(source_runs.include?('python3 scripts/test_native_desktop_arch.py -v'), 'source checks must execute the portable native-machine oracle tests')
+
+
+# iOS linked-AOT + mixed-mode interpreter route (docs/ios-linker/RUNTIME.md
+# sections 10-15): the macOS arm64 SDK job proves the PRODUCT mixed runtime with
+# the linker, and the iOS engine ships mixed mode without the development hook.
+mixed_sdk_steps = jobs.fetch('custom-dart-sdk-macos').fetch('steps')
+mixed_build = mixed_sdk_steps.index { |step| step['name'] == 'Build PRODUCT baseline and mixed-mode runtime' }
+mixed_test = mixed_sdk_steps.index { |step| step['name'] == 'Run PRODUCT mixed-mode AOT patch regression with the iOS linker' }
+mixed_package = mixed_sdk_steps.index { |step| step['name'] == 'Package Dart SDK artifact' }
+assert!(mixed_build && mixed_test && mixed_package && mixed_build < mixed_test && mixed_test < mixed_package, 'macOS ARM64 must build the PRODUCT mixed runtime and run the mixed-mode regression before publishing its SDK')
+mixed_build_run = mixed_sdk_steps.fetch(mixed_build).fetch('run')
+assert!(mixed_build_run.include?('--mode product') && mixed_build_run.include?('--arch arm64') &&
+  mixed_build_run.include?("--gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=true'") &&
+  mixed_build_run.include?('ninja -C xcodebuild/ProductARM64 gen_snapshot dartaotruntime vm_platform.dill') &&
+  mixed_build_run.include?("printf 'dart_mixed_mode = true\\n' >> xcodebuild/ProductMixedARM64/args.gn") &&
+  mixed_build_run.include?('cp xcodebuild/ProductARM64/args.gn xcodebuild/ProductMixedARM64/args.gn') &&
+  mixed_build_run.include?('buildtools/gn gen xcodebuild/ProductMixedARM64') &&
+  mixed_build_run.include?('ninja -C xcodebuild/ProductMixedARM64 dartaotruntime') &&
+  mixed_build_run.include?('xcodebuild/ProductMixedARM64/args.gn dart_mixed_mode=true is_product=true'),
+  'PRODUCT mixed runtime must share the baseline arguments and only add dart_mixed_mode')
+mixed_test_run = mixed_sdk_steps.fetch(mixed_test).fetch('run')
+assert!(mixed_test_run.include?('dart-sdk/tools/test_aot_mixed_mode.py') &&
+  mixed_test_run.include?('--release-dir dart-sdk/xcodebuild/ProductARM64') &&
+  mixed_test_run.include?('--mixed-dir dart-sdk/xcodebuild/ProductMixedARM64') &&
+  mixed_test_run.include?('--linker tools/ios_linker/bin/ios_linker.dart') &&
+  mixed_test_run.include?('--dart dart-sdk/xcodebuild/ReleaseARM64/dart-sdk/bin/dart'),
+  'mixed-mode regression must run PRODUCT part A and the linker part B')
+assert!(jobs.fetch('custom-dart-sdk-macos')['timeout-minutes'].to_i >= 240, 'macOS ARM64 SDK job needs time for the extra PRODUCT builds')
+assert!(run_text_by_job.fetch('source-checks').include?('python3 -m py_compile dart-sdk/tools/test_aot_mixed_mode.py') &&
+  run_text_by_job.fetch('source-checks').include?('dart tools/ios_linker/test/dd_select_packages_test.dart'),
+  'source checks must compile the mixed-mode harness and run the ios_linker unit test')
+ios_engine_steps = jobs.fetch('ios-engine').fetch('steps')
+ios_mixed_check = ios_engine_steps.index { |step| step['name'] == 'Verify iOS mixed-mode engine' }
+ios_build = ios_engine_steps.index { |step| step['name'] == 'Build iOS engine' }
+ios_package = ios_engine_steps.index { |step| step['name'] == 'Package iOS engine artifacts' }
+assert!(ios_mixed_check && ios_build < ios_mixed_check && ios_mixed_check < ios_package, 'iOS engine must verify mixed mode after building and before packaging')
+ios_mixed_run = ios_engine_steps.fetch(ios_mixed_check).fetch('run')
+assert!(ios_mixed_run.include?('dart_mixed_mode=true shorebird_mixed_mode=true shorebird_mixed_dev_patch=false') &&
+  ios_mixed_run.include?("strings -a \"$engine_binary\" | grep -q 'DART_MIXED_UNLINK_BELOW'") &&
+  ios_mixed_run.include?("strings -a \"$engine_binary\" | grep -q 'mixed-mode patch rejected'") &&
+  ios_mixed_run.include?("if strings -a \"$engine_binary\" | grep -q 'mixed_dev_patch'; then") &&
+  ios_mixed_run.include?('flutter/engine/src/out/ios_release/Flutter.framework/Flutter'),
+  'iOS engine must contain mixed mode and must not contain the mixed_dev_patch hook')
 
 puts "workflow yaml ok: #{workflow_path}"
 puts "workflow run blocks ok: #{scripts.length} checked"
