@@ -298,12 +298,44 @@ Each is two range compares in a mixed build; non-mixed builds are unchanged.
 - **Stack overflow.** One stack, so the normal `stack_limit` checks apply to
   simulated frames. The side stack is separate and bounded: the simulator does
   not recurse, and signal handlers run on it while simulating.
-- **Profiler.** With `--profiler --profile_period=100` the spike runs
-  correctly. Samples taken while simulating land in C++ simulator frames and
-  are not attributed to Dart.
-  - Production needs the sampler to detect "in simulator" (a flag in
-    `MixedRegs`) and walk from the simulated FP/PC.
-  - Dart frames below are already walkable via `top_exit_frame_info`.
+- **Profiler.** Simulator-aware since dart-sdk `c3a98bfdfd2` (branch
+  `tonycloud/ios-fast-interp-20261104`). Samples taken while simulating are
+  attributed to the simulated Dart function and its callers.
+  - *In the simulator* is detected without a flag store: the interrupted CPU
+    `sp` is on the thread's side stack. The gate saves every register before
+    it switches `sp` there, and switches back only after `DartMixedRun` has
+    returned.
+  - *Registers:* the interpreter's register file is the `MixedRegs` area,
+    written before every dispatch, so x29/x15/x30 are at an op boundary,
+    except for the registers of the op being executed (each holds its old
+    or new value).
+  - *PC:* `MixedRegs::sim_op` (the former padding word, offset 808) holds the
+    op the interpreter last dispatched to across functions: far `b`/`bl`,
+    `br`/`blr`/`ret`, generic-decoder and `H_End` continuations, and the
+    first op of an activation. That is one store per inter-function transfer,
+    none per op. An append-only, lock-free registry of decoded op tables
+    maps the op back to a patch pc.
+    - The gate sets `sim_op` to `kMixedSimEntering` before it switches
+      stacks; the pc is then the gate target of the saved x16.
+    - The generic simulator sets it to null (unknown).
+    - Precision is the function, not the instruction: the pc is the
+      function's last entry or return point.
+  - The sampler walks from the simulated pc/fp/sp/lr. Dart frames below,
+    native or simulated, are on the same stack; exit frames go through
+    `top_exit_frame_info` as before. With an unknown state, the sample
+    records only the interrupted pc and no Dart frames.
+  - In mixed builds, `ProfilerDartStackWalker` validates every frame pointer
+    before it reads the frame's slots: aligned, inside the thread's stack,
+    above the previous one. An invalid pointer ends the walk. Processed
+    samples translate gates and linked release pcs to patch pcs.
+  - The sampler never dereferences an unvalidated pointer, so an
+    inconsistent state can cost a sample's accuracy but cannot fault.
+    `MixedMode::SampleSimulatedState` documents the invariant.
+  - `--profile_vm` still walks native frames. Its walker stops at the side
+    stack's bounds, so it records the interpreter's pc only.
+  - `DART_MIXED_PROFILE_DUMP=1` with `--profiler` prints the top functions
+    at isolate shutdown. `DART_MIXED_VERBOSE` reports how many samples were
+    taken while simulating.
 - **Deoptimization.** Not applicable in AOT.
 - **Debugger / service.** No breakpoints in AOT release builds.
 
@@ -706,8 +738,13 @@ Done:
 
 Next:
 
-1. Make the profiler simulator-aware (section 6); sampling already runs
-   correctly without it.
+1. Done: the profiler is simulator-aware (section 6, dart-sdk
+   `c3a98bfdfd2`). The profiler + stress crash is fixed and samples are
+   attributed to simulated Dart functions. Open follow-ups:
+   - instruction-precise pcs. These would need a per-op publish, which this
+     design avoids;
+   - Dart frames for the generic simulator;
+   - a device check through DevTools.
 2. A pre-decoded or threaded interpreter, and leaner transitions (save only
    the Dart-ABI-live registers).
 3. Deferred loading units: either refuse them in patches or link each unit,
@@ -725,8 +762,9 @@ first iPad run. Next:
 1. Re-measure the frame metrics on the iPad (section 12.4).
 2. Done (section 14): the signed path end to end on the iPad, through the
    CLI, the open-source server and the updater.
-3. Make the profiler simulator-aware and report link and transition counts
-   through FML logging on device.
+3. Done in the runtime (section 6, `c3a98bfdfd2`): a simulator-aware
+   profiler. Still open: check it on the device through DevTools, and
+   report link and transition counts through FML logging.
 4. Fix the iOS 27 SDK linking in the build itself. Local builds currently
    patch `toolchain.ninja` to use Xcode's ld.
 
@@ -1023,11 +1061,46 @@ tools/ios_linker`). The test template gained the four device-style micros
 fail-closed cases now pick a link record of at least 32 bytes. Before the fix,
 the middle record was 8 bytes for the new template, and the script crashed.
 
-**Pre-existing failure, not addressed:** `--profiler` combined with stress
-mode crashes the sampler in `ProfilerDartStackWalker::walk` (SIGSEGV at a
-small address). The `263d230e9b0` runtime crashes the same way, with the
-same patch and flags. Section 6 already lists "make the profiler
-simulator-aware" as open work. The profiler without stress passes.
+**Profiler + stress crash: fixed in `c3a98bfdfd2`.** `--profiler` combined
+with stress mode used to crash the sampler in
+`ProfilerDartStackWalker::walk`. The faults were SIGSEGV or SIGBUS at small,
+misaligned or non-canonical addresses. The `263d230e9b0` and `5649524dacc`
+runtimes crashed 5 times out of 5.
+
+Root cause: while a thread simulates, its CPU runs the interpreter's C++ on
+the side stack, and the sampler walked that native frame chain as if it were
+Dart frames.
+- Below the gate's C++ frame, the chain continues at the Dart fp that was
+  saved when the activation began.
+- Simulated code often returns past that frame, because returns from
+  simulated to simulated code stay in the simulator. The frame is then dead
+  and its stack memory is reused.
+- The walker does not validate frame pointers, so it followed garbage.
+
+Stress mode makes long activations the norm, which is why it crashed there.
+A diagnostic build (three profiler + stress runs) found the following:
+- 366 samples were taken while simulating.
+- In 39 of them, the entry fp was no longer on the live simulated frame
+  chain.
+- In 19 of them, the old walk would have read outside both stacks
+  (addresses 0, 0x3, 0x400, 0x780, ...). All 19 had a dead entry fp.
+
+Section 6 describes the fix. Validation after the fix (`c3a98bfdfd2`):
+- `tools/test_aot_mixed_mode.py` now also runs `profiler`, `profiler,
+  stress` (3×) and `profiler attributes simulated code` on non-PRODUCT
+  runtimes. Release: exit 0, **43/43 PASS**. Product: exit 0, **38/38
+  PASS** (the profiler cases are skipped: PRODUCT has no profiler).
+- Mode checks (`.agents/wt/interp/work/modes.py`):
+  - Release: all 19 modes PASS, including 10× profiler + stress,
+    verify + stress + profiler and simulator + stress + profiler. Two more
+    profiler-only rounds (14 runs each) also PASS.
+  - Product: the 6 non-profiler modes PASS.
+- Attribution (Release, n = 20M, `DART_MIXED_PROFILE_DUMP=1`):
+  - Top functions by exclusive samples: `numLoopB` 1124, `virtualB` 727,
+    `allocB` 623, gate save/restore 551, `getterB` 518.
+  - 4235 samples were taken while simulating, 0 of them with an unknown
+    state.
+  - Before the fix, these samples landed in C++ interpreter frames.
 
 ### 15.3 Performance (host, M3 Max)
 
@@ -1090,8 +1163,13 @@ Section 12.4 gave 38–164× before this change.
 - **Memory.** 32 bytes per instruction of each unlinked entry actually
   executed, kept for the life of the process. Stress mode decodes 239 entries
   into 442 KB; a normal patch decodes 28 entries into 58 KB.
-- **Profiler.** The stress + profiler crash above predates this change.
-  Samples taken while interpreting are not attributed to Dart frames.
+- **Profiler.** Fixed: see the profiler + stress paragraph in 15.2 and
+  section 6. The pc of a simulated sample is precise to the function, not
+  the instruction, and the generic simulator
+  (`DART_MIXED_INTERP=simulator`) still records no Dart frames.
+  Interpreter cost (host A/B against `5649524dacc`, n = 20M, median of 5):
+  after/before is 0.96–1.03 in Product and Release. That is noise; the
+  largest change is callLoopSimToNative at 0.96–0.97.
 - **Not yet measured on the device.**
 
 Left running: nothing.
