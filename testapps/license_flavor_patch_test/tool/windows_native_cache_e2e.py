@@ -82,8 +82,10 @@ EXCEPTION_TOKEN = re.compile(r'\b[A-Z][A-Za-z0-9]{2,60}(?:Exception|Error)\b')
 # MSBuild/CMake/linker/compiler diagnostic codes (e.g. LNK1181, MSB8066, C1083): fixed identifiers, no paths.
 BUILD_CODE = re.compile(r'\b(?:MSB|LNK|CMAKE|CS|RC|NU|NMAKE|CL|D|C|MIDL|VCR)\d{3,5}\b')
 MAX_BUILD_CODES = 8
-# Flutter's lenient `_gitCommitDate` prints this benign block (a VersionCheckError text) when the pinned engine
-# commit is absent from the checkout; it does not fail the command and must not be reported as the cause.
+# Flutter's lenient `_gitCommitDate` prints this block (a VersionCheckError text) when the pinned engine commit is
+# absent from the checkout. It does not fail a flutter command, but under MSBuild its "Standard error: ..." line is a
+# canonical error that fails flutter_assemble (MSB8066, code -1); stage_local_engine_metadata prevents it and the
+# pre-release flutter_version probe rejects it. Excluded here only from exception/known-message signatures.
 BENIGN_COMMIT_DATE = re.compile(rb'failed to find the latest git commit date:.*?returning [^\n]*instead\.', re.S | re.I)
 PUB_PACKAGE = re.compile(r'[a-z][a-z0-9_]{0,63}\Z')
 PUB_MENTION = re.compile(r'(?:\bdepends on |\b[Bb]ecause (?:every version of |no versions of )?)([a-z][a-z0-9_]{0,63})\b')
@@ -137,7 +139,8 @@ MAX_EXCEPTION_TYPES, MAX_PUB_PACKAGES = 5, 10
 # path-like tokens, and long opaque tokens (possible credentials/hashes) replaced, length- and count-bounded.
 EXCERPT_KEYWORDS = (b'target ', b'error', b'exception', b'unhandled', b'failed', b'not found', b'missing',
                     b'cannot', b'unable', b'gen_snapshot', b'kernel_snapshot', b'tool_backend', b'assemble',
-                    b'engine', b'dart_sdk', b'artifact')
+                    b'engine', b'dart_sdk', b'artifact', b'oops', b'snapshot', b'dart.exe', b'is not recognized',
+                    b'the system', b'exit code', b'exited', b'msb', b'cmake', b'toolexit', b'#0')
 EXCERPT_CREDENTIAL = re.compile(
     r'(?i)\b(?:bearer|basic|token|authorization|password|passwd|secret|api[_-]?key|private[_-]?key|key)\b'
     r'["\']?\s*[:=]?\s*\S+')
@@ -147,11 +150,11 @@ EXCERPT_OPAQUE = re.compile(r'\b[A-Za-z0-9_+=-]{24,}\b')
 MAX_EXCERPT_LINES, MAX_EXCERPT_LINE = 40, 200
 
 
-def sanitized_excerpt(raw):
+def sanitized_excerpt(raw, keywords=EXCERPT_KEYWORDS):
     lines = []
     for line in raw.decode('ascii', 'ignore').splitlines():
         lowered = line.lower().encode()
-        if not any(key in lowered for key in EXCERPT_KEYWORDS):
+        if keywords and not any(key in lowered for key in keywords):
             continue
         line = EXCERPT_CREDENTIAL.sub('<redacted>', line)
         line = EXCERPT_URL.sub('<url>', line)
@@ -207,6 +210,9 @@ def command_failure(name, code, timed_out, path):
     result.update(error_signature(raw_head, raw_tail, classification))
     if name == 'release':
         result['excerpt'] = sanitized_excerpt(raw_tail)
+        # Unfiltered last lines: the decisive assemble line may match no keyword.
+        if classification == 'unknown':
+            result['tail'] = sanitized_excerpt(raw_tail, keywords=())[-12:]
     return result
 
 
@@ -265,6 +271,9 @@ def classify_probe(name, code, stdout, stderr):
     if b'filename too long' in text:
         return 'git_path_too_long'
     if name == 'flutter_version':
+        if b'failed to find the latest git commit date' in text:
+            # Fatal under MSBuild: its "Standard error: ..." line is a canonical error.
+            return 'flutter_version_commit_date_fallback'
         if code == 0:
             return 'flutter_version_ok'
         if b'engine_stamp.json' in text and b'failed to download' in text:
@@ -303,24 +312,39 @@ def stage_local_engine_packages(host, flutter):
     shutil.copytree(source, target)
 
 
-def stage_local_engine_metadata(flutter):
+def stage_local_engine_metadata(flutter, commit_time):
     # These launchers bypass bootstrap to preserve the prebuilt local SDK.
     # FlutterCache still reads engine.stamp, even with LocalEngineArtifacts.
     # Use this SDK's pinned artifact identity, never a copied cache stamp or an
     # ambient bootstrap override. The fixture selects production (empty) realm.
+    #
+    # engine_stamp.json: the pinned engine id is an artifact identity, not a git
+    # object in this checkout, and the private clone's origin is non-standard, so
+    # every flutter command (including `flutter assemble` under MSBuild) would
+    # otherwise run `git log <engine id>` for the engine commit date and print
+    # "Standard error: fatal: bad object ...". MSBuild's CustomBuild task parses
+    # that line as a canonical error and fails flutter_assemble with MSB8066
+    # "exited with code -1" although the command succeeded. Local-engine runs
+    # never download this informative stamp (Cache skips it), so author it here.
     revision = (flutter / 'bin/internal/engine.version').read_text().strip()
     if not re.fullmatch(r'[0-9a-f]{40}', revision):
         raise FixtureError('Private Flutter engine.version must contain one full revision')
+    if not isinstance(commit_time, int) or isinstance(commit_time, bool) or commit_time <= 0:
+        raise FixtureError('Private Flutter commit time must be a positive epoch second')
     cache = flutter / 'bin/cache'
     try:
         cache.resolve().relative_to(flutter.resolve())
     except ValueError:
         raise FixtureError('Private Flutter engine cache escapes owned SDK') from None
-    for name, value in (('engine.stamp', revision), ('engine.realm', '')):
+    stamp = {'build_time_ms': commit_time * 1000, 'git_revision': revision,
+             'git_revision_date': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(commit_time)),
+             'content_hash': ''}
+    for name, value in (('engine.stamp', revision + '\n'), ('engine.realm', '\n'),
+                        ('engine_stamp.json', json.dumps(stamp, sort_keys=True) + '\n')):
         target = cache / name
         if target.is_symlink():
             target.unlink()
-        target.write_text(value + '\n')
+        target.write_text(value)
     return revision
 
 
@@ -981,7 +1005,8 @@ class Lifecycle:
         shutil.copytree(self.args.engine_src / 'out' / self.args.host_engine / 'dart-sdk', sdk)
         stage_local_engine_packages(self.args.engine_src / 'out' / self.args.host_engine,
                                     self.work / 'flutter')
-        engine_id = stage_local_engine_metadata(self.work / 'flutter')
+        commit_time = self.output(['git', '-C', self.work / 'flutter', 'log', '-1', '--format=%ct', 'HEAD'])
+        engine_id = stage_local_engine_metadata(self.work / 'flutter', int(commit_time.decode().strip()))
         mappings = [(ROOT / 'shorebird', self.work / 'cli'), (ROOT / 'flutter', self.work / 'flutter'),
                     (pub, self.work / 'pub-cache')]
         self.remap_config(ROOT / 'shorebird/.dart_tool/package_config.json',
@@ -1124,6 +1149,9 @@ class Lifecycle:
             code, key = self.probe('flutter_version', [root / 'bin/flutter.bat', *local_engine_flags(self.args), '--version', '--machine'],
                                    self.work / 'app', env)
             print('flutter-toolchain-probe root={} check=flutter_version exit={} class={}'.format(label, code, key), flush=True)
+            if key == 'flutter_version_commit_date_fallback':
+                raise FixtureError('Staged Flutter cannot date its engine revision; MSBuild would fail flutter_assemble '
+                                   '(MSB8066, code -1) on the resulting "Standard error:" line')
 
     def build(self, patch=False):
         kind = 'patch' if patch else 'release'
@@ -1443,6 +1471,8 @@ def main(argv=None):
             ','.join(detail.get('known_messages', [])) or 'none'), flush=True)
         for excerpt_line in detail.get('excerpt', []):
             print('Windows lifecycle failure excerpt: ' + excerpt_line, flush=True)
+        for tail_line in detail.get('tail', []):
+            print('Windows lifecycle failure tail: ' + tail_line, flush=True)
     finally:
         try:
             if lifecycle:

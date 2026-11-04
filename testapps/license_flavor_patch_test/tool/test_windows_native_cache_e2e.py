@@ -276,9 +276,42 @@ class ToolchainPreparationTest(unittest.TestCase):
             for revision in ('', 'engine-id', 'a' * 39, 'a' * 41, 'a' * 40 + '\n' + 'b' * 40):
                 (flutter / 'bin/internal/engine.version').write_text(revision)
                 with self.subTest(revision=revision), self.assertRaisesRegex(e2e.FixtureError, 'full revision'):
-                    e2e.stage_local_engine_metadata(flutter)
+                    e2e.stage_local_engine_metadata(flutter, 1700000000)
                 self.assertEqual(stamp.read_text(), 'copied stamp')
                 self.assertEqual(realm.read_text(), 'copied realm')
+                self.assertFalse((flutter / 'bin/cache/engine_stamp.json').exists())
+
+    def test_engine_stamp_dates_pinned_engine_without_git_lookup(self):
+        # Without engine_stamp.json flutter_tools runs `git log <engine id>`; its
+        # "Standard error: fatal: bad object" line fails MSBuild (MSB8066, code -1).
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            flutter = root / 'flutter'
+            (flutter / 'bin/internal').mkdir(parents=True)
+            (flutter / 'bin/cache').mkdir()
+            revision = 'c' * 40
+            (flutter / 'bin/internal/engine.version').write_text(revision + '\n')
+            inherited = root / 'inherited_stamp.json'
+            inherited.write_text('{"git_revision": "stale"}')
+            json_stamp = flutter / 'bin/cache/engine_stamp.json'
+            try:
+                json_stamp.symlink_to(inherited)
+            except OSError:
+                json_stamp.write_text('stale')
+            for bad_time in (0, -1, True, '1700000000', 1.5):
+                with self.subTest(commit_time=bad_time), self.assertRaisesRegex(e2e.FixtureError, 'commit time'):
+                    e2e.stage_local_engine_metadata(flutter, bad_time)
+            self.assertEqual(e2e.stage_local_engine_metadata(flutter, 1700000000), revision)
+            self.assertFalse(json_stamp.is_symlink())
+            self.assertEqual(inherited.read_text(), '{"git_revision": "stale"}')
+            stamp = e2e.strict_json(json_stamp.read_text())
+            self.assertEqual(stamp, {'build_time_ms': 1700000000000, 'git_revision': revision,
+                                     'git_revision_date': '2023-11-14T22:13:20Z', 'content_hash': ''})
+            # Field types match flutter_tools FlutterEngineStampFromFile.tryParseFromFile.
+            self.assertIs(type(stamp['build_time_ms']), int)
+            self.assertTrue(all(isinstance(stamp[key], str) for key in ('git_revision', 'git_revision_date', 'content_hash')))
+            self.assertEqual((flutter / 'bin/cache/engine.stamp').read_text(), revision + '\n')
+            self.assertEqual((flutter / 'bin/cache/engine.realm').read_text(), '\n')
 
     def test_generated_package_replaces_stale_cache_without_aliases(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -349,6 +382,7 @@ class ToolchainPreparationTest(unittest.TestCase):
             if stale_metadata:
                 (checkout / 'flutter/bin/cache/engine.stamp').write_text('0' * 40 + '\n')
                 (checkout / 'flutter/bin/cache/engine.realm').write_text('stale-presubmit-realm\n')
+                (checkout / 'flutter/bin/cache/engine_stamp.json').write_text('{"git_revision": "stale"}\n')
             (checkout / 'flutter/bin/cache/pkg/sky_engine/stale').write_text('old')
             generated = host / 'gen/dart-pkg/sky_engine'
             generated.mkdir(parents=True)
@@ -369,7 +403,12 @@ class ToolchainPreparationTest(unittest.TestCase):
                 shutil.copytree(source, target)
                 lifecycle.manifest.setdefault('sources', {})[source.name] = {'head': 'flutter-ref'}
             lifecycle.snapshot = snapshot
-            lifecycle.output = mock.Mock(return_value=b'S-1-5-21-123')
+            def output(command, cwd=None):
+                if command[0] in ('whoami', 'icacls'):
+                    return b'S-1-5-21-123'
+                self.assertEqual(command, ['git', '-C', work / 'flutter', 'log', '-1', '--format=%ct', 'HEAD'])
+                return b'1700000000\n'
+            lifecycle.output = output
             lifecycle.remap_config = mock.Mock()
             foreign_cache = root / 'foreign-go-modules'
             foreign_cache.mkdir()
@@ -389,6 +428,9 @@ class ToolchainPreparationTest(unittest.TestCase):
                     self.assertEqual((sdk / 'bin/cache/engine.stamp').read_text(), engine_id + '\n')
                     self.assertEqual((sdk / 'bin/cache/engine.realm').read_text(), '\n')
                     self.assertEqual((sdk / 'bin/internal/engine.version').read_text().strip(), engine_id)
+                    self.assertEqual(e2e.strict_json((sdk / 'bin/cache/engine_stamp.json').read_text()), {
+                        'build_time_ms': 1700000000000, 'git_revision': engine_id,
+                        'git_revision_date': '2023-11-14T22:13:20Z', 'content_hash': ''})
                     package = sdk / 'bin/cache/pkg/sky_engine'
                     self.assertEqual(e2e.tree_hashes(package), e2e.tree_hashes(generated))
                     self.assertFalse((package / 'stale').exists())
@@ -414,6 +456,7 @@ class ToolchainPreparationTest(unittest.TestCase):
             if stale_metadata:
                 self.assertEqual((checkout / 'flutter/bin/cache/engine.stamp').read_text(), '0' * 40 + '\n')
                 self.assertEqual((checkout / 'flutter/bin/cache/engine.realm').read_text(), 'stale-presubmit-realm\n')
+                self.assertEqual((checkout / 'flutter/bin/cache/engine_stamp.json').read_text(), '{"git_revision": "stale"}\n')
             else:
                 self.assertFalse((checkout / 'flutter/bin/cache/engine.stamp').exists())
                 self.assertFalse((checkout / 'flutter/bin/cache/engine.realm').exists())
@@ -465,6 +508,8 @@ class CommandDiagnosticsTest(unittest.TestCase):
             ('status', 0, b' M x', b'', 'git_ok'),
             ('status', None, b'', b'', 'probe_timed_out'),
             ('flutter_version', 0, b'{"x":1}', b'', 'flutter_version_ok'),
+            ('flutter_version', 0, b'{"x":1}', b'Failed to find the latest git commit date: VersionCheckError: '
+             b'Command exited with code 128\nStandard error: fatal: bad object ' + secret, 'flutter_version_commit_date_fallback'),
             ('flutter_version', 1, b'', b'VersionCheckError: Command exited ' + secret, 'flutter_version_check_error'),
             ('flutter_version', 1, b'', b'boom ' + secret, 'flutter_version_failed'),
             ('flutter_version', 1, b'', b'Failed to download https://x/engine_stamp.json. Exception: 404', 'flutter_engine_stamp_download_failed'),
