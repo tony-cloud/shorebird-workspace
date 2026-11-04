@@ -504,7 +504,8 @@ class Lifecycle:
         shutil.copytree(self.args.engine_src / 'out' / self.args.host_engine / 'dart-sdk', sdk)
         stage_local_engine_packages(self.args.engine_src / 'out' / self.args.host_engine,
                                     self.work / 'flutter')
-        engine_id = stage_local_engine_metadata(self.work / 'flutter')
+        commit_time = self.output(['git', '-C', self.work / 'flutter', 'log', '-1', '--format=%ct', 'HEAD'])
+        engine_id = stage_local_engine_metadata(self.work / 'flutter', int(commit_time.decode().strip()))
         mappings = [(ROOT / 'shorebird', self.work / 'cli'), (ROOT / 'flutter', self.work / 'flutter'),
                     (pub, self.work / 'pub-cache')]
         self.remap_config(ROOT / 'shorebird/.dart_tool/package_config.json',

@@ -441,6 +441,10 @@ class EnvironmentAndInjectionTest(unittest.TestCase):
                 lifecycle.manifest.setdefault('sources', {})[source.name] = {'head': 'flutter-ref'}
             lifecycle.snapshot = snapshot
             lifecycle.remap_config = mock.Mock()
+            def output(command, cwd=None):
+                self.assertEqual(command[3:], ['log', '-1', '--format=%ct', 'HEAD'])
+                return b'1700000000\n'
+            lifecycle.output = output
             foreign_cache = root / 'foreign-go-modules'
             foreign_cache.mkdir()
             (foreign_cache / 'preserve').write_text('foreign module cache')
@@ -459,6 +463,9 @@ class EnvironmentAndInjectionTest(unittest.TestCase):
                     self.assertEqual((sdk / 'bin/cache/engine.stamp').read_text(), engine_id + '\n')
                     self.assertEqual((sdk / 'bin/cache/engine.realm').read_text(), '\n')
                     self.assertEqual((sdk / 'bin/internal/engine.version').read_text().strip(), engine_id)
+                    stamp = json.loads((sdk / 'bin/cache/engine_stamp.json').read_text())
+                    self.assertEqual(stamp['git_revision'], engine_id)
+                    self.assertEqual(stamp['git_revision_date'], '2023-11-14T22:13:20Z')
                     package = sdk / 'bin/cache/pkg/sky_engine'
                     self.assertEqual(e2e.tree_hashes(package), e2e.tree_hashes(generated))
                     self.assertFalse((package / 'stale').exists())
