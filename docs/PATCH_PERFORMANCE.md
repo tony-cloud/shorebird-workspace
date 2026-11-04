@@ -314,3 +314,39 @@ still running (`InstallHashMismatch` for a valid diff of another patch,
 Frames were not measured: the ETS6 local-network dialog of another app was
 still on screen (checked at the start and end), so every run recorded 0
 frames.
+
+## Signed path with the pre-decoded interpreter on the iPad (2026-11-04)
+
+The previous section's signed round repeated on an engine whose unlinked code
+runs in the pre-decoded threaded interpreter (dart-sdk
+`tonycloud/ios-fast-interp-20261104` 0f4fcf3f694, `docs/ios-linker/RUNTIME.md`
+section 15; engine `tonycloud/ios-mixed-engine-20261104` 3de9503a936). Same
+scripts, CLI, server and iPad; release 1.0.0+2; patches as before (P1 99.50%
+linked, P2 99.91%; downloads 41,242 / 41,477 / 41,605 B). Dataset:
+`docs/validation/ios-mixed-mode-signed-device-fastinterp-20261104.json`.
+
+Median of the per-run medians, ratios vs each round's own V0 ("old" = the
+previous signed round, decode-every-instruction simulator); the last column is
+old time / new time on the variant where the metric is simulated:
+
+| metric | unit | V0 old | V0 new | P0 old → new | P1 old → new | P2 old → new | P1/P2 speed-up |
+|---|---|---:|---:|---:|---:|---:|---:|
+| micro/numeric_loop | µs/rep | 6659 | 6274 | 0.93× → 1.0× | 52.76× → 4.76× | 1.0× → 0.98× | P1 11.8× |
+| micro/virtual_interface_calls | µs/rep | 2350 | 2237 | 0.96× → 1.01× | 178.31× → 19.8× | 0.99× → 1.06× | P1 9.5× |
+| micro/list_map_ops | µs/rep | 5220 | 5163 | 0.95× → 0.99× | 37.32× → 6.83× | 1.01× → 0.95× | P1 5.5× |
+| micro/string_building | µs/rep | 14112 | 14057 | 1.01× → 0.97× | 7.53× → 2.64× | 1.0× → 0.98× | P1 2.9× |
+| micro/object_allocation | µs/rep | 7645 | 7508 | 0.98× → 0.96× | 35.8× → 6.25× | 0.99× → 0.99× | P1 5.8× |
+| micro/aot_hotpath_getter | µs/rep | 726 | 725 | 1.0× → 0.95× | 0.96× → 0.99× | 159.77× → 12.16× | P2 13.2× |
+| transitions/aot_calls_kernel_tag | ns/call | 1.535 | 1.57 | 0.97× → 0.96× | 120.47× → 11.5× | 0.99× → 1.0× | P1 10.2× |
+| transitions/kernel_calls_aot_leaf | ns/call | 0.835 | 0.835 | 0.98× → 0.97× | 129.89× → 21.54× | 0.98× → 1.0× | P1 6.0× |
+| transitions/kernel_loop_reference | ns/iter | 2.26 | 2.17 | 0.99× → 1.0× | 53.05× → 4.43× | 0.99× → 1.0× | P1 12.5× |
+
+- **Simulated code is now 2.6–21.5× native on the device** (was 7.5–178×),
+  a 3–13× speed-up, matching the host numbers in RUNTIME.md section 15
+  (4–21×). Numeric 4.8×, getter 12.2×, virtual 19.8×, simulator → native
+  call 21.5×.
+- Linked code and V0 are unchanged (P0 and untouched metrics 0.95–1.06×).
+- Rollback and a tampered patch (`InstallHashMismatch`, release keeps
+  running) behave as before.
+- Frames still not measured: the ETS6 local-network dialog of another app was
+  on screen at the start and end.

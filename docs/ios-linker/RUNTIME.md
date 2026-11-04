@@ -1095,3 +1095,24 @@ Section 12.4 gave 38–164× before this change.
 - **Not yet measured on the device.**
 
 Left running: nothing.
+
+### 15.x Device check on the signed path (2026-11-04)
+
+Engine `tonycloud/ios-mixed-engine-20261104` 3de9503a936 (DEPS → 0f4fcf3f694),
+production `ios_release` rebuilt incrementally, run through the section 14
+signed path on the iPad (release 1.0.0+2, patches P0/P1/P2, rollback, one
+tampered patch). No device-only failures: P1 reports `kernel_tag` 2, the
+rollback returns to the release, and the tampered patch is rejected by the
+updater (`InstallHashMismatch`).
+
+Simulated metrics vs V0, old simulator → pre-decoded interpreter: numeric
+52.8× → 4.8×, virtual 178× → 19.8×, list/map 37.3× → 6.8×, strings 7.5× →
+2.6×, allocation 35.8× → 6.3×, getter (P2) 160× → 12.2×; transitions
+native → simulated 120× → 11.5×, simulated → native 130× → 21.5×. Linked code
+unchanged. Table: `docs/PATCH_PERFORMANCE.md`; dataset
+`docs/validation/ios-mixed-mode-signed-device-fastinterp-20261104.json`.
+
+Build note: changing `vm_sources.gni` re-runs gn on the next ninja call, which
+rewrites `toolchain.ninja` and drops the local Xcode-ld solink patch; reapply
+it before building (section 11, engine item 4).
+

@@ -1,0 +1,338 @@
+{
+ "date": "2026-11-04",
+ "device": "iPad Pro 13-inch (M4), UDID 00008132-000C396801D9001C",
+ "route": "ios-aot-link signed path (CLI release/patch -> open-source server -> device updater -> engine), production engine (shorebird_mixed_dev_patch=false), unlinked code in the pre-decoded threaded interpreter",
+ "branches": {
+  "dart-sdk": "tonycloud/ios-fast-interp-20261104 @ 0f4fcf3f6942f9403d7c467c2c3c905396ced9ff",
+  "flutter (engine)": "tonycloud/ios-mixed-engine-20261104 @ 3de9503a936 (DEPS bump; flutter_tools as c0e94d8e7eb)",
+  "shorebird (CLI)": "tonycloud/ios-aot-link-cli-20261104 @ 66baabf8",
+  "server": "shorebird-server 3479ee0"
+ },
+ "release": {
+  "version": "1.0.0+2",
+  "text_bytes": 1218736,
+  "text_sha256": "5fa06684c2b4dcc3891fc2a48ffd2786ca9cab957977f82772e6a22332866fa0"
+ },
+ "patches": {
+  "P0 (patch 1)": {
+   "link_percent": 100.0,
+   "download_bytes": 41242,
+   "kernel_tag": 1
+  },
+  "P1 (patch 2)": {
+   "edit": "KERNEL_TAG 1 -> 2",
+   "link_percent": 99.50107,
+   "unlinked": 8,
+   "download_bytes": 41477,
+   "kernel_tag": 2
+  },
+  "P2 (patch 3)": {
+   "edit": "Chip.weight 3 -> 4",
+   "link_percent": 99.91236,
+   "unlinked": 2,
+   "download_bytes": 41605,
+   "kernel_tag": 1
+  },
+  "patch 4 (tamper: object replaced by patch 2 diff)": {
+   "device_state": {
+    "kind": "Bad",
+    "reason": "InstallHashMismatch"
+   },
+   "server_event": "__patch_update_failure__ / corrupt_patch",
+   "kernel_tag_after": [
+    1,
+    1
+   ]
+  }
+ },
+ "rollback": "rolled back patches 3, 2, 1: next launch still ran patch 3 (getter 8745 us, simulated) and uninstalled it; the following launch ran the release (getter 674 us), nothing installed",
+ "probe_launches": {
+  "RB_ALL_1": {
+   "kernel_tag": 1,
+   "getter_us": 8745.0,
+   "numeric_us": 6203.0,
+   "updater_pointers": {
+    "next_boot_patch": null,
+    "last_booted_patch": null,
+    "currently_booting_patch": null,
+    "boot_started_at": null
+   }
+  },
+  "RB_ALL_2": {
+   "kernel_tag": 1,
+   "getter_us": 674.0,
+   "numeric_us": 6498.0,
+   "updater_pointers": {
+    "next_boot_patch": null,
+    "last_booted_patch": null,
+    "currently_booting_patch": null,
+    "boot_started_at": null
+   }
+  },
+  "TAMPER_SWAP_1": {
+   "kernel_tag": 1,
+   "getter_us": 705.0,
+   "numeric_us": 6477.0,
+   "updater_pointers": {
+    "next_boot_patch": null,
+    "last_booted_patch": null,
+    "currently_booting_patch": null,
+    "boot_started_at": null
+   }
+  },
+  "TAMPER_SWAP_2": {
+   "kernel_tag": 1,
+   "getter_us": 682.0,
+   "numeric_us": 6559.0,
+   "updater_pointers": {
+    "next_boot_patch": null,
+    "last_booted_patch": null,
+    "currently_booting_patch": null,
+    "boot_started_at": null
+   }
+  }
+ },
+ "fast_interp": {
+  "micro_median_of_run_medians": {
+   "V0": {
+    "runs": 3,
+    "kernel_tag": [
+     1
+    ],
+    "frames": [
+     0,
+     0,
+     0
+    ],
+    "metrics": {
+     "micro/numeric_loop": 6274.0,
+     "micro/virtual_interface_calls": 2237.0,
+     "micro/list_map_ops": 5163.0,
+     "micro/string_building": 14057.0,
+     "micro/object_allocation": 7508.0,
+     "micro/aot_hotpath_getter": 725.0,
+     "transitions/aot_calls_kernel_tag": 1.57,
+     "transitions/kernel_calls_aot_leaf": 0.835,
+     "transitions/kernel_loop_reference": 2.17
+    },
+    "unit": {
+     "micro/numeric_loop": "us_per_rep",
+     "micro/virtual_interface_calls": "us_per_rep",
+     "micro/list_map_ops": "us_per_rep",
+     "micro/string_building": "us_per_rep",
+     "micro/object_allocation": "us_per_rep",
+     "micro/aot_hotpath_getter": "us_per_rep",
+     "transitions/aot_calls_kernel_tag": "ns_per_call",
+     "transitions/kernel_calls_aot_leaf": "ns_per_call",
+     "transitions/kernel_loop_reference": "ns_per_iteration"
+    }
+   },
+   "P0": {
+    "runs": 3,
+    "kernel_tag": [
+     1
+    ],
+    "frames": [
+     0,
+     0,
+     0
+    ],
+    "metrics": {
+     "micro/numeric_loop": 6262.0,
+     "micro/virtual_interface_calls": 2250.0,
+     "micro/list_map_ops": 5120.0,
+     "micro/string_building": 13596.0,
+     "micro/object_allocation": 7173.0,
+     "micro/aot_hotpath_getter": 687.0,
+     "transitions/aot_calls_kernel_tag": 1.505,
+     "transitions/kernel_calls_aot_leaf": 0.81,
+     "transitions/kernel_loop_reference": 2.17
+    },
+    "unit": {
+     "micro/numeric_loop": "us_per_rep",
+     "micro/virtual_interface_calls": "us_per_rep",
+     "micro/list_map_ops": "us_per_rep",
+     "micro/string_building": "us_per_rep",
+     "micro/object_allocation": "us_per_rep",
+     "micro/aot_hotpath_getter": "us_per_rep",
+     "transitions/aot_calls_kernel_tag": "ns_per_call",
+     "transitions/kernel_calls_aot_leaf": "ns_per_call",
+     "transitions/kernel_loop_reference": "ns_per_iteration"
+    }
+   },
+   "P1": {
+    "runs": 3,
+    "kernel_tag": [
+     2
+    ],
+    "frames": [
+     0,
+     0,
+     0
+    ],
+    "metrics": {
+     "micro/numeric_loop": 29868.0,
+     "micro/virtual_interface_calls": 44288.0,
+     "micro/list_map_ops": 35262.0,
+     "micro/string_building": 37049.0,
+     "micro/object_allocation": 46923.0,
+     "micro/aot_hotpath_getter": 716.0,
+     "transitions/aot_calls_kernel_tag": 18.055,
+     "transitions/kernel_calls_aot_leaf": 17.985,
+     "transitions/kernel_loop_reference": 9.62
+    },
+    "unit": {
+     "micro/numeric_loop": "us_per_rep",
+     "micro/virtual_interface_calls": "us_per_rep",
+     "micro/list_map_ops": "us_per_rep",
+     "micro/string_building": "us_per_rep",
+     "micro/object_allocation": "us_per_rep",
+     "micro/aot_hotpath_getter": "us_per_rep",
+     "transitions/aot_calls_kernel_tag": "ns_per_call",
+     "transitions/kernel_calls_aot_leaf": "ns_per_call",
+     "transitions/kernel_loop_reference": "ns_per_iteration"
+    }
+   },
+   "P2": {
+    "runs": 3,
+    "kernel_tag": [
+     1
+    ],
+    "frames": [
+     0,
+     0,
+     0
+    ],
+    "metrics": {
+     "micro/numeric_loop": 6153.0,
+     "micro/virtual_interface_calls": 2378.0,
+     "micro/list_map_ops": 4886.0,
+     "micro/string_building": 13760.0,
+     "micro/object_allocation": 7463.0,
+     "micro/aot_hotpath_getter": 8815.0,
+     "transitions/aot_calls_kernel_tag": 1.565,
+     "transitions/kernel_calls_aot_leaf": 0.835,
+     "transitions/kernel_loop_reference": 2.175
+    },
+    "unit": {
+     "micro/numeric_loop": "us_per_rep",
+     "micro/virtual_interface_calls": "us_per_rep",
+     "micro/list_map_ops": "us_per_rep",
+     "micro/string_building": "us_per_rep",
+     "micro/object_allocation": "us_per_rep",
+     "micro/aot_hotpath_getter": "us_per_rep",
+     "transitions/aot_calls_kernel_tag": "ns_per_call",
+     "transitions/kernel_calls_aot_leaf": "ns_per_call",
+     "transitions/kernel_loop_reference": "ns_per_iteration"
+    }
+   }
+  },
+  "ratio_vs_V0": {
+   "V0": {
+    "micro/numeric_loop": 1.0,
+    "micro/virtual_interface_calls": 1.0,
+    "micro/list_map_ops": 1.0,
+    "micro/string_building": 1.0,
+    "micro/object_allocation": 1.0,
+    "micro/aot_hotpath_getter": 1.0,
+    "transitions/aot_calls_kernel_tag": 1.0,
+    "transitions/kernel_calls_aot_leaf": 1.0,
+    "transitions/kernel_loop_reference": 1.0
+   },
+   "P0": {
+    "micro/numeric_loop": 1.0,
+    "micro/virtual_interface_calls": 1.01,
+    "micro/list_map_ops": 0.99,
+    "micro/string_building": 0.97,
+    "micro/object_allocation": 0.96,
+    "micro/aot_hotpath_getter": 0.95,
+    "transitions/aot_calls_kernel_tag": 0.96,
+    "transitions/kernel_calls_aot_leaf": 0.97,
+    "transitions/kernel_loop_reference": 1.0
+   },
+   "P1": {
+    "micro/numeric_loop": 4.76,
+    "micro/virtual_interface_calls": 19.8,
+    "micro/list_map_ops": 6.83,
+    "micro/string_building": 2.64,
+    "micro/object_allocation": 6.25,
+    "micro/aot_hotpath_getter": 0.99,
+    "transitions/aot_calls_kernel_tag": 11.5,
+    "transitions/kernel_calls_aot_leaf": 21.54,
+    "transitions/kernel_loop_reference": 4.43
+   },
+   "P2": {
+    "micro/numeric_loop": 0.98,
+    "micro/virtual_interface_calls": 1.06,
+    "micro/list_map_ops": 0.95,
+    "micro/string_building": 0.98,
+    "micro/object_allocation": 0.99,
+    "micro/aot_hotpath_getter": 12.16,
+    "transitions/aot_calls_kernel_tag": 1.0,
+    "transitions/kernel_calls_aot_leaf": 1.0,
+    "transitions/kernel_loop_reference": 1.0
+   }
+  }
+ },
+ "previous_signed_round_old_simulator": {
+  "dataset": "docs/validation/ios-mixed-mode-signed-device-20261104.json",
+  "ratio_vs_V0": {
+   "V0": {
+    "micro/numeric_loop": 1.0,
+    "micro/virtual_interface_calls": 1.0,
+    "micro/list_map_ops": 1.0,
+    "micro/string_building": 1.0,
+    "micro/object_allocation": 1.0,
+    "micro/aot_hotpath_getter": 1.0,
+    "transitions/aot_calls_kernel_tag": 1.0,
+    "transitions/kernel_calls_aot_leaf": 1.0,
+    "transitions/kernel_loop_reference": 1.0
+   },
+   "P0": {
+    "micro/numeric_loop": 0.93,
+    "micro/virtual_interface_calls": 0.96,
+    "micro/list_map_ops": 0.95,
+    "micro/string_building": 1.01,
+    "micro/object_allocation": 0.98,
+    "micro/aot_hotpath_getter": 1.0,
+    "transitions/aot_calls_kernel_tag": 0.97,
+    "transitions/kernel_calls_aot_leaf": 0.98,
+    "transitions/kernel_loop_reference": 0.99
+   },
+   "P1": {
+    "micro/numeric_loop": 52.76,
+    "micro/virtual_interface_calls": 178.31,
+    "micro/list_map_ops": 37.32,
+    "micro/string_building": 7.53,
+    "micro/object_allocation": 35.8,
+    "micro/aot_hotpath_getter": 0.96,
+    "transitions/aot_calls_kernel_tag": 120.47,
+    "transitions/kernel_calls_aot_leaf": 129.89,
+    "transitions/kernel_loop_reference": 53.05
+   },
+   "P2": {
+    "micro/numeric_loop": 1.0,
+    "micro/virtual_interface_calls": 0.99,
+    "micro/list_map_ops": 1.01,
+    "micro/string_building": 1.0,
+    "micro/object_allocation": 0.99,
+    "micro/aot_hotpath_getter": 159.77,
+    "transitions/aot_calls_kernel_tag": 0.99,
+    "transitions/kernel_calls_aot_leaf": 0.98,
+    "transitions/kernel_loop_reference": 0.99
+   }
+  }
+ },
+ "speedup_old_over_new_on_simulated_metric": {
+  "micro/numeric_loop": 11.8,
+  "micro/virtual_interface_calls": 9.5,
+  "micro/list_map_ops": 5.5,
+  "micro/string_building": 2.9,
+  "micro/object_allocation": 5.8,
+  "micro/aot_hotpath_getter": 13.2,
+  "transitions/aot_calls_kernel_tag": 10.2,
+  "transitions/kernel_calls_aot_leaf": 6.0,
+  "transitions/kernel_loop_reference": 12.5
+ },
+ "frames": "not measured: the ETS6 local-network dialog of another app was on screen at start and end; every run recorded 0 frames"
+}
