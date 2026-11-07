@@ -2979,7 +2979,7 @@ jobs:
     name: Build macOS engine artifacts
     needs: source-checks
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 240
+    timeout-minutes: 300
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.full_sdk_build }}
     strategy:
       fail-fast: false

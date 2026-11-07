@@ -915,13 +915,15 @@ class Lifecycle:
         if re.search(rb'\b(?:LNK4044|D9002)\b', path.read_bytes()):
             raise FixtureError(name + ' ignored a required toolchain option')
 
-    def output(self, command, cwd=None):
+    def output(self, command, cwd=None, check=True):
         process = self.job.spawn([str(x) for x in command], cwd=cwd or ROOT,
                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         try:
             output, _errors = process.communicate(timeout=60)
-            if process.returncode:
-                raise FixtureError('Source snapshot command failed')
+            if check and process.returncode:
+                # Name only the executable; arguments can carry private paths.
+                tool = re.sub(r'[^A-Za-z0-9_.-]', '', Path(str(command[0])).name)[:40] or 'command'
+                raise FixtureError('Helper command failed: %s exit %d' % (tool, process.returncode))
             return output
         finally:
             stop_process(process)
@@ -1188,7 +1190,11 @@ class Lifecycle:
             if not match or not Path(match.group(1)).is_file():
                 raise FixtureError('Cannot identify the exact Windows linker')
             linker = Path(match.group(1))
-            version = self.output([linker, '/?']).decode(errors='replace').splitlines()[0]
+            # link.exe prints its banner for /? but exits non-zero, so check the banner instead.
+            banner = self.output([linker, '/?'], check=False).decode(errors='replace').splitlines()
+            version = next((line.strip() for line in banner if 'Linker Version' in line), None)
+            if not version:
+                raise FixtureError('Cannot identify the exact Windows linker version')
             self.manifest['native_linker'] = {'sha256': file_hash(linker), 'version': version[:200],
                                                'release_options': ['/Brepro', '/INCREMENTAL:NO', '/PDBALTPATH:%_PDB%']}
             self.stage('actual-cli-release-free', {'release_version': self.release_version, 'bundle': self.bundle_hashes})
