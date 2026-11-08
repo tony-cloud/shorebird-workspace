@@ -218,6 +218,9 @@ jobs:
           python3 scripts/test_artifact_catalog.py -v
           python3 scripts/dart_sdk_lock.py check flutter
           python3 scripts/artifact_catalog.py check-trust
+          python3 -m py_compile scripts/release_trust.py scripts/test_release_trust.py
+          python3 scripts/test_release_trust.py -v
+          python3 scripts/validate_hardening_contracts.py release-trust scripts/testdata/release-trust/release-trust.DEVELOPMENT-ONLY.json
           ./scripts/test_dart_sdk_bootstrap.sh
           python3 -m py_compile scripts/verify_dart_sdk_tooling.py
           python3 -m py_compile scripts/verify_native_cache_engine_tests.py scripts/verify_macos_interpreter_engine_tests.py
@@ -366,12 +369,12 @@ jobs:
         working-directory: updater
         run: |
           set -euo pipefail
-          # Hardening P3: the startup integrity gate, module measurement on this
-          # host's real loader (ELF or Mach-O), package identity adapters and
-          # the hardened init paths. Windows runs the whole updater suite in its
-          # engine jobs.
+          # Hardening P3/P4: the startup integrity gate, the release root of
+          # trust (contract v2), module measurement on this host's real loader
+          # (ELF or Mach-O), package identity adapters and the hardened init
+          # paths. Windows runs the whole updater suite in its engine jobs.
           cargo test -p updater --locked -- --test-threads=1 \
-            integrity module_measurement package_identity security_inputs hardened_admission
+            integrity release_trust module_measurement package_identity security_inputs hardened_admission
 
       - name: Cache pub packages
         uses: actions/cache@v4
@@ -403,6 +406,7 @@ jobs:
               test/general.shard/shorebird/shorebird_build_key_test.dart \
               test/general.shard/shorebird/shorebird_artifact_catalog_test.dart \
               test/general.shard/shorebird/shorebird_build_manifest_test.dart \
+              test/general.shard/shorebird/shorebird_release_trust_test.dart \
               test/general.shard/shorebird/shorebird_yaml_test.dart \
               test/general.shard/cache_test.dart \
               test/general.shard/build_system/targets/assets_test.dart \
@@ -6233,6 +6237,10 @@ jobs:
         env:
           OPEN_SHOREBIRD_ARTIFACT_CATALOG_SIGNING_KEY: ${{ secrets.OPEN_SHOREBIRD_ARTIFACT_CATALOG_SIGNING_KEY }}
           OPEN_SHOREBIRD_ARTIFACT_STORE_URL: ${{ vars.OPEN_SHOREBIRD_ARTIFACT_STORE_URL }}
+          # Contract v2 (HARDENING_CONTRACTS.md section 10): a hardened catalog
+          # signer must also be the release root's artifact-catalog delegate.
+          OPEN_SHOREBIRD_RELEASE_TRUST: ${{ vars.OPEN_SHOREBIRD_RELEASE_TRUST }}
+          OPEN_SHOREBIRD_RELEASE_ROOT: ${{ vars.OPEN_SHOREBIRD_RELEASE_ROOT }}
         run: |
           set -euo pipefail
           rm -rf artifacts/open-shorebird-artifact-mirror

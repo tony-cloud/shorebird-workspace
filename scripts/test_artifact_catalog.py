@@ -56,6 +56,31 @@ def production_trust() -> dict:
     return trust
 
 
+OPERATOR_ROOT_SEED = bytes([2]) * 32
+
+
+def release_trust_for(catalog_seeds=(PRODUCTION_SEED,), manifest_seeds=(bytes([7]) * 32,), revoked=()):
+    """(bundle, root pin bytes) under an operator test root delegating the given keys."""
+    import release_trust as rt  # noqa: PLC0415
+    root = rt.root_payload([ac.ed25519_public_key(OPERATOR_ROOT_SEED)], version=1, threshold=1,
+                           expires_at='2036-11-09T00:00:00Z')
+    keys = lambda seeds: [rt.delegated_key(ac.ed25519_public_key(s), '2026-11-01T00:00:00Z',  # noqa: E731
+                                           '2036-11-01T00:00:00Z') for s in seeds]
+    payload = rt.delegations_payload(version=1, root_version=1, issued_at='2026-11-01T00:00:00Z',
+                                     expires_at='2036-11-01T00:00:00Z',
+                                     roles={'build-manifest': keys(manifest_seeds),
+                                            'artifact-catalog': keys(catalog_seeds)},
+                                     revoked=list(revoked))
+    bundle = rt.bundle([], rt.sign_delegations(payload, root, [OPERATOR_ROOT_SEED]))
+    return bundle, canonical_json(root)
+
+
+def verified_release_trust(**kwargs):
+    import release_trust as rt  # noqa: PLC0415
+    bundle, pin = release_trust_for(**kwargs)
+    return rt.verify_bundle(bundle, pin)
+
+
 def sign_with_seed(catalog_bytes: bytes, seed: bytes) -> bytes:
     digest = hashlib.sha256(catalog_bytes).hexdigest()
     public = ac.ed25519_public_key(seed)
@@ -171,6 +196,8 @@ class VerifyTest(CatalogFixture):
 
     def verify(self, catalog_bytes=None, signature=b'', **kwargs):
         kwargs.setdefault('profile', 'legacy')
+        if kwargs['profile'] == 'hardened':
+            kwargs.setdefault('release_trust', verified_release_trust())
         return ac.verify_catalog(self.bytes if catalog_bytes is None else catalog_bytes,
                                  self.prod_signature if signature == b'' else signature, self.trust, **kwargs)
 
@@ -186,6 +213,27 @@ class VerifyTest(CatalogFixture):
         with self.assertRaisesRegex(ac.CatalogError, 'rejects a catalog signed by a development key'):
             self.verify(data, canonical_json(ac.sign_catalog(data, ac.DEVELOPMENT_KEY)), profile='hardened')
         self.assertEqual(self.verify(data, sign_with_seed(data, PRODUCTION_SEED), profile='hardened')[1], 'production')
+
+    def test_hardened_signer_must_be_the_release_root_catalog_delegate(self):
+        import release_trust as rt  # noqa: PLC0415
+        hardened = copy.deepcopy(self.catalog)
+        hardened['security_profile'] = 'hardened'
+        data = canonical_json(hardened)
+        signature = sign_with_seed(data, PRODUCTION_SEED)
+        with self.assertRaisesRegex(ac.CatalogError, 'under the release root'):
+            self.verify(data, signature, profile='hardened', release_trust=None)
+        production_id = ac.key_id(ac.ed25519_public_key(PRODUCTION_SEED))
+        for trust, code in (
+            # Not delegated; delegated as a build-manifest key (role
+            # confusion); revoked.
+            (verified_release_trust(catalog_seeds=()), 'signer_untrusted'),
+            (verified_release_trust(catalog_seeds=(), manifest_seeds=(PRODUCTION_SEED,)), 'signer_role'),
+            (rt.verify_bundle(*release_trust_for(catalog_seeds=(), revoked=(production_id,))), 'signer_revoked'),
+        ):
+            with self.assertRaisesRegex(ac.CatalogError, code):
+                self.verify(data, signature, profile='hardened', release_trust=trust)
+        # Legacy never consults the release root.
+        self.assertEqual(self.verify(release_trust=None)[1], 'production')
 
     def test_unsigned_catalog(self):
         with self.assertRaisesRegex(ac.CatalogError, 'unsigned catalog: set the explicit development override'):
@@ -279,7 +327,8 @@ class PublishScriptTest(CatalogFixture):
     def run_script(self, env: dict[str, str]) -> subprocess.CompletedProcess:
         environment = {k: v for k, v in os.environ.items()
                        if k not in ('OPEN_SHOREBIRD_ARTIFACT_CATALOG_SIGNING_KEY',
-                                    'OPEN_SHOREBIRD_ARTIFACT_CATALOG_TRUST', 'GITHUB_ACTIONS')}
+                                    'OPEN_SHOREBIRD_ARTIFACT_CATALOG_TRUST', 'GITHUB_ACTIONS',
+                                    'OPEN_SHOREBIRD_RELEASE_TRUST', 'OPEN_SHOREBIRD_RELEASE_ROOT')}
         environment.update(env)
         return subprocess.run([str(self.SCRIPT), str(self.mirror), ENGINE, 'https://artifacts.example.invalid/shorebird'],
                               capture_output=True, text=True, env=environment)
@@ -304,7 +353,8 @@ class PublishScriptTest(CatalogFixture):
                                      profile='legacy', engine_revision=ENGINE)
         self.assertEqual(usage, 'development')
         with self.assertRaises(ac.CatalogError):
-            ac.verify_catalog(catalog.read_bytes(), signature.read_bytes(), trust, profile='hardened')
+            ac.verify_catalog(catalog.read_bytes(), signature.read_bytes(), trust, profile='hardened',
+                              release_trust=verified_release_trust())
         for path in (catalog, signature):
             digest = Path(str(path) + '.sha256').read_text().split()[0]
             self.assertEqual(digest, hashlib.sha256(path.read_bytes()).hexdigest())
@@ -313,14 +363,23 @@ class PublishScriptTest(CatalogFixture):
     def test_secret_key_signs_a_production_catalog_when_pinned(self):
         trust = self.tmp / 'trust.json'
         trust.write_bytes(canonical_json(production_trust()))
-        result = self.run_script({'OPEN_SHOREBIRD_ARTIFACT_CATALOG_SIGNING_KEY': self.production_pem().read_text(),
-                                  'OPEN_SHOREBIRD_ARTIFACT_CATALOG_TRUST': str(trust)})
+        bundle, pin = release_trust_for()
+        environment = {'OPEN_SHOREBIRD_ARTIFACT_CATALOG_SIGNING_KEY': self.production_pem().read_text(),
+                       'OPEN_SHOREBIRD_ARTIFACT_CATALOG_TRUST': str(trust)}
+        # Without the release root, a hardened catalog is refused here.
+        refused = self.run_script(environment)
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertIn('OPEN_SHOREBIRD_RELEASE_TRUST', refused.stderr)
+        result = self.run_script({**environment,
+                                  'OPEN_SHOREBIRD_RELEASE_TRUST': json.dumps(bundle),
+                                  'OPEN_SHOREBIRD_RELEASE_ROOT': base64.b64encode(pin).decode()})
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn('verified (production)', result.stdout)
         self.assertNotIn('DEVELOPMENT-ONLY', result.stdout + result.stderr)
         catalog, signature = self.catalog_files()
         parsed, usage = ac.verify_catalog(catalog.read_bytes(), signature.read_bytes(), production_trust(),
-                                          profile='hardened', engine_revision=ENGINE)
+                                          profile='hardened', engine_revision=ENGINE,
+                                          release_trust=verified_release_trust())
         self.assertEqual((parsed['security_profile'], usage), ('hardened', 'production'))
 
     def test_hardened_catalog_without_the_secret_is_refused(self):
@@ -331,7 +390,10 @@ class PublishScriptTest(CatalogFixture):
 
     @unittest.skipUnless(openssl_ed25519(), 'openssl without Ed25519 support')
     def test_secret_key_not_pinned_in_the_trust_store_fails(self):
-        result = self.run_script({'OPEN_SHOREBIRD_ARTIFACT_CATALOG_SIGNING_KEY': self.production_pem().read_text()})
+        bundle, pin = release_trust_for()
+        result = self.run_script({'OPEN_SHOREBIRD_ARTIFACT_CATALOG_SIGNING_KEY': self.production_pem().read_text(),
+                                  'OPEN_SHOREBIRD_RELEASE_TRUST': json.dumps(bundle),
+                                  'OPEN_SHOREBIRD_RELEASE_ROOT': base64.b64encode(pin).decode()})
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('does not verify', result.stderr)
 

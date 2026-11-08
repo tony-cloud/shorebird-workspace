@@ -1,0 +1,28 @@
+{
+  "schema": "open-shorebird.security-policy",
+  "contract_version": 2,
+  "security_profile": "hardened",
+  "signatures": "required",
+  "patch_verification": "strict",
+  "patch_response_verification": "required",
+  "trust_roots": [
+    {
+      "key_id": "sha256:07f6d6ff25e38257c2875fe09e817d3ba25978102a81605edf009b3c7871f6f4",
+      "algorithm": "rsa-pkcs1-sha256",
+      "role": "patch-signing"
+    }
+  ],
+  "update_origin_policy": "https-only",
+  "development_exceptions": false,
+  "diversification_profile_id": null,
+  "toolchain_id": "sha256:70229e407e5311401aa3251418eff106467a750ccfcb7e8fe7b61c4442700040",
+  "release_root": {
+    "root_sha256": "sha256:e5738d44aaeb527b8cc32e649b24c855167299fb26b478a07595ab924863a16a",
+    "root_version": 1,
+    "threshold": 1,
+    "key_ids": [
+      "sha256:6a3803d5f059902a1c6dafbc9ba4729212f7caac08634cc3ae76b27529f03827"
+    ],
+    "min_delegations_version": 1
+  }
+}

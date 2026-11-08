@@ -1,0 +1,214 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/tony-cloud/shorebird-workspace/docs/schemas/security-policy.v2.schema.json",
+  "title": "Open Shorebird security policy, contract v2",
+  "description": "The release security policy compiled into a native release (engine + updater) and recorded in release metadata. Contract v2 adds the release-root pin (P4): the root payload digest, version, keys and threshold the engine compiles, and the delegations version floor. See docs/HARDENING_CONTRACTS.md sections 2 and 10. Cross-field rules that JSON Schema cannot express are enforced by scripts/validate_hardening_contracts.py.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "contract_version",
+    "security_profile",
+    "signatures",
+    "patch_verification",
+    "patch_response_verification",
+    "trust_roots",
+    "update_origin_policy",
+    "development_exceptions",
+    "diversification_profile_id",
+    "toolchain_id",
+    "release_root"
+  ],
+  "properties": {
+    "schema": {
+      "const": "open-shorebird.security-policy"
+    },
+    "contract_version": {
+      "const": 2
+    },
+    "security_profile": {
+      "$ref": "#/$defs/security_profile"
+    },
+    "signatures": {
+      "enum": [
+        "optional",
+        "required"
+      ]
+    },
+    "patch_verification": {
+      "enum": [
+        "strict",
+        "install_only"
+      ]
+    },
+    "patch_response_verification": {
+      "enum": [
+        "optional",
+        "required"
+      ]
+    },
+    "trust_roots": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "key_id",
+          "algorithm",
+          "role"
+        ],
+        "properties": {
+          "key_id": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "algorithm": {
+            "enum": [
+              "rsa-pkcs1-sha256"
+            ]
+          },
+          "role": {
+            "enum": [
+              "patch-signing"
+            ]
+          }
+        }
+      }
+    },
+    "update_origin_policy": {
+      "enum": [
+        "any",
+        "https-only"
+      ]
+    },
+    "development_exceptions": {
+      "type": "boolean"
+    },
+    "diversification_profile_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[a-z0-9][a-z0-9.-]{0,63}$"
+    },
+    "toolchain_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "release_root": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "root_sha256",
+        "root_version",
+        "threshold",
+        "key_ids",
+        "min_delegations_version"
+      ],
+      "properties": {
+        "root_sha256": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "root_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "threshold": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "key_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        },
+        "min_delegations_version": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "security_profile": {
+            "const": "hardened"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "signatures": {
+            "const": "required"
+          },
+          "patch_verification": {
+            "const": "strict"
+          },
+          "patch_response_verification": {
+            "const": "required"
+          },
+          "trust_roots": {
+            "minItems": 1
+          },
+          "update_origin_policy": {
+            "const": "https-only"
+          },
+          "diversification_profile_id": {
+            "type": "null"
+          },
+          "toolchain_id": {
+            "type": "string"
+          },
+          "release_root": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "security_profile": {
+            "const": "legacy"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "diversification_profile_id": {
+            "type": "null"
+          },
+          "development_exceptions": {
+            "const": false
+          },
+          "release_root": {
+            "type": "null"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "security_profile": {
+      "enum": [
+        "legacy",
+        "hardened",
+        "hardened-diversified"
+      ]
+    }
+  }
+}

@@ -21,6 +21,13 @@
 # profile (OPEN_SHOREBIRD_ARTIFACT_CATALOG_PROFILE=legacy opts out); a
 # development-signed one is always legacy, and asking for hardened without the
 # production key is an error.
+#
+# Release root (contract v2, HARDENING_CONTRACTS.md section 10): a hardened
+# catalog's signer must also be the current artifact-catalog delegate of the
+# release root, as hardened clients require. Set OPEN_SHOREBIRD_RELEASE_TRUST
+# (the release-trust bundle: a path, or its JSON) and OPEN_SHOREBIRD_RELEASE_ROOT
+# (the base64 root pin the hardened engine compiles); a hardened catalog
+# without them fails here.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -74,9 +81,23 @@ else
   expected_usage=development
 fi
 
+release_args=()
+if [[ "$profile" == hardened ]]; then
+  if [[ -z "${OPEN_SHOREBIRD_RELEASE_TRUST:-}" || -z "${OPEN_SHOREBIRD_RELEASE_ROOT:-}" ]]; then
+    echo "error: a hardened artifact catalog needs OPEN_SHOREBIRD_RELEASE_TRUST and OPEN_SHOREBIRD_RELEASE_ROOT (the release root that delegates the catalog key)" >&2
+    exit 1
+  fi
+  release_trust="$OPEN_SHOREBIRD_RELEASE_TRUST"
+  if [[ "$release_trust" == \{* ]]; then
+    printf '%s\n' "$release_trust" > "$key_dir/release-trust.json"
+    release_trust="$key_dir/release-trust.json"
+  fi
+  release_args=(--release-trust "$release_trust" --root-pin "$OPEN_SHOREBIRD_RELEASE_ROOT")
+fi
+
 verify_output="$(python3 "$ROOT/scripts/artifact_catalog.py" verify \
   --catalog "$catalog" --signature "$catalog.sig" --trust "$trust" \
-  --profile "$profile" --engine-revision "$engine_revision" 2>&1)" || {
+  --profile "$profile" --engine-revision "$engine_revision" ${release_args[@]+"${release_args[@]}"} 2>&1)" || {
   printf '%s\n' "$verify_output" >&2
   echo "error: the signed artifact catalog does not verify against $trust" >&2
   exit 1

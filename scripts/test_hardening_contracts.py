@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""Tests for the hardening contract v1 schemas, examples, and validator."""
+"""Tests for the hardening contract (v1, v2) schemas, examples, and validator."""
 
 from __future__ import annotations
 
+import base64
 import copy
 import contextlib
+import hashlib
 import io
 import json
 from pathlib import Path
@@ -13,11 +15,13 @@ import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import release_trust as rt  # noqa: E402
 import validate_hardening_contracts as v  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 EXAMPLES = ROOT / 'docs/schemas/examples'
 CONTRACT_DOC = ROOT / 'docs/HARDENING_CONTRACTS.md'
+RELEASE_TRUST_TESTDATA = ROOT / 'scripts/testdata/release-trust'
 
 
 def load(name: str) -> dict:
@@ -32,11 +36,13 @@ def rehash(identity: dict) -> dict:
 class SchemaFilesTest(unittest.TestCase):
     def test_schemas_are_strict_and_documented(self):
         doc = CONTRACT_DOC.read_text(encoding='utf-8')
-        for kind, file_name in v.KINDS.items():
-            schema = v.load_schema(kind)
-            self.assertEqual(schema['additionalProperties'], False, kind)
-            self.assertEqual(schema['properties']['contract_version'], {'const': 1}, kind)
-            self.assertIn(f'docs/schemas/{file_name}', doc)
+        for kind, files in v.SCHEMAS.items():
+            for version, file_name in files.items():
+                schema = v.load_schema(kind, version)
+                self.assertEqual(schema['additionalProperties'], False, kind)
+                self.assertEqual(schema['properties']['contract_version'], {'const': version}, file_name)
+                self.assertIn(f'.v{version}.schema.json', file_name)
+                self.assertIn(f'docs/schemas/{file_name}', doc)
             # The subset validator refuses unknown keywords, so validating the
             # examples also proves the schema stays inside the supported subset.
 
@@ -47,17 +53,42 @@ class SchemaFilesTest(unittest.TestCase):
         self.assertEqual(v.validate_build_identity(identity), [])
         self.assertEqual(v.validate_artifact_catalog(load('artifact-catalog.baseline-ae8a61a.json'), identity), [])
         self.assertEqual(v.validate_build_manifest(load('build-manifest.linux-x64.json')), [])
+        # Contract v2 (hardening P4).
+        for name in ('security-policy.v2.legacy-default.json', 'security-policy.v2.hardened.json'):
+            self.assertEqual(v.validate_security_policy(load(name), production=True), [], name)
+        self.assertEqual(v.validate_build_manifest(load('build-manifest.v2.linux-x64.json')), [])
+        self.assertEqual(v.validate_release_record(load('release-record.v2.json')), [])
+        for kind, name in (('release-root', 'root.v1.DEVELOPMENT-ONLY.json'),
+                           ('release-delegations', 'delegations.v1.DEVELOPMENT-ONLY.json'),
+                           ('release-trust', 'release-trust.DEVELOPMENT-ONLY.json')):
+            document = json.loads((RELEASE_TRUST_TESTDATA / name).read_text(encoding='utf-8'))
+            self.assertEqual(v.VALIDATORS[kind](document), [], name)
 
+    def test_v2_examples_agree(self):
+        """The record, manifest and policy examples describe one release."""
+        policy = load('security-policy.v2.hardened.json')
+        manifest = load('build-manifest.v2.linux-x64.json')
+        record = load('release-record.v2.json')
+        entry = record['build_manifests'][0]
+        self.assertEqual(record['release_root_sha256'], policy['release_root']['root_sha256'])
+        self.assertEqual(record['toolchain_id'], policy['toolchain_id'])
+        self.assertEqual(record['delegations_sha256'], manifest['delegations_sha256'])
+        self.assertEqual(entry['manifest_sha256'], hashlib.sha256(v.canonical_json(manifest)).hexdigest())
+        for field in ('signer_key_id', 'config_sha256', 'modules'):
+            self.assertEqual(entry[field], manifest[field], field)
     def test_optional_reference_validator_agrees(self):
         try:
             import jsonschema  # type: ignore
         except ImportError:
             self.skipTest('jsonschema is not installed; the built-in subset validator is authoritative')
-        for kind, name in (('security-policy', 'security-policy.hardened.json'),
-                           ('build-identity', 'build-identity.baseline-ae8a61a.json'),
-                           ('artifact-catalog', 'artifact-catalog.baseline-ae8a61a.json'),
-                           ('build-manifest', 'build-manifest.linux-x64.json')):
-            jsonschema.validate(load(name), v.load_schema(kind))
+        for kind, version, name in (('security-policy', 1, 'security-policy.hardened.json'),
+                                    ('security-policy', 2, 'security-policy.v2.hardened.json'),
+                                    ('build-identity', 1, 'build-identity.baseline-ae8a61a.json'),
+                                    ('artifact-catalog', 1, 'artifact-catalog.baseline-ae8a61a.json'),
+                                    ('build-manifest', 1, 'build-manifest.linux-x64.json'),
+                                    ('build-manifest', 2, 'build-manifest.v2.linux-x64.json'),
+                                    ('release-record', 2, 'release-record.v2.json')):
+            jsonschema.validate(load(name), v.load_schema(kind, version))
 
 
 class SecurityPolicyTest(unittest.TestCase):
@@ -79,9 +110,10 @@ class SecurityPolicyTest(unittest.TestCase):
         policy = load('security-policy.hardened.json')
         policy['security_profile'] = 'hardened-diversified'
         self.assertRejected(policy, 'reserved')
-        for field, value, fragment in (('contract_version', 2, 'must be 1'),
-                                       ('contract_version', '1', 'must be 1'),
-                                       ('contract_version', True, 'must be 1'),
+        for field, value, fragment in (('contract_version', 3, 'must be one of [1, 2]'),
+                                       ('contract_version', 2, 'missing required property release_root'),
+                                       ('contract_version', '1', 'must be one of [1, 2]'),
+                                       ('contract_version', True, 'must be one of [1, 2]'),
                                        ('security_profile', 'Hardened', 'must be one of')):
             policy = load('security-policy.legacy-default.json')
             policy[field] = value
@@ -92,6 +124,35 @@ class SecurityPolicyTest(unittest.TestCase):
         policy = load('security-policy.legacy-default.json')
         del policy['trust_roots']
         self.assertRejected(policy, 'missing required property trust_roots')
+
+    def test_v1_documents_cannot_carry_a_release_root(self):
+        policy = load('security-policy.legacy-default.json') | {'release_root': None}
+        self.assertRejected(policy, 'unknown property release_root')
+
+    def test_v2_release_root_rules(self):
+        base = load('security-policy.v2.hardened.json')
+        self.assertRejected(base | {'release_root': None}, 'release_root')
+        legacy = load('security-policy.v2.legacy-default.json')
+        self.assertRejected(legacy | {'release_root': base['release_root']}, 'release_root')
+        for change, fragment in (({'threshold': 2}, 'cannot exceed'),
+                                 ({'min_delegations_version': 0}, 'below minimum'),
+                                 ({'key_ids': []}, 'at least 1'),
+                                 ({'root_sha256': 'ab' * 32}, 'does not match'),
+                                 ({'extra': 1}, 'unknown property extra')):
+            policy = copy.deepcopy(base)
+            policy['release_root'] |= change
+            self.assertRejected(policy, fragment)
+        # Role separation: a root key is never also a patch-signing root.
+        policy = copy.deepcopy(base)
+        policy['release_root']['key_ids'] = [policy['trust_roots'][0]['key_id']]
+        self.assertRejected(policy, 'separate keys')
+        # The DEVELOPMENT-ONLY root needs development exceptions and never ships.
+        policy = copy.deepcopy(base)
+        policy['release_root']['key_ids'] = sorted(rt.development_root_key_ids())
+        self.assertRejected(policy, 'requires development_exceptions')
+        policy['development_exceptions'] = True
+        self.assertEqual(v.validate_security_policy(policy), [])
+        self.assertRejected(policy, 'production packaging rejects the DEVELOPMENT-ONLY release root', production=True)
 
     def test_diversification_and_development_rules(self):
         policy = load('security-policy.legacy-default.json')
@@ -250,6 +311,42 @@ class BuildManifestTest(unittest.TestCase):
             self.assertNotEqual(v.validate_build_manifest(self.manifest | {'package_identity': bad}), [], bad)
 
 
+class ReleaseDocumentsTest(unittest.TestCase):
+    def setUp(self):
+        self.record = load('release-record.v2.json')
+        self.bundle = json.loads((RELEASE_TRUST_TESTDATA / 'release-trust.DEVELOPMENT-ONLY.json')
+                                 .read_text(encoding='utf-8'))
+
+    def test_v2_manifest_binds_delegations(self):
+        manifest = load('build-manifest.v2.linux-x64.json')
+        without = {key: value for key, value in manifest.items() if key != 'delegations_sha256'}
+        self.assertNotEqual(v.validate_build_manifest(without), [])
+        self.assertNotEqual(v.validate_build_manifest(manifest | {'delegations_sha256': 'AB' * 32}), [])
+        # A v1 manifest has no delegations binding.
+        self.assertNotEqual(v.validate_build_manifest(manifest | {'contract_version': 1}), [])
+
+    def test_release_record_rules(self):
+        entry = self.record['build_manifests'][0]
+        for change in ({'security_profile': 'legacy'}, {'contract_version': 1}, {'build_manifests': []},
+                       {'build_manifests': [entry, entry]}, {'signing_key': 'x'},
+                       {'build_manifests': [entry | {'modules': entry['modules'] * 2}]},
+                       {'delegations_sha256': 'sha256:' + 'ab' * 32}):
+            self.assertNotEqual(v.validate_release_record(self.record | change), [], change)
+
+    def test_release_trust_payloads_are_checked(self):
+        bundle = copy.deepcopy(self.bundle)
+        bundle['delegations']['payload'] = bundle['delegations']['payload'][:-4]
+        self.assertNotEqual(v.validate_release_trust(bundle), [])
+        root = json.loads((RELEASE_TRUST_TESTDATA / 'root.v1.DEVELOPMENT-ONLY.json').read_text(encoding='utf-8'))
+        # A root envelope is not a delegations document.
+        self.assertTrue(any('trust_malformed' in error
+                            for error in v.validate_release_payload(root, 'release-delegations')))
+        payload = json.loads(base64.b64decode(root['payload']))
+        self.assertEqual(v.validate_release_payload(payload, 'release-root'), [])
+        self.assertNotEqual(v.validate_release_payload(payload | {'threshold': 2}, 'release-root'), [])
+        self.assertNotEqual(v.validate_release_trust(self.bundle | {'contract_version': 1}), [])
+
+
 class CliTest(unittest.TestCase):
     def run_cli(self, *args: str) -> tuple[int, str]:
         stderr = io.StringIO()
@@ -271,6 +368,10 @@ class CliTest(unittest.TestCase):
             dev.write_text(json.dumps(load('security-policy.hardened.json') | {'development_exceptions': True}))
             self.assertEqual(self.run_cli('security-policy', str(dev))[0], 0)
             self.assertEqual(self.run_cli('security-policy', str(dev), '--production')[0], 1)
+        for kind, path in (('release-trust', RELEASE_TRUST_TESTDATA / 'release-trust.DEVELOPMENT-ONLY.json'),
+                           ('release-record', EXAMPLES / 'release-record.v2.json'),
+                           ('build-manifest', EXAMPLES / 'build-manifest.v2.linux-x64.json')):
+            self.assertEqual(self.run_cli(kind, str(path)), (0, ''), kind)
 
 
 if __name__ == '__main__':

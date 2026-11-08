@@ -1,4 +1,4 @@
-# Hardening contracts, version 1
+# Hardening contracts, versions 1 and 2
 
 Status: **v1, frozen by stage P0** of
 [the hardening plan](HARDENING_AND_UPSTREAM_DEPENDENCY_PLAN.md) on 2026-11-09.
@@ -7,7 +7,11 @@ against this document. **P1 is implemented** (2026-11-09) in the updater,
 engine, flutter_tools and CLI; §7 records its decisions and its
 reject/accept matrix. P2 is implemented (§8). **P3 (updater self-integrity) is
 implemented** (2026-11-09); §9 records its decisions, platform adapters and
-reject/accept matrix. The server parts are not implemented yet. Evidence that informed it is in [HARDENING_P0_EVIDENCE.md](HARDENING_P0_EVIDENCE.md).
+reject/accept matrix. **Contract v2 (P4, release root of trust) is
+implemented client-side** (2026-11-09) in the updater, engine build,
+flutter_tools, CLI and scripts; §10 records it. Contract v2 changes only the
+documents listed as v2 below; every other document stays v1. The server parts
+of P1–P4 are not implemented yet. Evidence that informed it is in [HARDENING_P0_EVIDENCE.md](HARDENING_P0_EVIDENCE.md).
 
 Machine-checkable parts:
 
@@ -17,11 +21,21 @@ Machine-checkable parts:
 | Build-identity manifest | `docs/schemas/build-identity.v1.schema.json` | `docs/schemas/examples/build-identity.baseline-ae8a61a.json` |
 | Artifact catalog | `docs/schemas/artifact-catalog.v1.schema.json` | `docs/schemas/examples/artifact-catalog.baseline-ae8a61a.json` |
 | Build manifest (P3) | `docs/schemas/build-manifest.v1.schema.json` | `docs/schemas/examples/build-manifest.linux-x64.json` |
+| Security policy v2 (P4) | `docs/schemas/security-policy.v2.schema.json` | `docs/schemas/examples/security-policy.v2.legacy-default.json`, `security-policy.v2.hardened.json` |
+| Build manifest v2 (P4) | `docs/schemas/build-manifest.v2.schema.json` | `docs/schemas/examples/build-manifest.v2.linux-x64.json` |
+| Release root (P4) | `docs/schemas/release-root.v2.schema.json` | `scripts/testdata/release-trust/root.v1.DEVELOPMENT-ONLY.json` (a signed envelope) |
+| Release delegations (P4) | `docs/schemas/release-delegations.v2.schema.json` | `scripts/testdata/release-trust/delegations.v1.DEVELOPMENT-ONLY.json` |
+| Release-trust bundle (P4) | `docs/schemas/release-trust.v2.schema.json` | `scripts/testdata/release-trust/release-trust.DEVELOPMENT-ONLY.json` |
+| Release record (P4) | `docs/schemas/release-record.v2.schema.json` | `docs/schemas/examples/release-record.v2.json` |
 
 `scripts/validate_hardening_contracts.py` checks a document against its schema
 and the cross-field rules below. It has no third-party dependency: it implements
 exactly the JSON Schema keywords the schemas use and refuses any other keyword.
 `scripts/test_hardening_contracts.py` runs in the CI "Verify CI scripts" step.
+A versioned kind (security policy, build manifest) is checked against the
+schema its own `contract_version` names. Signatures of release-trust documents
+are verified against a pinned root by `scripts/release_trust.py verify`, not by
+the validator.
 
 The build-identity and catalog examples carry real values from baseline run
 [42464951579](https://github.com/tony-cloud/shorebird-workspace/actions/runs/42464951579)
@@ -681,10 +695,10 @@ for byte.
     byte for byte, and the patch asset diff stays clean.
   - Signing runs in-process and is not constant time, which is acceptable on
     a signer-controlled build machine.
-  - **P4 migration:** this role becomes the offline/CI artifact signer under
-    the release root, with key IDs, rotation, revocation and a KMS/HSM
-    signing interface. The compiled key list becomes the release-root pin, and
-    the manifest gains the delegation chain in a new contract version.
+  - **Superseded by contract v2 (§10).** The signer is now a
+    `build-manifest` key delegated by the release root, the compiled key list
+    became the release-root pin, and the token carries the delegation chain.
+    `shorebird_build_manifest_keys` is retired: setting it fails the build.
 
 ### 9.2 Module measurement
 
@@ -860,17 +874,331 @@ but not the measurement.
 
 ### 9.7 Deferred
 
-- **P4.** Move the build-manifest signer under the release root, adding key
-  IDs, rotation, revocation, a KMS/HSM signing interface and a new contract
-  version. Store the manifest digest with the release record so the server
-  can compare it.
+- **P4.** Done client-side in contract v2 (§10); the server parts are §10.9.
 - **P6.**
   - Android module measurement source (Gradle Maven `libflutter.so`).
   - Windows Authenticode adapter.
-  - A hardened toolchain in CI that carries `shorebird_build_manifest_keys`.
+  - A hardened toolchain in CI that carries `shorebird_release_root`.
   - Re-verification of the final distributed artifact by the CLI (IPA, AAB,
     app bundle).
   - Lifecycle negative cases: a tampered YAML and a replaced engine library
     on a real install, and recovery by reinstall.
   - Device evidence for the Android and iOS paths.
   - Measuring cold-start cost on devices.
+
+## 10. Contract v2: release root of trust (P4)
+
+P4 replaces P3's single operator key with a release root of trust. An offline
+root delegates each signing role to separate keys, which can be rotated and
+revoked, and an external KMS or HSM can hold them. Contract v2 changes the
+build manifest, the security policy and the hardened `shorebird.yaml`
+declaration, and adds the release-root, release-delegations, release-trust and
+release-record documents. Legacy builds are unchanged byte for byte: they
+never read a v2 document, and their YAML, metadata JSON and updater behavior
+are identical to before.
+
+This section is the client-side part of P4 ("P4a"): updater, engine build,
+flutter_tools, CLI, scripts and CI. The server and protocol part ("P4b") is
+listed in §10.9.
+
+### 10.1 Keys and roles
+
+| Key | Signs | Held | Trusted by |
+| --- | --- | --- | --- |
+| Release root (k-of-n Ed25519) | `release-root` and `release-delegations` documents only | offline, by operators | the root pin compiled into a hardened engine |
+| `build-manifest` delegate | the build manifest line of a hardened `shorebird.yaml` | release machine or CI, as a PKCS#8 file or behind a KMS/HSM signer | the current delegations |
+| `artifact-catalog` delegate | the hardened artifact catalog (P2 format, unchanged) | CI secret `OPEN_SHOREBIRD_ARTIFACT_CATALOG_SIGNING_KEY` | the P2 trust store **and** the current delegations |
+| Patch signing (RSA, P1) | patches and patch-check responses | Shorebird-managed per app | the bundled `patch_public_key` (P1), unchanged |
+
+Separation rules, enforced when delegations are signed (`release_trust.py`),
+when they are verified (updater, flutter_tools, Python) and by the
+security-policy validator:
+
+- A key belongs to exactly one role.
+- A root key is never delegated a role. Root keys sign metadata only.
+- A revoked key is never delegated again, and a revocation is never
+  withdrawn: `release_trust.py delegate --previous` carries every earlier
+  revocation forward and refuses to drop one.
+- A release-root key ID is never also a patch-signing trust root
+  (`security-policy.v2` cross-field rule).
+
+No single key therefore signs both a build manifest and a catalog, and no
+online key can change who is trusted.
+
+### 10.2 Documents and signatures
+
+All payloads are canonical JSON (§1). A verifier rejects a payload whose
+bytes are not canonical, so a signature covers exactly one encoding.
+
+- **Envelope.** `{"payload": base64(payload bytes), "signatures": [{"key_id", "signature"}]}`
+  (`release-trust.v2.schema.json` `$defs/envelope`). Base64 must be
+  canonical, signatures are 64 bytes, and a key may appear only once.
+  Signatures by unknown keys are ignored, so adding a signer never breaks
+  older verifiers.
+- **Domains.** A signature covers `<domain><lowercase hex SHA-256 of the payload bytes>`:
+
+  | Document | Domain |
+  | --- | --- |
+  | release root | `open-shorebird.release-root-signature.v2:` |
+  | release delegations | `open-shorebird.release-delegations-signature.v2:` |
+  | build manifest | `open-shorebird.build-manifest-signature.v2:` |
+  | artifact catalog | `open-shorebird.artifact-catalog-signature.v1:` (P2, unchanged) |
+
+  A signature made for one document type never verifies as another.
+- **`release-root`** (`release-root.v2.schema.json`): `version`, `threshold`,
+  `keys[]` (`key_id` = `sha256:` of the raw 32-byte public key,
+  `public_key`), `expires_at`. Version 1 is signed by a threshold of its own
+  keys. Version N+1 must be signed by a threshold of version N's keys **and**
+  a threshold of its own keys, and versions cannot be skipped.
+- **`release-delegations`** (`release-delegations.v2.schema.json`):
+  `version`, `root_version`, `issued_at`, `expires_at`,
+  `roles.{build-manifest,artifact-catalog}[]` (`key_id`, `public_key`,
+  `not_before`, `not_after`) and `revoked_key_ids[]`. They are signed by a
+  threshold of the root version they name. At least one `build-manifest` key
+  is required.
+- **`release-trust` bundle** (`release-trust.v2.schema.json`):
+  `root_chain[]` (root envelopes newer than the pin; older entries are
+  skipped) and `delegations` (one envelope). It is at most 32 KiB, with at
+  most 16 chain entries and 32 keys per document.
+
+### 10.3 Verification: device versus tooling
+
+`updater/library/src/release_trust.rs`, flutter_tools
+`shorebird_release_trust.dart` and `scripts/release_trust.py` implement one
+algorithm, with shared fixtures:
+
+1. Parse the compiled root pin, which is the canonical payload of one root
+   version.
+2. Follow `root_chain` from the pin, one version at a time, requiring both
+   thresholds at each step.
+3. Require the delegations to name the final root version and to be signed by
+   its threshold.
+4. Require `delegations.version` to be at least the compiled
+   `min_delegations_version` (rollback floor).
+5. Look up the signer: a revoked key gives `signer_revoked`, a key of another
+   role or a root key gives `signer_role`, and an unknown key gives
+   `untrusted_signer`.
+
+**The device never reads a clock.** Expiry and validity windows are checked
+only by tooling at signing time (`trust_expired`, `signer_outside_window`). A
+wrong device clock must not brick startup, and an attacker who controls the
+clock must not gain anything. Consequences:
+
+- **Revocation and rotation** reach a device through what it accepts:
+  1. A new release ships a bundle whose delegations drop or revoke a key.
+     Tooling refuses to sign with a revoked or rotated-out key.
+  2. A new native release raises the compiled `min_delegations_version`. From
+     then on its engine refuses every older delegations document, including
+     one that still trusts a compromised key.
+- **Residual risk.** An engine already installed with a lower floor keeps
+  accepting a manifest signed by a compromised `build-manifest` key under the
+  old delegations, until the user installs a release built with a raised
+  floor. This is the cost of a clock-free device and is the reason to keep
+  delegate keys in a KMS or HSM.
+- **Planned root rotation** works for installed engines: they follow the
+  chain.
+- **Root compromise** needs a new native release with a new pin, because a
+  holder of a threshold of version N's keys can sign any version N+1.
+
+### 10.4 Compiled pin and build inputs
+
+| Input | Where | Rule |
+| --- | --- | --- |
+| `shorebird_release_root` | GN (`common/config.gni`) | base64 canonical `release-root` payload. Required for hardened, refused for legacy. |
+| `shorebird_release_min_delegations_version` | GN | integer ≥ 1, default 1; values other than 1 are hardened-only |
+| `SHOREBIRD_RELEASE_ROOT`, `SHOREBIRD_RELEASE_MIN_DELEGATIONS_VERSION` | `build_rust_updater.py` → `build.rs` | Set only from the GN args. Inherited values are scrubbed. `security_inputs.rs` validates them (canonical, ≤ 8 KiB, contract v2 root) and generates `COMPILED_RELEASE_ROOT` and `COMPILED_MIN_DELEGATIONS_VERSION`. |
+| `shorebird_build_manifest_keys` / `SHOREBIRD_BUILD_MANIFEST_KEYS` | retired | Setting either fails the build with a pointer to the release root. |
+
+`scripts/release_trust.py pin ROOT_ENVELOPE` prints the GN values and the
+`toolchain_security.json` fields. `toolchain_security.json` gains contract
+version 2 with `release_root` and `min_delegations_version`:
+
+- A hardened toolchain file must be v2 and carry a root.
+- A legacy file may stay v1 (read unchanged) or be v2 with `release_root:
+  null` and floor 1.
+- The CLI passes both values to `flutter build` as `SHOREBIRD_RELEASE_ROOT`
+  and `SHOREBIRD_RELEASE_MIN_DELEGATIONS_VERSION`, so flutter_tools verifies
+  the bundle against exactly what the engine compiled.
+
+**Development root.** `scripts/testdata/release-trust/root-1.DEVELOPMENT-ONLY.pem`
+(public key `iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w=`) is a deliberately
+public test key. `build.rs`, `build_rust_updater.py` and flutter_tools refuse
+a root containing it unless development exceptions are on.
+`release_trust.py verify --production` and `validate_hardening_contracts.py
+security-policy --production` refuse it outright.
+
+### 10.5 Build manifest v2 and signing
+
+- **Token.** The final YAML line becomes
+  `shorebird_build_manifest: v2.<b64url manifest>.<b64url signature>.<b64url canonical release-trust JSON>`.
+  The bundle travels with the manifest, so every embedder still delivers it in
+  the single YAML read of §9.1.
+- **Manifest.** `build-manifest.v2.schema.json` is v1 plus
+  `delegations_sha256`, the SHA-256 of the delegations payload the signer was
+  delegated by. A valid manifest cannot be replayed under other delegations
+  (`manifest_policy_mismatch`).
+- **Declaration.** A hardened YAML declares `security_contract_version: 2`.
+  - A hardened updater requires exactly 2.
+  - A legacy updater accepts a declared 1 or 2 and rejects anything else, as
+    before.
+  - A v1 hardened engine is not paired with a v2 flutter_tools: the engine and
+    flutter_tools ship as one toolchain.
+- **Gate.** §9.4 is unchanged, except that step 2 is "verify the release-trust
+  bundle against the compiled root, resolve the signer as a `build-manifest`
+  delegate, verify the signature". New failure codes: `trust_root_missing`
+  (hardened engine without a compiled root: a build bug, kept as a guard),
+  `trust_malformed`, `trust_unverified`, `trust_rollback`,
+  `manifest_signer_revoked` and `manifest_signer_role`. As in P3, a refusal
+  publishes nothing and deletes nothing.
+- **Signer interface (KMS/HSM).** flutter_tools signs with one of two inputs,
+  and setting both is an error:
+  - `SHOREBIRD_BUILD_MANIFEST_SIGNING_KEY`: a PKCS#8 file, signed in process
+    as in P3.
+  - `SHOREBIRD_BUILD_MANIFEST_SIGNER` plus
+    `SHOREBIRD_BUILD_MANIFEST_SIGNER_KEY_ID`: an executable invoked as
+    `<signer> sign --key-id <id> --message <ascii message>`, which prints the
+    base64 64-byte Ed25519 signature on stdout. The message is the domain
+    plus the hex digest, so the adapter never sees YAML. On Windows a
+    `.bat`/`.cmd` signer runs through the shell.
+
+  Either way, flutter_tools verifies the signature against the delegated
+  public key before writing the line, so a misconfigured signer fails the
+  build instead of the app. `release_trust.py sign --key PEM --role ROLE
+  --key-id ID --message TEXT` is the reference adapter. It refuses a message
+  outside its role's domain, which shows the role pinning a real adapter
+  should apply.
+- **Build-time checks.** Before signing, flutter_tools verifies the bundle
+  (`SHOREBIRD_RELEASE_TRUST`, a file path) against the pin and checks:
+  - the root and delegations are not expired;
+  - the signer is a current `build-manifest` delegate, inside its window;
+  - the root is not the development root unless development exceptions are
+    on.
+- **Deterministic.** Signing is still deterministic: a patch build with the
+  same inputs (same bundle) reproduces the release's YAML byte for byte.
+
+### 10.6 Artifact catalog under the release root
+
+The P2 catalog format and domain are unchanged. Under hardened, the catalog
+signer must also be the current `artifact-catalog` delegate of the release
+root:
+
+- flutter_tools `verifyShorebirdArtifactCatalog(releaseTrust:)` checks it.
+  `ShorebirdArtifactOrigins` loads the trust from `SHOREBIRD_RELEASE_TRUST`
+  and `SHOREBIRD_RELEASE_ROOT`.
+- `artifact_catalog.py verify --release-trust --root-pin
+  [--min-delegations-version]` checks it in Python.
+- `publish_artifact_catalog.sh` requires `OPEN_SHOREBIRD_RELEASE_TRUST`
+  (a path or inline JSON) and `OPEN_SHOREBIRD_RELEASE_ROOT` for a hardened
+  catalog.
+
+Legacy catalogs and the P2 trust store are unchanged. The P2 store still
+pins the key, and the release root now additionally authorizes it for this
+role.
+
+### 10.7 Release record and security policy v2
+
+- **`release-record.v2`** (`release-record.v2.schema.json`). Contents: the
+  profile, toolchain ID, development flag, root SHA-256 and version,
+  delegations version and SHA-256, and, per build manifest, its SHA-256,
+  signer, `config_sha256` and modules. It contains no keys and no paths.
+  - flutter_tools writes one file per manifest to
+    `SHOREBIRD_BUILD_MANIFEST_RECORD_DIR`.
+  - `shorebird release --security-profile=hardened` points that at
+    `<project>/build/shorebird/release-record` (cleared first) and merges the
+    files right after the build. It refuses, before anything is uploaded, if
+    the record is missing, malformed or inconsistent (different roots,
+    delegations or toolchains).
+  - It stores the record as `security_record` in `UpdateReleaseMetadata`.
+    The key is omitted when null, so legacy release metadata JSON is
+    byte-identical.
+- **`security-policy.v2`**. v1 plus `release_root`: `root_sha256`,
+  `root_version`, `threshold`, `key_ids`, `min_delegations_version`.
+  - It is required (an object) for hardened and `null` for legacy.
+  - Cross-field rules: the threshold is at most the number of keys, root keys
+    are not patch-signing roots, and the development root needs
+    `development_exceptions` and fails `--production`.
+
+### 10.8 Reject/accept matrix
+
+| Case | Result | Tests |
+| --- | --- | --- |
+| Build output under the compiled root (Rust verifies the Dart-produced v2 token; Python bundle verified in Rust and Dart) | accept | `integrity::tests::flutter_tools_output_verifies`, `accepts_the_build_output`; `release_trust::tests::python_reference_bundle_verifies`; flutter_tools `the Python reference bundle verifies under its pinned root`; `test_release_trust.py` `FixtureConsistencyTest` |
+| Wrong key ID (unknown signer) | reject `manifest_untrusted_signer` | `release_trust::tests::signer_role_confusion_and_unknown_keys_are_refused`; `integrity::tests::manifest_signer_must_be_a_delegated_build_manifest_key`; flutter_tools `role confusion, unknown, revoked and rotated-out keys are refused`, `refuses a signer the delegations do not authorize now`; `test_release_trust.py` `VerifyTest` |
+| Revoked key | reject `manifest_signer_revoked` | `revoked_and_rotated_out_keys_are_refused`; `revoked_rotated_out_and_rolled_back_signers_are_refused`; same Dart and Python tests |
+| Rotated-out key (dropped from newer delegations) | reject `manifest_untrusted_signer` (refused at signing as well) | same |
+| Signer role confusion: catalog key or root key signs a manifest; manifest key signs a catalog | reject `manifest_signer_role` / catalog refused | `signer_role_confusion_...`; `manifest_signer_must_be_...`; flutter_tools `hardened: the signer must be the release root artifact-catalog delegate`; `test_artifact_catalog.py` `test_hardened_signer_must_be_the_release_root_catalog_delegate` |
+| One key in two roles, root key delegated, revoked key delegated | reject `trust_malformed` | `role_separation_is_enforced_on_device`; flutter_tools `malformed bundles, payloads and pins are refused`; `test_release_trust.py` role separation and signing rules |
+| Delegations below the compiled floor (rollback) | reject `trust_rollback` | `revoked_rotated_out_and_rolled_back_signers_are_refused`; Dart and Python rollback cases |
+| Delegations not signed by a root threshold; root-domain signature over delegations; duplicate signer | reject `trust_unverified` / `trust_malformed` | `delegations_must_be_signed_by_the_root`, `threshold_counts_distinct_valid_root_keys`; flutter_tools `delegations must be signed by a threshold of the root` |
+| Root rotation: both thresholds present / one missing / version gap | accept / reject `trust_unverified` | `root_rotation_requires_both_thresholds`, `integrity::tests::a_planned_root_rotation_is_followed`; flutter_tools `a root rotation needs both thresholds and no gap` |
+| Manifest replayed under other delegations | reject `manifest_policy_mismatch` | `manifest_binds_the_delegations_it_was_signed_under`; `test_hardening_contracts.py` `test_v2_manifest_binds_delegations` |
+| Missing root pin under hardened | build fails; runtime guard `trust_root_missing` | `security_inputs::tests::hardened_requires_a_valid_release_root_pin`; `test_build_rust_updater.py` `UpdaterSecurityEnvironmentTest`; GN asserts; CLI `rejects a contract v1 hardened toolchain (no release root)` |
+| Retired `shorebird_build_manifest_keys` set | build fails | `retired_build_manifest_keys_fail_the_build`; `test_build_rust_updater.py` |
+| DEVELOPMENT-ONLY root without development exceptions; in production | build/sign fails; validator and `--production` refuse | `development_root_needs_a_development_build`; flutter_tools `the DEVELOPMENT-ONLY root needs a development build`; `test_release_trust.py` production test; `test_hardening_contracts.py` `test_v2_release_root_rules` |
+| Expired root or delegations; signer outside its window (tooling only) | signing refused | flutter_tools `build-time checks: expiry and key validity windows`; `test_release_trust.py` tooling time checks |
+| External signer returns a wrong signature; both signer inputs set | build fails before writing | flutter_tools `an external signer is checked before its output is used`; CLI `accepts exactly one signer` |
+| Hardened release without a bundle, or the build wrote no record | refused before upload | CLI `refuses a release without a release-trust bundle`, `stops before activation when the build wrote no release record`, `readReleaseRecord` group |
+| Legacy updater given a YAML declaring contract 1 or 2 / 3 | accept / reject | `security::tests::legacy_accepts_known_contract_versions_only` |
+| Legacy build, release metadata, YAML | unchanged byte for byte | CLI `a legacy release omits the security record entirely`; P3 legacy tests unchanged; engine `Updater*` legacy filters |
+
+Evidence class: unit and integration tests (Rust, Dart, Python) and engine
+unit tests built in both profiles. There is no device, server or end-to-end
+lifecycle evidence.
+
+### 10.9 Deferred
+
+- **P4b (server and protocol).** Not implemented here, because no server
+  branch is part of this change:
+  - a constrained online selection signer distinct from the artifact signer;
+  - separately approved, signed artifact statements that the updater
+    verifies;
+  - authenticated installation-key provisioning;
+  - server storage and enforcement of `security_record`: reject a patch
+    upload whose profile, toolchain, root or delegations differ, so that
+    `shorebird patch` follows the release's recorded profile (the
+    `TODO(hardening-p4b)` in `patch_command.dart`).
+
+  The server stores `UpdateReleaseMetadata` as opaque JSON today, so the
+  record is kept but not enforced.
+- **P5.** The `hardened-diversified` profile, a later contract version.
+- **P6.**
+  - A hardened CI toolchain built with `shorebird_release_root`, which writes
+    a v2 `toolchain_security.json`.
+  - Production values for `OPEN_SHOREBIRD_RELEASE_TRUST` and
+    `OPEN_SHOREBIRD_RELEASE_ROOT`.
+  - Lifecycle and device evidence for rotation and revocation.
+
+### 10.10 Operator procedures
+
+All private keys stay offline or in a KMS/HSM. None is committed. Test keys
+are named `*.DEVELOPMENT-ONLY.*`.
+
+1. **Root.** Create `n` Ed25519 keys (`openssl genpkey -algorithm ed25519`),
+   then run `release_trust.py root --key K1 [--public-key P2 ...]
+   --threshold k --expires T --output root.v1.json`.
+2. **Delegates.** Create one build-manifest key per signer (or a KMS key
+   exporting its public PEM) and the catalog key. Then run
+   `release_trust.py delegate --root root.v1.json --root-key K1 ... --version 1
+   --expires T --role build-manifest=BM.pub.pem@NB..NA --role
+   artifact-catalog=CAT.pub.pem --output delegations.v1.json`.
+3. **Bundle and pin.** Run `release_trust.py bundle --root root.v1.json
+   --delegations delegations.v1.json --output release-trust.json`, then
+   `release_trust.py pin root.v1.json`. Put the printed values in the GN args
+   (`shorebird_release_root`, `shorebird_release_min_delegations_version`)
+   and in `toolchain_security.json`.
+4. **Build machines.** Set `SHOREBIRD_RELEASE_TRUST=release-trust.json`, and
+   either `SHOREBIRD_BUILD_MANIFEST_SIGNING_KEY` or
+   `SHOREBIRD_BUILD_MANIFEST_SIGNER` with `SHOREBIRD_BUILD_MANIFEST_SIGNER_KEY_ID`.
+5. **CI.** Before setting the production catalog secret, set the repository
+   variables `OPEN_SHOREBIRD_RELEASE_TRUST` (bundle JSON) and
+   `OPEN_SHOREBIRD_RELEASE_ROOT` (pin).
+6. **Rotate or revoke a delegate.**
+   1. Sign `delegations` version N+1 with `--previous` and `--revoke ID`.
+   2. Re-bundle and ship it with the next release.
+   3. For a compromise, also raise `shorebird_release_min_delegations_version`
+      to N+1 in the next native release (§10.3).
+7. **Rotate the root (planned).**
+   1. Sign `root.v(N+1)` with `--previous root.vN.json --previous-key ...`.
+   2. Add it to the bundle chain.
+   3. Re-sign the delegations under it.
+   4. New engines may pin it.

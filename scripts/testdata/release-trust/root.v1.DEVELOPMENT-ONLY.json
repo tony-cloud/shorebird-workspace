@@ -1,0 +1,9 @@
+{
+  "payload": "eyJjb250cmFjdF92ZXJzaW9uIjoyLCJleHBpcmVzX2F0IjoiMjAzNi0xMS0wOVQwMDowMDowMFoiLCJrZXlzIjpbeyJrZXlfaWQiOiJzaGEyNTY6MzQ3NTBmOThiZDU5ZmNmYzk0NmRhNDVhYWFiZTkzM2JlMTU0YTRiNTA5NGUxYzRhYmY0Mjg2NjUwNWYzYzk3ZSIsInB1YmxpY19rZXkiOiJpb2pqM1hRSjhaWDlVdHN0UExwZGNzcG5DYjhkbEJJYjgzU0lBYlFQYjF3PSJ9XSwic2NoZW1hIjoib3Blbi1zaG9yZWJpcmQucmVsZWFzZS1yb290IiwidGhyZXNob2xkIjoxLCJ2ZXJzaW9uIjoxfQ==",
+  "signatures": [
+    {
+      "key_id": "sha256:34750f98bd59fcfc946da45aaabe933be154a4b5094e1c4abf42866505f3c97e",
+      "signature": "D4NJujR/sYdsGal8U/zV8EQV8rMefW8QDv6sXuC/TGt/+6bp+diiU/U20pb+uUa2hlpiVCLlmqMpooT/arrWDg=="
+    }
+  ]
+}

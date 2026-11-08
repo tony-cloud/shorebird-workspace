@@ -341,6 +341,25 @@ required_files = %w[
   docs/schemas/examples/security-policy.hardened.json
   docs/schemas/examples/build-identity.baseline-ae8a61a.json
   docs/schemas/examples/artifact-catalog.baseline-ae8a61a.json
+  docs/schemas/security-policy.v2.schema.json
+  docs/schemas/build-manifest.v2.schema.json
+  docs/schemas/release-root.v2.schema.json
+  docs/schemas/release-delegations.v2.schema.json
+  docs/schemas/release-trust.v2.schema.json
+  docs/schemas/release-record.v2.schema.json
+  docs/schemas/examples/security-policy.v2.legacy-default.json
+  docs/schemas/examples/security-policy.v2.hardened.json
+  docs/schemas/examples/build-manifest.v2.linux-x64.json
+  docs/schemas/examples/release-record.v2.json
+  scripts/release_trust.py
+  scripts/test_release_trust.py
+  scripts/testdata/release-trust/root.v1.DEVELOPMENT-ONLY.json
+  scripts/testdata/release-trust/delegations.v1.DEVELOPMENT-ONLY.json
+  scripts/testdata/release-trust/release-trust.DEVELOPMENT-ONLY.json
+  updater/library/src/release_trust.rs
+  updater/library/testdata/release-trust.DEVELOPMENT-ONLY.json
+  flutter/packages/flutter_tools/lib/src/shorebird/shorebird_release_trust.dart
+  flutter/packages/flutter_tools/test/general.shard/shorebird/shorebird_release_trust_test.dart
   shorebird/bin/internal/flutter.version
   shorebird/bin/internal/engine.version
   shorebird/packages/artifact_proxy/lib/src/artifact_proxy.dart
@@ -2001,6 +2020,12 @@ assert!(
     source_runs.include?('python3 scripts/test_hardening_contracts.py -v'),
   'Source checks must exercise the binary inventory parser and the hardening contract v1 schemas/validator'
 )
+assert!(
+  source_runs.include?('python3 -m py_compile scripts/release_trust.py scripts/test_release_trust.py') &&
+    source_runs.include?('python3 scripts/test_release_trust.py -v') &&
+    source_runs.include?('python3 scripts/validate_hardening_contracts.py release-trust scripts/testdata/release-trust/release-trust.DEVELOPMENT-ONLY.json'),
+  'Source checks must exercise the contract v2 release root of trust (reference tool, cross-language fixtures, role separation)'
+)
 %w[android_native_app.py android_native_cache_e2e.py owned_host_processes.py android_native/compile_check.py].each do |path|
   assert!(source_runs.include?("python3 -m py_compile testapps/license_flavor_patch_test/tool/#{path}"), "Source checks must syntax-check the Android host fixture #{path}")
 end
@@ -2655,11 +2680,32 @@ assemble_mirror_step = artifact_mirror_job.fetch('steps').find { |step| step['na
 assert!(
   assemble_mirror_step &&
     assemble_mirror_step.dig('env', 'OPEN_SHOREBIRD_ARTIFACT_CATALOG_SIGNING_KEY').to_s == '${{ secrets.OPEN_SHOREBIRD_ARTIFACT_CATALOG_SIGNING_KEY }}' &&
+    assemble_mirror_step.dig('env', 'OPEN_SHOREBIRD_RELEASE_TRUST').to_s == '${{ vars.OPEN_SHOREBIRD_RELEASE_TRUST }}' &&
+    assemble_mirror_step.dig('env', 'OPEN_SHOREBIRD_RELEASE_ROOT').to_s == '${{ vars.OPEN_SHOREBIRD_RELEASE_ROOT }}' &&
     artifact_mirror_runs.include?('./scripts/publish_artifact_catalog.sh') &&
     artifact_mirror_runs.index('./scripts/publish_artifact_catalog.sh') < artifact_mirror_runs.index('tar -C artifacts -czf open-shorebird-artifact-mirror.tar.gz') &&
     artifact_mirror_runs.include?('python3 scripts/artifact_catalog.py verify'),
-  'artifact-mirror must sign the artifact catalog (production key from the CI secret) before packaging and verify it after extraction'
+  'artifact-mirror must sign the artifact catalog (production key from the CI secret, authorized by the release root from repository variables) before packaging and verify it after extraction'
 )
+# Contract v2 (P4): no CI step may compile a bare build-manifest key list or
+# hand a release root or signing key to a build through a hardcoded value.
+assert!(
+  !workflow_text.include?('shorebird_build_manifest_keys') &&
+    !workflow_text.include?('SHOREBIRD_BUILD_MANIFEST_KEYS'),
+  'shorebird_build_manifest_keys is retired by contract v2; pin shorebird_release_root instead'
+)
+%w[SHOREBIRD_RELEASE_ROOT SHOREBIRD_RELEASE_TRUST SHOREBIRD_BUILD_MANIFEST_SIGNING_KEY SHOREBIRD_BUILD_MANIFEST_SIGNER].each do |name|
+  jobs.each do |job_name, job|
+    (job['steps'] || []).each do |step|
+      value = step.dig('env', name) || step.dig('env', "OPEN_#{name}")
+      next if value.nil?
+      assert!(
+        value.to_s.match?(/\A\$\{\{ (secrets|vars)\.[A-Z_]+ \}\}\z/),
+        "#{job_name} step #{step['name']} must take #{name} from a secret or repository variable, not a literal"
+      )
+    end
+  end
+end
 assert!(
   run_text_by_job.fetch('cli-artifacts').include?('test/general.shard/shorebird/shorebird_artifact_catalog_test.dart') &&
     run_text_by_job.fetch('cli-artifacts').include?('test/general.shard/cache_test.dart'),
@@ -2672,14 +2718,15 @@ assert!(
     integrity_step['working-directory'] == 'updater' &&
     integrity_step['if'].to_s.include?("matrix.artifact_os != 'windows'") &&
     integrity_step['run'].to_s.include?('cargo test -p updater --locked -- --test-threads=1') &&
-    %w[integrity module_measurement package_identity security_inputs hardened_admission].all? { |filter| integrity_step['run'].to_s.include?(filter) } &&
+    %w[integrity release_trust module_measurement package_identity security_inputs hardened_admission].all? { |filter| integrity_step['run'].to_s.include?(filter) } &&
     cli_artifact_steps.index(integrity_step) > cli_artifact_steps.index { |step| step['name'] == 'Set up Rust' },
   'cli-artifacts must run the P3 updater integrity tests on the Linux and macOS hosts (real ELF/Mach-O loaders)'
 )
 assert!(
   run_text_by_job.fetch('cli-artifacts').include?('test/general.shard/shorebird/shorebird_build_manifest_test.dart') &&
-    run_text_by_job.fetch('cli-artifacts').include?('test/general.shard/shorebird/shorebird_yaml_test.dart'),
-  'cli-artifacts must run the flutter_tools build-manifest (P3) and shorebird.yaml tests on every host'
+    run_text_by_job.fetch('cli-artifacts').include?('test/general.shard/shorebird/shorebird_yaml_test.dart') &&
+    run_text_by_job.fetch('cli-artifacts').include?('test/general.shard/shorebird/shorebird_release_trust_test.dart'),
+  'cli-artifacts must run the flutter_tools build-manifest (P3), release-trust (P4) and shorebird.yaml tests on every host'
 )
 source_check_runs = job_runs(jobs.fetch('source-checks')).join("\n")
 [

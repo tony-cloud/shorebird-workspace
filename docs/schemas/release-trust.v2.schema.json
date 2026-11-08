@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/tony-cloud/shorebird-workspace/docs/schemas/release-trust.v2.schema.json",
+  "title": "Open Shorebird release-trust bundle, contract v2",
+  "description": "The root chain (oldest first; entries at or below the pinned root version are skipped, later ones must be consecutive and cross-signed) and the current delegations. Hardened builds carry it in the build-manifest line of shorebird.yaml. Each envelope holds base64 canonical payload bytes and Ed25519 signatures over <domain><sha256 hex of the payload>. See docs/HARDENING_CONTRACTS.md section 10.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "contract_version", "root_chain", "delegations"],
+  "properties": {
+    "schema": {"const": "open-shorebird.release-trust"},
+    "contract_version": {"const": 2},
+    "root_chain": {"type": "array", "items": {"$ref": "#/$defs/envelope"}},
+    "delegations": {"$ref": "#/$defs/envelope"}
+  },
+  "$defs": {
+    "envelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["payload", "signatures"],
+      "properties": {
+        "payload": {"type": "string", "pattern": "^[A-Za-z0-9+/]+={0,2}$"},
+        "signatures": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["key_id", "signature"],
+            "properties": {
+              "key_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+              "signature": {"type": "string", "pattern": "^[A-Za-z0-9+/]{86}==$"}
+            }
+          }
+        }
+      }
+    }
+  }
+}

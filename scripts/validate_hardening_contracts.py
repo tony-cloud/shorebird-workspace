@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
-"""Validate hardening contract v1 documents (docs/HARDENING_CONTRACTS.md).
+"""Validate hardening contract documents (docs/HARDENING_CONTRACTS.md).
 
-Kinds: security-policy, build-identity, artifact-catalog. Each document is
+Kinds: security-policy (v1, v2), build-identity, artifact-catalog,
+build-manifest (v1, v2), and the contract v2 release-trust documents
+(release-root, release-delegations, release-trust, release-record). Each
+document is
 checked against its JSON Schema in docs/schemas/ (with a dependency-free
 validator for the keyword subset those schemas use) and then against the
 cross-field rules JSON Schema cannot express: reserved profiles, recomputed
@@ -12,6 +15,13 @@ Usage:
   validate_hardening_contracts.py security-policy FILE [--production]
   validate_hardening_contracts.py build-identity FILE
   validate_hardening_contracts.py artifact-catalog FILE [--build-identity FILE]
+  validate_hardening_contracts.py build-manifest FILE
+  validate_hardening_contracts.py release-root|release-delegations FILE   (signed envelope or payload)
+  validate_hardening_contracts.py release-trust FILE
+  validate_hardening_contracts.py release-record FILE
+
+Release-trust documents are checked for shape here; their signatures are
+verified against a pinned root by scripts/release_trust.py verify.
 """
 
 from __future__ import annotations
@@ -29,13 +39,21 @@ from inventory_release_binaries import REQUIRES_CUSTOM_ROUTE  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_DIR = ROOT / 'docs' / 'schemas'
-CONTRACT_VERSION = 1
-KINDS = {
-    'security-policy': 'security-policy.v1.schema.json',
-    'build-identity': 'build-identity.v1.schema.json',
-    'artifact-catalog': 'artifact-catalog.v1.schema.json',
-    'build-manifest': 'build-manifest.v1.schema.json',
+CONTRACT_VERSION = 2
+# Every schema file per kind, by contract version. A document of a versioned
+# kind is checked against the schema its own contract_version names.
+SCHEMAS = {
+    'security-policy': {1: 'security-policy.v1.schema.json', 2: 'security-policy.v2.schema.json'},
+    'build-identity': {1: 'build-identity.v1.schema.json'},
+    'artifact-catalog': {1: 'artifact-catalog.v1.schema.json'},
+    'build-manifest': {1: 'build-manifest.v1.schema.json', 2: 'build-manifest.v2.schema.json'},
+    'release-root': {2: 'release-root.v2.schema.json'},
+    'release-delegations': {2: 'release-delegations.v2.schema.json'},
+    'release-trust': {2: 'release-trust.v2.schema.json'},
+    'release-record': {2: 'release-record.v2.schema.json'},
 }
+# The newest schema per kind.
+KINDS = {kind: files[max(files)] for kind, files in SCHEMAS.items()}
 RESERVED_PROFILES = {'hardened-diversified'}
 
 
@@ -170,8 +188,19 @@ def schema_errors(value: Any, schema: dict, root: dict, path: str = '$') -> list
     return errors
 
 
-def load_schema(kind: str) -> dict:
-    return json.loads((SCHEMA_DIR / KINDS[kind]).read_text(encoding='utf-8'))
+def load_schema(kind: str, version: int | None = None) -> dict:
+    name = KINDS[kind] if version is None else SCHEMAS[kind][version]
+    return json.loads((SCHEMA_DIR / name).read_text(encoding='utf-8'))
+
+
+def _versioned_schema(document: Any, kind: str) -> tuple[dict | None, list[str]]:
+    versions = sorted(SCHEMAS[kind])
+    version = document.get('contract_version') if isinstance(document, dict) else None
+    if len(versions) == 1:
+        return load_schema(kind, versions[0]), []
+    if type(version) is not int or version not in versions:
+        return None, [f'$.contract_version: must be one of {json.dumps(versions)}']
+    return load_schema(kind, version), []
 
 
 # ---------------------------------------------------------------------------
@@ -179,14 +208,18 @@ def load_schema(kind: str) -> dict:
 
 
 def _common(document: dict, kind: str) -> list[str]:
-    schema = load_schema(kind)
+    schema, errors = _versioned_schema(document, kind)
+    if schema is None:
+        return errors
     errors = schema_errors(document, schema, schema)
     if errors:
         return errors
+    version = document['contract_version']
     if document['security_profile'] in RESERVED_PROFILES:
-        errors.append(f'$.security_profile: {document["security_profile"]} is reserved and not admissible under contract v1')
+        errors.append(f'$.security_profile: {document["security_profile"]} is reserved and not admissible '
+                      f'under contract v{version}')
     if document['diversification_profile_id'] is not None:
-        errors.append('$.diversification_profile_id: must be null under contract v1')
+        errors.append(f'$.diversification_profile_id: must be null under contract v{version}')
     return errors
 
 
@@ -201,6 +234,20 @@ def validate_security_policy(policy: dict, *, production: bool = False) -> list[
         errors.append('$.trust_roots: key_id values must be unique')
     if production and policy['development_exceptions']:
         errors.append('$.development_exceptions: production packaging rejects development-only exceptions')
+    release_root = policy.get('release_root')
+    if release_root is not None:
+        if release_root['threshold'] > len(release_root['key_ids']):
+            errors.append('$.release_root.threshold: cannot exceed the number of root keys')
+        # Contract v2 role separation: a release-root key never signs patches.
+        shared = sorted(set(key_ids) & set(release_root['key_ids']))
+        if shared:
+            errors.append(f'$.release_root.key_ids: {shared} also pinned as patch-signing trust roots; '
+                          'the release root and patch signing use separate keys')
+        if set(release_root['key_ids']) & _release_trust().development_root_key_ids():
+            if production:
+                errors.append('$.release_root: production packaging rejects the DEVELOPMENT-ONLY release root')
+            elif not policy['development_exceptions']:
+                errors.append('$.release_root: the DEVELOPMENT-ONLY release root requires development_exceptions')
     return errors
 
 
@@ -267,8 +314,10 @@ def validate_artifact_catalog(catalog: dict, identity: dict | None = None) -> li
 
 
 def validate_build_manifest(manifest: dict) -> list[str]:
-    """Hardening P3 build manifest (the decoded JSON of the shorebird.yaml line)."""
-    schema = load_schema('build-manifest')
+    """Hardening P3/P4 build manifest (the decoded JSON of the shorebird.yaml line)."""
+    schema, errors = _versioned_schema(manifest, 'build-manifest')
+    if schema is None:
+        return errors
     errors = schema_errors(manifest, schema, schema)
     if errors:
         return errors
@@ -282,11 +331,67 @@ def validate_build_manifest(manifest: dict) -> list[str]:
     return errors
 
 
+def _release_trust():
+    # Lazy: release_trust imports this module for canonical_json/schema_errors.
+    import release_trust
+    return release_trust
+
+
+def validate_release_payload(document: Any, kind: str) -> list[str]:
+    """A release-root or release-delegations document: a signed envelope
+    (whose canonical payload is checked) or the bare payload."""
+    rt = _release_trust()
+    if isinstance(document, dict) and 'payload' in document:
+        try:
+            payload, _ = rt.open_envelope(document, kind)
+            rt.parse_payload(payload, kind)
+        except rt.TrustError as error:
+            return [str(error)]
+        return []
+    try:
+        return rt.validate_payload(document, kind)
+    except rt.TrustError as error:
+        return [str(error)]
+
+
+def validate_release_trust(bundle: Any) -> list[str]:
+    """Shape of a release-trust bundle and of every payload it carries."""
+    schema = load_schema('release-trust')
+    errors = schema_errors(bundle, schema, schema)
+    if errors:
+        return errors
+    for index, item in enumerate(bundle['root_chain']):
+        errors.extend(f'$.root_chain[{index}]: {error}' for error in validate_release_payload(item, 'release-root'))
+    errors.extend(f'$.delegations: {error}'
+                  for error in validate_release_payload(bundle['delegations'], 'release-delegations'))
+    return errors
+
+
+def validate_release_record(record: Any) -> list[str]:
+    """What a hardened release stores as UpdateReleaseMetadata.security_record."""
+    schema = load_schema('release-record')
+    errors = schema_errors(record, schema, schema)
+    if errors:
+        return errors
+    digests = [entry['manifest_sha256'] for entry in record['build_manifests']]
+    if len(set(digests)) != len(digests):
+        errors.append('$.build_manifests: one entry per manifest')
+    for index, entry in enumerate(record['build_manifests']):
+        targets = [(module['platform'], module['arch']) for module in entry['modules']]
+        if len(set(targets)) != len(targets):
+            errors.append(f'$.build_manifests[{index}].modules: one entry per platform/arch')
+    return errors
+
+
 VALIDATORS = {
     'security-policy': validate_security_policy,
     'build-identity': validate_build_identity,
     'artifact-catalog': validate_artifact_catalog,
     'build-manifest': validate_build_manifest,
+    'release-root': lambda document: validate_release_payload(document, 'release-root'),
+    'release-delegations': lambda document: validate_release_payload(document, 'release-delegations'),
+    'release-trust': validate_release_trust,
+    'release-record': validate_release_record,
 }
 
 
@@ -322,10 +427,8 @@ def main(argv: list[str] | None = None) -> int:
             elif args.kind == 'artifact-catalog':
                 identity = _load(args.build_identity) if args.build_identity else None
                 errors = validate_artifact_catalog(document, identity)
-            elif args.kind == 'build-manifest':
-                errors = validate_build_manifest(document)
             else:
-                errors = validate_build_identity(document)
+                errors = VALIDATORS[args.kind](document)
         except (OSError, json.JSONDecodeError, ContractError) as error:
             errors = [str(error)]
         if errors:
@@ -333,7 +436,8 @@ def main(argv: list[str] | None = None) -> int:
             for error in errors:
                 print(f'{path}: {error}', file=sys.stderr)
         else:
-            print(f'{path}: valid {args.kind} (contract v{CONTRACT_VERSION})')
+            version = document.get('contract_version') if isinstance(document, dict) else None
+            print(f'{path}: valid {args.kind} (contract v{version or CONTRACT_VERSION})')
     return 1 if failed else 0
 
 

@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/tony-cloud/shorebird-workspace/docs/schemas/release-delegations.v2.schema.json",
+  "title": "Open Shorebird release delegations, contract v2",
+  "description": "Payload of a release-delegations envelope, signed by a threshold of the root version it names (signature domain open-shorebird.release-delegations-signature.v2:). Lists the Ed25519 keys of each signing role with validity windows, and every revoked key. A key belongs to one role and is never a root key; revocations are permanent across versions. Payload bytes are canonical JSON. See docs/HARDENING_CONTRACTS.md section 10.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "contract_version", "version", "root_version", "issued_at", "expires_at", "roles", "revoked_key_ids"],
+  "properties": {
+    "schema": {"const": "open-shorebird.release-delegations"},
+    "contract_version": {"const": 2},
+    "version": {"type": "integer", "minimum": 1},
+    "root_version": {"type": "integer", "minimum": 1},
+    "issued_at": {"$ref": "#/$defs/time"},
+    "expires_at": {"$ref": "#/$defs/time"},
+    "roles": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["build-manifest", "artifact-catalog"],
+      "properties": {
+        "build-manifest": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/delegated_key"}},
+        "artifact-catalog": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/delegated_key"}}
+      }
+    },
+    "revoked_key_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+    }
+  },
+  "$defs": {
+    "delegated_key": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key_id", "public_key", "not_before", "not_after"],
+      "properties": {
+        "key_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "public_key": {"type": "string", "pattern": "^[A-Za-z0-9+/]{43}=$"},
+        "not_before": {"$ref": "#/$defs/time"},
+        "not_after": {"$ref": "#/$defs/time"}
+      }
+    },
+    "time": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"}
+  }
+}

@@ -301,8 +301,13 @@ def verify_catalog(
     profile: str,
     engine_revision: str | None = None,
     allow_unsigned: bool = False,
+    release_trust: Any = None,
 ) -> tuple[dict, str]:
     """Returns (catalog, trust) where trust is production/development/unsigned.
+
+    Under `hardened`, `release_trust` (a `release_trust.VerifiedTrust`) is
+    required and the signer must be its current `artifact-catalog` delegate
+    (contract v2, section 10), as flutter_tools requires.
 
     Raises CatalogError with a precise reason when the catalog must not be used.
     """
@@ -321,6 +326,9 @@ def verify_catalog(
         raise CatalogError(f'catalog is for engine {catalog["engine_revision"]}, not {engine_revision}')
     if profile == 'hardened' and catalog['security_profile'] != 'hardened':
         raise CatalogError('a hardened toolchain requires a hardened catalog')
+    if profile == 'hardened' and release_trust is None:
+        raise CatalogError('a hardened toolchain verifies the catalog signer under the release root '
+                           '(--release-trust and --root-pin)')
     digest = hashlib.sha256(catalog_bytes).hexdigest()
     if signature_bytes is None:
         if profile == 'hardened':
@@ -342,6 +350,12 @@ def verify_catalog(
         raise CatalogError('catalog signature does not verify')
     if key['usage'] != 'production' and profile == 'hardened':
         raise CatalogError('a hardened toolchain rejects a catalog signed by a development key')
+    if profile == 'hardened':
+        try:
+            release_trust.role_key('artifact-catalog', signature['key_id'])
+        except ValueError as error:  # release_trust.TrustError
+            raise CatalogError(f'the catalog signer is not an artifact-catalog key under the release root: '
+                               f'{error}') from None
     return catalog, key['usage']
 
 
@@ -583,6 +597,9 @@ def main(argv: list[str] | None = None) -> int:
     verify.add_argument('--profile', choices=('legacy', 'hardened'), default='legacy')
     verify.add_argument('--engine-revision')
     verify.add_argument('--allow-unsigned', action='store_true')
+    verify.add_argument('--release-trust', type=Path, help='hardened: the release-trust bundle')
+    verify.add_argument('--root-pin', help='hardened: the compiled release-root pin (base64)')
+    verify.add_argument('--min-delegations-version', type=int, default=1)
 
     entry = sub.add_parser('trust-entry', help='print the trust entry for a PEM key')
     entry.add_argument('key', type=Path)
@@ -612,9 +629,20 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == 'verify':
             trust = strict_loads(args.trust.read_bytes())
             signature = args.signature.read_bytes() if args.signature else None
+            release = None
+            if args.release_trust or args.root_pin:
+                if not (args.release_trust and args.root_pin):
+                    raise CatalogError('--release-trust and --root-pin go together')
+                import release_trust as rt  # noqa: PLC0415 (imports this module)
+                try:
+                    release = rt.verify_bundle(args.release_trust.read_bytes(), base64.b64decode(args.root_pin),
+                                               args.min_delegations_version)
+                except rt.TrustError as error:
+                    raise CatalogError(f'release trust: {error}') from None
             catalog, usage = verify_catalog(
                 args.catalog.read_bytes(), signature, trust, profile=args.profile,
-                engine_revision=args.engine_revision, allow_unsigned=args.allow_unsigned)
+                engine_revision=args.engine_revision, allow_unsigned=args.allow_unsigned,
+                release_trust=release)
             if usage != 'production':
                 print(f'warning: {args.catalog} is {usage}-signed; never use it for a production release',
                       file=sys.stderr)
