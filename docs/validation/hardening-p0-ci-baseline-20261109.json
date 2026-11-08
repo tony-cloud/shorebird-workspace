@@ -1,0 +1,1100 @@
+{
+ "actions_artifact_zip_sizes": [
+  {
+   "name": "android-engine-arm",
+   "size_in_bytes": 339901230
+  },
+  {
+   "name": "android-engine-arm64",
+   "size_in_bytes": 354965835
+  },
+  {
+   "name": "android-engine-x64",
+   "size_in_bytes": 356871287
+  },
+  {
+   "name": "android-host-tools-darwin-x64-arm",
+   "size_in_bytes": 4501778
+  },
+  {
+   "name": "android-host-tools-darwin-x64-arm64",
+   "size_in_bytes": 4667085
+  },
+  {
+   "name": "android-host-tools-darwin-x64-x64",
+   "size_in_bytes": 4605422
+  },
+  {
+   "name": "android-host-tools-windows-x64-arm",
+   "size_in_bytes": 1736244
+  },
+  {
+   "name": "android-host-tools-windows-x64-arm64",
+   "size_in_bytes": 3538986
+  },
+  {
+   "name": "android-host-tools-windows-x64-x64",
+   "size_in_bytes": 3474652
+  },
+  {
+   "name": "cli-linux-arm64",
+   "size_in_bytes": 11799509
+  },
+  {
+   "name": "cli-linux-x64",
+   "size_in_bytes": 12218439
+  },
+  {
+   "name": "cli-macos-arm64",
+   "size_in_bytes": 11675636
+  },
+  {
+   "name": "cli-macos-x64",
+   "size_in_bytes": 12381597
+  },
+  {
+   "name": "cli-windows-arm64",
+   "size_in_bytes": 11858429
+  },
+  {
+   "name": "cli-windows-x64",
+   "size_in_bytes": 12230305
+  },
+  {
+   "name": "custom-dart-sdk-linux-arm64",
+   "size_in_bytes": 585178263
+  },
+  {
+   "name": "custom-dart-sdk-linux-x64",
+   "size_in_bytes": 593326860
+  },
+  {
+   "name": "custom-dart-sdk-macos-arm64",
+   "size_in_bytes": 475162302
+  },
+  {
+   "name": "custom-dart-sdk-macos-x64",
+   "size_in_bytes": 482355631
+  },
+  {
+   "name": "custom-dart-sdk-windows-arm64",
+   "size_in_bytes": 459852347
+  },
+  {
+   "name": "custom-dart-sdk-windows-x64",
+   "size_in_bytes": 464199667
+  },
+  {
+   "name": "ios-interpreter-engine",
+   "size_in_bytes": 48010317
+  },
+  {
+   "name": "linux-elf-memory-loader-tests",
+   "size_in_bytes": 513
+  },
+  {
+   "name": "linux-elf-memory-loader-tests-arm64",
+   "size_in_bytes": 517
+  },
+  {
+   "name": "linux-engine-arm64",
+   "size_in_bytes": 34720128
+  },
+  {
+   "name": "linux-engine-x64",
+   "size_in_bytes": 40748281
+  },
+  {
+   "name": "linux-native-cache-e2e",
+   "size_in_bytes": 2925
+  },
+  {
+   "name": "linux-native-cache-e2e",
+   "size_in_bytes": 2926
+  },
+  {
+   "name": "linux-native-cache-e2e-arm64",
+   "size_in_bytes": 2926
+  },
+  {
+   "name": "linux-native-cache-engine-tests",
+   "size_in_bytes": 106161
+  },
+  {
+   "name": "linux-native-cache-engine-tests",
+   "size_in_bytes": 106177
+  },
+  {
+   "name": "linux-native-cache-engine-tests-arm64",
+   "size_in_bytes": 116566
+  },
+  {
+   "name": "linux-native-provider-tests",
+   "size_in_bytes": 134
+  },
+  {
+   "name": "linux-native-provider-tests",
+   "size_in_bytes": 134
+  },
+  {
+   "name": "linux-native-provider-tests-arm64",
+   "size_in_bytes": 134
+  },
+  {
+   "name": "linux-native-variant-e2e",
+   "size_in_bytes": 19084
+  },
+  {
+   "name": "linux-native-variant-e2e",
+   "size_in_bytes": 9643
+  },
+  {
+   "name": "linux-native-variant-e2e-arm64",
+   "size_in_bytes": 19319
+  },
+  {
+   "name": "macos-build-diagnostics-arm64",
+   "size_in_bytes": 5253
+  },
+  {
+   "name": "macos-build-diagnostics-x64",
+   "size_in_bytes": 11796
+  },
+  {
+   "name": "macos-engine-arm64",
+   "size_in_bytes": 39076433
+  },
+  {
+   "name": "macos-engine-universal",
+   "size_in_bytes": 37174230
+  },
+  {
+   "name": "macos-engine-x64",
+   "size_in_bytes": 40806700
+  },
+  {
+   "name": "macos-interpreter-engine-tests-arm64-cocoa",
+   "size_in_bytes": 1906
+  },
+  {
+   "name": "macos-interpreter-engine-tests-arm64-embedder",
+   "size_in_bytes": 1891
+  },
+  {
+   "name": "macos-interpreter-engine-tests-arm64-runtime",
+   "size_in_bytes": 1449
+  },
+  {
+   "name": "macos-interpreter-engine-tests-arm64-shorebird",
+   "size_in_bytes": 12140
+  },
+  {
+   "name": "macos-interpreter-engine-tests-x64-cocoa",
+   "size_in_bytes": 1914
+  },
+  {
+   "name": "macos-interpreter-engine-tests-x64-embedder",
+   "size_in_bytes": 1893
+  },
+  {
+   "name": "macos-interpreter-engine-tests-x64-runtime",
+   "size_in_bytes": 1452
+  },
+  {
+   "name": "macos-interpreter-engine-tests-x64-shorebird",
+   "size_in_bytes": 12280
+  },
+  {
+   "name": "macos-test-build-diagnostics-arm64-cocoa",
+   "size_in_bytes": 93735
+  },
+  {
+   "name": "macos-test-build-diagnostics-arm64-embedder",
+   "size_in_bytes": 90779
+  },
+  {
+   "name": "macos-test-build-diagnostics-arm64-runtime",
+   "size_in_bytes": 90351
+  },
+  {
+   "name": "macos-test-build-diagnostics-arm64-shorebird",
+   "size_in_bytes": 81769
+  },
+  {
+   "name": "macos-test-build-diagnostics-x64-cocoa",
+   "size_in_bytes": 99353
+  },
+  {
+   "name": "macos-test-build-diagnostics-x64-embedder",
+   "size_in_bytes": 96888
+  },
+  {
+   "name": "macos-test-build-diagnostics-x64-runtime",
+   "size_in_bytes": 94755
+  },
+  {
+   "name": "macos-test-build-diagnostics-x64-shorebird",
+   "size_in_bytes": 88479
+  },
+  {
+   "name": "macos-x64-ffi-proof-build-inputs",
+   "size_in_bytes": 270323469
+  },
+  {
+   "name": "mirror-metadata",
+   "size_in_bytes": 1110
+  },
+  {
+   "name": "mirror-patch-darwin-arm64.zip",
+   "size_in_bytes": 695782
+  },
+  {
+   "name": "mirror-patch-darwin-x64.zip",
+   "size_in_bytes": 710898
+  },
+  {
+   "name": "mirror-patch-linux-arm64.zip",
+   "size_in_bytes": 774106
+  },
+  {
+   "name": "mirror-patch-linux-x64.zip",
+   "size_in_bytes": 750958
+  },
+  {
+   "name": "mirror-patch-windows-arm64.zip",
+   "size_in_bytes": 491478
+  },
+  {
+   "name": "mirror-patch-windows-x64.zip",
+   "size_in_bytes": 535346
+  },
+  {
+   "name": "native-archive-tests-linux-arm64",
+   "size_in_bytes": 7755
+  },
+  {
+   "name": "native-archive-tests-linux-x64",
+   "size_in_bytes": 8391
+  },
+  {
+   "name": "native-archive-tests-macos-arm64",
+   "size_in_bytes": 21111
+  },
+  {
+   "name": "native-archive-tests-macos-x64",
+   "size_in_bytes": 9794
+  },
+  {
+   "name": "native-archive-tests-windows-arm64",
+   "size_in_bytes": 7373
+  },
+  {
+   "name": "native-archive-tests-windows-x64",
+   "size_in_bytes": 7486
+  },
+  {
+   "name": "native-mapping-build-tests-linux-arm64",
+   "size_in_bytes": 5054
+  },
+  {
+   "name": "native-mapping-build-tests-linux-x64",
+   "size_in_bytes": 4762
+  },
+  {
+   "name": "native-mapping-build-tests-macos-arm64",
+   "size_in_bytes": 5941
+  },
+  {
+   "name": "native-mapping-build-tests-macos-x64",
+   "size_in_bytes": 4988
+  },
+  {
+   "name": "native-mapping-build-tests-windows-arm64",
+   "size_in_bytes": 4994
+  },
+  {
+   "name": "native-mapping-build-tests-windows-x64",
+   "size_in_bytes": 4936
+  },
+  {
+   "name": "open-shorebird-artifact-mirror",
+   "size_in_bytes": 2145173003
+  },
+  {
+   "name": "open-shorebird-release-manifest",
+   "size_in_bytes": 4035
+  },
+  {
+   "name": "shorebird-server-darwin-amd64",
+   "size_in_bytes": 7072125
+  },
+  {
+   "name": "shorebird-server-darwin-arm64",
+   "size_in_bytes": 6542656
+  },
+  {
+   "name": "shorebird-server-linux-amd64",
+   "size_in_bytes": 6969124
+  },
+  {
+   "name": "shorebird-server-linux-arm64",
+   "size_in_bytes": 6283515
+  },
+  {
+   "name": "shorebird-server-windows-amd64",
+   "size_in_bytes": 7096628
+  },
+  {
+   "name": "vm-offsets-regenerated",
+   "size_in_bytes": 78453
+  },
+  {
+   "name": "windows-elf-memory-loader-tests",
+   "size_in_bytes": 685
+  },
+  {
+   "name": "windows-elf-memory-loader-tests-arm64",
+   "size_in_bytes": 689
+  },
+  {
+   "name": "windows-engine-arm64",
+   "size_in_bytes": 141488347
+  },
+  {
+   "name": "windows-engine-x64",
+   "size_in_bytes": 150108174
+  },
+  {
+   "name": "windows-native-cache-e2e",
+   "size_in_bytes": 2894
+  },
+  {
+   "name": "windows-native-cache-e2e-arm64",
+   "size_in_bytes": 2893
+  },
+  {
+   "name": "windows-native-cache-engine-tests",
+   "size_in_bytes": 123173
+  },
+  {
+   "name": "windows-native-cache-engine-tests-arm64",
+   "size_in_bytes": 134716
+  },
+  {
+   "name": "windows-native-provider-tests",
+   "size_in_bytes": 323
+  },
+  {
+   "name": "windows-native-provider-tests-arm64",
+   "size_in_bytes": 323
+  },
+  {
+   "name": "windows-native-variant-e2e",
+   "size_in_bytes": 19092
+  },
+  {
+   "name": "windows-native-variant-e2e-arm64",
+   "size_in_bytes": 19088
+  }
+ ],
+ "evidence_type": "CI",
+ "jobs": [
+  {
+   "conclusion": "skipped",
+   "minutes": null,
+   "name": "Android runtime patch smoke"
+  },
+  {
+   "completed_at": "2026-11-08T15:48:49Z",
+   "conclusion": "success",
+   "minutes": 8.0,
+   "name": "Assemble publishable artifact mirror",
+   "started_at": "2026-11-08T15:40:49Z"
+  },
+  {
+   "completed_at": "2026-11-08T14:27:23Z",
+   "conclusion": "success",
+   "minutes": 1.4,
+   "name": "Assemble universal macOS engine",
+   "started_at": "2026-11-08T14:25:56Z"
+  },
+  {
+   "completed_at": "2026-11-08T09:48:52Z",
+   "conclusion": "success",
+   "minutes": 42.8,
+   "name": "Build Android engine artifacts (arm, armv7-linux-androideabi, armeabi_v7a_release.jar, armeabi_v7...",
+   "started_at": "2026-11-08T09:06:02Z"
+  },
+  {
+   "completed_at": "2026-11-08T09:59:43Z",
+   "conclusion": "success",
+   "minutes": 53.7,
+   "name": "Build Android engine artifacts (arm64, aarch64-linux-android, arm64_v8a_release.jar, arm64_v8a_re...",
+   "started_at": "2026-11-08T09:06:02Z"
+  },
+  {
+   "completed_at": "2026-11-08T09:49:01Z",
+   "conclusion": "success",
+   "minutes": 34.3,
+   "name": "Build Android engine artifacts (x64, x86_64-linux-android, x86_64_release.jar, x86_64_release)",
+   "started_at": "2026-11-08T09:14:41Z"
+  },
+  {
+   "completed_at": "2026-11-08T11:58:18Z",
+   "conclusion": "success",
+   "minutes": 24.4,
+   "name": "Build Android host snapshotters (arm, darwin-x64)",
+   "started_at": "2026-11-08T11:33:53Z"
+  },
+  {
+   "completed_at": "2026-11-08T09:27:27Z",
+   "conclusion": "success",
+   "minutes": 18.4,
+   "name": "Build Android host snapshotters (arm, windows-x64)",
+   "started_at": "2026-11-08T09:09:00Z"
+  },
+  {
+   "completed_at": "2026-11-08T13:52:09Z",
+   "conclusion": "success",
+   "minutes": 24.6,
+   "name": "Build Android host snapshotters (arm64, darwin-x64)",
+   "started_at": "2026-11-08T13:27:36Z"
+  },
+  {
+   "completed_at": "2026-11-08T09:33:35Z",
+   "conclusion": "success",
+   "minutes": 23.1,
+   "name": "Build Android host snapshotters (arm64, windows-x64)",
+   "started_at": "2026-11-08T09:10:30Z"
+  },
+  {
+   "completed_at": "2026-11-08T13:27:33Z",
+   "conclusion": "success",
+   "minutes": 22.8,
+   "name": "Build Android host snapshotters (x64, darwin-x64)",
+   "started_at": "2026-11-08T13:04:44Z"
+  },
+  {
+   "completed_at": "2026-11-08T09:19:59Z",
+   "conclusion": "success",
+   "minutes": 13.9,
+   "name": "Build Android host snapshotters (x64, windows-x64)",
+   "started_at": "2026-11-08T09:06:02Z"
+  },
+  {
+   "completed_at": "2026-11-08T11:33:51Z",
+   "conclusion": "success",
+   "minutes": 5.5,
+   "name": "Build CLI artifacts (macos-15, macos, arm64, patch-darwin-arm64.zip, patch, aarch64-apple-darwin)",
+   "started_at": "2026-11-08T11:28:22Z"
+  },
+  {
+   "completed_at": "2026-11-08T11:51:07Z",
+   "conclusion": "success",
+   "minutes": 11.1,
+   "name": "Build CLI artifacts (macos-15-intel, macos, x64, patch-darwin-x64.zip, patch, x86_64-apple-darwin)",
+   "started_at": "2026-11-08T11:40:03Z"
+  },
+  {
+   "completed_at": "2026-11-08T09:10:28Z",
+   "conclusion": "success",
+   "minutes": 4.4,
+   "name": "Build CLI artifacts (ubuntu-24.04-arm, linux, arm64, patch-linux-arm64.zip, patch, aarch64-unknow...",
+   "started_at": "2026-11-08T09:06:04Z"
+  },
+  {
+   "completed_at": "2026-11-08T09:15:01Z",
+   "conclusion": "success",
+   "minutes": 5.2,
+   "name": "Build CLI artifacts (ubuntu-latest, linux, x64, patch-linux-x64.zip, patch, x86_64-unknown-linux-...",
+   "started_at": "2026-11-08T09:09:47Z"
+  },
+  {
+   "completed_at": "2026-11-08T09:14:40Z",
+   "conclusion": "success",
+   "minutes": 8.6,
+   "name": "Build CLI artifacts (windows-11-arm, windows, arm64, .exe, patch-windows-arm64.zip, patch.exe, aa...",
+   "started_at": "2026-11-08T09:06:02Z"
+  },
+  {
+   "completed_at": "2026-11-08T09:20:27Z",
+   "conclusion": "success",
+   "minutes": 5.4,
+   "name": "Build CLI artifacts (windows-latest, windows, x64, .exe, patch-windows-x64.zip, patch.exe, x86_64...",
+   "started_at": "2026-11-08T09:15:03Z"
+  },
+  {
+   "completed_at": "2026-11-08T15:40:47Z",
+   "conclusion": "success",
+   "minutes": 62.8,
+   "name": "Build Linux engine artifacts",
+   "started_at": "2026-11-08T14:38:01Z"
+  },
+  {
+   "completed_at": "2026-11-08T10:54:23Z",
+   "conclusion": "success",
+   "minutes": 108.3,
+   "name": "Build Linux engine artifacts (native ARM64)",
+   "started_at": "2026-11-08T09:06:04Z"
+  },
+  {
+   "completed_at": "2026-11-08T12:13:33Z",
+   "conclusion": "success",
+   "minutes": 187.5,
+   "name": "Build Windows engine artifacts",
+   "started_at": "2026-11-08T09:06:02Z"
+  },
+  {
+   "completed_at": "2026-11-08T13:00:36Z",
+   "conclusion": "success",
+   "minutes": 229.8,
+   "name": "Build Windows engine artifacts (native ARM64)",
+   "started_at": "2026-11-08T09:10:51Z"
+  },
+  {
+   "completed_at": "2026-11-08T10:49:09Z",
+   "conclusion": "success",
+   "minutes": 100.5,
+   "name": "Build custom Dart SDK",
+   "started_at": "2026-11-08T09:08:40Z"
+  },
+  {
+   "completed_at": "2026-11-08T10:26:16Z",
+   "conclusion": "success",
+   "minutes": 80.2,
+   "name": "Build custom Dart SDK (Linux native ARM64)",
+   "started_at": "2026-11-08T09:06:04Z"
+  },
+  {
+   "completed_at": "2026-11-08T12:29:03Z",
+   "conclusion": "success",
+   "minutes": 199.8,
+   "name": "Build custom Dart SDK (Windows arm64)",
+   "started_at": "2026-11-08T09:09:12Z"
+  },
+  {
+   "completed_at": "2026-11-08T11:31:51Z",
+   "conclusion": "success",
+   "minutes": 140.1,
+   "name": "Build custom Dart SDK (Windows x64)",
+   "started_at": "2026-11-08T09:11:45Z"
+  },
+  {
+   "completed_at": "2026-11-08T13:04:42Z",
+   "conclusion": "success",
+   "minutes": 66.3,
+   "name": "Build custom Dart SDK (macOS arm64)",
+   "started_at": "2026-11-08T11:58:21Z"
+  },
+  {
+   "completed_at": "2026-11-08T12:56:23Z",
+   "conclusion": "success",
+   "minutes": 230.3,
+   "name": "Build custom Dart SDK (macOS x64)",
+   "started_at": "2026-11-08T09:06:03Z"
+  },
+  {
+   "completed_at": "2026-11-08T13:33:42Z",
+   "conclusion": "success",
+   "minutes": 37.3,
+   "name": "Build iOS engine artifacts",
+   "started_at": "2026-11-08T12:56:25Z"
+  },
+  {
+   "completed_at": "2026-11-08T11:23:52Z",
+   "conclusion": "success",
+   "minutes": 77.5,
+   "name": "Build macOS engine artifacts (arm64, macos-15, aarch64-apple-darwin)",
+   "started_at": "2026-11-08T10:06:22Z"
+  },
+  {
+   "completed_at": "2026-11-08T14:25:53Z",
+   "conclusion": "success",
+   "minutes": 182.0,
+   "name": "Build macOS engine artifacts (x64, macos-15-intel, x86_64-apple-darwin)",
+   "started_at": "2026-11-08T11:23:55Z"
+  },
+  {
+   "completed_at": "2026-11-08T09:08:38Z",
+   "conclusion": "success",
+   "minutes": 2.6,
+   "name": "Build server artifacts (darwin, amd64)",
+   "started_at": "2026-11-08T09:06:02Z"
+  },
+  {
+   "completed_at": "2026-11-08T09:08:59Z",
+   "conclusion": "success",
+   "minutes": 3.0,
+   "name": "Build server artifacts (darwin, arm64)",
+   "started_at": "2026-11-08T09:06:02Z"
+  },
+  {
+   "completed_at": "2026-11-08T09:10:49Z",
+   "conclusion": "success",
+   "minutes": 4.8,
+   "name": "Build server artifacts (linux, amd64)",
+   "started_at": "2026-11-08T09:06:02Z"
+  },
+  {
+   "completed_at": "2026-11-08T09:09:10Z",
+   "conclusion": "success",
+   "minutes": 3.1,
+   "name": "Build server artifacts (linux, arm64)",
+   "started_at": "2026-11-08T09:06:02Z"
+  },
+  {
+   "completed_at": "2026-11-08T09:09:46Z",
+   "conclusion": "success",
+   "minutes": 3.8,
+   "name": "Build server artifacts (windows, amd64, .exe)",
+   "started_at": "2026-11-08T09:06:01Z"
+  },
+  {
+   "conclusion": "skipped",
+   "minutes": null,
+   "name": "Build web SDK artifact"
+  },
+  {
+   "conclusion": "skipped",
+   "minutes": null,
+   "name": "Linux runtime patch smoke"
+  },
+  {
+   "conclusion": "skipped",
+   "minutes": null,
+   "name": "Publish tested Dart SDK release"
+  },
+  {
+   "completed_at": "2026-11-08T09:05:59Z",
+   "conclusion": "success",
+   "minutes": 10.7,
+   "name": "Source checks",
+   "started_at": "2026-11-08T08:55:17Z"
+  },
+  {
+   "completed_at": "2026-11-08T13:49:04Z",
+   "conclusion": "success",
+   "minutes": 52.2,
+   "name": "Test macOS engine (arm64, cocoa)",
+   "started_at": "2026-11-08T12:56:54Z"
+  },
+  {
+   "completed_at": "2026-11-08T10:29:36Z",
+   "conclusion": "success",
+   "minutes": 58.1,
+   "name": "Test macOS engine (arm64, embedder)",
+   "started_at": "2026-11-08T09:31:30Z"
+  },
+  {
+   "completed_at": "2026-11-08T10:06:18Z",
+   "conclusion": "success",
+   "minutes": 60.2,
+   "name": "Test macOS engine (arm64, runtime)",
+   "started_at": "2026-11-08T09:06:03Z"
+  },
+  {
+   "completed_at": "2026-11-08T09:31:26Z",
+   "conclusion": "success",
+   "minutes": 25.4,
+   "name": "Test macOS engine (arm64, shorebird)",
+   "started_at": "2026-11-08T09:06:01Z"
+  },
+  {
+   "completed_at": "2026-11-08T12:56:52Z",
+   "conclusion": "success",
+   "minutes": 147.2,
+   "name": "Test macOS engine (x64, cocoa)",
+   "started_at": "2026-11-08T10:29:39Z"
+  },
+  {
+   "completed_at": "2026-11-08T11:40:00Z",
+   "conclusion": "success",
+   "minutes": 153.9,
+   "name": "Test macOS engine (x64, embedder)",
+   "started_at": "2026-11-08T09:06:04Z"
+  },
+  {
+   "completed_at": "2026-11-08T14:01:23Z",
+   "conclusion": "success",
+   "minutes": 130.2,
+   "name": "Test macOS engine (x64, runtime)",
+   "started_at": "2026-11-08T11:51:12Z"
+  },
+  {
+   "completed_at": "2026-11-08T11:28:20Z",
+   "conclusion": "success",
+   "minutes": 142.3,
+   "name": "Test macOS engine (x64, shorebird)",
+   "started_at": "2026-11-08T09:06:04Z"
+  },
+  {
+   "completed_at": "2026-11-08T09:11:43Z",
+   "conclusion": "success",
+   "minutes": 5.7,
+   "name": "Verify VM runtime offsets",
+   "started_at": "2026-11-08T09:06:02Z"
+  },
+  {
+   "completed_at": "2026-11-08T14:01:34Z",
+   "conclusion": "success",
+   "minutes": 0.1,
+   "name": "Verify macOS interpreter test inventory (arm64)",
+   "started_at": "2026-11-08T14:01:26Z"
+  },
+  {
+   "completed_at": "2026-11-08T14:01:31Z",
+   "conclusion": "success",
+   "minutes": 0.1,
+   "name": "Verify macOS interpreter test inventory (x64)",
+   "started_at": "2026-11-08T14:01:25Z"
+  }
+ ],
+ "release_manifest_artifacts": [
+  {
+   "file": "android-engine-arm.tar.gz",
+   "group": "android-engine-arm",
+   "sha256": "4a900bafb0e291d3eb02bb3fe8eae33cd527739c907390d1e36db03ff54df313",
+   "size": 341306498
+  },
+  {
+   "file": "android-engine-arm64.tar.gz",
+   "group": "android-engine-arm64",
+   "sha256": "418c2259c55bd3afc605edf48d36e3aeacc61ab64d4c485e181043dc5feba874",
+   "size": 356395655
+  },
+  {
+   "file": "android-engine-x64.tar.gz",
+   "group": "android-engine-x64",
+   "sha256": "2b53915d4c88edab544652a031bd642eec2868458232b37d0901285697553899",
+   "size": 358344017
+  },
+  {
+   "file": "android-host-tools-darwin-x64-arm.tar.gz",
+   "group": "android-host-tools-darwin-x64-arm",
+   "sha256": "077bb79a79df68bab3aa046c713f47ee8b2464215a737f23dd82a3f06ca79200",
+   "size": 4499927
+  },
+  {
+   "file": "android-host-tools-darwin-x64-arm64.tar.gz",
+   "group": "android-host-tools-darwin-x64-arm64",
+   "sha256": "7b47825152c4ebd31e35aaf88a6b5c298277b08b637391e1fa6ae98f3370d22e",
+   "size": 4665202
+  },
+  {
+   "file": "android-host-tools-darwin-x64-x64.tar.gz",
+   "group": "android-host-tools-darwin-x64-x64",
+   "sha256": "c055a9626f024083c1753708ad601d846a116132780c56a74e0fa7b688aa0aab",
+   "size": 4603553
+  },
+  {
+   "file": "android-host-tools-windows-x64-arm.tar.gz",
+   "group": "android-host-tools-windows-x64-arm",
+   "sha256": "fd94bc5ff15329291ae05991fb2e98fbdeef5cc33faa9939a080055179d3bc46",
+   "size": 1735232
+  },
+  {
+   "file": "android-host-tools-windows-x64-arm64.tar.gz",
+   "group": "android-host-tools-windows-x64-arm64",
+   "sha256": "1c651180ca9964364002de6cd224fc8a454b88dc8aca062b35d9239ac20d5ffd",
+   "size": 3537416
+  },
+  {
+   "file": "android-host-tools-windows-x64-x64.tar.gz",
+   "group": "android-host-tools-windows-x64-x64",
+   "sha256": "b341901b9e2a2fdef17959282ab083867d983bcb92982afddd84aab4dedea3b5",
+   "size": 3473111
+  },
+  {
+   "file": "open-shorebird-cli-linux-arm64.tar.gz",
+   "group": "cli-linux-arm64",
+   "sha256": "7d328ca45485e34c3235bcac6361af28d185a606fe2a18cb93a06f943916a878",
+   "size": 11859694
+  },
+  {
+   "file": "open-shorebird-cli-linux-x64.tar.gz",
+   "group": "cli-linux-x64",
+   "sha256": "d5f3d7bfaecbfa91d9f0dc7d71c1a6ef8e2b8e5ca666f4c491972418a19e9c02",
+   "size": 12242937
+  },
+  {
+   "file": "open-shorebird-cli-macos-arm64.tar.gz",
+   "group": "cli-macos-arm64",
+   "sha256": "7e78a70f8c8a1f0da8cd86246176444686b9a4c25dd31abca06fe5cf38c299bb",
+   "size": 11730606
+  },
+  {
+   "file": "open-shorebird-cli-macos-x64.tar.gz",
+   "group": "cli-macos-x64",
+   "sha256": "5e5cdebedb5bc75875915b1bc1c81b7cb426c2c4817bc73e8f714c4582c835c5",
+   "size": 12408081
+  },
+  {
+   "file": "open-shorebird-cli-windows-arm64.tar.gz",
+   "group": "cli-windows-arm64",
+   "sha256": "1f6be9b0708507fee90ffe5d87ded69eb92c0f656fa2631969afd7d40be42f7b",
+   "size": 11881901
+  },
+  {
+   "file": "open-shorebird-cli-windows-x64.tar.gz",
+   "group": "cli-windows-x64",
+   "sha256": "8189a4a6c9829fa183ee98fa62f2ad78ca24cdd47474691841c0b5d1eceacefa",
+   "size": 12249860
+  },
+  {
+   "file": "custom-dart-sdk-linux-arm64.tar.gz",
+   "group": "custom-dart-sdk-linux-arm64",
+   "sha256": "a688535a1e455b0948fc2a45195bd844e57859cf0a7bb1e63446fb697bbb4344",
+   "size": 323165890
+  },
+  {
+   "file": "dart-sdk-linux-arm64.zip",
+   "group": "custom-dart-sdk-linux-arm64",
+   "sha256": "73bf0ee7c11d1af23b8d5efea5f8d387c723b0ec3c6bc577c80bf0c23ad16cd8",
+   "size": 264518940
+  },
+  {
+   "file": "custom-dart-sdk-linux-x64.tar.gz",
+   "group": "custom-dart-sdk-linux-x64",
+   "sha256": "c9977a079d428ad92ef3c6acc8206b62ac01baadb5919d315d4ab5a3d7b206a7",
+   "size": 326972703
+  },
+  {
+   "file": "dart-sdk-linux-x64.zip",
+   "group": "custom-dart-sdk-linux-x64",
+   "sha256": "2736505dc1e2b074fb3c4e7fe016095850acc714b8831329993d08f046a4f66d",
+   "size": 268426931
+  },
+  {
+   "file": "custom-dart-sdk-macos-arm64.tar.gz",
+   "group": "custom-dart-sdk-macos-arm64",
+   "sha256": "20698fac6287678bfecc8f32a4b04afe32c27c4a2da10089798d6fb727b31e34",
+   "size": 240823108
+  },
+  {
+   "file": "dart-sdk-darwin-arm64.zip",
+   "group": "custom-dart-sdk-macos-arm64",
+   "sha256": "2f7ed9f5eb5c8de72566fc0a62b365f5d36083210d07bdcd0d51a4f496a957ae",
+   "size": 236830610
+  },
+  {
+   "file": "custom-dart-sdk-macos-x64.tar.gz",
+   "group": "custom-dart-sdk-macos-x64",
+   "sha256": "3a9432c4ff6f84b03380300d8a1f5eb45724c24ef182644c6bfd3bbe8d07fc1b",
+   "size": 244411782
+  },
+  {
+   "file": "dart-sdk-darwin-x64.zip",
+   "group": "custom-dart-sdk-macos-x64",
+   "sha256": "a08ee9eb96a1fd189cc6b12ce19bec424704dab4e72ffa5854ecef5596f5e2ea",
+   "size": 239910415
+  },
+  {
+   "file": "custom-dart-sdk-windows-arm64.tar.gz",
+   "group": "custom-dart-sdk-windows-arm64",
+   "sha256": "369e62401f82b62e92f96d7dfe1982a1ec2f4acd016e68308aa99051f770f468",
+   "size": 233109230
+  },
+  {
+   "file": "dart-sdk-windows-arm64.zip",
+   "group": "custom-dart-sdk-windows-arm64",
+   "sha256": "459658293c8f2c1544b74f9c5d9557d316c152a5f21cb27d2f6738d95de74aa3",
+   "size": 228270163
+  },
+  {
+   "file": "custom-dart-sdk-windows-x64.tar.gz",
+   "group": "custom-dart-sdk-windows-x64",
+   "sha256": "f9937f485d58d810a5e5e099e18a46b39e006ae04ad0b13757114e15a623e20b",
+   "size": 235406767
+  },
+  {
+   "file": "dart-sdk-windows-x64.zip",
+   "group": "custom-dart-sdk-windows-x64",
+   "sha256": "5267a78ba461d42d431a4e71704681f79cbdae8506a90fad9ee0249c327a3342",
+   "size": 230300402
+  },
+  {
+   "file": "ios-interpreter-engine.tar.gz",
+   "group": "ios-interpreter-engine",
+   "sha256": "6225b2f495fa6f134c3cef628ebaeae9de8c0480c2a3de938baf9614a0e8682c",
+   "size": 48404380
+  },
+  {
+   "file": "linux-engine-arm64.tar.gz",
+   "group": "linux-engine-arm64",
+   "sha256": "66c2d493ebcca87cd1b1ae0aa57b57d378c6c05a728d8733c19f5a2e113b07f7",
+   "size": 34709146
+  },
+  {
+   "file": "linux-engine-x64.tar.gz",
+   "group": "linux-engine-x64",
+   "sha256": "3d47a2789c4687c60746bd797570c679ad3b09fca9c62440c211638b01cf962c",
+   "size": 40735523
+  },
+  {
+   "file": "macos-engine-arm64.tar.gz",
+   "group": "macos-engine-arm64",
+   "sha256": "884453bcbe1e4a64f9bdf7b4dc19d751c628c03dbf417c233916309910403560",
+   "size": 39086760
+  },
+  {
+   "file": "macos-engine-universal.tar.gz",
+   "group": "macos-engine-universal",
+   "sha256": "9a530ce6dceb1b0ed2af066c6b109ff7bc986b61744faee837b06cfe1287fc1e",
+   "size": 37162593
+  },
+  {
+   "file": "macos-engine-x64.tar.gz",
+   "group": "macos-engine-x64",
+   "sha256": "23bcae72108c520f02d117b6da006736eaedc8abacaa45bcf8394aeb0e606587",
+   "size": 40815892
+  },
+  {
+   "file": "artifacts_manifest.yaml",
+   "group": "mirror-metadata",
+   "sha256": "b37cb67147fb009250dd24b7db3a5a33b02256a1c017e653272ed900fda129a9",
+   "size": 6005
+  },
+  {
+   "file": "patch-darwin-arm64.zip",
+   "group": "mirror-patch-darwin-arm64.zip",
+   "sha256": "43f5ce03c4f11a9af2f8a1aeab2d40fb4c244464bb36522fbdd996e7ce850218",
+   "size": 348705
+  },
+  {
+   "file": "patch-darwin-arm64.zip",
+   "group": "mirror-patch-darwin-arm64.zip",
+   "sha256": "43f5ce03c4f11a9af2f8a1aeab2d40fb4c244464bb36522fbdd996e7ce850218",
+   "size": 348705
+  },
+  {
+   "file": "patch-darwin-x64.zip",
+   "group": "mirror-patch-darwin-x64.zip",
+   "sha256": "759527630cc67034622aa886048a52d6c0f20013e1b6eb051e6ebefd732ddd45",
+   "size": 354960
+  },
+  {
+   "file": "patch-darwin-x64.zip",
+   "group": "mirror-patch-darwin-x64.zip",
+   "sha256": "759527630cc67034622aa886048a52d6c0f20013e1b6eb051e6ebefd732ddd45",
+   "size": 354960
+  },
+  {
+   "file": "patch-linux-arm64.zip",
+   "group": "mirror-patch-linux-arm64.zip",
+   "sha256": "1a7d0507bd4b63e9ba0d541c1db46974e1234465ea8bcda3b29a1b9dda5a757d",
+   "size": 388479
+  },
+  {
+   "file": "patch-linux-arm64.zip",
+   "group": "mirror-patch-linux-arm64.zip",
+   "sha256": "1a7d0507bd4b63e9ba0d541c1db46974e1234465ea8bcda3b29a1b9dda5a757d",
+   "size": 388479
+  },
+  {
+   "file": "patch-linux-x64.zip",
+   "group": "mirror-patch-linux-x64.zip",
+   "sha256": "b95e8c1ebee88a54e5a97f2bf04838fa12d317ee6ef31c7b79ce1451c9a0dccd",
+   "size": 375595
+  },
+  {
+   "file": "patch-linux-x64.zip",
+   "group": "mirror-patch-linux-x64.zip",
+   "sha256": "b95e8c1ebee88a54e5a97f2bf04838fa12d317ee6ef31c7b79ce1451c9a0dccd",
+   "size": 375595
+  },
+  {
+   "file": "patch-windows-arm64.zip",
+   "group": "mirror-patch-windows-arm64.zip",
+   "sha256": "2e35c18aa13861801c04446ecc4a1568a1b86716634500f181aa459f857991cb",
+   "size": 245269
+  },
+  {
+   "file": "patch-windows-arm64.zip",
+   "group": "mirror-patch-windows-arm64.zip",
+   "sha256": "2e35c18aa13861801c04446ecc4a1568a1b86716634500f181aa459f857991cb",
+   "size": 245269
+  },
+  {
+   "file": "patch-windows-x64.zip",
+   "group": "mirror-patch-windows-x64.zip",
+   "sha256": "408cafeb2db26df13e875db269f46e29b528e0ffc6982de18877a100d5311ea8",
+   "size": 267110
+  },
+  {
+   "file": "patch-windows-x64.zip",
+   "group": "mirror-patch-windows-x64.zip",
+   "sha256": "408cafeb2db26df13e875db269f46e29b528e0ffc6982de18877a100d5311ea8",
+   "size": 267110
+  },
+  {
+   "file": "open-shorebird-artifact-mirror.tar.gz",
+   "group": "open-shorebird-artifact-mirror",
+   "sha256": "6959919292446afc091ebc40526853dd5115bb198451ed2c674884b8bf701189",
+   "size": 2144533493
+  },
+  {
+   "file": "shorebird-server-darwin-amd64.tar.gz",
+   "group": "shorebird-server-darwin-amd64",
+   "sha256": "0412ba5c7ec75fa7dce59d819d49e7c7d9eac2eaa019755c0f7f26b8359002ca",
+   "size": 7112513
+  },
+  {
+   "file": "shorebird-server-darwin-arm64.tar.gz",
+   "group": "shorebird-server-darwin-arm64",
+   "sha256": "a3265a640c9ca06fad48bc06f007ba36c3d4e0ace456a0ed1a74b54dea995b62",
+   "size": 6585116
+  },
+  {
+   "file": "shorebird-server-linux-amd64.tar.gz",
+   "group": "shorebird-server-linux-amd64",
+   "sha256": "1688fd6634437b3dea00de98263107458fd6e1fa96c46fe5b182aea0f0c5b58d",
+   "size": 6982999
+  },
+  {
+   "file": "shorebird-server-linux-arm64.tar.gz",
+   "group": "shorebird-server-linux-arm64",
+   "sha256": "9d8f2c462fdc072477dc78b6bde576d827ff3f56313d4b4da9c2af083854e187",
+   "size": 6299462
+  },
+  {
+   "file": "shorebird-server-windows-amd64.tar.gz",
+   "group": "shorebird-server-windows-amd64",
+   "sha256": "0c692bc9515cbef1437d9b5d6770109a7583751b519191cb2649c55e072b736a",
+   "size": 7112576
+  },
+  {
+   "file": "windows-engine-arm64.tar.gz",
+   "group": "windows-engine-arm64",
+   "sha256": "db80cf372a7fa497f2feab285738137b03db21ee2884aa3dd9c1b7e313e0a5dc",
+   "size": 141444928
+  },
+  {
+   "file": "windows-engine-x64.tar.gz",
+   "group": "windows-engine-x64",
+   "sha256": "a6bb5df699d8af105ce2493525c625dedd30cd9504c19d9793a7e5f4f27414b7",
+   "size": 150062157
+  }
+ ],
+ "run": {
+  "attempt1": {
+   "cause": "shorebird release (CLI cache update) failed: CacheUpdateFailure: Failed to download bundletool.jar from <url> 504 Gateway Time-out (job log lines 12255-12261)",
+   "conclusion": "failure",
+   "failed_job": "Build Linux engine artifacts",
+   "failed_step": "Run Linux native V2 variant lifecycle",
+   "origin": "https://github.com/google/bundletool/releases/download/1.18.3/bundletool-all-1.18.3.jar (shorebird_env.dart:58-59; pinned sha256 cache.dart:785-786)",
+   "wall_minutes_first_job_start_to_last_job_end": 332.1
+  },
+  "conclusion": "success",
+  "final_attempt": 2,
+  "final_wall_minutes_including_rerun": 413.5,
+  "head_sha": "ae8a61a6334488d29f4acdb471bc28689c553636",
+  "id": 42464951579,
+  "job_counts": {
+   "skipped": 4,
+   "success": 47
+  },
+  "sum_job_minutes_final": 2813.4,
+  "url": "https://github.com/tony-cloud/shorebird-workspace/actions/runs/42464951579"
+ },
+ "source": "gh run view 42464951579 --repo tony-cloud/shorebird-workspace --json jobs (final attempt and --attempt 1); gh api .../runs/42464951579/artifacts; open-shorebird-release-manifest artifact"
+}

@@ -1,0 +1,6170 @@
+{
+ "errors": [],
+ "format_version": 1,
+ "inputs": [
+  "android-engine-arm",
+  "android-engine-arm64",
+  "android-engine-x64",
+  "ios-interpreter-engine",
+  "linux-engine-arm64",
+  "linux-engine-x64",
+  "macos-engine-arm64",
+  "macos-engine-universal",
+  "macos-engine-x64",
+  "windows-engine-arm64",
+  "windows-engine-x64"
+ ],
+ "record_count": 103,
+ "records": [
+  {
+   "arch": "arm",
+   "basename": "libflutter.so",
+   "container": [
+    "android-engine-arm/android-engine-arm.tar.gz",
+    "android-engine/armeabi_v7a_release.jar",
+    "lib/armeabi-v7a/libflutter.so"
+   ],
+   "elf_debug_info": true,
+   "export_count": 83,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 65,
+    "jni": 1,
+    "objc": 0,
+    "other": 4,
+    "rust_internal": 0,
+    "shorebird": 13,
+    "unwind": 0
+   },
+   "export_list_sha256": "bd188c292623cbb70f17b18ac9340ff9c621ba834d54f64489d9d0f1514a9718",
+   "exports_by_category": {
+    "jni": [
+     "JNI_OnLoad"
+    ],
+    "shorebird": [
+     "shorebird_check_for_downloadable_update",
+     "shorebird_current_boot_patch_number",
+     "shorebird_free_status_string",
+     "shorebird_free_string",
+     "shorebird_free_update_result",
+     "shorebird_init",
+     "shorebird_installation_id",
+     "shorebird_next_boot_patch_number",
+     "shorebird_selection_status_json",
+     "shorebird_set_patch_decryption_key_provider",
+     "shorebird_set_patch_decryption_key_provider_v2",
+     "shorebird_update_with_result",
+     "shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "android",
+   "published_override": false,
+   "role": "runtime",
+   "route": null,
+   "sha256": "62eff870b165a572f2942f61d3465a4e0d8b23b3baec047ce0ada2876532f371",
+   "size": 158301244,
+   "slice_size": 158301244
+  },
+  {
+   "arch": "arm",
+   "basename": "libflutter.so",
+   "container": [
+    "android-engine-arm/android-engine-arm.tar.gz",
+    "android-engine/artifacts.zip",
+    "flutter.jar",
+    "lib/armeabi-v7a/libflutter.so"
+   ],
+   "elf_debug_info": true,
+   "export_count": 83,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 65,
+    "jni": 1,
+    "objc": 0,
+    "other": 4,
+    "rust_internal": 0,
+    "shorebird": 13,
+    "unwind": 0
+   },
+   "export_list_sha256": "bd188c292623cbb70f17b18ac9340ff9c621ba834d54f64489d9d0f1514a9718",
+   "exports_by_category": {
+    "jni": [
+     "JNI_OnLoad"
+    ],
+    "shorebird": [
+     "shorebird_check_for_downloadable_update",
+     "shorebird_current_boot_patch_number",
+     "shorebird_free_status_string",
+     "shorebird_free_string",
+     "shorebird_free_update_result",
+     "shorebird_init",
+     "shorebird_installation_id",
+     "shorebird_next_boot_patch_number",
+     "shorebird_selection_status_json",
+     "shorebird_set_patch_decryption_key_provider",
+     "shorebird_set_patch_decryption_key_provider_v2",
+     "shorebird_update_with_result",
+     "shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "android",
+   "published_override": false,
+   "role": "runtime",
+   "route": null,
+   "sha256": "62eff870b165a572f2942f61d3465a4e0d8b23b3baec047ce0ada2876532f371",
+   "size": 158301244,
+   "slice_size": 158301244
+  },
+  {
+   "arch": "arm",
+   "basename": "libflutter.so",
+   "container": [
+    "android-engine-arm/android-engine-arm.tar.gz",
+    "android-engine/flutter.jar",
+    "lib/armeabi-v7a/libflutter.so"
+   ],
+   "elf_debug_info": true,
+   "export_count": 83,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 65,
+    "jni": 1,
+    "objc": 0,
+    "other": 4,
+    "rust_internal": 0,
+    "shorebird": 13,
+    "unwind": 0
+   },
+   "export_list_sha256": "bd188c292623cbb70f17b18ac9340ff9c621ba834d54f64489d9d0f1514a9718",
+   "exports_by_category": {
+    "jni": [
+     "JNI_OnLoad"
+    ],
+    "shorebird": [
+     "shorebird_check_for_downloadable_update",
+     "shorebird_current_boot_patch_number",
+     "shorebird_free_status_string",
+     "shorebird_free_string",
+     "shorebird_free_update_result",
+     "shorebird_init",
+     "shorebird_installation_id",
+     "shorebird_next_boot_patch_number",
+     "shorebird_selection_status_json",
+     "shorebird_set_patch_decryption_key_provider",
+     "shorebird_set_patch_decryption_key_provider_v2",
+     "shorebird_update_with_result",
+     "shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "android",
+   "published_override": false,
+   "role": "runtime",
+   "route": null,
+   "sha256": "62eff870b165a572f2942f61d3465a4e0d8b23b3baec047ce0ada2876532f371",
+   "size": 158301244,
+   "slice_size": 158301244
+  },
+  {
+   "arch": "x64",
+   "basename": "gen_snapshot_arm",
+   "container": [
+    "android-engine-arm/android-engine-arm.tar.gz",
+    "android-engine/gen_snapshot_arm"
+   ],
+   "elf_debug_info": false,
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "linux",
+   "published_override": false,
+   "role": "host-tool",
+   "route": null,
+   "sha256": "2b115d21d8123e7b79dd0311b1124cda39b0e368e049fe359bea7611bd4d5d7b",
+   "size": 5989720,
+   "slice_size": 5989720
+  },
+  {
+   "arch": "arm",
+   "basename": "libflutter.so",
+   "container": [
+    "android-engine-arm/android-engine-arm.tar.gz",
+    "android-engine/libflutter.so"
+   ],
+   "elf_debug_info": true,
+   "export_count": 83,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 65,
+    "jni": 1,
+    "objc": 0,
+    "other": 4,
+    "rust_internal": 0,
+    "shorebird": 13,
+    "unwind": 0
+   },
+   "export_list_sha256": "bd188c292623cbb70f17b18ac9340ff9c621ba834d54f64489d9d0f1514a9718",
+   "exports_by_category": {
+    "jni": [
+     "JNI_OnLoad"
+    ],
+    "shorebird": [
+     "shorebird_check_for_downloadable_update",
+     "shorebird_current_boot_patch_number",
+     "shorebird_free_status_string",
+     "shorebird_free_string",
+     "shorebird_free_update_result",
+     "shorebird_init",
+     "shorebird_installation_id",
+     "shorebird_next_boot_patch_number",
+     "shorebird_selection_status_json",
+     "shorebird_set_patch_decryption_key_provider",
+     "shorebird_set_patch_decryption_key_provider_v2",
+     "shorebird_update_with_result",
+     "shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "android",
+   "published_override": false,
+   "role": "runtime",
+   "route": null,
+   "sha256": "62eff870b165a572f2942f61d3465a4e0d8b23b3baec047ce0ada2876532f371",
+   "size": 158301244,
+   "slice_size": 158301244
+  },
+  {
+   "arch": "arm",
+   "basename": "libflutter.so",
+   "container": [
+    "android-engine-arm/android-engine-arm.tar.gz",
+    "android-engine/mirror/shorebird/download.flutter.io/io/flutter/armeabi_v7a_release/1.0.0-44a553c3b3c7797c7f0f20961d46a8b17e06444c/armeabi_v7a_release-1.0.0-44a553c3b3c7797c7f0f20961d46a8b17e06444c.jar",
+    "lib/armeabi-v7a/libflutter.so"
+   ],
+   "elf_debug_info": true,
+   "export_count": 83,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 65,
+    "jni": 1,
+    "objc": 0,
+    "other": 4,
+    "rust_internal": 0,
+    "shorebird": 13,
+    "unwind": 0
+   },
+   "export_list_sha256": "bd188c292623cbb70f17b18ac9340ff9c621ba834d54f64489d9d0f1514a9718",
+   "exports_by_category": {
+    "jni": [
+     "JNI_OnLoad"
+    ],
+    "shorebird": [
+     "shorebird_check_for_downloadable_update",
+     "shorebird_current_boot_patch_number",
+     "shorebird_free_status_string",
+     "shorebird_free_string",
+     "shorebird_free_update_result",
+     "shorebird_init",
+     "shorebird_installation_id",
+     "shorebird_next_boot_patch_number",
+     "shorebird_selection_status_json",
+     "shorebird_set_patch_decryption_key_provider",
+     "shorebird_set_patch_decryption_key_provider_v2",
+     "shorebird_update_with_result",
+     "shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "android",
+   "published_override": true,
+   "role": "runtime",
+   "route": "download.flutter.io/io/flutter/armeabi_v7a_release/1.0.0-$engine/armeabi_v7a_release-1.0.0-$engine.jar",
+   "sha256": "62eff870b165a572f2942f61d3465a4e0d8b23b3baec047ce0ada2876532f371",
+   "size": 158301244,
+   "slice_size": 158301244
+  },
+  {
+   "arch": "arm",
+   "basename": "libflutter.so",
+   "container": [
+    "android-engine-arm/android-engine-arm.tar.gz",
+    "android-engine/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/android-arm-release/artifacts.zip",
+    "flutter.jar",
+    "lib/armeabi-v7a/libflutter.so"
+   ],
+   "elf_debug_info": true,
+   "export_count": 83,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 65,
+    "jni": 1,
+    "objc": 0,
+    "other": 4,
+    "rust_internal": 0,
+    "shorebird": 13,
+    "unwind": 0
+   },
+   "export_list_sha256": "bd188c292623cbb70f17b18ac9340ff9c621ba834d54f64489d9d0f1514a9718",
+   "exports_by_category": {
+    "jni": [
+     "JNI_OnLoad"
+    ],
+    "shorebird": [
+     "shorebird_check_for_downloadable_update",
+     "shorebird_current_boot_patch_number",
+     "shorebird_free_status_string",
+     "shorebird_free_string",
+     "shorebird_free_update_result",
+     "shorebird_init",
+     "shorebird_installation_id",
+     "shorebird_next_boot_patch_number",
+     "shorebird_selection_status_json",
+     "shorebird_set_patch_decryption_key_provider",
+     "shorebird_set_patch_decryption_key_provider_v2",
+     "shorebird_update_with_result",
+     "shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "android",
+   "published_override": true,
+   "role": "runtime",
+   "route": "flutter_infra_release/flutter/$engine/android-arm-release/artifacts.zip",
+   "sha256": "62eff870b165a572f2942f61d3465a4e0d8b23b3baec047ce0ada2876532f371",
+   "size": 158301244,
+   "slice_size": 158301244
+  },
+  {
+   "arch": "x64",
+   "basename": "gen_snapshot",
+   "container": [
+    "android-engine-arm/android-engine-arm.tar.gz",
+    "android-engine/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/android-arm-release/linux-x64.zip",
+    "gen_snapshot"
+   ],
+   "elf_debug_info": false,
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "linux",
+   "published_override": true,
+   "role": "host-tool",
+   "route": "flutter_infra_release/flutter/$engine/android-arm-release/linux-x64.zip",
+   "sha256": "2b115d21d8123e7b79dd0311b1124cda39b0e368e049fe359bea7611bd4d5d7b",
+   "size": 5989720,
+   "slice_size": 5989720
+  },
+  {
+   "arch": "arm",
+   "basename": "libflutter.so",
+   "container": [
+    "android-engine-arm/android-engine-arm.tar.gz",
+    "android-engine/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/android-arm-release/symbols.zip",
+    "libflutter.so"
+   ],
+   "elf_debug_info": true,
+   "export_count": 83,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 65,
+    "jni": 1,
+    "objc": 0,
+    "other": 4,
+    "rust_internal": 0,
+    "shorebird": 13,
+    "unwind": 0
+   },
+   "export_list_sha256": "bd188c292623cbb70f17b18ac9340ff9c621ba834d54f64489d9d0f1514a9718",
+   "exports_by_category": {
+    "jni": [
+     "JNI_OnLoad"
+    ],
+    "shorebird": [
+     "shorebird_check_for_downloadable_update",
+     "shorebird_current_boot_patch_number",
+     "shorebird_free_status_string",
+     "shorebird_free_string",
+     "shorebird_free_update_result",
+     "shorebird_init",
+     "shorebird_installation_id",
+     "shorebird_next_boot_patch_number",
+     "shorebird_selection_status_json",
+     "shorebird_set_patch_decryption_key_provider",
+     "shorebird_set_patch_decryption_key_provider_v2",
+     "shorebird_update_with_result",
+     "shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "android",
+   "published_override": true,
+   "role": "debug-symbols",
+   "route": "flutter_infra_release/flutter/$engine/android-arm-release/symbols.zip",
+   "sha256": "62eff870b165a572f2942f61d3465a4e0d8b23b3baec047ce0ada2876532f371",
+   "size": 158301244,
+   "slice_size": 158301244
+  },
+  {
+   "arch": "arm",
+   "basename": "libflutter.so",
+   "container": [
+    "android-engine-arm/android-engine-arm.tar.gz",
+    "android-engine/symbols.zip",
+    "libflutter.so"
+   ],
+   "elf_debug_info": true,
+   "export_count": 83,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 65,
+    "jni": 1,
+    "objc": 0,
+    "other": 4,
+    "rust_internal": 0,
+    "shorebird": 13,
+    "unwind": 0
+   },
+   "export_list_sha256": "bd188c292623cbb70f17b18ac9340ff9c621ba834d54f64489d9d0f1514a9718",
+   "exports_by_category": {
+    "jni": [
+     "JNI_OnLoad"
+    ],
+    "shorebird": [
+     "shorebird_check_for_downloadable_update",
+     "shorebird_current_boot_patch_number",
+     "shorebird_free_status_string",
+     "shorebird_free_string",
+     "shorebird_free_update_result",
+     "shorebird_init",
+     "shorebird_installation_id",
+     "shorebird_next_boot_patch_number",
+     "shorebird_selection_status_json",
+     "shorebird_set_patch_decryption_key_provider",
+     "shorebird_set_patch_decryption_key_provider_v2",
+     "shorebird_update_with_result",
+     "shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "android",
+   "published_override": false,
+   "role": "debug-symbols",
+   "route": null,
+   "sha256": "62eff870b165a572f2942f61d3465a4e0d8b23b3baec047ce0ada2876532f371",
+   "size": 158301244,
+   "slice_size": 158301244
+  },
+  {
+   "arch": "x64",
+   "basename": "analyze_snapshot_arm64",
+   "container": [
+    "android-engine-arm64/android-engine-arm64.tar.gz",
+    "android-engine/analyze_snapshot_arm64"
+   ],
+   "elf_debug_info": false,
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "linux",
+   "published_override": false,
+   "role": "host-tool",
+   "route": null,
+   "sha256": "335bbd181b1e4a8397190bc55217275f4a056d47e20d915dbcd4d55f637a669f",
+   "size": 3196928,
+   "slice_size": 3196928
+  },
+  {
+   "arch": "arm64",
+   "basename": "libflutter.so",
+   "container": [
+    "android-engine-arm64/android-engine-arm64.tar.gz",
+    "android-engine/arm64_v8a_release.jar",
+    "lib/arm64-v8a/libflutter.so"
+   ],
+   "elf_debug_info": true,
+   "export_count": 83,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 65,
+    "jni": 1,
+    "objc": 0,
+    "other": 4,
+    "rust_internal": 0,
+    "shorebird": 13,
+    "unwind": 0
+   },
+   "export_list_sha256": "bd188c292623cbb70f17b18ac9340ff9c621ba834d54f64489d9d0f1514a9718",
+   "exports_by_category": {
+    "jni": [
+     "JNI_OnLoad"
+    ],
+    "shorebird": [
+     "shorebird_check_for_downloadable_update",
+     "shorebird_current_boot_patch_number",
+     "shorebird_free_status_string",
+     "shorebird_free_string",
+     "shorebird_free_update_result",
+     "shorebird_init",
+     "shorebird_installation_id",
+     "shorebird_next_boot_patch_number",
+     "shorebird_selection_status_json",
+     "shorebird_set_patch_decryption_key_provider",
+     "shorebird_set_patch_decryption_key_provider_v2",
+     "shorebird_update_with_result",
+     "shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "android",
+   "published_override": false,
+   "role": "runtime",
+   "route": null,
+   "sha256": "c4b460ce35ebb80ca7c3aa413afefe7af76f97be07d7061191e7f29c570f8caa",
+   "size": 174476432,
+   "slice_size": 174476432
+  },
+  {
+   "arch": "arm64",
+   "basename": "libflutter.so",
+   "container": [
+    "android-engine-arm64/android-engine-arm64.tar.gz",
+    "android-engine/artifacts.zip",
+    "flutter.jar",
+    "lib/arm64-v8a/libflutter.so"
+   ],
+   "elf_debug_info": true,
+   "export_count": 83,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 65,
+    "jni": 1,
+    "objc": 0,
+    "other": 4,
+    "rust_internal": 0,
+    "shorebird": 13,
+    "unwind": 0
+   },
+   "export_list_sha256": "bd188c292623cbb70f17b18ac9340ff9c621ba834d54f64489d9d0f1514a9718",
+   "exports_by_category": {
+    "jni": [
+     "JNI_OnLoad"
+    ],
+    "shorebird": [
+     "shorebird_check_for_downloadable_update",
+     "shorebird_current_boot_patch_number",
+     "shorebird_free_status_string",
+     "shorebird_free_string",
+     "shorebird_free_update_result",
+     "shorebird_init",
+     "shorebird_installation_id",
+     "shorebird_next_boot_patch_number",
+     "shorebird_selection_status_json",
+     "shorebird_set_patch_decryption_key_provider",
+     "shorebird_set_patch_decryption_key_provider_v2",
+     "shorebird_update_with_result",
+     "shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "android",
+   "published_override": false,
+   "role": "runtime",
+   "route": null,
+   "sha256": "c4b460ce35ebb80ca7c3aa413afefe7af76f97be07d7061191e7f29c570f8caa",
+   "size": 174476432,
+   "slice_size": 174476432
+  },
+  {
+   "arch": "arm64",
+   "basename": "libflutter.so",
+   "container": [
+    "android-engine-arm64/android-engine-arm64.tar.gz",
+    "android-engine/flutter.jar",
+    "lib/arm64-v8a/libflutter.so"
+   ],
+   "elf_debug_info": true,
+   "export_count": 83,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 65,
+    "jni": 1,
+    "objc": 0,
+    "other": 4,
+    "rust_internal": 0,
+    "shorebird": 13,
+    "unwind": 0
+   },
+   "export_list_sha256": "bd188c292623cbb70f17b18ac9340ff9c621ba834d54f64489d9d0f1514a9718",
+   "exports_by_category": {
+    "jni": [
+     "JNI_OnLoad"
+    ],
+    "shorebird": [
+     "shorebird_check_for_downloadable_update",
+     "shorebird_current_boot_patch_number",
+     "shorebird_free_status_string",
+     "shorebird_free_string",
+     "shorebird_free_update_result",
+     "shorebird_init",
+     "shorebird_installation_id",
+     "shorebird_next_boot_patch_number",
+     "shorebird_selection_status_json",
+     "shorebird_set_patch_decryption_key_provider",
+     "shorebird_set_patch_decryption_key_provider_v2",
+     "shorebird_update_with_result",
+     "shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "android",
+   "published_override": false,
+   "role": "runtime",
+   "route": null,
+   "sha256": "c4b460ce35ebb80ca7c3aa413afefe7af76f97be07d7061191e7f29c570f8caa",
+   "size": 174476432,
+   "slice_size": 174476432
+  },
+  {
+   "arch": "x64",
+   "basename": "gen_snapshot_arm64",
+   "container": [
+    "android-engine-arm64/android-engine-arm64.tar.gz",
+    "android-engine/gen_snapshot_arm64"
+   ],
+   "elf_debug_info": false,
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "linux",
+   "published_override": false,
+   "role": "host-tool",
+   "route": null,
+   "sha256": "5815f487867d9141116957381cf8273b1405fc63b3176c78cc9b25186555ba67",
+   "size": 6238208,
+   "slice_size": 6238208
+  },
+  {
+   "arch": "arm64",
+   "basename": "libflutter.so",
+   "container": [
+    "android-engine-arm64/android-engine-arm64.tar.gz",
+    "android-engine/libflutter.so"
+   ],
+   "elf_debug_info": true,
+   "export_count": 83,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 65,
+    "jni": 1,
+    "objc": 0,
+    "other": 4,
+    "rust_internal": 0,
+    "shorebird": 13,
+    "unwind": 0
+   },
+   "export_list_sha256": "bd188c292623cbb70f17b18ac9340ff9c621ba834d54f64489d9d0f1514a9718",
+   "exports_by_category": {
+    "jni": [
+     "JNI_OnLoad"
+    ],
+    "shorebird": [
+     "shorebird_check_for_downloadable_update",
+     "shorebird_current_boot_patch_number",
+     "shorebird_free_status_string",
+     "shorebird_free_string",
+     "shorebird_free_update_result",
+     "shorebird_init",
+     "shorebird_installation_id",
+     "shorebird_next_boot_patch_number",
+     "shorebird_selection_status_json",
+     "shorebird_set_patch_decryption_key_provider",
+     "shorebird_set_patch_decryption_key_provider_v2",
+     "shorebird_update_with_result",
+     "shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "android",
+   "published_override": false,
+   "role": "runtime",
+   "route": null,
+   "sha256": "c4b460ce35ebb80ca7c3aa413afefe7af76f97be07d7061191e7f29c570f8caa",
+   "size": 174476432,
+   "slice_size": 174476432
+  },
+  {
+   "arch": "arm64",
+   "basename": "libflutter.so",
+   "container": [
+    "android-engine-arm64/android-engine-arm64.tar.gz",
+    "android-engine/mirror/shorebird/download.flutter.io/io/flutter/arm64_v8a_release/1.0.0-44a553c3b3c7797c7f0f20961d46a8b17e06444c/arm64_v8a_release-1.0.0-44a553c3b3c7797c7f0f20961d46a8b17e06444c.jar",
+    "lib/arm64-v8a/libflutter.so"
+   ],
+   "elf_debug_info": true,
+   "export_count": 83,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 65,
+    "jni": 1,
+    "objc": 0,
+    "other": 4,
+    "rust_internal": 0,
+    "shorebird": 13,
+    "unwind": 0
+   },
+   "export_list_sha256": "bd188c292623cbb70f17b18ac9340ff9c621ba834d54f64489d9d0f1514a9718",
+   "exports_by_category": {
+    "jni": [
+     "JNI_OnLoad"
+    ],
+    "shorebird": [
+     "shorebird_check_for_downloadable_update",
+     "shorebird_current_boot_patch_number",
+     "shorebird_free_status_string",
+     "shorebird_free_string",
+     "shorebird_free_update_result",
+     "shorebird_init",
+     "shorebird_installation_id",
+     "shorebird_next_boot_patch_number",
+     "shorebird_selection_status_json",
+     "shorebird_set_patch_decryption_key_provider",
+     "shorebird_set_patch_decryption_key_provider_v2",
+     "shorebird_update_with_result",
+     "shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "android",
+   "published_override": true,
+   "role": "runtime",
+   "route": "download.flutter.io/io/flutter/arm64_v8a_release/1.0.0-$engine/arm64_v8a_release-1.0.0-$engine.jar",
+   "sha256": "c4b460ce35ebb80ca7c3aa413afefe7af76f97be07d7061191e7f29c570f8caa",
+   "size": 174476432,
+   "slice_size": 174476432
+  },
+  {
+   "arch": "arm64",
+   "basename": "libflutter.so",
+   "container": [
+    "android-engine-arm64/android-engine-arm64.tar.gz",
+    "android-engine/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/android-arm64-release/artifacts.zip",
+    "flutter.jar",
+    "lib/arm64-v8a/libflutter.so"
+   ],
+   "elf_debug_info": true,
+   "export_count": 83,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 65,
+    "jni": 1,
+    "objc": 0,
+    "other": 4,
+    "rust_internal": 0,
+    "shorebird": 13,
+    "unwind": 0
+   },
+   "export_list_sha256": "bd188c292623cbb70f17b18ac9340ff9c621ba834d54f64489d9d0f1514a9718",
+   "exports_by_category": {
+    "jni": [
+     "JNI_OnLoad"
+    ],
+    "shorebird": [
+     "shorebird_check_for_downloadable_update",
+     "shorebird_current_boot_patch_number",
+     "shorebird_free_status_string",
+     "shorebird_free_string",
+     "shorebird_free_update_result",
+     "shorebird_init",
+     "shorebird_installation_id",
+     "shorebird_next_boot_patch_number",
+     "shorebird_selection_status_json",
+     "shorebird_set_patch_decryption_key_provider",
+     "shorebird_set_patch_decryption_key_provider_v2",
+     "shorebird_update_with_result",
+     "shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "android",
+   "published_override": true,
+   "role": "runtime",
+   "route": "flutter_infra_release/flutter/$engine/android-arm64-release/artifacts.zip",
+   "sha256": "c4b460ce35ebb80ca7c3aa413afefe7af76f97be07d7061191e7f29c570f8caa",
+   "size": 174476432,
+   "slice_size": 174476432
+  },
+  {
+   "arch": "x64",
+   "basename": "gen_snapshot",
+   "container": [
+    "android-engine-arm64/android-engine-arm64.tar.gz",
+    "android-engine/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/android-arm64-release/linux-x64.zip",
+    "gen_snapshot"
+   ],
+   "elf_debug_info": false,
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "linux",
+   "published_override": true,
+   "role": "host-tool",
+   "route": "flutter_infra_release/flutter/$engine/android-arm64-release/linux-x64.zip",
+   "sha256": "5815f487867d9141116957381cf8273b1405fc63b3176c78cc9b25186555ba67",
+   "size": 6238208,
+   "slice_size": 6238208
+  },
+  {
+   "arch": "arm64",
+   "basename": "libflutter.so",
+   "container": [
+    "android-engine-arm64/android-engine-arm64.tar.gz",
+    "android-engine/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/android-arm64-release/symbols.zip",
+    "libflutter.so"
+   ],
+   "elf_debug_info": true,
+   "export_count": 83,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 65,
+    "jni": 1,
+    "objc": 0,
+    "other": 4,
+    "rust_internal": 0,
+    "shorebird": 13,
+    "unwind": 0
+   },
+   "export_list_sha256": "bd188c292623cbb70f17b18ac9340ff9c621ba834d54f64489d9d0f1514a9718",
+   "exports_by_category": {
+    "jni": [
+     "JNI_OnLoad"
+    ],
+    "shorebird": [
+     "shorebird_check_for_downloadable_update",
+     "shorebird_current_boot_patch_number",
+     "shorebird_free_status_string",
+     "shorebird_free_string",
+     "shorebird_free_update_result",
+     "shorebird_init",
+     "shorebird_installation_id",
+     "shorebird_next_boot_patch_number",
+     "shorebird_selection_status_json",
+     "shorebird_set_patch_decryption_key_provider",
+     "shorebird_set_patch_decryption_key_provider_v2",
+     "shorebird_update_with_result",
+     "shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "android",
+   "published_override": true,
+   "role": "debug-symbols",
+   "route": "flutter_infra_release/flutter/$engine/android-arm64-release/symbols.zip",
+   "sha256": "c4b460ce35ebb80ca7c3aa413afefe7af76f97be07d7061191e7f29c570f8caa",
+   "size": 174476432,
+   "slice_size": 174476432
+  },
+  {
+   "arch": "arm64",
+   "basename": "libflutter.so",
+   "container": [
+    "android-engine-arm64/android-engine-arm64.tar.gz",
+    "android-engine/symbols.zip",
+    "libflutter.so"
+   ],
+   "elf_debug_info": true,
+   "export_count": 83,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 65,
+    "jni": 1,
+    "objc": 0,
+    "other": 4,
+    "rust_internal": 0,
+    "shorebird": 13,
+    "unwind": 0
+   },
+   "export_list_sha256": "bd188c292623cbb70f17b18ac9340ff9c621ba834d54f64489d9d0f1514a9718",
+   "exports_by_category": {
+    "jni": [
+     "JNI_OnLoad"
+    ],
+    "shorebird": [
+     "shorebird_check_for_downloadable_update",
+     "shorebird_current_boot_patch_number",
+     "shorebird_free_status_string",
+     "shorebird_free_string",
+     "shorebird_free_update_result",
+     "shorebird_init",
+     "shorebird_installation_id",
+     "shorebird_next_boot_patch_number",
+     "shorebird_selection_status_json",
+     "shorebird_set_patch_decryption_key_provider",
+     "shorebird_set_patch_decryption_key_provider_v2",
+     "shorebird_update_with_result",
+     "shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "android",
+   "published_override": false,
+   "role": "debug-symbols",
+   "route": null,
+   "sha256": "c4b460ce35ebb80ca7c3aa413afefe7af76f97be07d7061191e7f29c570f8caa",
+   "size": 174476432,
+   "slice_size": 174476432
+  },
+  {
+   "arch": "x64",
+   "basename": "analyze_snapshot_x64",
+   "container": [
+    "android-engine-x64/android-engine-x64.tar.gz",
+    "android-engine/analyze_snapshot_x64"
+   ],
+   "elf_debug_info": false,
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "linux",
+   "published_override": false,
+   "role": "host-tool",
+   "route": null,
+   "sha256": "e7f462d32b03fe22583031519f8712cdd47f093ae74f4c8d6242f31c989d1d75",
+   "size": 3133728,
+   "slice_size": 3133728
+  },
+  {
+   "arch": "x64",
+   "basename": "libflutter.so",
+   "container": [
+    "android-engine-x64/android-engine-x64.tar.gz",
+    "android-engine/artifacts.zip",
+    "flutter.jar",
+    "lib/x86_64/libflutter.so"
+   ],
+   "elf_debug_info": true,
+   "export_count": 83,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 65,
+    "jni": 1,
+    "objc": 0,
+    "other": 4,
+    "rust_internal": 0,
+    "shorebird": 13,
+    "unwind": 0
+   },
+   "export_list_sha256": "bd188c292623cbb70f17b18ac9340ff9c621ba834d54f64489d9d0f1514a9718",
+   "exports_by_category": {
+    "jni": [
+     "JNI_OnLoad"
+    ],
+    "shorebird": [
+     "shorebird_check_for_downloadable_update",
+     "shorebird_current_boot_patch_number",
+     "shorebird_free_status_string",
+     "shorebird_free_string",
+     "shorebird_free_update_result",
+     "shorebird_init",
+     "shorebird_installation_id",
+     "shorebird_next_boot_patch_number",
+     "shorebird_selection_status_json",
+     "shorebird_set_patch_decryption_key_provider",
+     "shorebird_set_patch_decryption_key_provider_v2",
+     "shorebird_update_with_result",
+     "shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "android",
+   "published_override": false,
+   "role": "runtime",
+   "route": null,
+   "sha256": "db381527d13a63542bd34d70a4d28c977fb4895b46bc7382f16fc9ccc68d7bf8",
+   "size": 175570544,
+   "slice_size": 175570544
+  },
+  {
+   "arch": "x64",
+   "basename": "libflutter.so",
+   "container": [
+    "android-engine-x64/android-engine-x64.tar.gz",
+    "android-engine/flutter.jar",
+    "lib/x86_64/libflutter.so"
+   ],
+   "elf_debug_info": true,
+   "export_count": 83,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 65,
+    "jni": 1,
+    "objc": 0,
+    "other": 4,
+    "rust_internal": 0,
+    "shorebird": 13,
+    "unwind": 0
+   },
+   "export_list_sha256": "bd188c292623cbb70f17b18ac9340ff9c621ba834d54f64489d9d0f1514a9718",
+   "exports_by_category": {
+    "jni": [
+     "JNI_OnLoad"
+    ],
+    "shorebird": [
+     "shorebird_check_for_downloadable_update",
+     "shorebird_current_boot_patch_number",
+     "shorebird_free_status_string",
+     "shorebird_free_string",
+     "shorebird_free_update_result",
+     "shorebird_init",
+     "shorebird_installation_id",
+     "shorebird_next_boot_patch_number",
+     "shorebird_selection_status_json",
+     "shorebird_set_patch_decryption_key_provider",
+     "shorebird_set_patch_decryption_key_provider_v2",
+     "shorebird_update_with_result",
+     "shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "android",
+   "published_override": false,
+   "role": "runtime",
+   "route": null,
+   "sha256": "db381527d13a63542bd34d70a4d28c977fb4895b46bc7382f16fc9ccc68d7bf8",
+   "size": 175570544,
+   "slice_size": 175570544
+  },
+  {
+   "arch": "x64",
+   "basename": "gen_snapshot_x64",
+   "container": [
+    "android-engine-x64/android-engine-x64.tar.gz",
+    "android-engine/gen_snapshot_x64"
+   ],
+   "elf_debug_info": false,
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "linux",
+   "published_override": false,
+   "role": "host-tool",
+   "route": null,
+   "sha256": "e97fb9c3e9737c8774f99a7f9bb2f6368f352c5c0f3dd71b50a828301fbeed1e",
+   "size": 6183496,
+   "slice_size": 6183496
+  },
+  {
+   "arch": "x64",
+   "basename": "libflutter.so",
+   "container": [
+    "android-engine-x64/android-engine-x64.tar.gz",
+    "android-engine/libflutter.so"
+   ],
+   "elf_debug_info": true,
+   "export_count": 83,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 65,
+    "jni": 1,
+    "objc": 0,
+    "other": 4,
+    "rust_internal": 0,
+    "shorebird": 13,
+    "unwind": 0
+   },
+   "export_list_sha256": "bd188c292623cbb70f17b18ac9340ff9c621ba834d54f64489d9d0f1514a9718",
+   "exports_by_category": {
+    "jni": [
+     "JNI_OnLoad"
+    ],
+    "shorebird": [
+     "shorebird_check_for_downloadable_update",
+     "shorebird_current_boot_patch_number",
+     "shorebird_free_status_string",
+     "shorebird_free_string",
+     "shorebird_free_update_result",
+     "shorebird_init",
+     "shorebird_installation_id",
+     "shorebird_next_boot_patch_number",
+     "shorebird_selection_status_json",
+     "shorebird_set_patch_decryption_key_provider",
+     "shorebird_set_patch_decryption_key_provider_v2",
+     "shorebird_update_with_result",
+     "shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "android",
+   "published_override": false,
+   "role": "runtime",
+   "route": null,
+   "sha256": "db381527d13a63542bd34d70a4d28c977fb4895b46bc7382f16fc9ccc68d7bf8",
+   "size": 175570544,
+   "slice_size": 175570544
+  },
+  {
+   "arch": "x64",
+   "basename": "libflutter.so",
+   "container": [
+    "android-engine-x64/android-engine-x64.tar.gz",
+    "android-engine/mirror/shorebird/download.flutter.io/io/flutter/x86_64_release/1.0.0-44a553c3b3c7797c7f0f20961d46a8b17e06444c/x86_64_release-1.0.0-44a553c3b3c7797c7f0f20961d46a8b17e06444c.jar",
+    "lib/x86_64/libflutter.so"
+   ],
+   "elf_debug_info": true,
+   "export_count": 83,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 65,
+    "jni": 1,
+    "objc": 0,
+    "other": 4,
+    "rust_internal": 0,
+    "shorebird": 13,
+    "unwind": 0
+   },
+   "export_list_sha256": "bd188c292623cbb70f17b18ac9340ff9c621ba834d54f64489d9d0f1514a9718",
+   "exports_by_category": {
+    "jni": [
+     "JNI_OnLoad"
+    ],
+    "shorebird": [
+     "shorebird_check_for_downloadable_update",
+     "shorebird_current_boot_patch_number",
+     "shorebird_free_status_string",
+     "shorebird_free_string",
+     "shorebird_free_update_result",
+     "shorebird_init",
+     "shorebird_installation_id",
+     "shorebird_next_boot_patch_number",
+     "shorebird_selection_status_json",
+     "shorebird_set_patch_decryption_key_provider",
+     "shorebird_set_patch_decryption_key_provider_v2",
+     "shorebird_update_with_result",
+     "shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "android",
+   "published_override": true,
+   "role": "runtime",
+   "route": "download.flutter.io/io/flutter/x86_64_release/1.0.0-$engine/x86_64_release-1.0.0-$engine.jar",
+   "sha256": "db381527d13a63542bd34d70a4d28c977fb4895b46bc7382f16fc9ccc68d7bf8",
+   "size": 175570544,
+   "slice_size": 175570544
+  },
+  {
+   "arch": "x64",
+   "basename": "libflutter.so",
+   "container": [
+    "android-engine-x64/android-engine-x64.tar.gz",
+    "android-engine/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/android-x64-release/artifacts.zip",
+    "flutter.jar",
+    "lib/x86_64/libflutter.so"
+   ],
+   "elf_debug_info": true,
+   "export_count": 83,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 65,
+    "jni": 1,
+    "objc": 0,
+    "other": 4,
+    "rust_internal": 0,
+    "shorebird": 13,
+    "unwind": 0
+   },
+   "export_list_sha256": "bd188c292623cbb70f17b18ac9340ff9c621ba834d54f64489d9d0f1514a9718",
+   "exports_by_category": {
+    "jni": [
+     "JNI_OnLoad"
+    ],
+    "shorebird": [
+     "shorebird_check_for_downloadable_update",
+     "shorebird_current_boot_patch_number",
+     "shorebird_free_status_string",
+     "shorebird_free_string",
+     "shorebird_free_update_result",
+     "shorebird_init",
+     "shorebird_installation_id",
+     "shorebird_next_boot_patch_number",
+     "shorebird_selection_status_json",
+     "shorebird_set_patch_decryption_key_provider",
+     "shorebird_set_patch_decryption_key_provider_v2",
+     "shorebird_update_with_result",
+     "shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "android",
+   "published_override": true,
+   "role": "runtime",
+   "route": "flutter_infra_release/flutter/$engine/android-x64-release/artifacts.zip",
+   "sha256": "db381527d13a63542bd34d70a4d28c977fb4895b46bc7382f16fc9ccc68d7bf8",
+   "size": 175570544,
+   "slice_size": 175570544
+  },
+  {
+   "arch": "x64",
+   "basename": "gen_snapshot",
+   "container": [
+    "android-engine-x64/android-engine-x64.tar.gz",
+    "android-engine/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/android-x64-release/linux-x64.zip",
+    "gen_snapshot"
+   ],
+   "elf_debug_info": false,
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "linux",
+   "published_override": true,
+   "role": "host-tool",
+   "route": "flutter_infra_release/flutter/$engine/android-x64-release/linux-x64.zip",
+   "sha256": "e97fb9c3e9737c8774f99a7f9bb2f6368f352c5c0f3dd71b50a828301fbeed1e",
+   "size": 6183496,
+   "slice_size": 6183496
+  },
+  {
+   "arch": "x64",
+   "basename": "libflutter.so",
+   "container": [
+    "android-engine-x64/android-engine-x64.tar.gz",
+    "android-engine/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/android-x64-release/symbols.zip",
+    "libflutter.so"
+   ],
+   "elf_debug_info": true,
+   "export_count": 83,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 65,
+    "jni": 1,
+    "objc": 0,
+    "other": 4,
+    "rust_internal": 0,
+    "shorebird": 13,
+    "unwind": 0
+   },
+   "export_list_sha256": "bd188c292623cbb70f17b18ac9340ff9c621ba834d54f64489d9d0f1514a9718",
+   "exports_by_category": {
+    "jni": [
+     "JNI_OnLoad"
+    ],
+    "shorebird": [
+     "shorebird_check_for_downloadable_update",
+     "shorebird_current_boot_patch_number",
+     "shorebird_free_status_string",
+     "shorebird_free_string",
+     "shorebird_free_update_result",
+     "shorebird_init",
+     "shorebird_installation_id",
+     "shorebird_next_boot_patch_number",
+     "shorebird_selection_status_json",
+     "shorebird_set_patch_decryption_key_provider",
+     "shorebird_set_patch_decryption_key_provider_v2",
+     "shorebird_update_with_result",
+     "shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "android",
+   "published_override": true,
+   "role": "debug-symbols",
+   "route": "flutter_infra_release/flutter/$engine/android-x64-release/symbols.zip",
+   "sha256": "db381527d13a63542bd34d70a4d28c977fb4895b46bc7382f16fc9ccc68d7bf8",
+   "size": 175570544,
+   "slice_size": 175570544
+  },
+  {
+   "arch": "x64",
+   "basename": "libflutter.so",
+   "container": [
+    "android-engine-x64/android-engine-x64.tar.gz",
+    "android-engine/symbols.zip",
+    "libflutter.so"
+   ],
+   "elf_debug_info": true,
+   "export_count": 83,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 65,
+    "jni": 1,
+    "objc": 0,
+    "other": 4,
+    "rust_internal": 0,
+    "shorebird": 13,
+    "unwind": 0
+   },
+   "export_list_sha256": "bd188c292623cbb70f17b18ac9340ff9c621ba834d54f64489d9d0f1514a9718",
+   "exports_by_category": {
+    "jni": [
+     "JNI_OnLoad"
+    ],
+    "shorebird": [
+     "shorebird_check_for_downloadable_update",
+     "shorebird_current_boot_patch_number",
+     "shorebird_free_status_string",
+     "shorebird_free_string",
+     "shorebird_free_update_result",
+     "shorebird_init",
+     "shorebird_installation_id",
+     "shorebird_next_boot_patch_number",
+     "shorebird_selection_status_json",
+     "shorebird_set_patch_decryption_key_provider",
+     "shorebird_set_patch_decryption_key_provider_v2",
+     "shorebird_update_with_result",
+     "shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "android",
+   "published_override": false,
+   "role": "debug-symbols",
+   "route": null,
+   "sha256": "db381527d13a63542bd34d70a4d28c977fb4895b46bc7382f16fc9ccc68d7bf8",
+   "size": 175570544,
+   "slice_size": 175570544
+  },
+  {
+   "arch": "x64",
+   "basename": "libflutter.so",
+   "container": [
+    "android-engine-x64/android-engine-x64.tar.gz",
+    "android-engine/x86_64_release.jar",
+    "lib/x86_64/libflutter.so"
+   ],
+   "elf_debug_info": true,
+   "export_count": 83,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 65,
+    "jni": 1,
+    "objc": 0,
+    "other": 4,
+    "rust_internal": 0,
+    "shorebird": 13,
+    "unwind": 0
+   },
+   "export_list_sha256": "bd188c292623cbb70f17b18ac9340ff9c621ba834d54f64489d9d0f1514a9718",
+   "exports_by_category": {
+    "jni": [
+     "JNI_OnLoad"
+    ],
+    "shorebird": [
+     "shorebird_check_for_downloadable_update",
+     "shorebird_current_boot_patch_number",
+     "shorebird_free_status_string",
+     "shorebird_free_string",
+     "shorebird_free_update_result",
+     "shorebird_init",
+     "shorebird_installation_id",
+     "shorebird_next_boot_patch_number",
+     "shorebird_selection_status_json",
+     "shorebird_set_patch_decryption_key_provider",
+     "shorebird_set_patch_decryption_key_provider_v2",
+     "shorebird_update_with_result",
+     "shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "android",
+   "published_override": false,
+   "role": "runtime",
+   "route": null,
+   "sha256": "db381527d13a63542bd34d70a4d28c977fb4895b46bc7382f16fc9ccc68d7bf8",
+   "size": 175570544,
+   "slice_size": 175570544
+  },
+  {
+   "arch": "arm64",
+   "basename": "Flutter",
+   "container": [
+    "ios-interpreter-engine/ios-interpreter-engine.tar.gz",
+    "ios-engine/Flutter.framework/Flutter"
+   ],
+   "export_count": 11335,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 143,
+    "jni": 0,
+    "objc": 0,
+    "other": 217,
+    "rust_internal": 10945,
+    "shorebird": 30,
+    "unwind": 0
+   },
+   "export_list_sha256": "7a7f241d0f3d1fc9d35fe2561d88d409875431be63e18caebb953997cb19f0d4",
+   "exports_by_category": {
+    "shorebird": [
+     "_shorebird_abort_boot_source",
+     "_shorebird_acquire_boot_source_memory",
+     "_shorebird_begin_boot_source",
+     "_shorebird_boot_selection_context_json",
+     "_shorebird_check_for_downloadable_update",
+     "_shorebird_current_boot_patch_number",
+     "_shorebird_free_status_string",
+     "_shorebird_free_string",
+     "_shorebird_free_update_result",
+     "_shorebird_init",
+     "_shorebird_init_selection_v2",
+     "_shorebird_init_with_options",
+     "_shorebird_installation_id",
+     "_shorebird_next_boot_patch_number",
+     "_shorebird_next_boot_patch_path",
+     "_shorebird_prepare_boot_source",
+     "_shorebird_release_boot_source",
+     "_shorebird_release_boot_source_memory",
+     "_shorebird_report_launch_deferred",
+     "_shorebird_report_launch_failure",
+     "_shorebird_report_launch_start",
+     "_shorebird_report_launch_success",
+     "_shorebird_selection_status_json",
+     "_shorebird_set_device_id_override",
+     "_shorebird_set_patch_decryption_key_provider",
+     "_shorebird_set_patch_decryption_key_provider_v2",
+     "_shorebird_should_auto_update",
+     "_shorebird_start_update_thread",
+     "_shorebird_update_with_result",
+     "_shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": false,
+   "format": "macho",
+   "macho_filetype": 6,
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "ios",
+   "published_override": false,
+   "role": "runtime",
+   "route": null,
+   "sha256": "1c23915262ee30a3a71abb91996208d8dc323ef2941976c6241575a6c6c5fa30",
+   "size": 22291968,
+   "slice_size": 22291968
+  },
+  {
+   "arch": "arm64",
+   "basename": "Flutter",
+   "container": [
+    "ios-interpreter-engine/ios-interpreter-engine.tar.gz",
+    "ios-engine/Flutter.xcframework/ios-arm64/Flutter.framework/Flutter"
+   ],
+   "export_count": 11335,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 143,
+    "jni": 0,
+    "objc": 0,
+    "other": 217,
+    "rust_internal": 10945,
+    "shorebird": 30,
+    "unwind": 0
+   },
+   "export_list_sha256": "7a7f241d0f3d1fc9d35fe2561d88d409875431be63e18caebb953997cb19f0d4",
+   "exports_by_category": {
+    "shorebird": [
+     "_shorebird_abort_boot_source",
+     "_shorebird_acquire_boot_source_memory",
+     "_shorebird_begin_boot_source",
+     "_shorebird_boot_selection_context_json",
+     "_shorebird_check_for_downloadable_update",
+     "_shorebird_current_boot_patch_number",
+     "_shorebird_free_status_string",
+     "_shorebird_free_string",
+     "_shorebird_free_update_result",
+     "_shorebird_init",
+     "_shorebird_init_selection_v2",
+     "_shorebird_init_with_options",
+     "_shorebird_installation_id",
+     "_shorebird_next_boot_patch_number",
+     "_shorebird_next_boot_patch_path",
+     "_shorebird_prepare_boot_source",
+     "_shorebird_release_boot_source",
+     "_shorebird_release_boot_source_memory",
+     "_shorebird_report_launch_deferred",
+     "_shorebird_report_launch_failure",
+     "_shorebird_report_launch_start",
+     "_shorebird_report_launch_success",
+     "_shorebird_selection_status_json",
+     "_shorebird_set_device_id_override",
+     "_shorebird_set_patch_decryption_key_provider",
+     "_shorebird_set_patch_decryption_key_provider_v2",
+     "_shorebird_should_auto_update",
+     "_shorebird_start_update_thread",
+     "_shorebird_update_with_result",
+     "_shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": false,
+   "format": "macho",
+   "macho_filetype": 6,
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "ios",
+   "published_override": false,
+   "role": "runtime",
+   "route": null,
+   "sha256": "1c23915262ee30a3a71abb91996208d8dc323ef2941976c6241575a6c6c5fa30",
+   "size": 22291968,
+   "slice_size": 22291968
+  },
+  {
+   "arch": "arm64",
+   "basename": "gen_snapshot",
+   "container": [
+    "ios-interpreter-engine/ios-interpreter-engine.tar.gz",
+    "ios-engine/host_release_arm64/gen_snapshot"
+   ],
+   "export_count": 1,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 1,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "43b51942614295d9c77e3edf08ae78dcfa59f65f6601ab53b079d40724507799",
+   "exports_by_category": {},
+   "fat": false,
+   "format": "macho",
+   "macho_filetype": 2,
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "published_override": false,
+   "role": "host-tool",
+   "route": null,
+   "sha256": "82739165b8778ed9d7f4ac64ec5f872350aa71a1204288b029e6975c806f7a93",
+   "size": 7156992,
+   "slice_size": 7156992
+  },
+  {
+   "arch": "arm64",
+   "basename": "Flutter",
+   "container": [
+    "ios-interpreter-engine/ios-interpreter-engine.tar.gz",
+    "ios-engine/ios-release/artifacts.zip",
+    "Flutter.xcframework/ios-arm64/Flutter.framework/Flutter"
+   ],
+   "export_count": 11335,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 143,
+    "jni": 0,
+    "objc": 0,
+    "other": 217,
+    "rust_internal": 10945,
+    "shorebird": 30,
+    "unwind": 0
+   },
+   "export_list_sha256": "7a7f241d0f3d1fc9d35fe2561d88d409875431be63e18caebb953997cb19f0d4",
+   "exports_by_category": {
+    "shorebird": [
+     "_shorebird_abort_boot_source",
+     "_shorebird_acquire_boot_source_memory",
+     "_shorebird_begin_boot_source",
+     "_shorebird_boot_selection_context_json",
+     "_shorebird_check_for_downloadable_update",
+     "_shorebird_current_boot_patch_number",
+     "_shorebird_free_status_string",
+     "_shorebird_free_string",
+     "_shorebird_free_update_result",
+     "_shorebird_init",
+     "_shorebird_init_selection_v2",
+     "_shorebird_init_with_options",
+     "_shorebird_installation_id",
+     "_shorebird_next_boot_patch_number",
+     "_shorebird_next_boot_patch_path",
+     "_shorebird_prepare_boot_source",
+     "_shorebird_release_boot_source",
+     "_shorebird_release_boot_source_memory",
+     "_shorebird_report_launch_deferred",
+     "_shorebird_report_launch_failure",
+     "_shorebird_report_launch_start",
+     "_shorebird_report_launch_success",
+     "_shorebird_selection_status_json",
+     "_shorebird_set_device_id_override",
+     "_shorebird_set_patch_decryption_key_provider",
+     "_shorebird_set_patch_decryption_key_provider_v2",
+     "_shorebird_should_auto_update",
+     "_shorebird_start_update_thread",
+     "_shorebird_update_with_result",
+     "_shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": false,
+   "format": "macho",
+   "macho_filetype": 6,
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "ios",
+   "published_override": false,
+   "role": "runtime",
+   "route": null,
+   "sha256": "1c23915262ee30a3a71abb91996208d8dc323ef2941976c6241575a6c6c5fa30",
+   "size": 22291968,
+   "slice_size": 22291968
+  },
+  {
+   "arch": "arm64",
+   "basename": "analyze_snapshot_arm64",
+   "container": [
+    "ios-interpreter-engine/ios-interpreter-engine.tar.gz",
+    "ios-engine/ios-release/artifacts.zip",
+    "analyze_snapshot_arm64"
+   ],
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": true,
+   "format": "macho",
+   "macho_filetype": 2,
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "published_override": false,
+   "role": "host-tool",
+   "route": null,
+   "sha256": "2529e422b63a00fbd83d9cfdcf56b102bffaa30efcc7c125115f80810b0112f8",
+   "size": 7551088,
+   "slice_size": 3733616
+  },
+  {
+   "arch": "x64",
+   "basename": "analyze_snapshot_arm64",
+   "container": [
+    "ios-interpreter-engine/ios-interpreter-engine.tar.gz",
+    "ios-engine/ios-release/artifacts.zip",
+    "analyze_snapshot_arm64"
+   ],
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": true,
+   "format": "macho",
+   "macho_filetype": 2,
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "published_override": false,
+   "role": "host-tool",
+   "route": null,
+   "sha256": "2529e422b63a00fbd83d9cfdcf56b102bffaa30efcc7c125115f80810b0112f8",
+   "size": 7551088,
+   "slice_size": 3807384
+  },
+  {
+   "arch": "arm64",
+   "basename": "gen_snapshot_arm64",
+   "container": [
+    "ios-interpreter-engine/ios-interpreter-engine.tar.gz",
+    "ios-engine/ios-release/artifacts.zip",
+    "gen_snapshot_arm64"
+   ],
+   "export_count": 1,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 1,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "43b51942614295d9c77e3edf08ae78dcfa59f65f6601ab53b079d40724507799",
+   "exports_by_category": {},
+   "fat": true,
+   "format": "macho",
+   "macho_filetype": 2,
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "published_override": false,
+   "role": "host-tool",
+   "route": null,
+   "sha256": "cf96e57469cd68e568b43c5b45cb22102434709792e7153341b8735f05d8352b",
+   "size": 14431552,
+   "slice_size": 7157056
+  },
+  {
+   "arch": "x64",
+   "basename": "gen_snapshot_arm64",
+   "container": [
+    "ios-interpreter-engine/ios-interpreter-engine.tar.gz",
+    "ios-engine/ios-release/artifacts.zip",
+    "gen_snapshot_arm64"
+   ],
+   "export_count": 1,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 1,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "43b51942614295d9c77e3edf08ae78dcfa59f65f6601ab53b079d40724507799",
+   "exports_by_category": {},
+   "fat": true,
+   "format": "macho",
+   "macho_filetype": 2,
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "published_override": false,
+   "role": "host-tool",
+   "route": null,
+   "sha256": "cf96e57469cd68e568b43c5b45cb22102434709792e7153341b8735f05d8352b",
+   "size": 14431552,
+   "slice_size": 7269848
+  },
+  {
+   "arch": "arm64",
+   "basename": "Flutter",
+   "container": [
+    "ios-interpreter-engine/ios-interpreter-engine.tar.gz",
+    "ios-engine/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/ios-release/artifacts.zip",
+    "Flutter.xcframework/ios-arm64/Flutter.framework/Flutter"
+   ],
+   "export_count": 11335,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 143,
+    "jni": 0,
+    "objc": 0,
+    "other": 217,
+    "rust_internal": 10945,
+    "shorebird": 30,
+    "unwind": 0
+   },
+   "export_list_sha256": "7a7f241d0f3d1fc9d35fe2561d88d409875431be63e18caebb953997cb19f0d4",
+   "exports_by_category": {
+    "shorebird": [
+     "_shorebird_abort_boot_source",
+     "_shorebird_acquire_boot_source_memory",
+     "_shorebird_begin_boot_source",
+     "_shorebird_boot_selection_context_json",
+     "_shorebird_check_for_downloadable_update",
+     "_shorebird_current_boot_patch_number",
+     "_shorebird_free_status_string",
+     "_shorebird_free_string",
+     "_shorebird_free_update_result",
+     "_shorebird_init",
+     "_shorebird_init_selection_v2",
+     "_shorebird_init_with_options",
+     "_shorebird_installation_id",
+     "_shorebird_next_boot_patch_number",
+     "_shorebird_next_boot_patch_path",
+     "_shorebird_prepare_boot_source",
+     "_shorebird_release_boot_source",
+     "_shorebird_release_boot_source_memory",
+     "_shorebird_report_launch_deferred",
+     "_shorebird_report_launch_failure",
+     "_shorebird_report_launch_start",
+     "_shorebird_report_launch_success",
+     "_shorebird_selection_status_json",
+     "_shorebird_set_device_id_override",
+     "_shorebird_set_patch_decryption_key_provider",
+     "_shorebird_set_patch_decryption_key_provider_v2",
+     "_shorebird_should_auto_update",
+     "_shorebird_start_update_thread",
+     "_shorebird_update_with_result",
+     "_shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": false,
+   "format": "macho",
+   "macho_filetype": 6,
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "ios",
+   "published_override": true,
+   "role": "runtime",
+   "route": "flutter_infra_release/flutter/$engine/ios-release/artifacts.zip",
+   "sha256": "1c23915262ee30a3a71abb91996208d8dc323ef2941976c6241575a6c6c5fa30",
+   "size": 22291968,
+   "slice_size": 22291968
+  },
+  {
+   "arch": "arm64",
+   "basename": "analyze_snapshot_arm64",
+   "container": [
+    "ios-interpreter-engine/ios-interpreter-engine.tar.gz",
+    "ios-engine/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/ios-release/artifacts.zip",
+    "analyze_snapshot_arm64"
+   ],
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": true,
+   "format": "macho",
+   "macho_filetype": 2,
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "published_override": true,
+   "role": "host-tool",
+   "route": "flutter_infra_release/flutter/$engine/ios-release/artifacts.zip",
+   "sha256": "2529e422b63a00fbd83d9cfdcf56b102bffaa30efcc7c125115f80810b0112f8",
+   "size": 7551088,
+   "slice_size": 3733616
+  },
+  {
+   "arch": "x64",
+   "basename": "analyze_snapshot_arm64",
+   "container": [
+    "ios-interpreter-engine/ios-interpreter-engine.tar.gz",
+    "ios-engine/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/ios-release/artifacts.zip",
+    "analyze_snapshot_arm64"
+   ],
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": true,
+   "format": "macho",
+   "macho_filetype": 2,
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "published_override": true,
+   "role": "host-tool",
+   "route": "flutter_infra_release/flutter/$engine/ios-release/artifacts.zip",
+   "sha256": "2529e422b63a00fbd83d9cfdcf56b102bffaa30efcc7c125115f80810b0112f8",
+   "size": 7551088,
+   "slice_size": 3807384
+  },
+  {
+   "arch": "arm64",
+   "basename": "gen_snapshot_arm64",
+   "container": [
+    "ios-interpreter-engine/ios-interpreter-engine.tar.gz",
+    "ios-engine/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/ios-release/artifacts.zip",
+    "gen_snapshot_arm64"
+   ],
+   "export_count": 1,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 1,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "43b51942614295d9c77e3edf08ae78dcfa59f65f6601ab53b079d40724507799",
+   "exports_by_category": {},
+   "fat": true,
+   "format": "macho",
+   "macho_filetype": 2,
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "published_override": true,
+   "role": "host-tool",
+   "route": "flutter_infra_release/flutter/$engine/ios-release/artifacts.zip",
+   "sha256": "cf96e57469cd68e568b43c5b45cb22102434709792e7153341b8735f05d8352b",
+   "size": 14431552,
+   "slice_size": 7157056
+  },
+  {
+   "arch": "x64",
+   "basename": "gen_snapshot_arm64",
+   "container": [
+    "ios-interpreter-engine/ios-interpreter-engine.tar.gz",
+    "ios-engine/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/ios-release/artifacts.zip",
+    "gen_snapshot_arm64"
+   ],
+   "export_count": 1,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 1,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "43b51942614295d9c77e3edf08ae78dcfa59f65f6601ab53b079d40724507799",
+   "exports_by_category": {},
+   "fat": true,
+   "format": "macho",
+   "macho_filetype": 2,
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "published_override": true,
+   "role": "host-tool",
+   "route": "flutter_infra_release/flutter/$engine/ios-release/artifacts.zip",
+   "sha256": "cf96e57469cd68e568b43c5b45cb22102434709792e7153341b8735f05d8352b",
+   "size": 14431552,
+   "slice_size": 7269848
+  },
+  {
+   "arch": "arm64",
+   "basename": "gen_snapshot",
+   "container": [
+    "linux-engine-arm64/linux-engine-arm64.tar.gz",
+    "linux-engine/artifacts.zip",
+    "gen_snapshot"
+   ],
+   "elf_debug_info": false,
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "linux",
+   "published_override": false,
+   "role": "host-tool",
+   "route": null,
+   "sha256": "26f7dac99351565a675dbd3a74a7bdefad452b3af4eada4b7d0250fe8c020fce",
+   "size": 5724408,
+   "slice_size": 5724408
+  },
+  {
+   "arch": "arm64",
+   "basename": "font-subset",
+   "container": [
+    "linux-engine-arm64/linux-engine-arm64.tar.gz",
+    "linux-engine/font-subset.zip",
+    "font-subset"
+   ],
+   "elf_debug_info": false,
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "linux",
+   "published_override": false,
+   "role": "host-tool",
+   "route": null,
+   "sha256": "1f0488a12805e37ab50cb2a85bded5ee9bb626d4226b7c36da61ea9e2144ffbe",
+   "size": 1631136,
+   "slice_size": 1631136
+  },
+  {
+   "arch": "arm64",
+   "basename": "gen_snapshot",
+   "container": [
+    "linux-engine-arm64/linux-engine-arm64.tar.gz",
+    "linux-engine/linux-arm64-flutter-gtk.zip",
+    "gen_snapshot"
+   ],
+   "elf_debug_info": false,
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "linux",
+   "published_override": false,
+   "role": "host-tool",
+   "route": null,
+   "sha256": "26f7dac99351565a675dbd3a74a7bdefad452b3af4eada4b7d0250fe8c020fce",
+   "size": 5724408,
+   "slice_size": 5724408
+  },
+  {
+   "arch": "arm64",
+   "basename": "libflutter_linux_gtk.so",
+   "container": [
+    "linux-engine-arm64/linux-engine-arm64.tar.gz",
+    "linux-engine/linux-arm64-flutter-gtk.zip",
+    "libflutter_linux_gtk.so"
+   ],
+   "elf_debug_info": false,
+   "export_count": 11455,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 12,
+    "dart_api": 0,
+    "flutter_embedder": 230,
+    "jni": 0,
+    "objc": 0,
+    "other": 5,
+    "rust_internal": 11137,
+    "shorebird": 30,
+    "unwind": 41
+   },
+   "export_list_sha256": "73829aa83b556c50b35c8d495e1b0616e383d6210005020e1a1a4794bd5fb6b5",
+   "exports_by_category": {
+    "shorebird": [
+     "shorebird_abort_boot_source",
+     "shorebird_acquire_boot_source_memory",
+     "shorebird_begin_boot_source",
+     "shorebird_boot_selection_context_json",
+     "shorebird_check_for_downloadable_update",
+     "shorebird_current_boot_patch_number",
+     "shorebird_free_status_string",
+     "shorebird_free_string",
+     "shorebird_free_update_result",
+     "shorebird_init",
+     "shorebird_init_selection_v2",
+     "shorebird_init_with_options",
+     "shorebird_installation_id",
+     "shorebird_next_boot_patch_number",
+     "shorebird_next_boot_patch_path",
+     "shorebird_prepare_boot_source",
+     "shorebird_release_boot_source",
+     "shorebird_release_boot_source_memory",
+     "shorebird_report_launch_deferred",
+     "shorebird_report_launch_failure",
+     "shorebird_report_launch_start",
+     "shorebird_report_launch_success",
+     "shorebird_selection_status_json",
+     "shorebird_set_device_id_override",
+     "shorebird_set_patch_decryption_key_provider",
+     "shorebird_set_patch_decryption_key_provider_v2",
+     "shorebird_should_auto_update",
+     "shorebird_start_update_thread",
+     "shorebird_update_with_result",
+     "shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "linux",
+   "published_override": false,
+   "role": "runtime",
+   "route": null,
+   "sha256": "b0f143acb6579015dc9a4e03155071bb5896598508f72f64b7bd034affe9850b",
+   "size": 22630336,
+   "slice_size": 22630336
+  },
+  {
+   "arch": "arm64",
+   "basename": "gen_snapshot",
+   "container": [
+    "linux-engine-arm64/linux-engine-arm64.tar.gz",
+    "linux-engine/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/linux-arm64-release/artifacts.zip",
+    "gen_snapshot"
+   ],
+   "elf_debug_info": false,
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "linux",
+   "published_override": true,
+   "role": "host-tool",
+   "route": "flutter_infra_release/flutter/$engine/linux-arm64-release/artifacts.zip",
+   "sha256": "26f7dac99351565a675dbd3a74a7bdefad452b3af4eada4b7d0250fe8c020fce",
+   "size": 5724408,
+   "slice_size": 5724408
+  },
+  {
+   "arch": "arm64",
+   "basename": "gen_snapshot",
+   "container": [
+    "linux-engine-arm64/linux-engine-arm64.tar.gz",
+    "linux-engine/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/linux-arm64-release/linux-arm64-flutter-gtk.zip",
+    "gen_snapshot"
+   ],
+   "elf_debug_info": false,
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "linux",
+   "published_override": true,
+   "role": "host-tool",
+   "route": "flutter_infra_release/flutter/$engine/linux-arm64-release/linux-arm64-flutter-gtk.zip",
+   "sha256": "26f7dac99351565a675dbd3a74a7bdefad452b3af4eada4b7d0250fe8c020fce",
+   "size": 5724408,
+   "slice_size": 5724408
+  },
+  {
+   "arch": "arm64",
+   "basename": "libflutter_linux_gtk.so",
+   "container": [
+    "linux-engine-arm64/linux-engine-arm64.tar.gz",
+    "linux-engine/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/linux-arm64-release/linux-arm64-flutter-gtk.zip",
+    "libflutter_linux_gtk.so"
+   ],
+   "elf_debug_info": false,
+   "export_count": 11455,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 12,
+    "dart_api": 0,
+    "flutter_embedder": 230,
+    "jni": 0,
+    "objc": 0,
+    "other": 5,
+    "rust_internal": 11137,
+    "shorebird": 30,
+    "unwind": 41
+   },
+   "export_list_sha256": "73829aa83b556c50b35c8d495e1b0616e383d6210005020e1a1a4794bd5fb6b5",
+   "exports_by_category": {
+    "shorebird": [
+     "shorebird_abort_boot_source",
+     "shorebird_acquire_boot_source_memory",
+     "shorebird_begin_boot_source",
+     "shorebird_boot_selection_context_json",
+     "shorebird_check_for_downloadable_update",
+     "shorebird_current_boot_patch_number",
+     "shorebird_free_status_string",
+     "shorebird_free_string",
+     "shorebird_free_update_result",
+     "shorebird_init",
+     "shorebird_init_selection_v2",
+     "shorebird_init_with_options",
+     "shorebird_installation_id",
+     "shorebird_next_boot_patch_number",
+     "shorebird_next_boot_patch_path",
+     "shorebird_prepare_boot_source",
+     "shorebird_release_boot_source",
+     "shorebird_release_boot_source_memory",
+     "shorebird_report_launch_deferred",
+     "shorebird_report_launch_failure",
+     "shorebird_report_launch_start",
+     "shorebird_report_launch_success",
+     "shorebird_selection_status_json",
+     "shorebird_set_device_id_override",
+     "shorebird_set_patch_decryption_key_provider",
+     "shorebird_set_patch_decryption_key_provider_v2",
+     "shorebird_should_auto_update",
+     "shorebird_start_update_thread",
+     "shorebird_update_with_result",
+     "shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "linux",
+   "published_override": true,
+   "role": "runtime",
+   "route": "flutter_infra_release/flutter/$engine/linux-arm64-release/linux-arm64-flutter-gtk.zip",
+   "sha256": "b0f143acb6579015dc9a4e03155071bb5896598508f72f64b7bd034affe9850b",
+   "size": 22630336,
+   "slice_size": 22630336
+  },
+  {
+   "arch": "arm64",
+   "basename": "font-subset",
+   "container": [
+    "linux-engine-arm64/linux-engine-arm64.tar.gz",
+    "linux-engine/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/linux-arm64/font-subset.zip",
+    "font-subset"
+   ],
+   "elf_debug_info": false,
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "linux",
+   "published_override": true,
+   "role": "host-tool",
+   "route": "flutter_infra_release/flutter/$engine/linux-arm64/font-subset.zip",
+   "sha256": "1f0488a12805e37ab50cb2a85bded5ee9bb626d4226b7c36da61ea9e2144ffbe",
+   "size": 1631136,
+   "slice_size": 1631136
+  },
+  {
+   "arch": "x64",
+   "basename": "gen_snapshot",
+   "container": [
+    "linux-engine-x64/linux-engine-x64.tar.gz",
+    "linux-engine/artifacts.zip",
+    "gen_snapshot"
+   ],
+   "elf_debug_info": false,
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "linux",
+   "published_override": false,
+   "role": "host-tool",
+   "route": null,
+   "sha256": "dc8fe542eac98499326cce8a8406b95c3a112afcd463390c59ee6967a46b3979",
+   "size": 5994872,
+   "slice_size": 5994872
+  },
+  {
+   "arch": "x64",
+   "basename": "font-subset",
+   "container": [
+    "linux-engine-x64/linux-engine-x64.tar.gz",
+    "linux-engine/font-subset.zip",
+    "font-subset"
+   ],
+   "elf_debug_info": false,
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "linux",
+   "published_override": false,
+   "role": "host-tool",
+   "route": null,
+   "sha256": "6538858120b55ad9b8965ece2bc1f3982a7f57df89922c887dbdd6d4adf55083",
+   "size": 1879768,
+   "slice_size": 1879768
+  },
+  {
+   "arch": "x64",
+   "basename": "gen_snapshot",
+   "container": [
+    "linux-engine-x64/linux-engine-x64.tar.gz",
+    "linux-engine/linux-x64-flutter-gtk.zip",
+    "gen_snapshot"
+   ],
+   "elf_debug_info": false,
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "linux",
+   "published_override": false,
+   "role": "host-tool",
+   "route": null,
+   "sha256": "dc8fe542eac98499326cce8a8406b95c3a112afcd463390c59ee6967a46b3979",
+   "size": 5994872,
+   "slice_size": 5994872
+  },
+  {
+   "arch": "x64",
+   "basename": "libflutter_linux_gtk.so",
+   "container": [
+    "linux-engine-x64/linux-engine-x64.tar.gz",
+    "linux-engine/linux-x64-flutter-gtk.zip",
+    "libflutter_linux_gtk.so"
+   ],
+   "elf_debug_info": false,
+   "export_count": 11494,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 12,
+    "dart_api": 0,
+    "flutter_embedder": 230,
+    "jni": 0,
+    "objc": 0,
+    "other": 5,
+    "rust_internal": 11176,
+    "shorebird": 30,
+    "unwind": 41
+   },
+   "export_list_sha256": "b32300713f5555fe6a018db3734c00775aaa1b27fae958a6e55ae73f1f8648df",
+   "exports_by_category": {
+    "shorebird": [
+     "shorebird_abort_boot_source",
+     "shorebird_acquire_boot_source_memory",
+     "shorebird_begin_boot_source",
+     "shorebird_boot_selection_context_json",
+     "shorebird_check_for_downloadable_update",
+     "shorebird_current_boot_patch_number",
+     "shorebird_free_status_string",
+     "shorebird_free_string",
+     "shorebird_free_update_result",
+     "shorebird_init",
+     "shorebird_init_selection_v2",
+     "shorebird_init_with_options",
+     "shorebird_installation_id",
+     "shorebird_next_boot_patch_number",
+     "shorebird_next_boot_patch_path",
+     "shorebird_prepare_boot_source",
+     "shorebird_release_boot_source",
+     "shorebird_release_boot_source_memory",
+     "shorebird_report_launch_deferred",
+     "shorebird_report_launch_failure",
+     "shorebird_report_launch_start",
+     "shorebird_report_launch_success",
+     "shorebird_selection_status_json",
+     "shorebird_set_device_id_override",
+     "shorebird_set_patch_decryption_key_provider",
+     "shorebird_set_patch_decryption_key_provider_v2",
+     "shorebird_should_auto_update",
+     "shorebird_start_update_thread",
+     "shorebird_update_with_result",
+     "shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "linux",
+   "published_override": false,
+   "role": "runtime",
+   "route": null,
+   "sha256": "a4884479a95a5ea00a15b6e13121de5da0795662ba4a8a6502e8125c1ebd3eae",
+   "size": 24806184,
+   "slice_size": 24806184
+  },
+  {
+   "arch": "x64",
+   "basename": "gen_snapshot",
+   "container": [
+    "linux-engine-x64/linux-engine-x64.tar.gz",
+    "linux-engine/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/linux-x64-release/artifacts.zip",
+    "gen_snapshot"
+   ],
+   "elf_debug_info": false,
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "linux",
+   "published_override": true,
+   "role": "host-tool",
+   "route": "flutter_infra_release/flutter/$engine/linux-x64-release/artifacts.zip",
+   "sha256": "dc8fe542eac98499326cce8a8406b95c3a112afcd463390c59ee6967a46b3979",
+   "size": 5994872,
+   "slice_size": 5994872
+  },
+  {
+   "arch": "x64",
+   "basename": "gen_snapshot",
+   "container": [
+    "linux-engine-x64/linux-engine-x64.tar.gz",
+    "linux-engine/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/linux-x64-release/linux-x64-flutter-gtk.zip",
+    "gen_snapshot"
+   ],
+   "elf_debug_info": false,
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "linux",
+   "published_override": true,
+   "role": "host-tool",
+   "route": "flutter_infra_release/flutter/$engine/linux-x64-release/linux-x64-flutter-gtk.zip",
+   "sha256": "dc8fe542eac98499326cce8a8406b95c3a112afcd463390c59ee6967a46b3979",
+   "size": 5994872,
+   "slice_size": 5994872
+  },
+  {
+   "arch": "x64",
+   "basename": "libflutter_linux_gtk.so",
+   "container": [
+    "linux-engine-x64/linux-engine-x64.tar.gz",
+    "linux-engine/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/linux-x64-release/linux-x64-flutter-gtk.zip",
+    "libflutter_linux_gtk.so"
+   ],
+   "elf_debug_info": false,
+   "export_count": 11494,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 12,
+    "dart_api": 0,
+    "flutter_embedder": 230,
+    "jni": 0,
+    "objc": 0,
+    "other": 5,
+    "rust_internal": 11176,
+    "shorebird": 30,
+    "unwind": 41
+   },
+   "export_list_sha256": "b32300713f5555fe6a018db3734c00775aaa1b27fae958a6e55ae73f1f8648df",
+   "exports_by_category": {
+    "shorebird": [
+     "shorebird_abort_boot_source",
+     "shorebird_acquire_boot_source_memory",
+     "shorebird_begin_boot_source",
+     "shorebird_boot_selection_context_json",
+     "shorebird_check_for_downloadable_update",
+     "shorebird_current_boot_patch_number",
+     "shorebird_free_status_string",
+     "shorebird_free_string",
+     "shorebird_free_update_result",
+     "shorebird_init",
+     "shorebird_init_selection_v2",
+     "shorebird_init_with_options",
+     "shorebird_installation_id",
+     "shorebird_next_boot_patch_number",
+     "shorebird_next_boot_patch_path",
+     "shorebird_prepare_boot_source",
+     "shorebird_release_boot_source",
+     "shorebird_release_boot_source_memory",
+     "shorebird_report_launch_deferred",
+     "shorebird_report_launch_failure",
+     "shorebird_report_launch_start",
+     "shorebird_report_launch_success",
+     "shorebird_selection_status_json",
+     "shorebird_set_device_id_override",
+     "shorebird_set_patch_decryption_key_provider",
+     "shorebird_set_patch_decryption_key_provider_v2",
+     "shorebird_should_auto_update",
+     "shorebird_start_update_thread",
+     "shorebird_update_with_result",
+     "shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "linux",
+   "published_override": true,
+   "role": "runtime",
+   "route": "flutter_infra_release/flutter/$engine/linux-x64-release/linux-x64-flutter-gtk.zip",
+   "sha256": "a4884479a95a5ea00a15b6e13121de5da0795662ba4a8a6502e8125c1ebd3eae",
+   "size": 24806184,
+   "slice_size": 24806184
+  },
+  {
+   "arch": "x64",
+   "basename": "font-subset",
+   "container": [
+    "linux-engine-x64/linux-engine-x64.tar.gz",
+    "linux-engine/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/linux-x64/font-subset.zip",
+    "font-subset"
+   ],
+   "elf_debug_info": false,
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": false,
+   "format": "elf",
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "linux",
+   "published_override": true,
+   "role": "host-tool",
+   "route": "flutter_infra_release/flutter/$engine/linux-x64/font-subset.zip",
+   "sha256": "6538858120b55ad9b8965ece2bc1f3982a7f57df89922c887dbdd6d4adf55083",
+   "size": 1879768,
+   "slice_size": 1879768
+  },
+  {
+   "arch": "arm64",
+   "basename": "FlutterMacOS",
+   "container": [
+    "macos-engine-arm64/macos-engine-arm64.tar.gz",
+    "macos-engine/FlutterMacOS.framework.zip",
+    "FlutterMacOS.framework/Versions/A/FlutterMacOS"
+   ],
+   "export_count": 11224,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 12,
+    "dart_api": 0,
+    "flutter_embedder": 135,
+    "jni": 0,
+    "objc": 2,
+    "other": 107,
+    "rust_internal": 10938,
+    "shorebird": 30,
+    "unwind": 0
+   },
+   "export_list_sha256": "f9c04e440b9911d0c58a3b916899e839af6c835420894b18cf40516b4d0c8d35",
+   "exports_by_category": {
+    "objc": [
+     "_OBJC_CLASS_$__TtC20InternalFlutterSwift14FlutterRunLoop",
+     "_OBJC_METACLASS_$__TtC20InternalFlutterSwift14FlutterRunLoop"
+    ],
+    "shorebird": [
+     "_shorebird_abort_boot_source",
+     "_shorebird_acquire_boot_source_memory",
+     "_shorebird_begin_boot_source",
+     "_shorebird_boot_selection_context_json",
+     "_shorebird_check_for_downloadable_update",
+     "_shorebird_current_boot_patch_number",
+     "_shorebird_free_status_string",
+     "_shorebird_free_string",
+     "_shorebird_free_update_result",
+     "_shorebird_init",
+     "_shorebird_init_selection_v2",
+     "_shorebird_init_with_options",
+     "_shorebird_installation_id",
+     "_shorebird_next_boot_patch_number",
+     "_shorebird_next_boot_patch_path",
+     "_shorebird_prepare_boot_source",
+     "_shorebird_release_boot_source",
+     "_shorebird_release_boot_source_memory",
+     "_shorebird_report_launch_deferred",
+     "_shorebird_report_launch_failure",
+     "_shorebird_report_launch_start",
+     "_shorebird_report_launch_success",
+     "_shorebird_selection_status_json",
+     "_shorebird_set_device_id_override",
+     "_shorebird_set_patch_decryption_key_provider",
+     "_shorebird_set_patch_decryption_key_provider_v2",
+     "_shorebird_should_auto_update",
+     "_shorebird_start_update_thread",
+     "_shorebird_update_with_result",
+     "_shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": false,
+   "format": "macho",
+   "macho_filetype": 6,
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "published_override": false,
+   "role": "runtime",
+   "route": null,
+   "sha256": "e38cc7f80cbcad8bcd88a7b1acf017ce36d898ef3b3e9aa4953b974d3a44381f",
+   "size": 26920032,
+   "slice_size": 26920032
+  },
+  {
+   "arch": "arm64",
+   "basename": "analyze_snapshot_arm64",
+   "container": [
+    "macos-engine-arm64/macos-engine-arm64.tar.gz",
+    "macos-engine/analyze_snapshot_arm64"
+   ],
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": true,
+   "format": "macho",
+   "macho_filetype": 2,
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "published_override": false,
+   "role": "host-tool",
+   "route": null,
+   "sha256": "d3b28ff009c9361b74c9786c7bb0dccf2547fe28230999b51ed7ce0d61e3ac86",
+   "size": 7634768,
+   "slice_size": 3751760
+  },
+  {
+   "arch": "x64",
+   "basename": "analyze_snapshot_arm64",
+   "container": [
+    "macos-engine-arm64/macos-engine-arm64.tar.gz",
+    "macos-engine/analyze_snapshot_arm64"
+   ],
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": true,
+   "format": "macho",
+   "macho_filetype": 2,
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "published_override": false,
+   "role": "host-tool",
+   "route": null,
+   "sha256": "d3b28ff009c9361b74c9786c7bb0dccf2547fe28230999b51ed7ce0d61e3ac86",
+   "size": 7634768,
+   "slice_size": 3855424
+  },
+  {
+   "arch": "arm64",
+   "basename": "font-subset",
+   "container": [
+    "macos-engine-arm64/macos-engine-arm64.tar.gz",
+    "macos-engine/font-subset.zip",
+    "font-subset"
+   ],
+   "export_count": 1,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 1,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "43b51942614295d9c77e3edf08ae78dcfa59f65f6601ab53b079d40724507799",
+   "exports_by_category": {},
+   "fat": false,
+   "format": "macho",
+   "macho_filetype": 2,
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "published_override": false,
+   "role": "host-tool",
+   "route": null,
+   "sha256": "c24a393939512cbf5e26f9beae365d1b8f12925aeeea09ab2d4cf8272ae1aedd",
+   "size": 1855120,
+   "slice_size": 1855120
+  },
+  {
+   "arch": "arm64",
+   "basename": "gen_snapshot_arm64",
+   "container": [
+    "macos-engine-arm64/macos-engine-arm64.tar.gz",
+    "macos-engine/gen_snapshot_arm64"
+   ],
+   "export_count": 1,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 1,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "43b51942614295d9c77e3edf08ae78dcfa59f65f6601ab53b079d40724507799",
+   "exports_by_category": {},
+   "fat": true,
+   "format": "macho",
+   "macho_filetype": 2,
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "published_override": false,
+   "role": "host-tool",
+   "route": null,
+   "sha256": "7994a996fc8106b254976178ae0c95691f57d293073052cefcf108716207a5cc",
+   "size": 14547952,
+   "slice_size": 7175152
+  },
+  {
+   "arch": "x64",
+   "basename": "gen_snapshot_arm64",
+   "container": [
+    "macos-engine-arm64/macos-engine-arm64.tar.gz",
+    "macos-engine/gen_snapshot_arm64"
+   ],
+   "export_count": 1,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 1,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "43b51942614295d9c77e3edf08ae78dcfa59f65f6601ab53b079d40724507799",
+   "exports_by_category": {},
+   "fat": true,
+   "format": "macho",
+   "macho_filetype": 2,
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "published_override": false,
+   "role": "host-tool",
+   "route": null,
+   "sha256": "7994a996fc8106b254976178ae0c95691f57d293073052cefcf108716207a5cc",
+   "size": 14547952,
+   "slice_size": 7344880
+  },
+  {
+   "arch": "arm64",
+   "basename": "analyze-snapshot-macos-arm64",
+   "container": [
+    "macos-engine-arm64/macos-engine-arm64.tar.gz",
+    "macos-engine/mirror/shorebird/44a553c3b3c7797c7f0f20961d46a8b17e06444c/analyze-snapshot-macos-arm64"
+   ],
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": true,
+   "format": "macho",
+   "macho_filetype": 2,
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "published_override": false,
+   "role": "host-tool",
+   "route": null,
+   "sha256": "d3b28ff009c9361b74c9786c7bb0dccf2547fe28230999b51ed7ce0d61e3ac86",
+   "size": 7634768,
+   "slice_size": 3751760
+  },
+  {
+   "arch": "x64",
+   "basename": "analyze-snapshot-macos-arm64",
+   "container": [
+    "macos-engine-arm64/macos-engine-arm64.tar.gz",
+    "macos-engine/mirror/shorebird/44a553c3b3c7797c7f0f20961d46a8b17e06444c/analyze-snapshot-macos-arm64"
+   ],
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": true,
+   "format": "macho",
+   "macho_filetype": 2,
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "published_override": false,
+   "role": "host-tool",
+   "route": null,
+   "sha256": "d3b28ff009c9361b74c9786c7bb0dccf2547fe28230999b51ed7ce0d61e3ac86",
+   "size": 7634768,
+   "slice_size": 3855424
+  },
+  {
+   "arch": "arm64",
+   "basename": "FlutterMacOS",
+   "container": [
+    "macos-engine-arm64/macos-engine-arm64.tar.gz",
+    "macos-engine/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/darwin-arm64-release/FlutterMacOS.framework.zip",
+    "FlutterMacOS.framework/Versions/A/FlutterMacOS"
+   ],
+   "export_count": 11224,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 12,
+    "dart_api": 0,
+    "flutter_embedder": 135,
+    "jni": 0,
+    "objc": 2,
+    "other": 107,
+    "rust_internal": 10938,
+    "shorebird": 30,
+    "unwind": 0
+   },
+   "export_list_sha256": "f9c04e440b9911d0c58a3b916899e839af6c835420894b18cf40516b4d0c8d35",
+   "exports_by_category": {
+    "objc": [
+     "_OBJC_CLASS_$__TtC20InternalFlutterSwift14FlutterRunLoop",
+     "_OBJC_METACLASS_$__TtC20InternalFlutterSwift14FlutterRunLoop"
+    ],
+    "shorebird": [
+     "_shorebird_abort_boot_source",
+     "_shorebird_acquire_boot_source_memory",
+     "_shorebird_begin_boot_source",
+     "_shorebird_boot_selection_context_json",
+     "_shorebird_check_for_downloadable_update",
+     "_shorebird_current_boot_patch_number",
+     "_shorebird_free_status_string",
+     "_shorebird_free_string",
+     "_shorebird_free_update_result",
+     "_shorebird_init",
+     "_shorebird_init_selection_v2",
+     "_shorebird_init_with_options",
+     "_shorebird_installation_id",
+     "_shorebird_next_boot_patch_number",
+     "_shorebird_next_boot_patch_path",
+     "_shorebird_prepare_boot_source",
+     "_shorebird_release_boot_source",
+     "_shorebird_release_boot_source_memory",
+     "_shorebird_report_launch_deferred",
+     "_shorebird_report_launch_failure",
+     "_shorebird_report_launch_start",
+     "_shorebird_report_launch_success",
+     "_shorebird_selection_status_json",
+     "_shorebird_set_device_id_override",
+     "_shorebird_set_patch_decryption_key_provider",
+     "_shorebird_set_patch_decryption_key_provider_v2",
+     "_shorebird_should_auto_update",
+     "_shorebird_start_update_thread",
+     "_shorebird_update_with_result",
+     "_shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": false,
+   "format": "macho",
+   "macho_filetype": 6,
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "published_override": true,
+   "role": "runtime",
+   "route": "flutter_infra_release/flutter/$engine/darwin-arm64-release/FlutterMacOS.framework.zip",
+   "sha256": "e38cc7f80cbcad8bcd88a7b1acf017ce36d898ef3b3e9aa4953b974d3a44381f",
+   "size": 26920032,
+   "slice_size": 26920032
+  },
+  {
+   "arch": "arm64",
+   "basename": "font-subset",
+   "container": [
+    "macos-engine-arm64/macos-engine-arm64.tar.gz",
+    "macos-engine/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/darwin-arm64/font-subset.zip",
+    "font-subset"
+   ],
+   "export_count": 1,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 1,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "43b51942614295d9c77e3edf08ae78dcfa59f65f6601ab53b079d40724507799",
+   "exports_by_category": {},
+   "fat": false,
+   "format": "macho",
+   "macho_filetype": 2,
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "published_override": true,
+   "role": "host-tool",
+   "route": "flutter_infra_release/flutter/$engine/darwin-arm64/font-subset.zip",
+   "sha256": "c24a393939512cbf5e26f9beae365d1b8f12925aeeea09ab2d4cf8272ae1aedd",
+   "size": 1855120,
+   "slice_size": 1855120
+  },
+  {
+   "arch": "arm64",
+   "basename": "analyze_snapshot",
+   "container": [
+    "macos-engine-universal/macos-engine-universal.tar.gz",
+    "macos-engine-universal/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/darwin-x64-release/artifacts.zip",
+    "analyze_snapshot"
+   ],
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": true,
+   "format": "macho",
+   "macho_filetype": 2,
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "published_override": true,
+   "role": "host-tool",
+   "route": "flutter_infra_release/flutter/$engine/darwin-x64-release/artifacts.zip",
+   "sha256": "c9091b6f7e94035ae29fb09fbdf1698d15ef3e1e259fed470c77b2c60ca931f5",
+   "size": 7592192,
+   "slice_size": 3660032
+  },
+  {
+   "arch": "x64",
+   "basename": "analyze_snapshot",
+   "container": [
+    "macos-engine-universal/macos-engine-universal.tar.gz",
+    "macos-engine-universal/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/darwin-x64-release/artifacts.zip",
+    "analyze_snapshot"
+   ],
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": true,
+   "format": "macho",
+   "macho_filetype": 2,
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "published_override": true,
+   "role": "host-tool",
+   "route": "flutter_infra_release/flutter/$engine/darwin-x64-release/artifacts.zip",
+   "sha256": "c9091b6f7e94035ae29fb09fbdf1698d15ef3e1e259fed470c77b2c60ca931f5",
+   "size": 7592192,
+   "slice_size": 3901296
+  },
+  {
+   "arch": "arm64",
+   "basename": "gen_snapshot",
+   "container": [
+    "macos-engine-universal/macos-engine-universal.tar.gz",
+    "macos-engine-universal/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/darwin-x64-release/artifacts.zip",
+    "gen_snapshot"
+   ],
+   "export_count": 1,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 1,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "43b51942614295d9c77e3edf08ae78dcfa59f65f6601ab53b079d40724507799",
+   "exports_by_category": {},
+   "fat": true,
+   "format": "macho",
+   "macho_filetype": 2,
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "published_override": true,
+   "role": "host-tool",
+   "route": "flutter_infra_release/flutter/$engine/darwin-x64-release/artifacts.zip",
+   "sha256": "7918678cb4b13c1b55ee0721ecaeabf26433fe79834474649134ae57a9e850ad",
+   "size": 14386576,
+   "slice_size": 7046544
+  },
+  {
+   "arch": "x64",
+   "basename": "gen_snapshot",
+   "container": [
+    "macos-engine-universal/macos-engine-universal.tar.gz",
+    "macos-engine-universal/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/darwin-x64-release/artifacts.zip",
+    "gen_snapshot"
+   ],
+   "export_count": 1,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 1,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "43b51942614295d9c77e3edf08ae78dcfa59f65f6601ab53b079d40724507799",
+   "exports_by_category": {},
+   "fat": true,
+   "format": "macho",
+   "macho_filetype": 2,
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "published_override": true,
+   "role": "host-tool",
+   "route": "flutter_infra_release/flutter/$engine/darwin-x64-release/artifacts.zip",
+   "sha256": "7918678cb4b13c1b55ee0721ecaeabf26433fe79834474649134ae57a9e850ad",
+   "size": 14386576,
+   "slice_size": 7317200
+  },
+  {
+   "arch": "arm64",
+   "basename": "FlutterMacOS",
+   "container": [
+    "macos-engine-universal/macos-engine-universal.tar.gz",
+    "macos-engine-universal/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/darwin-x64-release/framework.zip",
+    "FlutterMacOS.xcframework/macos-arm64_x86_64/FlutterMacOS.framework/Versions/A/FlutterMacOS"
+   ],
+   "export_count": 11224,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 12,
+    "dart_api": 0,
+    "flutter_embedder": 135,
+    "jni": 0,
+    "objc": 2,
+    "other": 107,
+    "rust_internal": 10938,
+    "shorebird": 30,
+    "unwind": 0
+   },
+   "export_list_sha256": "f9c04e440b9911d0c58a3b916899e839af6c835420894b18cf40516b4d0c8d35",
+   "exports_by_category": {
+    "objc": [
+     "_OBJC_CLASS_$__TtC20InternalFlutterSwift14FlutterRunLoop",
+     "_OBJC_METACLASS_$__TtC20InternalFlutterSwift14FlutterRunLoop"
+    ],
+    "shorebird": [
+     "_shorebird_abort_boot_source",
+     "_shorebird_acquire_boot_source_memory",
+     "_shorebird_begin_boot_source",
+     "_shorebird_boot_selection_context_json",
+     "_shorebird_check_for_downloadable_update",
+     "_shorebird_current_boot_patch_number",
+     "_shorebird_free_status_string",
+     "_shorebird_free_string",
+     "_shorebird_free_update_result",
+     "_shorebird_init",
+     "_shorebird_init_selection_v2",
+     "_shorebird_init_with_options",
+     "_shorebird_installation_id",
+     "_shorebird_next_boot_patch_number",
+     "_shorebird_next_boot_patch_path",
+     "_shorebird_prepare_boot_source",
+     "_shorebird_release_boot_source",
+     "_shorebird_release_boot_source_memory",
+     "_shorebird_report_launch_deferred",
+     "_shorebird_report_launch_failure",
+     "_shorebird_report_launch_start",
+     "_shorebird_report_launch_success",
+     "_shorebird_selection_status_json",
+     "_shorebird_set_device_id_override",
+     "_shorebird_set_patch_decryption_key_provider",
+     "_shorebird_set_patch_decryption_key_provider_v2",
+     "_shorebird_should_auto_update",
+     "_shorebird_start_update_thread",
+     "_shorebird_update_with_result",
+     "_shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": true,
+   "format": "macho",
+   "macho_filetype": 6,
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "published_override": true,
+   "role": "runtime",
+   "route": "flutter_infra_release/flutter/$engine/darwin-x64-release/framework.zip",
+   "sha256": "a33c2d903ed4b3f831b95806d54379b8a1a0b66ca3a4735fb2d1b9adc903a90e",
+   "size": 55592032,
+   "slice_size": 26920032
+  },
+  {
+   "arch": "x64",
+   "basename": "FlutterMacOS",
+   "container": [
+    "macos-engine-universal/macos-engine-universal.tar.gz",
+    "macos-engine-universal/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/darwin-x64-release/framework.zip",
+    "FlutterMacOS.xcframework/macos-arm64_x86_64/FlutterMacOS.framework/Versions/A/FlutterMacOS"
+   ],
+   "export_count": 11289,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 12,
+    "dart_api": 0,
+    "flutter_embedder": 135,
+    "jni": 0,
+    "objc": 2,
+    "other": 107,
+    "rust_internal": 11003,
+    "shorebird": 30,
+    "unwind": 0
+   },
+   "export_list_sha256": "2c4a73eb7644601176c33d1780b507b3901676d03206e81b401f5cd8c828a72a",
+   "exports_by_category": {
+    "objc": [
+     "_OBJC_CLASS_$__TtC20InternalFlutterSwift14FlutterRunLoop",
+     "_OBJC_METACLASS_$__TtC20InternalFlutterSwift14FlutterRunLoop"
+    ],
+    "shorebird": [
+     "_shorebird_abort_boot_source",
+     "_shorebird_acquire_boot_source_memory",
+     "_shorebird_begin_boot_source",
+     "_shorebird_boot_selection_context_json",
+     "_shorebird_check_for_downloadable_update",
+     "_shorebird_current_boot_patch_number",
+     "_shorebird_free_status_string",
+     "_shorebird_free_string",
+     "_shorebird_free_update_result",
+     "_shorebird_init",
+     "_shorebird_init_selection_v2",
+     "_shorebird_init_with_options",
+     "_shorebird_installation_id",
+     "_shorebird_next_boot_patch_number",
+     "_shorebird_next_boot_patch_path",
+     "_shorebird_prepare_boot_source",
+     "_shorebird_release_boot_source",
+     "_shorebird_release_boot_source_memory",
+     "_shorebird_report_launch_deferred",
+     "_shorebird_report_launch_failure",
+     "_shorebird_report_launch_start",
+     "_shorebird_report_launch_success",
+     "_shorebird_selection_status_json",
+     "_shorebird_set_device_id_override",
+     "_shorebird_set_patch_decryption_key_provider",
+     "_shorebird_set_patch_decryption_key_provider_v2",
+     "_shorebird_should_auto_update",
+     "_shorebird_start_update_thread",
+     "_shorebird_update_with_result",
+     "_shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": true,
+   "format": "macho",
+   "macho_filetype": 6,
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "published_override": true,
+   "role": "runtime",
+   "route": "flutter_infra_release/flutter/$engine/darwin-x64-release/framework.zip",
+   "sha256": "a33c2d903ed4b3f831b95806d54379b8a1a0b66ca3a4735fb2d1b9adc903a90e",
+   "size": 55592032,
+   "slice_size": 28654728
+  },
+  {
+   "arch": "arm64",
+   "basename": "gen_snapshot_arm64",
+   "container": [
+    "macos-engine-universal/macos-engine-universal.tar.gz",
+    "macos-engine-universal/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/darwin-x64-release/gen_snapshot.zip",
+    "gen_snapshot_arm64"
+   ],
+   "export_count": 1,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 1,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "43b51942614295d9c77e3edf08ae78dcfa59f65f6601ab53b079d40724507799",
+   "exports_by_category": {},
+   "fat": true,
+   "format": "macho",
+   "macho_filetype": 2,
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "published_override": true,
+   "role": "host-tool",
+   "route": "flutter_infra_release/flutter/$engine/darwin-x64-release/gen_snapshot.zip",
+   "sha256": "7994a996fc8106b254976178ae0c95691f57d293073052cefcf108716207a5cc",
+   "size": 14547952,
+   "slice_size": 7175152
+  },
+  {
+   "arch": "x64",
+   "basename": "gen_snapshot_arm64",
+   "container": [
+    "macos-engine-universal/macos-engine-universal.tar.gz",
+    "macos-engine-universal/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/darwin-x64-release/gen_snapshot.zip",
+    "gen_snapshot_arm64"
+   ],
+   "export_count": 1,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 1,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "43b51942614295d9c77e3edf08ae78dcfa59f65f6601ab53b079d40724507799",
+   "exports_by_category": {},
+   "fat": true,
+   "format": "macho",
+   "macho_filetype": 2,
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "published_override": true,
+   "role": "host-tool",
+   "route": "flutter_infra_release/flutter/$engine/darwin-x64-release/gen_snapshot.zip",
+   "sha256": "7994a996fc8106b254976178ae0c95691f57d293073052cefcf108716207a5cc",
+   "size": 14547952,
+   "slice_size": 7344880
+  },
+  {
+   "arch": "arm64",
+   "basename": "gen_snapshot_x64",
+   "container": [
+    "macos-engine-universal/macos-engine-universal.tar.gz",
+    "macos-engine-universal/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/darwin-x64-release/gen_snapshot.zip",
+    "gen_snapshot_x64"
+   ],
+   "export_count": 1,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 1,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "43b51942614295d9c77e3edf08ae78dcfa59f65f6601ab53b079d40724507799",
+   "exports_by_category": {},
+   "fat": true,
+   "format": "macho",
+   "macho_filetype": 2,
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "published_override": true,
+   "role": "host-tool",
+   "route": "flutter_infra_release/flutter/$engine/darwin-x64-release/gen_snapshot.zip",
+   "sha256": "7918678cb4b13c1b55ee0721ecaeabf26433fe79834474649134ae57a9e850ad",
+   "size": 14386576,
+   "slice_size": 7046544
+  },
+  {
+   "arch": "x64",
+   "basename": "gen_snapshot_x64",
+   "container": [
+    "macos-engine-universal/macos-engine-universal.tar.gz",
+    "macos-engine-universal/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/darwin-x64-release/gen_snapshot.zip",
+    "gen_snapshot_x64"
+   ],
+   "export_count": 1,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 1,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "43b51942614295d9c77e3edf08ae78dcfa59f65f6601ab53b079d40724507799",
+   "exports_by_category": {},
+   "fat": true,
+   "format": "macho",
+   "macho_filetype": 2,
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "published_override": true,
+   "role": "host-tool",
+   "route": "flutter_infra_release/flutter/$engine/darwin-x64-release/gen_snapshot.zip",
+   "sha256": "7918678cb4b13c1b55ee0721ecaeabf26433fe79834474649134ae57a9e850ad",
+   "size": 14386576,
+   "slice_size": 7317200
+  },
+  {
+   "arch": "x64",
+   "basename": "FlutterMacOS",
+   "container": [
+    "macos-engine-x64/macos-engine-x64.tar.gz",
+    "macos-engine/FlutterMacOS.framework.zip",
+    "FlutterMacOS.framework/Versions/A/FlutterMacOS"
+   ],
+   "export_count": 11289,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 12,
+    "dart_api": 0,
+    "flutter_embedder": 135,
+    "jni": 0,
+    "objc": 2,
+    "other": 107,
+    "rust_internal": 11003,
+    "shorebird": 30,
+    "unwind": 0
+   },
+   "export_list_sha256": "2c4a73eb7644601176c33d1780b507b3901676d03206e81b401f5cd8c828a72a",
+   "exports_by_category": {
+    "objc": [
+     "_OBJC_CLASS_$__TtC20InternalFlutterSwift14FlutterRunLoop",
+     "_OBJC_METACLASS_$__TtC20InternalFlutterSwift14FlutterRunLoop"
+    ],
+    "shorebird": [
+     "_shorebird_abort_boot_source",
+     "_shorebird_acquire_boot_source_memory",
+     "_shorebird_begin_boot_source",
+     "_shorebird_boot_selection_context_json",
+     "_shorebird_check_for_downloadable_update",
+     "_shorebird_current_boot_patch_number",
+     "_shorebird_free_status_string",
+     "_shorebird_free_string",
+     "_shorebird_free_update_result",
+     "_shorebird_init",
+     "_shorebird_init_selection_v2",
+     "_shorebird_init_with_options",
+     "_shorebird_installation_id",
+     "_shorebird_next_boot_patch_number",
+     "_shorebird_next_boot_patch_path",
+     "_shorebird_prepare_boot_source",
+     "_shorebird_release_boot_source",
+     "_shorebird_release_boot_source_memory",
+     "_shorebird_report_launch_deferred",
+     "_shorebird_report_launch_failure",
+     "_shorebird_report_launch_start",
+     "_shorebird_report_launch_success",
+     "_shorebird_selection_status_json",
+     "_shorebird_set_device_id_override",
+     "_shorebird_set_patch_decryption_key_provider",
+     "_shorebird_set_patch_decryption_key_provider_v2",
+     "_shorebird_should_auto_update",
+     "_shorebird_start_update_thread",
+     "_shorebird_update_with_result",
+     "_shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": false,
+   "format": "macho",
+   "macho_filetype": 6,
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "published_override": false,
+   "role": "runtime",
+   "route": null,
+   "sha256": "5170249e1ef63934837ad6c55dd8eabb4ff48b30ea498ba4bf7d42c85370ac20",
+   "size": 28654728,
+   "slice_size": 28654728
+  },
+  {
+   "arch": "arm64",
+   "basename": "analyze_snapshot_x64",
+   "container": [
+    "macos-engine-x64/macos-engine-x64.tar.gz",
+    "macos-engine/analyze_snapshot_x64"
+   ],
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": true,
+   "format": "macho",
+   "macho_filetype": 2,
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "published_override": false,
+   "role": "host-tool",
+   "route": null,
+   "sha256": "c9091b6f7e94035ae29fb09fbdf1698d15ef3e1e259fed470c77b2c60ca931f5",
+   "size": 7592192,
+   "slice_size": 3660032
+  },
+  {
+   "arch": "x64",
+   "basename": "analyze_snapshot_x64",
+   "container": [
+    "macos-engine-x64/macos-engine-x64.tar.gz",
+    "macos-engine/analyze_snapshot_x64"
+   ],
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": true,
+   "format": "macho",
+   "macho_filetype": 2,
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "published_override": false,
+   "role": "host-tool",
+   "route": null,
+   "sha256": "c9091b6f7e94035ae29fb09fbdf1698d15ef3e1e259fed470c77b2c60ca931f5",
+   "size": 7592192,
+   "slice_size": 3901296
+  },
+  {
+   "arch": "x64",
+   "basename": "font-subset",
+   "container": [
+    "macos-engine-x64/macos-engine-x64.tar.gz",
+    "macos-engine/font-subset.zip",
+    "font-subset"
+   ],
+   "export_count": 1,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 1,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "43b51942614295d9c77e3edf08ae78dcfa59f65f6601ab53b079d40724507799",
+   "exports_by_category": {},
+   "fat": false,
+   "format": "macho",
+   "macho_filetype": 2,
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "published_override": false,
+   "role": "host-tool",
+   "route": null,
+   "sha256": "5d9329b3157536d493b26c031c18ae2f961a142ecd07bb59d9ab0bd207136a3a",
+   "size": 2097488,
+   "slice_size": 2097488
+  },
+  {
+   "arch": "arm64",
+   "basename": "gen_snapshot_x64",
+   "container": [
+    "macos-engine-x64/macos-engine-x64.tar.gz",
+    "macos-engine/gen_snapshot_x64"
+   ],
+   "export_count": 1,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 1,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "43b51942614295d9c77e3edf08ae78dcfa59f65f6601ab53b079d40724507799",
+   "exports_by_category": {},
+   "fat": true,
+   "format": "macho",
+   "macho_filetype": 2,
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "published_override": false,
+   "role": "host-tool",
+   "route": null,
+   "sha256": "7918678cb4b13c1b55ee0721ecaeabf26433fe79834474649134ae57a9e850ad",
+   "size": 14386576,
+   "slice_size": 7046544
+  },
+  {
+   "arch": "x64",
+   "basename": "gen_snapshot_x64",
+   "container": [
+    "macos-engine-x64/macos-engine-x64.tar.gz",
+    "macos-engine/gen_snapshot_x64"
+   ],
+   "export_count": 1,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 1,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "43b51942614295d9c77e3edf08ae78dcfa59f65f6601ab53b079d40724507799",
+   "exports_by_category": {},
+   "fat": true,
+   "format": "macho",
+   "macho_filetype": 2,
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "published_override": false,
+   "role": "host-tool",
+   "route": null,
+   "sha256": "7918678cb4b13c1b55ee0721ecaeabf26433fe79834474649134ae57a9e850ad",
+   "size": 14386576,
+   "slice_size": 7317200
+  },
+  {
+   "arch": "arm64",
+   "basename": "analyze-snapshot-macos-x64",
+   "container": [
+    "macos-engine-x64/macos-engine-x64.tar.gz",
+    "macos-engine/mirror/shorebird/44a553c3b3c7797c7f0f20961d46a8b17e06444c/analyze-snapshot-macos-x64"
+   ],
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": true,
+   "format": "macho",
+   "macho_filetype": 2,
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "published_override": false,
+   "role": "host-tool",
+   "route": null,
+   "sha256": "c9091b6f7e94035ae29fb09fbdf1698d15ef3e1e259fed470c77b2c60ca931f5",
+   "size": 7592192,
+   "slice_size": 3660032
+  },
+  {
+   "arch": "x64",
+   "basename": "analyze-snapshot-macos-x64",
+   "container": [
+    "macos-engine-x64/macos-engine-x64.tar.gz",
+    "macos-engine/mirror/shorebird/44a553c3b3c7797c7f0f20961d46a8b17e06444c/analyze-snapshot-macos-x64"
+   ],
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": true,
+   "format": "macho",
+   "macho_filetype": 2,
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "published_override": false,
+   "role": "host-tool",
+   "route": null,
+   "sha256": "c9091b6f7e94035ae29fb09fbdf1698d15ef3e1e259fed470c77b2c60ca931f5",
+   "size": 7592192,
+   "slice_size": 3901296
+  },
+  {
+   "arch": "x64",
+   "basename": "FlutterMacOS",
+   "container": [
+    "macos-engine-x64/macos-engine-x64.tar.gz",
+    "macos-engine/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/darwin-x64-release/FlutterMacOS.framework.zip",
+    "FlutterMacOS.framework/Versions/A/FlutterMacOS"
+   ],
+   "export_count": 11289,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 12,
+    "dart_api": 0,
+    "flutter_embedder": 135,
+    "jni": 0,
+    "objc": 2,
+    "other": 107,
+    "rust_internal": 11003,
+    "shorebird": 30,
+    "unwind": 0
+   },
+   "export_list_sha256": "2c4a73eb7644601176c33d1780b507b3901676d03206e81b401f5cd8c828a72a",
+   "exports_by_category": {
+    "objc": [
+     "_OBJC_CLASS_$__TtC20InternalFlutterSwift14FlutterRunLoop",
+     "_OBJC_METACLASS_$__TtC20InternalFlutterSwift14FlutterRunLoop"
+    ],
+    "shorebird": [
+     "_shorebird_abort_boot_source",
+     "_shorebird_acquire_boot_source_memory",
+     "_shorebird_begin_boot_source",
+     "_shorebird_boot_selection_context_json",
+     "_shorebird_check_for_downloadable_update",
+     "_shorebird_current_boot_patch_number",
+     "_shorebird_free_status_string",
+     "_shorebird_free_string",
+     "_shorebird_free_update_result",
+     "_shorebird_init",
+     "_shorebird_init_selection_v2",
+     "_shorebird_init_with_options",
+     "_shorebird_installation_id",
+     "_shorebird_next_boot_patch_number",
+     "_shorebird_next_boot_patch_path",
+     "_shorebird_prepare_boot_source",
+     "_shorebird_release_boot_source",
+     "_shorebird_release_boot_source_memory",
+     "_shorebird_report_launch_deferred",
+     "_shorebird_report_launch_failure",
+     "_shorebird_report_launch_start",
+     "_shorebird_report_launch_success",
+     "_shorebird_selection_status_json",
+     "_shorebird_set_device_id_override",
+     "_shorebird_set_patch_decryption_key_provider",
+     "_shorebird_set_patch_decryption_key_provider_v2",
+     "_shorebird_should_auto_update",
+     "_shorebird_start_update_thread",
+     "_shorebird_update_with_result",
+     "_shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": false,
+   "format": "macho",
+   "macho_filetype": 6,
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "published_override": true,
+   "role": "runtime",
+   "route": "flutter_infra_release/flutter/$engine/darwin-x64-release/FlutterMacOS.framework.zip",
+   "sha256": "5170249e1ef63934837ad6c55dd8eabb4ff48b30ea498ba4bf7d42c85370ac20",
+   "size": 28654728,
+   "slice_size": 28654728
+  },
+  {
+   "arch": "x64",
+   "basename": "font-subset",
+   "container": [
+    "macos-engine-x64/macos-engine-x64.tar.gz",
+    "macos-engine/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/darwin-x64/font-subset.zip",
+    "font-subset"
+   ],
+   "export_count": 1,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 1,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "43b51942614295d9c77e3edf08ae78dcfa59f65f6601ab53b079d40724507799",
+   "exports_by_category": {},
+   "fat": false,
+   "format": "macho",
+   "macho_filetype": 2,
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "published_override": true,
+   "role": "host-tool",
+   "route": "flutter_infra_release/flutter/$engine/darwin-x64/font-subset.zip",
+   "sha256": "5d9329b3157536d493b26c031c18ae2f961a142ecd07bb59d9ab0bd207136a3a",
+   "size": 2097488,
+   "slice_size": 2097488
+  },
+  {
+   "arch": "arm64",
+   "basename": "font-subset.exe",
+   "container": [
+    "windows-engine-arm64/windows-engine-arm64.tar.gz",
+    "windows-engine/font-subset.zip",
+    "font-subset.exe"
+   ],
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": false,
+   "format": "pe",
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "windows",
+   "pe_is_dll": false,
+   "pe_ordinal_only_exports": 0,
+   "published_override": false,
+   "role": "host-tool",
+   "route": null,
+   "sha256": "69fa98abdb2a3951475af7ddfa698e5ec00056a31393a45248af19410f13c2ac",
+   "size": 1222656,
+   "slice_size": 1222656
+  },
+  {
+   "arch": "arm64",
+   "basename": "flutter_windows.dll",
+   "container": [
+    "windows-engine-arm64/windows-engine-arm64.tar.gz",
+    "windows-engine/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/windows-arm64-release/windows-arm64-flutter.zip",
+    "flutter_windows.dll"
+   ],
+   "export_count": 147,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 127,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 20,
+    "unwind": 0
+   },
+   "export_list_sha256": "1e1ef79dc9ed62c05f3bb613513b0ad705579ad94730b967dd8f24d7c0da4379",
+   "exports_by_category": {
+    "shorebird": [
+     "shorebird_check_for_downloadable_update",
+     "shorebird_current_boot_patch_number",
+     "shorebird_free_status_string",
+     "shorebird_free_string",
+     "shorebird_free_update_result",
+     "shorebird_init",
+     "shorebird_installation_id",
+     "shorebird_next_boot_patch_number",
+     "shorebird_next_boot_patch_path",
+     "shorebird_report_launch_failure",
+     "shorebird_report_launch_start",
+     "shorebird_report_launch_success",
+     "shorebird_selection_status_json",
+     "shorebird_set_device_id_override",
+     "shorebird_set_patch_decryption_key_provider",
+     "shorebird_set_patch_decryption_key_provider_v2",
+     "shorebird_should_auto_update",
+     "shorebird_start_update_thread",
+     "shorebird_update_with_result",
+     "shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": false,
+   "format": "pe",
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "windows",
+   "pe_is_dll": true,
+   "pe_ordinal_only_exports": 0,
+   "published_override": true,
+   "role": "runtime",
+   "route": "flutter_infra_release/flutter/$engine/windows-arm64-release/windows-arm64-flutter.zip",
+   "sha256": "70a32fc2a5a75437df0a3c45bee4925da28586b83db8b115d3c8909b6d9d0a13",
+   "size": 21703168,
+   "slice_size": 21703168
+  },
+  {
+   "arch": "arm64",
+   "basename": "gen_snapshot.exe",
+   "container": [
+    "windows-engine-arm64/windows-engine-arm64.tar.gz",
+    "windows-engine/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/windows-arm64-release/windows-arm64-flutter.zip",
+    "gen_snapshot.exe"
+   ],
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": false,
+   "format": "pe",
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "windows",
+   "pe_is_dll": false,
+   "pe_ordinal_only_exports": 0,
+   "published_override": true,
+   "role": "host-tool",
+   "route": "flutter_infra_release/flutter/$engine/windows-arm64-release/windows-arm64-flutter.zip",
+   "sha256": "8aa93bc9a5752ce01d8deb4b3d0d74c33ffdaf786fc1a7ce2c689783b7ea36dd",
+   "size": 4389376,
+   "slice_size": 4389376
+  },
+  {
+   "arch": "arm64",
+   "basename": "font-subset.exe",
+   "container": [
+    "windows-engine-arm64/windows-engine-arm64.tar.gz",
+    "windows-engine/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/windows-arm64/font-subset.zip",
+    "font-subset.exe"
+   ],
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": false,
+   "format": "pe",
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "windows",
+   "pe_is_dll": false,
+   "pe_ordinal_only_exports": 0,
+   "published_override": true,
+   "role": "host-tool",
+   "route": "flutter_infra_release/flutter/$engine/windows-arm64/font-subset.zip",
+   "sha256": "69fa98abdb2a3951475af7ddfa698e5ec00056a31393a45248af19410f13c2ac",
+   "size": 1222656,
+   "slice_size": 1222656
+  },
+  {
+   "arch": "arm64",
+   "basename": "flutter_windows.dll",
+   "container": [
+    "windows-engine-arm64/windows-engine-arm64.tar.gz",
+    "windows-engine/windows-arm64-flutter.zip",
+    "flutter_windows.dll"
+   ],
+   "export_count": 147,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 127,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 20,
+    "unwind": 0
+   },
+   "export_list_sha256": "1e1ef79dc9ed62c05f3bb613513b0ad705579ad94730b967dd8f24d7c0da4379",
+   "exports_by_category": {
+    "shorebird": [
+     "shorebird_check_for_downloadable_update",
+     "shorebird_current_boot_patch_number",
+     "shorebird_free_status_string",
+     "shorebird_free_string",
+     "shorebird_free_update_result",
+     "shorebird_init",
+     "shorebird_installation_id",
+     "shorebird_next_boot_patch_number",
+     "shorebird_next_boot_patch_path",
+     "shorebird_report_launch_failure",
+     "shorebird_report_launch_start",
+     "shorebird_report_launch_success",
+     "shorebird_selection_status_json",
+     "shorebird_set_device_id_override",
+     "shorebird_set_patch_decryption_key_provider",
+     "shorebird_set_patch_decryption_key_provider_v2",
+     "shorebird_should_auto_update",
+     "shorebird_start_update_thread",
+     "shorebird_update_with_result",
+     "shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": false,
+   "format": "pe",
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "windows",
+   "pe_is_dll": true,
+   "pe_ordinal_only_exports": 0,
+   "published_override": false,
+   "role": "runtime",
+   "route": null,
+   "sha256": "70a32fc2a5a75437df0a3c45bee4925da28586b83db8b115d3c8909b6d9d0a13",
+   "size": 21703168,
+   "slice_size": 21703168
+  },
+  {
+   "arch": "arm64",
+   "basename": "gen_snapshot.exe",
+   "container": [
+    "windows-engine-arm64/windows-engine-arm64.tar.gz",
+    "windows-engine/windows-arm64-flutter.zip",
+    "gen_snapshot.exe"
+   ],
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": false,
+   "format": "pe",
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "windows",
+   "pe_is_dll": false,
+   "pe_ordinal_only_exports": 0,
+   "published_override": false,
+   "role": "host-tool",
+   "route": null,
+   "sha256": "8aa93bc9a5752ce01d8deb4b3d0d74c33ffdaf786fc1a7ce2c689783b7ea36dd",
+   "size": 4389376,
+   "slice_size": 4389376
+  },
+  {
+   "arch": "x64",
+   "basename": "font-subset.exe",
+   "container": [
+    "windows-engine-x64/windows-engine-x64.tar.gz",
+    "windows-engine/font-subset.zip",
+    "font-subset.exe"
+   ],
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": false,
+   "format": "pe",
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "windows",
+   "pe_is_dll": false,
+   "pe_ordinal_only_exports": 0,
+   "published_override": false,
+   "role": "host-tool",
+   "route": null,
+   "sha256": "45e092f37f7c51499b85769442ad4cf09c671c9f3ed03d47edc75f58f1d3553c",
+   "size": 1260544,
+   "slice_size": 1260544
+  },
+  {
+   "arch": "x64",
+   "basename": "flutter_windows.dll",
+   "container": [
+    "windows-engine-x64/windows-engine-x64.tar.gz",
+    "windows-engine/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/windows-x64-release/windows-x64-flutter.zip",
+    "flutter_windows.dll"
+   ],
+   "export_count": 147,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 127,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 20,
+    "unwind": 0
+   },
+   "export_list_sha256": "1e1ef79dc9ed62c05f3bb613513b0ad705579ad94730b967dd8f24d7c0da4379",
+   "exports_by_category": {
+    "shorebird": [
+     "shorebird_check_for_downloadable_update",
+     "shorebird_current_boot_patch_number",
+     "shorebird_free_status_string",
+     "shorebird_free_string",
+     "shorebird_free_update_result",
+     "shorebird_init",
+     "shorebird_installation_id",
+     "shorebird_next_boot_patch_number",
+     "shorebird_next_boot_patch_path",
+     "shorebird_report_launch_failure",
+     "shorebird_report_launch_start",
+     "shorebird_report_launch_success",
+     "shorebird_selection_status_json",
+     "shorebird_set_device_id_override",
+     "shorebird_set_patch_decryption_key_provider",
+     "shorebird_set_patch_decryption_key_provider_v2",
+     "shorebird_should_auto_update",
+     "shorebird_start_update_thread",
+     "shorebird_update_with_result",
+     "shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": false,
+   "format": "pe",
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "windows",
+   "pe_is_dll": true,
+   "pe_ordinal_only_exports": 0,
+   "published_override": true,
+   "role": "runtime",
+   "route": "flutter_infra_release/flutter/$engine/windows-x64-release/windows-x64-flutter.zip",
+   "sha256": "d1561e69bfa778929133fd698558df04299cdb75ab419da0497733b1024e6e91",
+   "size": 23896064,
+   "slice_size": 23896064
+  },
+  {
+   "arch": "x64",
+   "basename": "gen_snapshot.exe",
+   "container": [
+    "windows-engine-x64/windows-engine-x64.tar.gz",
+    "windows-engine/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/windows-x64-release/windows-x64-flutter.zip",
+    "gen_snapshot.exe"
+   ],
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": false,
+   "format": "pe",
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "windows",
+   "pe_is_dll": false,
+   "pe_ordinal_only_exports": 0,
+   "published_override": true,
+   "role": "host-tool",
+   "route": "flutter_infra_release/flutter/$engine/windows-x64-release/windows-x64-flutter.zip",
+   "sha256": "8dad21bcc474882ebcd58a239a18cb0841b148994815dd58bdf479fead5a7652",
+   "size": 4570112,
+   "slice_size": 4570112
+  },
+  {
+   "arch": "x64",
+   "basename": "font-subset.exe",
+   "container": [
+    "windows-engine-x64/windows-engine-x64.tar.gz",
+    "windows-engine/mirror/shorebird/flutter_infra_release/flutter/44a553c3b3c7797c7f0f20961d46a8b17e06444c/windows-x64/font-subset.zip",
+    "font-subset.exe"
+   ],
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": false,
+   "format": "pe",
+   "official_substitution": "forbidden",
+   "origin": "custom-toolchain",
+   "os": "windows",
+   "pe_is_dll": false,
+   "pe_ordinal_only_exports": 0,
+   "published_override": true,
+   "role": "host-tool",
+   "route": "flutter_infra_release/flutter/$engine/windows-x64/font-subset.zip",
+   "sha256": "45e092f37f7c51499b85769442ad4cf09c671c9f3ed03d47edc75f58f1d3553c",
+   "size": 1260544,
+   "slice_size": 1260544
+  },
+  {
+   "arch": "x64",
+   "basename": "flutter_windows.dll",
+   "container": [
+    "windows-engine-x64/windows-engine-x64.tar.gz",
+    "windows-engine/windows-x64-flutter.zip",
+    "flutter_windows.dll"
+   ],
+   "export_count": 147,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 127,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 20,
+    "unwind": 0
+   },
+   "export_list_sha256": "1e1ef79dc9ed62c05f3bb613513b0ad705579ad94730b967dd8f24d7c0da4379",
+   "exports_by_category": {
+    "shorebird": [
+     "shorebird_check_for_downloadable_update",
+     "shorebird_current_boot_patch_number",
+     "shorebird_free_status_string",
+     "shorebird_free_string",
+     "shorebird_free_update_result",
+     "shorebird_init",
+     "shorebird_installation_id",
+     "shorebird_next_boot_patch_number",
+     "shorebird_next_boot_patch_path",
+     "shorebird_report_launch_failure",
+     "shorebird_report_launch_start",
+     "shorebird_report_launch_success",
+     "shorebird_selection_status_json",
+     "shorebird_set_device_id_override",
+     "shorebird_set_patch_decryption_key_provider",
+     "shorebird_set_patch_decryption_key_provider_v2",
+     "shorebird_should_auto_update",
+     "shorebird_start_update_thread",
+     "shorebird_update_with_result",
+     "shorebird_validate_next_boot_patch"
+    ]
+   },
+   "fat": false,
+   "format": "pe",
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "windows",
+   "pe_is_dll": true,
+   "pe_ordinal_only_exports": 0,
+   "published_override": false,
+   "role": "runtime",
+   "route": null,
+   "sha256": "d1561e69bfa778929133fd698558df04299cdb75ab419da0497733b1024e6e91",
+   "size": 23896064,
+   "slice_size": 23896064
+  },
+  {
+   "arch": "x64",
+   "basename": "gen_snapshot.exe",
+   "container": [
+    "windows-engine-x64/windows-engine-x64.tar.gz",
+    "windows-engine/windows-x64-flutter.zip",
+    "gen_snapshot.exe"
+   ],
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "export_list_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "exports_by_category": {},
+   "fat": false,
+   "format": "pe",
+   "official_substitution": "not-routed",
+   "origin": "custom-toolchain",
+   "os": "windows",
+   "pe_is_dll": false,
+   "pe_ordinal_only_exports": 0,
+   "published_override": false,
+   "role": "host-tool",
+   "route": null,
+   "sha256": "8dad21bcc474882ebcd58a239a18cb0841b148994815dd58bdf479fead5a7652",
+   "size": 4570112,
+   "slice_size": 4570112
+  }
+ ],
+ "source": {
+  "ci_run": "42464951579",
+  "download": "gh run download 42464951579 -n <artifact>; tarball sha256 matched sidecars and open-shorebird-release-manifest",
+  "engine_revision": "44a553c3b3c7797c7f0f20961d46a8b17e06444c",
+  "head_sha": "ae8a61a6334488d29f4acdb471bc28689c553636"
+ },
+ "tool": "scripts/inventory_release_binaries.py",
+ "unique_binaries": [
+  {
+   "arch": "arm64",
+   "basename": "font-subset",
+   "debug_info": false,
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "format": "elf",
+   "occurrences": 2,
+   "official_substitution": [
+    "forbidden"
+   ],
+   "origin": "custom-toolchain",
+   "os": "linux",
+   "role": "host-tool",
+   "roles": [
+    "host-tool"
+   ],
+   "routes": [
+    "flutter_infra_release/flutter/$engine/linux-arm64/font-subset.zip"
+   ],
+   "sha256": "1f0488a12805e37ab50cb2a85bded5ee9bb626d4226b7c36da61ea9e2144ffbe",
+   "size": 1631136,
+   "slice_size": 1631136
+  },
+  {
+   "arch": "arm64",
+   "basename": "gen_snapshot",
+   "debug_info": false,
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "format": "elf",
+   "occurrences": 4,
+   "official_substitution": [
+    "forbidden"
+   ],
+   "origin": "custom-toolchain",
+   "os": "linux",
+   "role": "host-tool",
+   "roles": [
+    "host-tool"
+   ],
+   "routes": [
+    "flutter_infra_release/flutter/$engine/linux-arm64-release/artifacts.zip",
+    "flutter_infra_release/flutter/$engine/linux-arm64-release/linux-arm64-flutter-gtk.zip"
+   ],
+   "sha256": "26f7dac99351565a675dbd3a74a7bdefad452b3af4eada4b7d0250fe8c020fce",
+   "size": 5724408,
+   "slice_size": 5724408
+  },
+  {
+   "arch": "x64",
+   "basename": "analyze_snapshot_arm64",
+   "debug_info": false,
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "format": "elf",
+   "occurrences": 1,
+   "official_substitution": [
+    "not-routed"
+   ],
+   "origin": "custom-toolchain",
+   "os": "linux",
+   "role": "host-tool",
+   "roles": [
+    "host-tool"
+   ],
+   "routes": [],
+   "sha256": "335bbd181b1e4a8397190bc55217275f4a056d47e20d915dbcd4d55f637a669f",
+   "size": 3196928,
+   "slice_size": 3196928
+  },
+  {
+   "arch": "x64",
+   "basename": "analyze_snapshot_x64",
+   "debug_info": false,
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "format": "elf",
+   "occurrences": 1,
+   "official_substitution": [
+    "not-routed"
+   ],
+   "origin": "custom-toolchain",
+   "os": "linux",
+   "role": "host-tool",
+   "roles": [
+    "host-tool"
+   ],
+   "routes": [],
+   "sha256": "e7f462d32b03fe22583031519f8712cdd47f093ae74f4c8d6242f31c989d1d75",
+   "size": 3133728,
+   "slice_size": 3133728
+  },
+  {
+   "arch": "x64",
+   "basename": "font-subset",
+   "debug_info": false,
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "format": "elf",
+   "occurrences": 2,
+   "official_substitution": [
+    "forbidden"
+   ],
+   "origin": "custom-toolchain",
+   "os": "linux",
+   "role": "host-tool",
+   "roles": [
+    "host-tool"
+   ],
+   "routes": [
+    "flutter_infra_release/flutter/$engine/linux-x64/font-subset.zip"
+   ],
+   "sha256": "6538858120b55ad9b8965ece2bc1f3982a7f57df89922c887dbdd6d4adf55083",
+   "size": 1879768,
+   "slice_size": 1879768
+  },
+  {
+   "arch": "x64",
+   "basename": "gen_snapshot",
+   "debug_info": false,
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "format": "elf",
+   "occurrences": 4,
+   "official_substitution": [
+    "forbidden"
+   ],
+   "origin": "custom-toolchain",
+   "os": "linux",
+   "role": "host-tool",
+   "roles": [
+    "host-tool"
+   ],
+   "routes": [
+    "flutter_infra_release/flutter/$engine/linux-x64-release/artifacts.zip",
+    "flutter_infra_release/flutter/$engine/linux-x64-release/linux-x64-flutter-gtk.zip"
+   ],
+   "sha256": "dc8fe542eac98499326cce8a8406b95c3a112afcd463390c59ee6967a46b3979",
+   "size": 5994872,
+   "slice_size": 5994872
+  },
+  {
+   "arch": "x64",
+   "basename": "gen_snapshot_arm",
+   "debug_info": false,
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "format": "elf",
+   "occurrences": 2,
+   "official_substitution": [
+    "forbidden"
+   ],
+   "origin": "custom-toolchain",
+   "os": "linux",
+   "role": "host-tool",
+   "roles": [
+    "host-tool"
+   ],
+   "routes": [
+    "flutter_infra_release/flutter/$engine/android-arm-release/linux-x64.zip"
+   ],
+   "sha256": "2b115d21d8123e7b79dd0311b1124cda39b0e368e049fe359bea7611bd4d5d7b",
+   "size": 5989720,
+   "slice_size": 5989720
+  },
+  {
+   "arch": "x64",
+   "basename": "gen_snapshot_arm64",
+   "debug_info": false,
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "format": "elf",
+   "occurrences": 2,
+   "official_substitution": [
+    "forbidden"
+   ],
+   "origin": "custom-toolchain",
+   "os": "linux",
+   "role": "host-tool",
+   "roles": [
+    "host-tool"
+   ],
+   "routes": [
+    "flutter_infra_release/flutter/$engine/android-arm64-release/linux-x64.zip"
+   ],
+   "sha256": "5815f487867d9141116957381cf8273b1405fc63b3176c78cc9b25186555ba67",
+   "size": 6238208,
+   "slice_size": 6238208
+  },
+  {
+   "arch": "x64",
+   "basename": "gen_snapshot_x64",
+   "debug_info": false,
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "format": "elf",
+   "occurrences": 2,
+   "official_substitution": [
+    "forbidden"
+   ],
+   "origin": "custom-toolchain",
+   "os": "linux",
+   "role": "host-tool",
+   "roles": [
+    "host-tool"
+   ],
+   "routes": [
+    "flutter_infra_release/flutter/$engine/android-x64-release/linux-x64.zip"
+   ],
+   "sha256": "e97fb9c3e9737c8774f99a7f9bb2f6368f352c5c0f3dd71b50a828301fbeed1e",
+   "size": 6183496,
+   "slice_size": 6183496
+  },
+  {
+   "arch": "arm64",
+   "basename": "analyze_snapshot",
+   "debug_info": false,
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "format": "macho",
+   "occurrences": 3,
+   "official_substitution": [
+    "forbidden"
+   ],
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "role": "host-tool",
+   "roles": [
+    "host-tool"
+   ],
+   "routes": [
+    "flutter_infra_release/flutter/$engine/darwin-x64-release/artifacts.zip"
+   ],
+   "sha256": "c9091b6f7e94035ae29fb09fbdf1698d15ef3e1e259fed470c77b2c60ca931f5",
+   "size": 7592192,
+   "slice_size": 3660032
+  },
+  {
+   "arch": "arm64",
+   "basename": "analyze_snapshot_arm64",
+   "debug_info": false,
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "format": "macho",
+   "occurrences": 2,
+   "official_substitution": [
+    "forbidden"
+   ],
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "role": "host-tool",
+   "roles": [
+    "host-tool"
+   ],
+   "routes": [
+    "flutter_infra_release/flutter/$engine/ios-release/artifacts.zip"
+   ],
+   "sha256": "2529e422b63a00fbd83d9cfdcf56b102bffaa30efcc7c125115f80810b0112f8",
+   "size": 7551088,
+   "slice_size": 3733616
+  },
+  {
+   "arch": "arm64",
+   "basename": "analyze_snapshot_arm64",
+   "debug_info": false,
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "format": "macho",
+   "occurrences": 2,
+   "official_substitution": [
+    "not-routed"
+   ],
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "role": "host-tool",
+   "roles": [
+    "host-tool"
+   ],
+   "routes": [],
+   "sha256": "d3b28ff009c9361b74c9786c7bb0dccf2547fe28230999b51ed7ce0d61e3ac86",
+   "size": 7634768,
+   "slice_size": 3751760
+  },
+  {
+   "arch": "arm64",
+   "basename": "font-subset",
+   "debug_info": false,
+   "export_count": 1,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 1,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "format": "macho",
+   "occurrences": 2,
+   "official_substitution": [
+    "forbidden"
+   ],
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "role": "host-tool",
+   "roles": [
+    "host-tool"
+   ],
+   "routes": [
+    "flutter_infra_release/flutter/$engine/darwin-arm64/font-subset.zip"
+   ],
+   "sha256": "c24a393939512cbf5e26f9beae365d1b8f12925aeeea09ab2d4cf8272ae1aedd",
+   "size": 1855120,
+   "slice_size": 1855120
+  },
+  {
+   "arch": "arm64",
+   "basename": "gen_snapshot",
+   "debug_info": false,
+   "export_count": 1,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 1,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "format": "macho",
+   "occurrences": 3,
+   "official_substitution": [
+    "forbidden"
+   ],
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "role": "host-tool",
+   "roles": [
+    "host-tool"
+   ],
+   "routes": [
+    "flutter_infra_release/flutter/$engine/darwin-x64-release/artifacts.zip",
+    "flutter_infra_release/flutter/$engine/darwin-x64-release/gen_snapshot.zip"
+   ],
+   "sha256": "7918678cb4b13c1b55ee0721ecaeabf26433fe79834474649134ae57a9e850ad",
+   "size": 14386576,
+   "slice_size": 7046544
+  },
+  {
+   "arch": "arm64",
+   "basename": "gen_snapshot",
+   "debug_info": false,
+   "export_count": 1,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 1,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "format": "macho",
+   "occurrences": 1,
+   "official_substitution": [
+    "not-routed"
+   ],
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "role": "host-tool",
+   "roles": [
+    "host-tool"
+   ],
+   "routes": [],
+   "sha256": "82739165b8778ed9d7f4ac64ec5f872350aa71a1204288b029e6975c806f7a93",
+   "size": 7156992,
+   "slice_size": 7156992
+  },
+  {
+   "arch": "arm64",
+   "basename": "gen_snapshot_arm64",
+   "debug_info": false,
+   "export_count": 1,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 1,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "format": "macho",
+   "occurrences": 2,
+   "official_substitution": [
+    "forbidden"
+   ],
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "role": "host-tool",
+   "roles": [
+    "host-tool"
+   ],
+   "routes": [
+    "flutter_infra_release/flutter/$engine/darwin-x64-release/gen_snapshot.zip"
+   ],
+   "sha256": "7994a996fc8106b254976178ae0c95691f57d293073052cefcf108716207a5cc",
+   "size": 14547952,
+   "slice_size": 7175152
+  },
+  {
+   "arch": "arm64",
+   "basename": "gen_snapshot_arm64",
+   "debug_info": false,
+   "export_count": 1,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 1,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "format": "macho",
+   "occurrences": 2,
+   "official_substitution": [
+    "forbidden"
+   ],
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "role": "host-tool",
+   "roles": [
+    "host-tool"
+   ],
+   "routes": [
+    "flutter_infra_release/flutter/$engine/ios-release/artifacts.zip"
+   ],
+   "sha256": "cf96e57469cd68e568b43c5b45cb22102434709792e7153341b8735f05d8352b",
+   "size": 14431552,
+   "slice_size": 7157056
+  },
+  {
+   "arch": "x64",
+   "basename": "analyze_snapshot",
+   "debug_info": false,
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "format": "macho",
+   "occurrences": 3,
+   "official_substitution": [
+    "forbidden"
+   ],
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "role": "host-tool",
+   "roles": [
+    "host-tool"
+   ],
+   "routes": [
+    "flutter_infra_release/flutter/$engine/darwin-x64-release/artifacts.zip"
+   ],
+   "sha256": "c9091b6f7e94035ae29fb09fbdf1698d15ef3e1e259fed470c77b2c60ca931f5",
+   "size": 7592192,
+   "slice_size": 3901296
+  },
+  {
+   "arch": "x64",
+   "basename": "analyze_snapshot_arm64",
+   "debug_info": false,
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "format": "macho",
+   "occurrences": 2,
+   "official_substitution": [
+    "forbidden"
+   ],
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "role": "host-tool",
+   "roles": [
+    "host-tool"
+   ],
+   "routes": [
+    "flutter_infra_release/flutter/$engine/ios-release/artifacts.zip"
+   ],
+   "sha256": "2529e422b63a00fbd83d9cfdcf56b102bffaa30efcc7c125115f80810b0112f8",
+   "size": 7551088,
+   "slice_size": 3807384
+  },
+  {
+   "arch": "x64",
+   "basename": "analyze_snapshot_arm64",
+   "debug_info": false,
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "format": "macho",
+   "occurrences": 2,
+   "official_substitution": [
+    "not-routed"
+   ],
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "role": "host-tool",
+   "roles": [
+    "host-tool"
+   ],
+   "routes": [],
+   "sha256": "d3b28ff009c9361b74c9786c7bb0dccf2547fe28230999b51ed7ce0d61e3ac86",
+   "size": 7634768,
+   "slice_size": 3855424
+  },
+  {
+   "arch": "x64",
+   "basename": "font-subset",
+   "debug_info": false,
+   "export_count": 1,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 1,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "format": "macho",
+   "occurrences": 2,
+   "official_substitution": [
+    "forbidden"
+   ],
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "role": "host-tool",
+   "roles": [
+    "host-tool"
+   ],
+   "routes": [
+    "flutter_infra_release/flutter/$engine/darwin-x64/font-subset.zip"
+   ],
+   "sha256": "5d9329b3157536d493b26c031c18ae2f961a142ecd07bb59d9ab0bd207136a3a",
+   "size": 2097488,
+   "slice_size": 2097488
+  },
+  {
+   "arch": "x64",
+   "basename": "gen_snapshot",
+   "debug_info": false,
+   "export_count": 1,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 1,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "format": "macho",
+   "occurrences": 3,
+   "official_substitution": [
+    "forbidden"
+   ],
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "role": "host-tool",
+   "roles": [
+    "host-tool"
+   ],
+   "routes": [
+    "flutter_infra_release/flutter/$engine/darwin-x64-release/artifacts.zip",
+    "flutter_infra_release/flutter/$engine/darwin-x64-release/gen_snapshot.zip"
+   ],
+   "sha256": "7918678cb4b13c1b55ee0721ecaeabf26433fe79834474649134ae57a9e850ad",
+   "size": 14386576,
+   "slice_size": 7317200
+  },
+  {
+   "arch": "x64",
+   "basename": "gen_snapshot_arm64",
+   "debug_info": false,
+   "export_count": 1,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 1,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "format": "macho",
+   "occurrences": 2,
+   "official_substitution": [
+    "forbidden"
+   ],
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "role": "host-tool",
+   "roles": [
+    "host-tool"
+   ],
+   "routes": [
+    "flutter_infra_release/flutter/$engine/darwin-x64-release/gen_snapshot.zip"
+   ],
+   "sha256": "7994a996fc8106b254976178ae0c95691f57d293073052cefcf108716207a5cc",
+   "size": 14547952,
+   "slice_size": 7344880
+  },
+  {
+   "arch": "x64",
+   "basename": "gen_snapshot_arm64",
+   "debug_info": false,
+   "export_count": 1,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 1,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "format": "macho",
+   "occurrences": 2,
+   "official_substitution": [
+    "forbidden"
+   ],
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "role": "host-tool",
+   "roles": [
+    "host-tool"
+   ],
+   "routes": [
+    "flutter_infra_release/flutter/$engine/ios-release/artifacts.zip"
+   ],
+   "sha256": "cf96e57469cd68e568b43c5b45cb22102434709792e7153341b8735f05d8352b",
+   "size": 14431552,
+   "slice_size": 7269848
+  },
+  {
+   "arch": "arm64",
+   "basename": "font-subset.exe",
+   "debug_info": false,
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "format": "pe",
+   "occurrences": 2,
+   "official_substitution": [
+    "forbidden"
+   ],
+   "origin": "custom-toolchain",
+   "os": "windows",
+   "role": "host-tool",
+   "roles": [
+    "host-tool"
+   ],
+   "routes": [
+    "flutter_infra_release/flutter/$engine/windows-arm64/font-subset.zip"
+   ],
+   "sha256": "69fa98abdb2a3951475af7ddfa698e5ec00056a31393a45248af19410f13c2ac",
+   "size": 1222656,
+   "slice_size": 1222656
+  },
+  {
+   "arch": "arm64",
+   "basename": "gen_snapshot.exe",
+   "debug_info": false,
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "format": "pe",
+   "occurrences": 2,
+   "official_substitution": [
+    "forbidden"
+   ],
+   "origin": "custom-toolchain",
+   "os": "windows",
+   "role": "host-tool",
+   "roles": [
+    "host-tool"
+   ],
+   "routes": [
+    "flutter_infra_release/flutter/$engine/windows-arm64-release/windows-arm64-flutter.zip"
+   ],
+   "sha256": "8aa93bc9a5752ce01d8deb4b3d0d74c33ffdaf786fc1a7ce2c689783b7ea36dd",
+   "size": 4389376,
+   "slice_size": 4389376
+  },
+  {
+   "arch": "x64",
+   "basename": "font-subset.exe",
+   "debug_info": false,
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "format": "pe",
+   "occurrences": 2,
+   "official_substitution": [
+    "forbidden"
+   ],
+   "origin": "custom-toolchain",
+   "os": "windows",
+   "role": "host-tool",
+   "roles": [
+    "host-tool"
+   ],
+   "routes": [
+    "flutter_infra_release/flutter/$engine/windows-x64/font-subset.zip"
+   ],
+   "sha256": "45e092f37f7c51499b85769442ad4cf09c671c9f3ed03d47edc75f58f1d3553c",
+   "size": 1260544,
+   "slice_size": 1260544
+  },
+  {
+   "arch": "x64",
+   "basename": "gen_snapshot.exe",
+   "debug_info": false,
+   "export_count": 0,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 0,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 0,
+    "unwind": 0
+   },
+   "format": "pe",
+   "occurrences": 2,
+   "official_substitution": [
+    "forbidden"
+   ],
+   "origin": "custom-toolchain",
+   "os": "windows",
+   "role": "host-tool",
+   "roles": [
+    "host-tool"
+   ],
+   "routes": [
+    "flutter_infra_release/flutter/$engine/windows-x64-release/windows-x64-flutter.zip"
+   ],
+   "sha256": "8dad21bcc474882ebcd58a239a18cb0841b148994815dd58bdf479fead5a7652",
+   "size": 4570112,
+   "slice_size": 4570112
+  },
+  {
+   "arch": "arm",
+   "basename": "libflutter.so",
+   "debug_info": true,
+   "export_count": 83,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 65,
+    "jni": 1,
+    "objc": 0,
+    "other": 4,
+    "rust_internal": 0,
+    "shorebird": 13,
+    "unwind": 0
+   },
+   "format": "elf",
+   "occurrences": 8,
+   "official_substitution": [
+    "forbidden"
+   ],
+   "origin": "custom-toolchain",
+   "os": "android",
+   "role": "runtime",
+   "roles": [
+    "debug-symbols",
+    "runtime"
+   ],
+   "routes": [
+    "download.flutter.io/io/flutter/armeabi_v7a_release/1.0.0-$engine/armeabi_v7a_release-1.0.0-$engine.jar",
+    "flutter_infra_release/flutter/$engine/android-arm-release/artifacts.zip",
+    "flutter_infra_release/flutter/$engine/android-arm-release/symbols.zip"
+   ],
+   "sha256": "62eff870b165a572f2942f61d3465a4e0d8b23b3baec047ce0ada2876532f371",
+   "size": 158301244,
+   "slice_size": 158301244
+  },
+  {
+   "arch": "arm64",
+   "basename": "libflutter.so",
+   "debug_info": true,
+   "export_count": 83,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 65,
+    "jni": 1,
+    "objc": 0,
+    "other": 4,
+    "rust_internal": 0,
+    "shorebird": 13,
+    "unwind": 0
+   },
+   "format": "elf",
+   "occurrences": 8,
+   "official_substitution": [
+    "forbidden"
+   ],
+   "origin": "custom-toolchain",
+   "os": "android",
+   "role": "runtime",
+   "roles": [
+    "debug-symbols",
+    "runtime"
+   ],
+   "routes": [
+    "download.flutter.io/io/flutter/arm64_v8a_release/1.0.0-$engine/arm64_v8a_release-1.0.0-$engine.jar",
+    "flutter_infra_release/flutter/$engine/android-arm64-release/artifacts.zip",
+    "flutter_infra_release/flutter/$engine/android-arm64-release/symbols.zip"
+   ],
+   "sha256": "c4b460ce35ebb80ca7c3aa413afefe7af76f97be07d7061191e7f29c570f8caa",
+   "size": 174476432,
+   "slice_size": 174476432
+  },
+  {
+   "arch": "x64",
+   "basename": "libflutter.so",
+   "debug_info": true,
+   "export_count": 83,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 65,
+    "jni": 1,
+    "objc": 0,
+    "other": 4,
+    "rust_internal": 0,
+    "shorebird": 13,
+    "unwind": 0
+   },
+   "format": "elf",
+   "occurrences": 8,
+   "official_substitution": [
+    "forbidden"
+   ],
+   "origin": "custom-toolchain",
+   "os": "android",
+   "role": "runtime",
+   "roles": [
+    "debug-symbols",
+    "runtime"
+   ],
+   "routes": [
+    "download.flutter.io/io/flutter/x86_64_release/1.0.0-$engine/x86_64_release-1.0.0-$engine.jar",
+    "flutter_infra_release/flutter/$engine/android-x64-release/artifacts.zip",
+    "flutter_infra_release/flutter/$engine/android-x64-release/symbols.zip"
+   ],
+   "sha256": "db381527d13a63542bd34d70a4d28c977fb4895b46bc7382f16fc9ccc68d7bf8",
+   "size": 175570544,
+   "slice_size": 175570544
+  },
+  {
+   "arch": "arm64",
+   "basename": "Flutter",
+   "debug_info": false,
+   "export_count": 11335,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 143,
+    "jni": 0,
+    "objc": 0,
+    "other": 217,
+    "rust_internal": 10945,
+    "shorebird": 30,
+    "unwind": 0
+   },
+   "format": "macho",
+   "occurrences": 4,
+   "official_substitution": [
+    "forbidden"
+   ],
+   "origin": "custom-toolchain",
+   "os": "ios",
+   "role": "runtime",
+   "roles": [
+    "runtime"
+   ],
+   "routes": [
+    "flutter_infra_release/flutter/$engine/ios-release/artifacts.zip"
+   ],
+   "sha256": "1c23915262ee30a3a71abb91996208d8dc323ef2941976c6241575a6c6c5fa30",
+   "size": 22291968,
+   "slice_size": 22291968
+  },
+  {
+   "arch": "arm64",
+   "basename": "libflutter_linux_gtk.so",
+   "debug_info": false,
+   "export_count": 11455,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 12,
+    "dart_api": 0,
+    "flutter_embedder": 230,
+    "jni": 0,
+    "objc": 0,
+    "other": 5,
+    "rust_internal": 11137,
+    "shorebird": 30,
+    "unwind": 41
+   },
+   "format": "elf",
+   "occurrences": 2,
+   "official_substitution": [
+    "forbidden"
+   ],
+   "origin": "custom-toolchain",
+   "os": "linux",
+   "role": "runtime",
+   "roles": [
+    "runtime"
+   ],
+   "routes": [
+    "flutter_infra_release/flutter/$engine/linux-arm64-release/linux-arm64-flutter-gtk.zip"
+   ],
+   "sha256": "b0f143acb6579015dc9a4e03155071bb5896598508f72f64b7bd034affe9850b",
+   "size": 22630336,
+   "slice_size": 22630336
+  },
+  {
+   "arch": "x64",
+   "basename": "libflutter_linux_gtk.so",
+   "debug_info": false,
+   "export_count": 11494,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 12,
+    "dart_api": 0,
+    "flutter_embedder": 230,
+    "jni": 0,
+    "objc": 0,
+    "other": 5,
+    "rust_internal": 11176,
+    "shorebird": 30,
+    "unwind": 41
+   },
+   "format": "elf",
+   "occurrences": 2,
+   "official_substitution": [
+    "forbidden"
+   ],
+   "origin": "custom-toolchain",
+   "os": "linux",
+   "role": "runtime",
+   "roles": [
+    "runtime"
+   ],
+   "routes": [
+    "flutter_infra_release/flutter/$engine/linux-x64-release/linux-x64-flutter-gtk.zip"
+   ],
+   "sha256": "a4884479a95a5ea00a15b6e13121de5da0795662ba4a8a6502e8125c1ebd3eae",
+   "size": 24806184,
+   "slice_size": 24806184
+  },
+  {
+   "arch": "arm64",
+   "basename": "FlutterMacOS",
+   "debug_info": false,
+   "export_count": 11224,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 12,
+    "dart_api": 0,
+    "flutter_embedder": 135,
+    "jni": 0,
+    "objc": 2,
+    "other": 107,
+    "rust_internal": 10938,
+    "shorebird": 30,
+    "unwind": 0
+   },
+   "format": "macho",
+   "occurrences": 1,
+   "official_substitution": [
+    "forbidden"
+   ],
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "role": "runtime",
+   "roles": [
+    "runtime"
+   ],
+   "routes": [
+    "flutter_infra_release/flutter/$engine/darwin-x64-release/framework.zip"
+   ],
+   "sha256": "a33c2d903ed4b3f831b95806d54379b8a1a0b66ca3a4735fb2d1b9adc903a90e",
+   "size": 55592032,
+   "slice_size": 26920032
+  },
+  {
+   "arch": "arm64",
+   "basename": "FlutterMacOS",
+   "debug_info": false,
+   "export_count": 11224,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 12,
+    "dart_api": 0,
+    "flutter_embedder": 135,
+    "jni": 0,
+    "objc": 2,
+    "other": 107,
+    "rust_internal": 10938,
+    "shorebird": 30,
+    "unwind": 0
+   },
+   "format": "macho",
+   "occurrences": 2,
+   "official_substitution": [
+    "forbidden"
+   ],
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "role": "runtime",
+   "roles": [
+    "runtime"
+   ],
+   "routes": [
+    "flutter_infra_release/flutter/$engine/darwin-arm64-release/FlutterMacOS.framework.zip"
+   ],
+   "sha256": "e38cc7f80cbcad8bcd88a7b1acf017ce36d898ef3b3e9aa4953b974d3a44381f",
+   "size": 26920032,
+   "slice_size": 26920032
+  },
+  {
+   "arch": "x64",
+   "basename": "FlutterMacOS",
+   "debug_info": false,
+   "export_count": 11289,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 12,
+    "dart_api": 0,
+    "flutter_embedder": 135,
+    "jni": 0,
+    "objc": 2,
+    "other": 107,
+    "rust_internal": 11003,
+    "shorebird": 30,
+    "unwind": 0
+   },
+   "format": "macho",
+   "occurrences": 2,
+   "official_substitution": [
+    "forbidden"
+   ],
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "role": "runtime",
+   "roles": [
+    "runtime"
+   ],
+   "routes": [
+    "flutter_infra_release/flutter/$engine/darwin-x64-release/FlutterMacOS.framework.zip"
+   ],
+   "sha256": "5170249e1ef63934837ad6c55dd8eabb4ff48b30ea498ba4bf7d42c85370ac20",
+   "size": 28654728,
+   "slice_size": 28654728
+  },
+  {
+   "arch": "x64",
+   "basename": "FlutterMacOS",
+   "debug_info": false,
+   "export_count": 11289,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 12,
+    "dart_api": 0,
+    "flutter_embedder": 135,
+    "jni": 0,
+    "objc": 2,
+    "other": 107,
+    "rust_internal": 11003,
+    "shorebird": 30,
+    "unwind": 0
+   },
+   "format": "macho",
+   "occurrences": 1,
+   "official_substitution": [
+    "forbidden"
+   ],
+   "origin": "custom-toolchain",
+   "os": "macos",
+   "role": "runtime",
+   "roles": [
+    "runtime"
+   ],
+   "routes": [
+    "flutter_infra_release/flutter/$engine/darwin-x64-release/framework.zip"
+   ],
+   "sha256": "a33c2d903ed4b3f831b95806d54379b8a1a0b66ca3a4735fb2d1b9adc903a90e",
+   "size": 55592032,
+   "slice_size": 28654728
+  },
+  {
+   "arch": "arm64",
+   "basename": "flutter_windows.dll",
+   "debug_info": false,
+   "export_count": 147,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 127,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 20,
+    "unwind": 0
+   },
+   "format": "pe",
+   "occurrences": 2,
+   "official_substitution": [
+    "forbidden"
+   ],
+   "origin": "custom-toolchain",
+   "os": "windows",
+   "role": "runtime",
+   "roles": [
+    "runtime"
+   ],
+   "routes": [
+    "flutter_infra_release/flutter/$engine/windows-arm64-release/windows-arm64-flutter.zip"
+   ],
+   "sha256": "70a32fc2a5a75437df0a3c45bee4925da28586b83db8b115d3c8909b6d9d0a13",
+   "size": 21703168,
+   "slice_size": 21703168
+  },
+  {
+   "arch": "x64",
+   "basename": "flutter_windows.dll",
+   "debug_info": false,
+   "export_count": 147,
+   "export_counts": {
+    "boringssl": 0,
+    "cxx_mangled": 0,
+    "dart_api": 0,
+    "flutter_embedder": 127,
+    "jni": 0,
+    "objc": 0,
+    "other": 0,
+    "rust_internal": 0,
+    "shorebird": 20,
+    "unwind": 0
+   },
+   "format": "pe",
+   "occurrences": 2,
+   "official_substitution": [
+    "forbidden"
+   ],
+   "origin": "custom-toolchain",
+   "os": "windows",
+   "role": "runtime",
+   "roles": [
+    "runtime"
+   ],
+   "routes": [
+    "flutter_infra_release/flutter/$engine/windows-x64-release/windows-x64-flutter.zip"
+   ],
+   "sha256": "d1561e69bfa778929133fd698558df04299cdb75ab419da0497733b1024e6e91",
+   "size": 23896064,
+   "slice_size": 23896064
+  }
+ ],
+ "unique_binary_count": 40
+}

@@ -1,9 +1,9 @@
 # Updater protection, optional VM diversification, and official Flutter sources
 
-Date: 2026-11-08 (Asia/Shanghai). Status: proposed plan only; no implementation
-has been started. Source inspection and upstream documentation research informed
-this plan. No new build, security test, runtime test, or device validation was
-performed for it.
+Date: 2026-11-08 (Asia/Shanghai). Status: **P0 delivered 2026-11-09** (see the
+P0 row in §8); P1–P6 not started. Source inspection and upstream documentation
+research informed this plan. P0 added CI-artifact inventory and pin contracts
+but no new security test, runtime test, or device validation.
 
 ## 1. Intended outcome and boundaries
 
@@ -64,7 +64,8 @@ pre-implementation status although the inspected updater/server implement v2.
 | SDK bootstrap | Flutter `bin/internal/update_dart_sdk.sh:134` and `.ps1:42` can fetch this workspace's mutable `releases/latest/download` assets. | Bind downloads to immutable toolchain identity and authenticated digests. |
 | Package sourcing | `shorebird/pubspec.lock` already uses pub.dev; workspace packages use local paths. | Preserve official Pub defaults; this is mainly an SDK/engine routing issue, not wholesale Pub migration. |
 
-Before implementation, reconcile build inputs: `flutter/DEPS:23` pins updater
+Before implementation, reconcile build inputs (resolved in P0; see
+`HARDENING_CONTRACTS.md` §6): `flutter/DEPS:23` pinned updater
 `9d79a58bf49014af9f358cfa0d30d38d881dba2b`, while the inspected root updater is
 `b886d638...`. Local engine Dart/updater directories are symlinks to root
 checkouts. A clean gclient checkout can therefore resolve different updater
@@ -396,12 +397,12 @@ dependencies for custom operations.
 
 ## 8. Delivery sequence and ownership
 
-All rows below are future work. The stages are reviewable changes with gates,
-not authorization to begin implementation in this planning task.
+Rows P1–P6 are future work; P0 is delivered. The stages are reviewable changes
+with gates.
 
 | Stage | Main owners / files | Exit condition |
 | --- | --- | --- |
-| P0 — Freeze evidence and contracts | Root CI/scripts; `flutter/DEPS`; source/build records; existing acceptance matrix | Resolve root/DEPS/symlink inputs, inventory real binaries/exports/origins, capture lifecycle/performance baselines, and define security/profile/catalog versions. |
+| P0 — Freeze evidence and contracts | Root CI/scripts; `flutter/DEPS`; source/build records; existing acceptance matrix | Resolve root/DEPS/symlink inputs, inventory real binaries/exports/origins, capture lifecycle/performance baselines, and define security/profile/catalog versions. **Delivered 2026-11-09:** `updater_rev` and the CLI `flutter.version` realigned, and `verify_ci_workflow.rb` now fails on any duplicated-pin drift; `scripts/inventory_release_binaries.py` was run on baseline run 42464951579, with exports, origins and CI/size baselines in `HARDENING_P0_EVIDENCE.md`; contract v1 (profiles, build identity, artifact catalog, compatibility) is in `HARDENING_CONTRACTS.md` with JSON Schemas under `docs/schemas/` and `scripts/validate_hardening_contracts.py`. |
 | P1 — Secure release admission | Updater `config.rs`, `yaml.rs`, `network.rs`, `selection_v2.rs`, cache/boot modules; engine `shell/common/shorebird/updater.cc`; Flutter `shorebird_yaml.dart`; CLI packaging | A new hardened release cannot ship or boot with missing roots, downgraded verification, incompatible identity, or production HTTP. Existing v2 semantics and old-release compatibility remain explicit. |
 | P2 — Official-source resolution and signed toolchain supply | CLI `shorebird_env.dart`, `shorebird_process.dart`, `cache.dart`, launchers; artifact proxy/catalog; Flutter cache/SDK scripts/Gradle; root manifest and CI scripts | Clean, immutable, verified bootstrap works with compatible official artifacts direct; custom pairs stay matched; no implicit Shorebird hosted traffic or silent stock fallback. |
 | P3 — Updater self-integrity | Engine/Rust startup boundary, platform signing/module adapters, packaging build manifest, app key providers | Real repacked/replaced/config-tampered installs are rejected under documented platform trust assumptions; integrity failures recover without granting protected keys or destroying user data. |
@@ -467,6 +468,6 @@ origin and signing backend, define private seed/symbol retention and recovery,
 and decide which protected-state/attestation adapters are supported. These are
 deployment/design choices, not blockers to producing this plan.
 
-Planning deliverable: this document only. Existing unrelated workspace changes,
-source files, dependency pins, runtime settings, build artifacts, and services
-were left untouched.
+Planning deliverable: this document. The original planning task left the
+workspace untouched. Stage P0 later changed only the pins and contracts its row
+lists.
