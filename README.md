@@ -67,11 +67,13 @@ source/CLI/server-only run. The unsupported web recipe is manual-only and
 requires `run_unsupported_web_build=true`.
 
 After the complete native matrix succeeds on the default branch, CI publishes
-updater-compatible `dart-sdk-linux-x64.zip` and
-`dart-sdk-darwin-arm64.zip` assets in a GitHub Release whose version matches
-the synchronized upstream Shorebird release recorded in `VERSION`, and marks
-it latest. Flutter's SDK updater downloads those tested files from this
-repository's `releases/latest/download` endpoint.
+updater-compatible `dart-sdk-*.zip` assets to a new immutable GitHub Release
+tag (`dart-sdk-<engine>-r<run>-<attempt>`), never marked latest, and verifies
+each download against its tested digest. The job emits a
+`shorebird_dart_sdk.pins` artifact. Committed to
+`flutter/bin/internal/`, it pins those URLs and digests, and Flutter's SDK
+bootstrap verifies the archive against it before unpacking. See
+`docs/HARDENING_CONTRACTS.md` §8 for the origin precedence model.
 Use `scripts/validate_release_manifest.py` to audit a downloaded manifest
 against the downloaded workflow artifacts before publishing or mirroring them.
 The wrapper `scripts/verify_downloaded_release_artifacts.sh` runs that manifest

@@ -49,6 +49,9 @@ FORBIDDEN_PATTERNS=(
   "api.shorebird.dev"
   "auth.shorebird.dev"
   "console.shorebird.dev"
+  "api-dev.shorebird.dev"
+  "auth-dev.shorebird.dev"
+  "console-dev.shorebird.dev"
   "cdn.shorebird.cloud"
   "git@github.com:shorebirdtech/dart-sdk.git"
   "github.com/shorebirdtech/updater.git"
@@ -62,6 +65,10 @@ BUILD_SENSITIVE_FILES=(
   "$ROOT/flutter/DEPS"
   "$ROOT/flutter/bin/internal/update_dart_sdk.ps1"
   "$ROOT/flutter/bin/internal/update_dart_sdk.sh"
+  "$ROOT/flutter/bin/internal/shorebird_dart_sdk.ps1"
+  "$ROOT/flutter/bin/internal/shorebird_dart_sdk.sh"
+  "$ROOT/flutter/bin/internal/shorebird_dart_sdk.pins"
+  "$ROOT/flutter/bin/internal/shorebird_artifact_trust.json"
   "$ROOT/flutter/dev/bots/post_process_docs.dart"
   "$ROOT/flutter/dev/bots/unpublish_package.dart"
   "$ROOT/flutter/dev/integration_tests/pure_android_host_apps/android_host_app_v2_embedding/settings.gradle"
@@ -73,6 +80,8 @@ BUILD_SENSITIVE_FILES=(
   "$ROOT/flutter/packages/flutter_tools/gradle/src/main/kotlin/FlutterPluginConstants.kt"
   "$ROOT/flutter/packages/flutter_tools/lib/src/cache.dart"
   "$ROOT/flutter/packages/flutter_tools/lib/src/http_host_validator.dart"
+  "$ROOT/flutter/packages/flutter_tools/lib/src/shorebird/shorebird_artifact_catalog.dart"
+  "$ROOT/flutter/packages/flutter_tools/lib/src/shorebird/shorebird_artifact_origins.dart"
   "$ROOT/flutter/packages/flutter_tools/pubspec.yaml"
   "$ROOT/flutter/packages/shorebird_tests/test/shorebird_tests.dart"
   "$ROOT/scripts/write_gclient.sh"
@@ -100,14 +109,48 @@ require_contains "$ROOT/flutter/DEPS" '"updater_git": "https://github.com/tony-c
 
 require_contains "$ROOT/flutter/packages/flutter_tools/lib/src/cache.dart" \
   "kOpenFlutterStorageUrl = 'http://localhost:8080/download.flutter.io'"
+# P2: the custom Dart SDK comes from an immutable, digest-pinned address
+# (bin/internal/shorebird_dart_sdk.pins) and is verified before it is unpacked.
+# A mutable "releases/latest" URL is never a default and is refused as an
+# override.
+for path in \
+  "$ROOT/flutter/bin/internal/update_dart_sdk.sh" \
+  "$ROOT/flutter/bin/internal/update_dart_sdk.ps1" \
+  "$ROOT/flutter/bin/internal/shorebird_dart_sdk.sh" \
+  "$ROOT/flutter/bin/internal/shorebird_dart_sdk.ps1" \
+  "$ROOT/flutter/bin/internal/shorebird_dart_sdk.pins"; do
+  reject_contains "$path" "releases/latest/download"
+done
 require_contains "$ROOT/flutter/bin/internal/update_dart_sdk.sh" \
-  "SHOREBIRD_DART_SDK_RELEASE_BASE_URL"
+  'source "$FLUTTER_ROOT/bin/internal/shorebird_dart_sdk.sh"'
 require_contains "$ROOT/flutter/bin/internal/update_dart_sdk.sh" \
-  "https://github.com/tony-cloud/shorebird-workspace/releases/latest/download"
+  'shorebird::resolve_dart_sdk "$DART_ZIP_NAME"'
+require_contains "$ROOT/flutter/bin/internal/update_dart_sdk.sh" \
+  'shorebird::fetch_dart_sdk "$DART_SDK_ZIP"'
+require_contains "$ROOT/flutter/bin/internal/update_dart_sdk.sh" \
+  'shorebird::record_dart_sdk_identity'
+require_contains "$ROOT/flutter/bin/internal/shorebird_dart_sdk.sh" \
+  'SHOREBIRD_DART_SDK_LOCK="$FLUTTER_ROOT/bin/internal/shorebird_dart_sdk.pins"'
+require_contains "$ROOT/flutter/bin/internal/shorebird_dart_sdk.sh" \
+  'shorebird::reject_mutable SHOREBIRD_DART_SDK_RELEASE_BASE_URL'
+require_contains "$ROOT/flutter/bin/internal/shorebird_dart_sdk.sh" \
+  'shorebird::verify_archive'
 require_contains "$ROOT/flutter/bin/internal/update_dart_sdk.ps1" \
-  'SHOREBIRD_DART_SDK_RELEASE_BASE_URL'
+  '. "$flutterRoot\bin\internal\shorebird_dart_sdk.ps1"'
 require_contains "$ROOT/flutter/bin/internal/update_dart_sdk.ps1" \
-  'https://github.com/tony-cloud/shorebird-workspace/releases/latest/download'
+  'Resolve-ShorebirdDartSdk $dartZipNames'
+require_contains "$ROOT/flutter/bin/internal/update_dart_sdk.ps1" \
+  'Get-ShorebirdDartSdkArchive $dartSdk $dartSdkZip'
+require_contains "$ROOT/flutter/bin/internal/shorebird_dart_sdk.ps1" \
+  'Assert-ShorebirdImmutable '"'"'SHOREBIRD_DART_SDK_RELEASE_BASE_URL'"'"
+require_contains "$ROOT/flutter/bin/internal/shorebird_dart_sdk.ps1" \
+  'bin\internal\shorebird_dart_sdk.pins'
+python3 "$ROOT/scripts/dart_sdk_lock.py" check "$ROOT/flutter" >/dev/null ||
+  fail "flutter/bin/internal/shorebird_dart_sdk.pins does not match the checkout's engine and Dart SDK"
+# The shipped catalog trust store must not grant a development key production
+# trust (artifact_catalog.py validates the full trust contract).
+python3 "$ROOT/scripts/artifact_catalog.py" check-trust "$ROOT/flutter/bin/internal/shorebird_artifact_trust.json" >/dev/null ||
+  fail "flutter/bin/internal/shorebird_artifact_trust.json is not a valid catalog trust store"
 require_contains "$ROOT/flutter/packages/flutter_tools/gradle/src/main/kotlin/FlutterPluginConstants.kt" \
   'DEFAULT_MAVEN_HOST = "http://localhost:8080/download.flutter.io"'
 require_contains "$ROOT/flutter/dev/tools/create_api_docs.dart" \

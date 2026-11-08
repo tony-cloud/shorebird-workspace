@@ -196,6 +196,7 @@ jobs:
       - name: Verify CI scripts
         run: |
           bash -n scripts/*.sh shorebird/third_party/flutter/bin/internal/shared.sh flutter/bin/internal/update_dart_sdk.sh
+          bash -n flutter/bin/internal/shorebird_dart_sdk.sh
           python3 -m py_compile scripts/verify_native_desktop_arch.py scripts/test_native_desktop_arch.py
           python3 scripts/test_native_desktop_arch.py -v
           python3 scripts/test_write_gclient.py -v
@@ -213,6 +214,11 @@ jobs:
           python3 scripts/test_inventory_release_binaries.py -v
           python3 -m py_compile scripts/validate_hardening_contracts.py scripts/test_hardening_contracts.py
           python3 scripts/test_hardening_contracts.py -v
+          python3 -m py_compile scripts/artifact_catalog.py scripts/dart_sdk_lock.py scripts/test_artifact_catalog.py
+          python3 scripts/test_artifact_catalog.py -v
+          python3 scripts/dart_sdk_lock.py check flutter
+          python3 scripts/artifact_catalog.py check-trust
+          ./scripts/test_dart_sdk_bootstrap.sh
           python3 -m py_compile scripts/verify_dart_sdk_tooling.py
           python3 -m py_compile scripts/verify_native_cache_engine_tests.py scripts/verify_macos_interpreter_engine_tests.py
           python3 scripts/test_macos_interpreter_engine_tests.py -v
@@ -379,6 +385,8 @@ jobs:
               test/general.shard/shorebird/shorebird_interpreter_test.dart \
               test/general.shard/shorebird/shorebird_replacement_host_test.dart \
               test/general.shard/shorebird/shorebird_build_key_test.dart \
+              test/general.shard/shorebird/shorebird_artifact_catalog_test.dart \
+              test/general.shard/cache_test.dart \
               test/general.shard/build_system/targets/assets_test.dart \
               test/general.shard/build_system/targets/common_test.dart \
               test/general.shard/build_system/targets/macos_test.dart \
@@ -6204,6 +6212,9 @@ jobs:
           path: downloaded-artifacts/windows-engine-arm64
 
       - name: Assemble mirror
+        env:
+          OPEN_SHOREBIRD_ARTIFACT_CATALOG_SIGNING_KEY: ${{ secrets.OPEN_SHOREBIRD_ARTIFACT_CATALOG_SIGNING_KEY }}
+          OPEN_SHOREBIRD_ARTIFACT_STORE_URL: ${{ vars.OPEN_SHOREBIRD_ARTIFACT_STORE_URL }}
         run: |
           set -euo pipefail
           rm -rf artifacts/open-shorebird-artifact-mirror
@@ -6241,6 +6252,13 @@ jobs:
           ./scripts/assemble_artifact_mirror.sh \
             mirror-input \
             artifacts/open-shorebird-artifact-mirror
+          # Signed artifact catalog (HARDENING_CONTRACTS.md section 8): the
+          # production key comes from the CI secret; without it the catalog is
+          # DEVELOPMENT-signed with a warning and serves legacy clients only.
+          ./scripts/publish_artifact_catalog.sh \
+            artifacts/open-shorebird-artifact-mirror \
+            "$engine_revision" \
+            "${OPEN_SHOREBIRD_ARTIFACT_STORE_URL:-https://artifacts.open-shorebird.invalid/shorebird}"
 
           tar -C artifacts -czf open-shorebird-artifact-mirror.tar.gz open-shorebird-artifact-mirror
           mirror_extract_dir="$(mktemp -d)"
@@ -6248,6 +6266,11 @@ jobs:
           python3 scripts/validate_artifact_mirror.py "$mirror_extract_dir/open-shorebird-artifact-mirror"
           test -d "$mirror_extract_dir/open-shorebird-artifact-mirror/shorebird"
           find "$mirror_extract_dir/open-shorebird-artifact-mirror/shorebird" -path '*/artifacts_manifest.yaml' -type f -print -quit | grep -q .
+          test -f "$mirror_extract_dir/open-shorebird-artifact-mirror/shorebird/$engine_revision/artifact-catalog.v1.json"
+          python3 scripts/artifact_catalog.py verify \
+            --catalog "$mirror_extract_dir/open-shorebird-artifact-mirror/shorebird/$engine_revision/artifact-catalog.v1.json" \
+            --signature "$mirror_extract_dir/open-shorebird-artifact-mirror/shorebird/$engine_revision/artifact-catalog.v1.json.sig" \
+            --engine-revision "$engine_revision"
           find "$mirror_extract_dir/open-shorebird-artifact-mirror/shorebird" -path '*/patch-linux-x64.zip' -type f -print -quit | grep -q .
           find "$mirror_extract_dir/open-shorebird-artifact-mirror/shorebird" -path '*/patch-linux-arm64.zip' -type f -print -quit | grep -q .
           find "$mirror_extract_dir/open-shorebird-artifact-mirror/shorebird" -path '*/patch-darwin-x64.zip' -type f -print -quit | grep -q .
@@ -6418,35 +6441,38 @@ jobs:
             cp "$sidecar_path" "release-assets/$asset.sha256"
           done
 
-      - name: Publish GitHub Release
+      - name: Publish immutable Dart SDK release
         run: |
           set -euo pipefail
+          # Each tested SDK set gets its own immutable tag: assets are never
+          # replaced or clobbered and the release is never marked latest, so
+          # a URL plus the digest pinned in flutter/bin/internal/shorebird_dart_sdk.pins
+          # always names the same bytes.
+          git submodule update --init --depth 1 flutter
+          engine_revision="$(tr -d '[:space:]' < flutter/bin/internal/engine.version)"
           release_version="$(tr -d '[:space:]' < VERSION)"
           test -n "$release_version"
-          release_tag="v$release_version"
-          release_title="Open Shorebird $release_version"
-          release_notes="Synchronized with upstream Shorebird v${release_version} and tested by Open Shorebird CI run ${GITHUB_RUN_ID} for commit ${GITHUB_SHA}."
+          release_tag="dart-sdk-${engine_revision:0:12}-r${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          release_title="Open Shorebird $release_version Dart SDK (engine ${engine_revision:0:12}, run ${GITHUB_RUN_ID})"
+          release_notes="Custom Dart SDK for engine ${engine_revision}, tested by Open Shorebird CI run ${GITHUB_RUN_ID} for commit ${GITHUB_SHA}. Immutable: pin these assets by digest in flutter/bin/internal/shorebird_dart_sdk.pins (see the shorebird_dart_sdk.pins workflow artifact)."
           if gh release view "$release_tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$release_tag" release-assets/* \
-              --repo "$GITHUB_REPOSITORY" \
-              --clobber
-            gh release edit "$release_tag" \
-              --repo "$GITHUB_REPOSITORY" \
-              --title "$release_title" \
-              --notes "$release_notes" \
-              --latest
-          else
-            gh release create "$release_tag" release-assets/* \
-              --repo "$GITHUB_REPOSITORY" \
-              --target "$GITHUB_SHA" \
-              --title "$release_title" \
-              --notes "$release_notes" \
-              --latest
+            echo "error: immutable release $release_tag already exists" >&2
+            exit 1
           fi
+          gh release create "$release_tag" release-assets/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "$release_title" \
+            --notes "$release_notes" \
+            --latest=false
+          echo "release_tag=$release_tag" >> "$GITHUB_ENV"
 
-      - name: Verify latest release downloads
+      - name: Verify immutable release downloads
         run: |
           set -euo pipefail
+          test -n "${release_tag:-}"
+          base_url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${release_tag}"
+          download_dir="$(mktemp -d)"
           for asset in \
             dart-sdk-linux-arm64.zip \
             dart-sdk-linux-x64.zip \
@@ -6455,10 +6481,35 @@ jobs:
             dart-sdk-windows-arm64.zip \
             dart-sdk-windows-x64.zip; do
             curl -fL --retry 5 --retry-all-errors \
-              "https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/$asset" \
-              -o "/tmp/$asset"
-            cmp "/tmp/$asset" "release-assets/$asset"
+              "$base_url/$asset" \
+              -o "$download_dir/$asset"
+            expected_digest="$(cut -d ' ' -f 1 "release-assets/$asset.sha256")"
+            actual_digest="$(sha256sum "$download_dir/$asset" | cut -d ' ' -f 1)"
+            test "$actual_digest" = "$expected_digest"
           done
+          python3 scripts/dart_sdk_lock.py write-published flutter \
+            --base-url "$base_url" \
+            --assets-dir "$download_dir" \
+            --output shorebird_dart_sdk.pins
+          ./scripts/write_sha256.sh shorebird_dart_sdk.pins
+          {
+            echo '### Dart SDK pins'
+            echo
+            echo "Commit this as \`flutter/bin/internal/shorebird_dart_sdk.pins\` to make the bootstrap fetch the verified release ${release_tag}:"
+            echo
+            echo '```'
+            cat shorebird_dart_sdk.pins
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Dart SDK pins
+        uses: actions/upload-artifact@v4
+        with:
+          name: shorebird_dart_sdk.pins
+          path: |
+            shorebird_dart_sdk.pins
+            shorebird_dart_sdk.pins.sha256
+          if-no-files-found: error
 
   linux-runtime-smoke:
     name: Linux runtime patch smoke

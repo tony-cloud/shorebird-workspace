@@ -422,9 +422,20 @@ The same jobs package updater-compatible `dart-sdk-linux-x64.zip`,
 `dart-sdk-windows-x64.zip` files with checksum sidecars. Windows executable
 names include `.exe`; `verify_dart_tool_sdk.sh` accepts the native tool SDK name. After
 `artifact-mirror` proves every supported native producer succeeded,
-`publish-sdk-release` creates a GitHub Release using the synchronized upstream
-Shorebird version from `VERSION`, marks it latest, and verifies all four assets
-through `releases/latest/download`.
+`publish-sdk-release` creates a new immutable GitHub Release tag,
+`dart-sdk-<engine12>-r<run_id>-<attempt>`. It never overwrites assets and never
+marks the release latest. It verifies every asset downloaded from that tag
+against its tested digest, then uploads the generated `shorebird_dart_sdk.pins`
+(with a sidecar) and shows it in the step summary. Committing it to
+`flutter/bin/internal/` publishes the SDK to the bootstrap.
+
+`artifact-mirror` writes and signs
+`shorebird/<engine>/artifact-catalog.v1.json` (+ `.sig`) with
+`scripts/publish_artifact_catalog.sh`. When the secret
+`OPEN_SHOREBIRD_ARTIFACT_CATALOG_SIGNING_KEY` is set, the catalog is
+production-signed and hardened. Otherwise it is signed with the
+DEVELOPMENT-ONLY key and gets a warning annotation. See
+`docs/HARDENING_CONTRACTS.md` §8.
 
 Apple engines run on separate runners so iOS outputs do not exhaust the disk before the macOS build.
 

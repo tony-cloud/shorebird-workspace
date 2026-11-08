@@ -241,6 +241,15 @@ It is left for the iOS route owner.
    mutable `releases/latest/download`.
 5. **P2.** Platform-scoped CLI cache downloads (bundletool for Linux desktop
    releases) and longer backoff.
+
+   **Answered by P2 (`HARDENING_CONTRACTS.md` §8):**
+   - Item 3: the custom origin is the operator's store
+     (`SHOREBIRD_ARTIFACT_BASE_URL`), authenticated by a signed catalog. The
+     signer is an Ed25519 CI secret with a git-pinned trust store (§8.1).
+   - Item 4: the bootstrap uses immutable, digest-pinned
+     `shorebird_dart_sdk.pins`, and CI publishes immutable tags (§8.3).
+   - Item 5: bundletool is on demand, with 5 attempts that retry only
+     retryable failures (§8.4).
 6. **P3/P5.** Export minimization on Apple and Linux, and the Android
    `stripped_symbols = false` decision. Both change shipped engine bytes and
    need native-host validation, including the Windows VM if Windows link flags

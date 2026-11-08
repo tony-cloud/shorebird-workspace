@@ -438,3 +438,187 @@ Deferred:
   end-to-end lifecycle cases for a hardened release, including the negative
   boot cases on a device or host.
 
+
+## 8. P2 decisions (official-source resolution and signed toolchain supply)
+
+P2 implements the plan §7.1–7.3 defaults: official Pub and compatible Flutter
+artifacts are fetched directly, the custom artifact store stays, and the
+all-in-one artifact proxy remains available as an explicit compatibility mode.
+
+### 8.1 Artifact catalog signer and trust
+
+- **Envelope.** A detached signature document
+  `artifact-catalog.v1.json.sig`
+  (`docs/schemas/artifact-catalog-signature.v1.schema.json`): `algorithm`
+  `ed25519`, `key_id` = `sha256:` over the raw 32-byte public key,
+  `catalog_sha256`, and a base64 RFC 8032 signature over
+  `open-shorebird.artifact-catalog-signature.v1:<catalog_sha256 hex>`. The
+  catalog file must be byte-equal to its canonical JSON (§1), so duplicate keys
+  and reformatting are rejected before the digest is compared.
+- **Signer.** An Ed25519 key held as the CI secret
+  `OPEN_SHOREBIRD_ARTIFACT_CATALOG_SIGNING_KEY` (PKCS#8 PEM; generate with
+  `openssl genpkey -algorithm ed25519`). `scripts/publish_artifact_catalog.sh`
+  signs with OpenSSL in the `artifact-mirror` job, then verifies against the
+  trust store before the mirror is packaged. A production-signed catalog is
+  generated for the `hardened` profile.
+- **Trust store.** `flutter/bin/internal/shorebird_artifact_trust.json`
+  (`docs/schemas/artifact-catalog-trust.v1.schema.json`) ships in the Flutter
+  checkout, so git authenticates it. Each key has `usage` `production` or
+  `development`. To enable production signing, add the public key with
+  `python3 scripts/artifact_catalog.py trust-entry <pem> --usage production
+  --description ...` and set the secret.
+- **Development key.** `scripts/testdata/artifact-catalog-signing-key.DEVELOPMENT-ONLY.pem`
+  is public and non-production (key ID
+  `sha256:86d46e09d92b413100bb65c1f098235ed23ddb84e081b574c20be11d15fd6584`).
+  It is the only key shipped today. `artifact_catalog.py check-trust`, run by
+  the source-checks verifiers, fails if it is ever given `production` usage.
+  Without the secret, CI signs with this key, emits a
+  `::warning::` annotation, and generates a `legacy` catalog. CI stays green.
+- **Client policy** (`verifyShorebirdArtifactCatalog`, mirrored by
+  `artifact_catalog.py verify`). The profile comes from
+  `SHOREBIRD_SECURITY_PROFILE`.
+
+  | Catalog | `legacy` toolchain | `hardened` toolchain |
+  | --- | --- | --- |
+  | Production-signed, hardened catalog | accept | accept |
+  | Production-signed, legacy catalog | accept | reject (needs a hardened catalog) |
+  | Development-signed | accept with a loud warning | reject |
+  | Unsigned | reject; accept with a warning only when `SHOREBIRD_ALLOW_UNSIGNED_ARTIFACT_CATALOG=1` | reject |
+  | Untrusted key, digest or signature mismatch, non-canonical, wrong engine | reject | reject |
+
+  Verification happens before an archive is unpacked or executed.
+
+### 8.2 One origin precedence model
+
+There is one model, implemented in four places:
+
+- `flutter/bin/internal/shorebird_dart_sdk.{sh,ps1}`, the Dart SDK bootstrap
+  for direct Flutter, CLI-vended Flutter, and SDK refresh;
+- `flutter_tools` `shorebird_artifact_origins.dart`, for engine artifacts and
+  Gradle;
+- the CLI's `ShorebirdEnv.artifactOrigins`, which hands Flutter
+  `SHOREBIRD_ORIGIN_MODE`;
+- the launchers, which no longer rewrite any origin.
+
+| Setting | Scope | Notes |
+| --- | --- | --- |
+| `PUB_HOSTED_URL` | Pub only | Never read by the artifact resolvers. |
+| `FLUTTER_STORAGE_BASE_URL` | Official-compatible artifacts only (default `https://storage.googleapis.com`) | Never serves a custom route or the custom Dart SDK. When it equals the open proxy `http://localhost:8080/download.flutter.io`, it is the legacy alias below. |
+| `SHOREBIRD_ARTIFACT_BASE_URL` | Custom (patched) artifacts: `<store>/shorebird/<route>`, catalog `<store>/shorebird/<engine>/artifact-catalog.v1.json` (default `http://localhost:8080/artifacts`) | Every custom route needs a catalog entry and digest. A missing entry, or a 404, is the precise error "Missing custom artifact ...". |
+| `SHOREBIRD_ARTIFACT_CATALOG` | Local catalog file (offline or air-gapped) | Its `.sig` must sit next to it. Otherwise the last verified catalog cached in `bin/cache/shorebird/artifact-catalog/<engine>/` is reused, but only after a network error. |
+| `SHOREBIRD_DART_SDK_RELEASE_BASE_URL` | Custom Dart SDK, flat release layout | Takes precedence over the store and the pins `base_url`. A mutable `/releases/latest` URL is refused. |
+| `SHOREBIRD_DART_SDK_SHA256` | Digest for an SDK not in the pins file | Explicit pin. |
+| `SHOREBIRD_ORIGIN_MODE` | `split` (default) or `legacy-mirror` | `legacy-mirror` sends every artifact through one all-in-one proxy, as before P2. |
+| `SHOREBIRD_DOWNLOAD_URL`, `SHOREBIRD_FLUTTER_STORAGE_BASE_URL` | Legacy aliases | Select `legacy-mirror` with that URL. In the CLI, `SHOREBIRD_MAVEN_BASE_URL` takes precedence over `SHOREBIRD_DOWNLOAD_URL` for Maven. |
+| `SHOREBIRD_MAVEN_BASE_URL` | Gradle/Maven | Gradle keeps the proxy compatibility route (below). |
+
+These combinations are configuration errors. The bootstrap exits with code 2;
+flutter_tools and the CLI raise a tool exit or usage error.
+
+- Two different legacy aliases.
+- `SHOREBIRD_ORIGIN_MODE=split` together with an alias.
+- `legacy-mirror` together with a different `FLUTTER_STORAGE_BASE_URL`.
+- An unknown mode.
+
+A hardened `shorebird release` or `shorebird patch` refuses `legacy-mirror`
+(`hardenedLegacyMirrorRefusal`). An official origin never satisfies a custom
+coordinate, and there is no silent fallback to stock binaries. The proxy is
+optional: split mode needs only the custom store.
+
+**Gradle** keeps the compatibility route. In split mode, flutter_tools gives
+Gradle `FLUTTER_STORAGE_BASE_URL` = `SHOREBIRD_MAVEN_BASE_URL`, or else the
+open proxy (`shorebirdGradleEnvironment`). The reason is that the Flutter
+Gradle plugin resolves engine Maven coordinates from a single repository.
+
+### 8.3 Dart SDK bootstrap
+
+`flutter/bin/internal/shorebird_dart_sdk.pins` is in the Flutter checkout, so
+git authenticates it. It records:
+
+- `engine_revision` and `dart_sdk_revision`, which must equal `engine.version`
+  and DEPS (`scripts/dart_sdk_lock.py check`, also run by
+  `verify_open_infrastructure_defaults.sh` and `verify_ci_workflow.rb`);
+- optionally an immutable https `base_url` and one
+  `asset <zip> <sha256> <size>` line per host archive.
+
+**Publishing.** The `publish-sdk-release` job creates the immutable tag
+`dart-sdk-<engine12>-r<run_id>-<attempt>`. It never clobbers assets and never
+marks the release latest. It verifies every download at that URL against the
+tested digest and uploads the `shorebird_dart_sdk.pins` it generated with
+`dart_sdk_lock.py write-published`. Committing those pins is the publication
+step.
+
+Until then the pins are **unpublished** (identity only). A split-mode
+bootstrap then needs one of the following, and otherwise fails with a precise
+error, never a fetch:
+
+- a digest from `SHOREBIRD_DART_SDK_SHA256`;
+- a pre-seeded verified archive;
+- legacy-mirror mode, which installs an SDK labelled **UNVERIFIED** with a
+  warning, exactly the pre-P2 behavior.
+
+**Caching.**
+
+- Archives are content-addressed: `bin/cache/<sha256>-<zip>`.
+- The installed identity is recorded in `bin/cache/engine-dart-sdk.identity`
+  as `<engine> <dart> <zip> <sha256|unverified>`.
+- A current, verified install is reused offline without a request.
+- A pin change replaces an unverified install.
+- A locally provisioned SDK (a stamp with no identity file) is kept.
+- `shared.bat` now re-runs the PowerShell identity check whenever it rebuilds
+  the tool, as `shared.sh` does.
+
+### 8.4 CLI downloads and hosts
+
+- **`--dev` hosts.** No Shorebird host is compiled in. `--dev` requires
+  `SHOREBIRD_DEV_HOSTED_URL`; `SHOREBIRD_DEV_AUTH_SERVICE_URL` and
+  `SHOREBIRD_DEV_CONSOLE_URL` are optional and default to `<hosted>/auth` and
+  `<hosted>`.
+- **bundletool** is downloaded on demand (`Cache.ensure`) when an Android
+  command needs it, not by `updateAll`. A Linux desktop release never fetches
+  it.
+- **Retries.** Every cache download makes up to 5 attempts with a 1 s doubling
+  delay, about 15 s in total. Only retryable failures are retried: network
+  errors, 5xx, 408 and 429. A definitive 4xx fails at once. This addresses the
+  bundletool 504 in `HARDENING_P0_EVIDENCE.md`.
+
+### 8.5 Negative-test matrix
+
+| Case | Tests |
+| --- | --- |
+| Unsigned catalog under hardened; development-signed under hardened | `test_artifact_catalog.py` `VerifyTest`; flutter_tools `shorebird_artifact_catalog_test.dart` group `verifyShorebirdArtifactCatalog` |
+| Catalog digest/signature mismatch, tampering, non-canonical, duplicate key, untrusted key, wrong engine | Same two suites |
+| Archive digest or size mismatch before unzip | `test_dart_sdk_bootstrap.sh` cases 4, 5, 7 and the PowerShell matrix; flutter_tools `ArtifactUpdater with the resolver` |
+| Custom coordinate classified or requested as official | `test_custom_route_classified_official_is_rejected`, `test_official_entry_never_satisfies_a_custom_route`; flutter_tools resolver tests; bootstrap case 8 (`FLUTTER_STORAGE_BASE_URL` never consulted) |
+| Conflicting overrides | Bootstrap case 13 (sh and ps1); flutter_tools `ShorebirdArtifactOrigins`; CLI `shorebird_env_test.dart` `artifactOrigins`, runner `artifact origins` |
+| Missing custom artifact | `test_missing_custom_artifact_is_a_precise_error`; `PublishScriptTest`; flutter_tools resolver (absent from the catalog, and 404) |
+| Mutable `latest` URL | Bootstrap case 12 (sh and ps1); `dart_sdk_lock.py` rejections; `verify_ci_workflow.rb`, `verify_open_infrastructure_defaults.sh`, `verify_powershell_open_defaults.sh` |
+| Offline cache reuse | Bootstrap cases 2 and 6 (sh) and the PowerShell matrix; flutter_tools cached catalog after a network error |
+| Hardened release or patch through the legacy mirror | `release_command_test.dart` and `patch_command_test.dart` "refuses the legacy all-in-one artifact mirror" |
+| Implicit `--dev` host; bundletool on non-Android; retry bounds | CLI runner `--dev` tests; `cache_test.dart` |
+| Development key promoted to production | `test_check_trust_refuses_production_trust_for_the_development_key` |
+
+### 8.6 Deferred
+
+- **CI secret (operator).** Generate the production key, set
+  `OPEN_SHOREBIRD_ARTIFACT_CATALOG_SIGNING_KEY`, and pin its public key in the
+  trust store. Optionally set the repository variable
+  `OPEN_SHOREBIRD_ARTIFACT_STORE_URL`, the catalog's declared custom
+  `base_url`. Clients resolve against their configured store and authenticate
+  by digest, so that value is descriptive. If the secret is set before its key
+  is pinned, the `artifact-mirror` job fails by design.
+- **Pins publication.** After the first default-branch run of
+  `publish-sdk-release`, commit its `shorebird_dart_sdk.pins` to the Flutter
+  fork.
+- **P6.** Catalog v1 paths cannot express the CLI patch tools
+  (`shorebird/<engine>/patch-*.zip`). They keep their pinned-checksum path in
+  the CLI cache, and catalog v2 should cover them. Other P6 items:
+  - toolchain-scoped catalog routes for hardened versus legacy builds, which
+    share `engine.version`;
+  - re-verifying cached artifacts when the profile changes, because artifacts
+    precached under `legacy` are reused by a later hardened build;
+  - the remaining resolver hooks: `doesRemoteExist`/`checkForArtifacts`, the
+    doctor `http_host_validator` host, and the podspec URLs in
+    `build_ios_framework`/`build_macos_framework`, all of which still name the
+    configured storage base;
+  - end-to-end clean-install and offline lifecycle runs.

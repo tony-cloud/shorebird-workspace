@@ -1012,11 +1012,25 @@ assert!(
     !shorebird_cache.include?('download.shorebird.dev'),
   'cache must default artifact downloads to the open local mirror, not Shorebird hosted storage'
 )
+# P2 origin model (HARDENING_CONTRACTS.md section 8): the CLI hands Flutter a
+# scoped origin mode, never an implicit all-in-one mirror; the legacy mirror is
+# reachable only through its explicit aliases.
 assert!(
-  shorebird_process.include?('defaultFlutterStorageBaseUrl') &&
-    shorebird_process.include?('${ShorebirdEnv.defaultHostedUrl}/download.flutter.io') &&
+  shorebird_process.include?('return shorebirdEnv.flutterArtifactEnvironment;') &&
+    !shorebird_process.include?('defaultFlutterStorageBaseUrl') &&
+    !shorebird_process.include?("'FLUTTER_STORAGE_BASE_URL':") &&
     !shorebird_process.include?('https://download.shorebird.dev'),
-  'Flutter process environment must default to the open local Flutter artifact mirror'
+  'Flutter process environment must come from the shared origin resolver, not an implicit all-in-one mirror'
+)
+assert!(
+  shorebird_env.include?("'SHOREBIRD_ORIGIN_MODE'") &&
+    shorebird_env.include?('ArtifactOriginMode.legacyMirror') &&
+    shorebird_env.include?('class ArtifactOriginConflict') &&
+    shorebird_env.include?("'SHOREBIRD_DOWNLOAD_URL'") &&
+    shorebird_env.include?("'SHOREBIRD_FLUTTER_STORAGE_BASE_URL'") &&
+    shorebird_env.include?("devHostedUrlVariable = 'SHOREBIRD_DEV_HOSTED_URL'") &&
+    !shorebird_env.include?('shorebird.dev\''),
+  'CLI origins must be scoped (split by default), keep the legacy aliases explicit, and compile in no --dev Shorebird host'
 )
 {
   'shorebird/bin/shorebird.ps1' => shorebird_powershell_launcher,
@@ -1025,12 +1039,12 @@ assert!(
   assert!(
     text.include?('SHOREBIRD_FLUTTER_GIT_URL') &&
       text.include?('https://github.com/tony-cloud/flutter.git') &&
-      text.include?('SHOREBIRD_FLUTTER_STORAGE_BASE_URL') &&
-      text.include?('FLUTTER_STORAGE_BASE_URL') &&
-      text.include?('http://localhost:8080/download.flutter.io') &&
+      text.include?('shorebird_dart_sdk.pins') &&
+      !text.include?('http://localhost:8080/download.flutter.io') &&
+      !text.match?(/FLUTTER_STORAGE_BASE_URL\s*=/) &&
       !text.include?('github.com/shorebirdtech/flutter.git') &&
       !text.include?('https://download.shorebird.dev'),
-    "#{path} must bootstrap from open Flutter/artifact defaults with environment overrides"
+    "#{path} must bootstrap Flutter from the open remote and leave artifact origins to Flutter's shared resolver"
   )
 end
 assert!(
@@ -1113,18 +1127,44 @@ assert!(
     !flutter_http_host_validator.include?('download.shorebird.dev'),
   'Flutter doctor network validator must check the open local Flutter mirror by default'
 )
+# P2: the custom Dart SDK is fetched from an immutable address pinned with its
+# digest in bin/internal/shorebird_dart_sdk.pins and verified before unzip; a
+# mutable "releases/latest" URL is neither a default nor an accepted override.
 {
-  'flutter/bin/internal/update_dart_sdk.ps1' => flutter_update_dart_sdk_ps1,
-  'flutter/bin/internal/update_dart_sdk.sh' => flutter_update_dart_sdk_sh,
-}.each do |path, text|
+  'flutter/bin/internal/update_dart_sdk.ps1' => [flutter_update_dart_sdk_ps1, 'shorebird_dart_sdk.ps1'],
+  'flutter/bin/internal/update_dart_sdk.sh' => [flutter_update_dart_sdk_sh, 'shorebird_dart_sdk.sh'],
+}.each do |path, (text, resolver_name)|
+  resolver = read_repo_file(repo_root, "flutter/bin/internal/#{resolver_name}")
   assert!(
-    text.include?('FLUTTER_STORAGE_BASE_URL') &&
-      text.include?('SHOREBIRD_DART_SDK_RELEASE_BASE_URL') &&
-      text.include?('https://github.com/tony-cloud/shorebird-workspace/releases/latest/download') &&
-      !text.include?('download.shorebird.dev'),
-    "#{path} must download Dart SDK archives from the workspace GitHub Release unless FLUTTER_STORAGE_BASE_URL is configured"
+    text.include?(resolver_name) &&
+      !text.include?('releases/latest') &&
+      !text.include?('download.shorebird.dev') &&
+      resolver.include?('FLUTTER_STORAGE_BASE_URL') &&
+      resolver.include?('SHOREBIRD_DART_SDK_RELEASE_BASE_URL') &&
+      resolver.include?('SHOREBIRD_ARTIFACT_BASE_URL') &&
+      resolver.include?('shorebird_dart_sdk.pins') &&
+      resolver.include?('names a mutable'),
+    "#{path} must resolve the Dart SDK through #{resolver_name} from an immutable, digest-pinned address"
+  )
+  assert!(
+    !resolver.include?('download.shorebird.dev') && !resolver.match?(%r{https://[^\s'"]*/releases/latest/download}),
+    "#{resolver_name} must not default to a mutable latest-release URL or a Shorebird host"
   )
 end
+dart_sdk_lock_ok, dart_sdk_lock_output = capture_command(
+  'python3', repo_path(repo_root, 'scripts/dart_sdk_lock.py'), 'check', repo_path(repo_root, 'flutter')
+)
+assert!(
+  dart_sdk_lock_ok,
+  "flutter/bin/internal/shorebird_dart_sdk.pins must name exactly the checkout's engine.version and DEPS dart_sdk_revision: #{dart_sdk_lock_output.strip}"
+)
+catalog_trust_ok, catalog_trust_output = capture_command(
+  'python3', repo_path(repo_root, 'scripts/artifact_catalog.py'), 'check-trust'
+)
+assert!(
+  catalog_trust_ok,
+  "flutter/bin/internal/shorebird_artifact_trust.json must be a valid catalog trust store: #{catalog_trust_output.strip}"
+)
 assert!(
   flutter_gradle_constants.include?('DEFAULT_MAVEN_HOST = "http://localhost:8080/download.flutter.io"') &&
     !flutter_gradle_constants.include?('download.shorebird.dev') &&
@@ -1419,7 +1459,11 @@ assert!(
     verify_open_infrastructure_defaults.include?('https://github.com/tony-cloud/dart-sdk.git') &&
     verify_open_infrastructure_defaults.include?('https://github.com/tony-cloud/shorebird-updater.git') &&
     verify_open_infrastructure_defaults.include?('http://localhost:8080/download.flutter.io') &&
-    verify_open_infrastructure_defaults.include?('releases/latest/download') &&
+    verify_open_infrastructure_defaults.include?('reject_contains "$path" "releases/latest/download"') &&
+    verify_open_infrastructure_defaults.include?('scripts/dart_sdk_lock.py" check') &&
+    verify_open_infrastructure_defaults.include?('scripts/artifact_catalog.py" check-trust') &&
+    verify_open_infrastructure_defaults.include?('flutter/bin/internal/shorebird_dart_sdk.sh') &&
+    verify_open_infrastructure_defaults.include?('api-dev.shorebird.dev') &&
     verify_open_infrastructure_defaults.include?('http://localhost:8080/artifacts') &&
     verify_open_infrastructure_defaults.include?('defaultHostedUrl = ') &&
     verify_open_infrastructure_defaults.include?('download.shorebird.dev') &&
@@ -1435,8 +1479,9 @@ assert!(
     verify_powershell_open_defaults.include?('flutter/bin/internal/update_dart_sdk.ps1') &&
     verify_powershell_open_defaults.include?('System.Management.Automation.Language.Parser') &&
     verify_powershell_open_defaults.include?('https://github.com/tony-cloud/flutter.git') &&
-    verify_powershell_open_defaults.include?('http://localhost:8080/download.flutter.io') &&
-    verify_powershell_open_defaults.include?('releases/latest/download') &&
+    verify_powershell_open_defaults.include?('flutter/bin/internal/shorebird_dart_sdk.ps1') &&
+    verify_powershell_open_defaults.include?("reject_contains \"$path\" 'releases/latest/download'") &&
+    verify_powershell_open_defaults.include?("reject_contains \"$shorebird_launcher\" '$env:FLUTTER_STORAGE_BASE_URL ='") &&
     verify_powershell_open_defaults.include?('download.shorebird.dev') &&
     verify_powershell_open_defaults.include?('github.com/shorebirdtech/flutter.git'),
   'PowerShell verifier must parse Windows scripts and enforce open Flutter/artifact defaults'
@@ -2080,6 +2125,8 @@ archive_runner = read_repo_file(repo_root, 'scripts/run_native_archive_tests.sh'
   patch_diff_checker_test.dart android_native_patch_diff_test.dart
   patch_command_test.dart windows_patcher_test.dart apple_patcher_mixin_test.dart
   apple_archive_differ_test.dart ios_patcher_test.dart macos_patcher_test.dart
+  shorebird_env_test.dart shorebird_process_test.dart shorebird_cli_command_runner_test.dart
+  test/src/cache_test.dart bundletool_test.dart
 ].each do |suite|
   assert!(archive_runner.include?(suite), "CLI archive gate must include #{suite}")
 end
@@ -2096,6 +2143,8 @@ assert!(
     assert!(archive_runner.include?(selector), "CLI archive gate must select each macOS #{arch} registrant=#{registrant} case")
   end
 end
+assert!(archive_runner.include?("'test/src/commands/release/release_command_test.dart|refuses the legacy all-in-one artifact mirror'"),
+        'CLI archive gate must run the hardened legacy-mirror refusal case')
 assert!(archive_runner.include?('"$DART_BIN" test --reporter expanded --plain-name "$test_name" "$test_file"'),
         'CLI archive gate must run each exact expected case separately and fail when none match')
 archive_upload = cli_steps.fetch(archive_evidence_index)
@@ -2578,12 +2627,54 @@ assert!(
     publish_release_condition.include?('github.event.repository.default_branch') &&
     publish_release.dig('permissions', 'contents').to_s == 'write' &&
     publish_release_runs.include?('gh release create') &&
-    publish_release_runs.include?('--latest') &&
     publish_release_runs.include?('dart-sdk-linux-x64.zip') &&
-    publish_release_runs.include?('dart-sdk-darwin-arm64.zip') &&
-    publish_release_runs.include?('releases/latest/download/$asset'),
-  'SDK release job must publish updater-compatible assets only after native artifact assembly and verify latest release downloads'
+    publish_release_runs.include?('dart-sdk-darwin-arm64.zip'),
+  'SDK release job must publish updater-compatible assets only after native artifact assembly'
 )
+# P2: Dart SDK releases are immutable. Every tested SDK set gets a fresh tag that
+# is never overwritten or marked latest, downloads are verified against the
+# tested digests at that immutable URL, and the job emits the pins file that the
+# bootstrap verifies against. The mutable "latest" route is gone entirely.
+assert!(
+  publish_release_runs.include?('release_tag="dart-sdk-${engine_revision:0:12}-r${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"') &&
+    publish_release_runs.include?('immutable release $release_tag already exists') &&
+    publish_release_runs.include?('--latest=false') &&
+    !publish_release_runs.match?(/--latest(?!=false)/) &&
+    !publish_release_runs.include?('--clobber') &&
+    !publish_release_runs.include?('gh release upload') &&
+    !publish_release_runs.include?('gh release edit') &&
+    !publish_release_runs.include?('releases/latest') &&
+    publish_release_runs.include?('base_url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${release_tag}"') &&
+    publish_release_runs.include?('test "$actual_digest" = "$expected_digest"') &&
+    publish_release_runs.include?('python3 scripts/dart_sdk_lock.py write-published flutter'),
+  'SDK release job must publish to a fresh immutable tag, never latest/clobber, verify digests at the immutable URL, and emit the Dart SDK pins'
+)
+artifact_mirror_job = jobs.fetch('artifact-mirror')
+artifact_mirror_runs = job_runs(artifact_mirror_job).join("\n")
+assemble_mirror_step = artifact_mirror_job.fetch('steps').find { |step| step['name'] == 'Assemble mirror' }
+assert!(
+  assemble_mirror_step &&
+    assemble_mirror_step.dig('env', 'OPEN_SHOREBIRD_ARTIFACT_CATALOG_SIGNING_KEY').to_s == '${{ secrets.OPEN_SHOREBIRD_ARTIFACT_CATALOG_SIGNING_KEY }}' &&
+    artifact_mirror_runs.include?('./scripts/publish_artifact_catalog.sh') &&
+    artifact_mirror_runs.index('./scripts/publish_artifact_catalog.sh') < artifact_mirror_runs.index('tar -C artifacts -czf open-shorebird-artifact-mirror.tar.gz') &&
+    artifact_mirror_runs.include?('python3 scripts/artifact_catalog.py verify'),
+  'artifact-mirror must sign the artifact catalog (production key from the CI secret) before packaging and verify it after extraction'
+)
+assert!(
+  run_text_by_job.fetch('cli-artifacts').include?('test/general.shard/shorebird/shorebird_artifact_catalog_test.dart') &&
+    run_text_by_job.fetch('cli-artifacts').include?('test/general.shard/cache_test.dart'),
+  'cli-artifacts must run the flutter_tools artifact catalog/origin and cache tests on every host'
+)
+source_check_runs = job_runs(jobs.fetch('source-checks')).join("\n")
+[
+  'bash -n flutter/bin/internal/shorebird_dart_sdk.sh',
+  'python3 scripts/test_artifact_catalog.py -v',
+  'python3 scripts/dart_sdk_lock.py check flutter',
+  'python3 scripts/artifact_catalog.py check-trust',
+  './scripts/test_dart_sdk_bootstrap.sh',
+].each do |command|
+  assert!(source_check_runs.include?(command), "source-checks must run #{command} (P2 origin, integrity and bootstrap tests)")
+end
 %w[linux-engine android-engine ios-engine macos-engine].each do |job_name|
   assert!(
     run_text_by_job.fetch(job_name).include?('engine_revision="$(cat flutter/bin/internal/engine.version)"') &&

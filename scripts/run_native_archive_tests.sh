@@ -26,6 +26,14 @@ tests=(
   test/src/commands/patch/apple_patcher_mixin_test.dart
   test/src/commands/release/macos_releaser_test.dart
   test/src/validators/macos_network_entitlement_validator_test.dart
+  # P2 origin policy and toolchain supply (HARDENING_CONTRACTS.md section 8):
+  # scoped origins and conflict diagnosis, no implicit --dev Shorebird host,
+  # on-demand bundletool and the bounded retry policy, on every CLI host.
+  test/src/shorebird_env_test.dart
+  test/src/shorebird_process_test.dart
+  test/src/shorebird_cli_command_runner_test.dart
+  test/src/cache_test.dart
+  test/src/executables/bundletool_test.dart
 )
 
 # These shared suites mock Apple builds, signing and ditto, so their full-profile
@@ -40,6 +48,8 @@ macos_interpreter_cases=(
   'test/src/artifact_builder/artifact_builder_test.dart|macos/arm64 full profile generates portable registrant inputs: true'
   'test/src/artifact_builder/artifact_builder_test.dart|macos/x64 full profile generates portable registrant inputs: false'
   'test/src/artifact_builder/artifact_builder_test.dart|macos/x64 full profile generates portable registrant inputs: true'
+  # P2: a hardened release refuses the legacy all-in-one artifact mirror.
+  'test/src/commands/release/release_command_test.dart|refuses the legacy all-in-one artifact mirror'
 )
 if [[ "$(uname -s)" == Darwin ]]; then
   tests+=(
