@@ -5,7 +5,9 @@ Status: **v1, frozen by stage P0** of
 P1 (secure release admission) and P2 (official-source resolution) implement
 against this document. **P1 is implemented** (2026-11-09) in the updater,
 engine, flutter_tools and CLI; §7 records its decisions and its
-reject/accept matrix. The server, catalog and P2 parts are not implemented yet. Evidence that informed it is in [HARDENING_P0_EVIDENCE.md](HARDENING_P0_EVIDENCE.md).
+reject/accept matrix. P2 is implemented (§8). **P3 (updater self-integrity) is
+implemented** (2026-11-09); §9 records its decisions, platform adapters and
+reject/accept matrix. The server parts are not implemented yet. Evidence that informed it is in [HARDENING_P0_EVIDENCE.md](HARDENING_P0_EVIDENCE.md).
 
 Machine-checkable parts:
 
@@ -14,6 +16,7 @@ Machine-checkable parts:
 | Security policy | `docs/schemas/security-policy.v1.schema.json` | `docs/schemas/examples/security-policy.legacy-default.json`, `security-policy.hardened.json` |
 | Build-identity manifest | `docs/schemas/build-identity.v1.schema.json` | `docs/schemas/examples/build-identity.baseline-ae8a61a.json` |
 | Artifact catalog | `docs/schemas/artifact-catalog.v1.schema.json` | `docs/schemas/examples/artifact-catalog.baseline-ae8a61a.json` |
+| Build manifest (P3) | `docs/schemas/build-manifest.v1.schema.json` | `docs/schemas/examples/build-manifest.linux-x64.json` |
 
 `scripts/validate_hardening_contracts.py` checks a document against its schema
 and the cross-field rules below. It has no third-party dependency: it implements
@@ -622,3 +625,252 @@ error, never a fetch:
     `build_ios_framework`/`build_macos_framework`, all of which still name the
     configured storage base;
   - end-to-end clean-install and offline lifecycle runs.
+
+## 9. P3 decisions (updater self-integrity)
+
+P3 adds a startup integrity gate to hardened builds. It detects a repacked
+app, a replaced engine or updater, and a tampered `shorebird.yaml` or
+`patch_public_key`, and it then refuses to request keys or activate patches.
+Legacy builds never run it, and their output and behavior are unchanged byte
+for byte.
+
+### 9.1 Signed build manifest
+
+- **Location.** A hardened build appends one final line to the bundled
+  `shorebird.yaml`:
+  `shorebird_build_manifest: v1.<base64url(manifest JSON)>.<base64url(Ed25519 signature)>`.
+  It lives in the YAML instead of a new asset, so every engine embedder
+  (Java, Objective-C, Linux, Windows) delivers it through the same single read
+  it already does. No embedder changed.
+- **Content** (`docs/schemas/build-manifest.v1.schema.json`): `schema`,
+  `contract_version: 1`, `security_profile: hardened`, `toolchain_id`,
+  `development_exceptions`, `signer_key_id`, `config_sha256`, `modules[]`
+  (`platform`, `arch`, `measurement`) and `package_identity`
+  (`android_signing_cert_sha256[]`, `apple_team_ids[]`). Every field is
+  required. Unknown and duplicate fields are rejected.
+- **Config binding.** `config_sha256` is the SHA-256 of every YAML byte before
+  the manifest line. The manifest line must be the last line and must appear
+  exactly once at a line start. The text must not contain `\r`. A trailing
+  newline is optional, because Android's line reader adds one. The updater
+  computes the digest in `YamlConfig::from_yaml` from the same string it
+  parses, and the engine reads its own keys from that same string. A check
+  can therefore never pass on one set of bytes while another set is used.
+  Adding a key, editing a value, or swapping the key or origin each change
+  the digest.
+- **Signature.** Ed25519 over
+  `open-shorebird.build-manifest-signature.v1:<hex SHA-256 of the exact manifest bytes>`,
+  the same construction as the P2 catalog. The verifier checks the exact
+  bytes, so the JSON field order carries no meaning. Before verification, only
+  `signer_key_id` is read, to select the key.
+- **Trust anchor.** The public keys come from the new engine GN arg
+  `shorebird_build_manifest_keys`: base64 raw 32-byte Ed25519 keys, passed to
+  `build.rs` as `SHOREBIRD_BUILD_MANIFEST_KEYS`.
+  - A hardened build requires at least one key. GN, `build_rust_updater.py`
+    and `build.rs` all enforce this, and legacy builds refuse the argument.
+  - A key found in the package is never trusted. A repacker who rewrites the
+    YAML and the manifest consistently also needs the signing key compiled
+    into the engine.
+- **Signer (interim, before P4).** An operator-held Ed25519 key, the
+  "build-manifest signer":
+  - The release machine or CI holds the private key and passes its path as
+    `SHOREBIRD_BUILD_MANIFEST_SIGNING_KEY` (PKCS#8 PEM, from
+    `openssl genpkey -algorithm ed25519`).
+  - flutter_tools signs while it writes the bundled YAML
+    (`shorebird_build_manifest.dart`). Signing is deterministic, so a patch
+    build given the same inputs reproduces the release's `shorebird.yaml`
+    byte for byte, and the patch asset diff stays clean.
+  - Signing runs in-process and is not constant time, which is acceptable on
+    a signer-controlled build machine.
+  - **P4 migration:** this role becomes the offline/CI artifact signer under
+    the release root, with key IDs, rotation, revocation and a KMS/HSM
+    signing interface. The compiled key list becomes the release-root pin, and
+    the manifest gains the delegation chain in a new contract version.
+
+### 9.2 Module measurement
+
+`updater/library/src/module_measurement.rs` and flutter_tools
+`shorebird_build_manifest.dart` implement one definition. The engine library
+contains the statically linked updater, so measuring the module that contains
+the updater measures both. A measurement is `sha256:` over the domain
+`open-shorebird.module-measurement.v1\0`, a format tag, and then, for each
+region, a 32-byte label, the address and size as u64 LE, and the region
+bytes.
+
+| Format | Measured regions | Excluded on purpose |
+| --- | --- | --- |
+| ELF (Android, Linux) | file bytes of each `PT_LOAD` without `PF_W` | writable segments (relocated data, RELRO), section headers |
+| Mach-O (iOS, macOS) | each non-zero-fill section of a segment whose `initprot` lacks write, except `__LINKEDIT` | load commands and `__LINKEDIT` (code signing rewrites them), writable/`__DATA_CONST` segments (dyld fixups) |
+| PE (Windows) | raw data of each section without `IMAGE_SCN_MEM_WRITE` | header checksum, certificate directory and appended Authenticode data |
+
+These rules avoid circular whole-file hashes. They hold across code signing,
+App Store encryption (undone in memory) and Authenticode. Both
+implementations pin the same synthetic-image golden values, and a Rust test
+proves on a real loader that the in-memory measurement equals the file
+measurement (`running_module_measurement_equals_its_file_measurement`). Thin
+and universal Mach-O files are measured per slice.
+
+Run-time source of the measurement: the module actually loaded, never a path
+from configuration.
+
+- **Linux and Android:** `dl_iterate_phdr` finds the object whose `PT_LOAD`
+  contains the updater's own code. Its program headers come from the loader,
+  and its segments are hashed in memory.
+- **iOS and macOS:** `dladdr` returns the mapped `mach_header`. Its load
+  commands and sections are read in memory and hashed at the slid addresses.
+- **Windows:** base relocations change `.rdata` in memory, so the module is
+  measured from its file. `GetModuleHandleExW(FROM_ADDRESS)` locates the
+  module and `GetModuleFileNameW` gives its path. The file is read once and
+  those bytes are measured. The section table mapped in memory must equal the
+  file's, so a different file at the reported path is refused.
+
+Build-time source of the expected values: flutter_tools measures the engine
+artifact that the build packages.
+
+| Platform | Engine artifact |
+| --- | --- |
+| iOS | `Flutter.xcframework/ios-arm64/Flutter.framework/Flutter` |
+| macOS | each slice of `FlutterMacOS.xcframework/macos-arm64_x86_64/.../FlutterMacOS` |
+| Windows | `flutter_windows.dll` |
+| Linux | `libflutter_linux_gtk.so` |
+
+Android has no expected value: `libflutter.so` reaches the build through
+Gradle's Maven resolution, which flutter_tools does not see. Wiring that is
+P6. Android is therefore the only platform where a missing module entry is
+accepted. When an entry is present there, it is enforced.
+
+The updater measures once per process. Its startup cost has not been measured on devices yet (P6).
+
+### 9.3 Platform package identity adapters
+
+| Platform | Adapter | Status |
+| --- | --- | --- |
+| Android | SHA-256 of each signer certificate in the installed `base.apk` APK Signature Scheme v3.1/v3/v2 block (v1-only APKs have no identity). Every installed signer must be listed. Several allowed digests cover rotation and Play App Signing. | implemented; parser unit-tested, device untested |
+| macOS | `SecCodeCheckValidity` of the running process, then its `kSecCodeInfoTeamIdentifier`. Ad-hoc or unsigned code has no team and fails. | implemented; tested on this host (ad-hoc path) |
+| iOS | No public API exposes the running team identifier. A manifest that declares one fails closed (`package_identity_unsupported`), and the CLI and flutter_tools refuse to write one. | unsupported |
+| Windows | Authenticode signer of the loaded module | unsupported (P6) |
+| Linux | none: deployment trust (package manager, file ownership) | unsupported |
+
+Identities are optional. They are declared with
+`SHOREBIRD_ANDROID_SIGNING_CERT_SHA256` (hex, or keytool form with colons)
+and `SHOREBIRD_APPLE_TEAM_IDS`. A declaration applies only to the platform
+that can verify it, and both flutter_tools and the CLI refuse it for any
+other platform. The Android adapter reads the signer that the OS verified at
+install time. It does not re-verify the APK.
+
+### 9.4 Gate order and failure policy
+
+`set_config_with_binding` is the common path of `shorebird_init`,
+`shorebird_init_with_options` and `shorebird_init_selection_v2`. It runs P1
+admission first, then `integrity::check`, and only then publishes a
+configuration.
+
+Admission runs first, so a manifest signed by the compiled key still cannot
+admit a configuration below the hardened floor. The gate then checks, in
+order:
+
+1. the manifest line;
+2. the signer and the signature;
+3. the policy fields against the compiled policy;
+4. `config_sha256`;
+5. the module entry for the current platform and architecture;
+6. the package identity.
+
+On failure:
+
+- **Nothing is published.** No key provider is called (the protected
+  installation keys of §4.4), no patch is selected or activated, and no launch
+  is reported. The engine boots the bundled base, as with a P1 refusal.
+- **Nothing is deleted.** The gate never touches the updater state, downloads
+  or app data, so reinstalling the genuine app recovers with its data intact.
+- **A typed reason is recorded.**
+  - `updater::init` returns `InitError::Integrity(code)`.
+  - `shorebird_integrity_status()`, a new engine-surface C function that is
+    not a Dart FFI export, returns the code.
+  - A hardened engine's `Updater::Init` stores and logs it, asking the user to
+    reinstall from the original source.
+  - Codes: `manifest_missing`, `manifest_malformed`,
+    `manifest_untrusted_signer`, `manifest_bad_signature`,
+    `manifest_policy_mismatch`, `config_digest_mismatch`, `module_unbound`,
+    `module_unmeasurable`, `module_mismatch`, `package_identity_unavailable`,
+    `package_identity_mismatch` and `package_identity_unsupported`. Messages
+    carry no keys, URLs or digests.
+
+### 9.5 Detection versus prevention
+
+| Guarantee | Holds when | Kind |
+| --- | --- | --- |
+| A YAML or key replaced on an otherwise genuine install (desktop file write, or a repack that keeps the engine) is refused | the engine code is unmodified | prevention of update and key use, by cryptographic binding to a compiled key |
+| A repack re-signed with another Android signer or Apple team is refused | an identity is declared, and the OS verified the package at install | prevention, under the platform trust assumptions |
+| An engine or updater replaced by a different build (an older hardened engine, another toolchain, a hooked library that keeps the gate) is refused | the replacement still runs this gate | detection |
+| Code hooked before initialization is noticed | the hook patched measured bytes | detection signal |
+| Hooks installed after the one-time check, a binary patched to skip the gate, or a compromised OS or process | never | not covered: in-process checks are bypassable there |
+| Windows: a file renamed and replaced after load at the module's path | the mapped section table differs | detection; contents are compared only from the file |
+
+Platform trust assumptions:
+
+- Android and iOS verify package signatures at install time and keep
+  installed packages read-only to apps.
+- macOS enforces code signatures, and library validation under the hardened
+  runtime.
+- On Windows and Linux, the install location is writable only by its owner
+  or an administrator, and an attacker with that access is out of scope
+  except for detection.
+
+The P0 note that hardened and legacy engines share `engine.version` (and so
+the Dart snapshot hash) still applies. A repack that swaps in a legacy engine
+runs legacy code that has no gate. Binding the profile into the snapshot or
+the toolchain artifacts belongs to P5 and P6.
+
+### 9.6 Reject/accept matrix
+
+| Case | Hardened result | Tests |
+| --- | --- | --- |
+| Build output (signed manifest, matching module) | accept | `integrity::tests::accepts_the_build_output`, `real_module_binding_accepts_this_process_and_rejects_other_bytes`, `flutter_tools_output_verifies`; `config::tests::hardened_admission::hardened_updater_boots_the_hardened_build_output` |
+| Manifest stripped, malformed, repeated, not last, CRLF | reject `manifest_missing` / `manifest_malformed` | `rejects_a_missing_or_malformed_manifest`; `tampered_installs_publish_nothing_on_any_entry_point` |
+| Consistent repack: YAML, key and manifest replaced and re-signed by another key | reject `manifest_untrusted_signer` / `manifest_bad_signature` | `rejects_a_manifest_not_signed_by_a_compiled_key`; flutter_tools `matches the token the updater verifies` |
+| `shorebird.yaml`/key/origin/app_id replaced, consistent with each other, under the original manifest | reject `config_digest_mismatch` | `rejects_a_config_changed_after_signing`; `tampered_installs_...`; `init_reports_a_typed_integrity_refusal_and_keeps_user_data` |
+| Manifest for another profile, toolchain, development setting or version; unknown or duplicate fields | reject `manifest_policy_mismatch` / `manifest_malformed` | `rejects_a_manifest_for_another_policy`; `scripts/test_hardening_contracts.py` `BuildManifestTest` |
+| Signed manifest over a configuration weaker than the floor | reject (P1 admission) | `a_signed_manifest_cannot_lower_the_compiled_floor` |
+| Engine or updater bytes differ (replaced or tampered module, changed loader target) | reject `module_mismatch` | `rejects_a_replaced_or_unmeasurable_engine_module`, `real_module_binding_...`, `running_module_measurement_equals_its_file_measurement`; `tampered_installs_...` |
+| No entry for this platform or architecture (non-Android) | reject `module_unbound` | `rejects_a_replaced_or_unmeasurable_engine_module` |
+| Measured bytes vs excluded signing regions | flip one measured byte: changes; signature/checksum regions: unchanged | `only_immutable_regions_are_measured`, `code_signature_and_authenticode_regions_are_excluded`; flutter_tools `module measurement` group |
+| Re-signed APK, extra signer, or unreadable APK | reject `package_identity_mismatch` / `_unavailable` | `package_identity_rejects_a_re_signed_package`, `android_adapter_reads_the_installed_apk`, `package_identity::tests` |
+| macOS ad-hoc, other team, or invalid signature | reject | same, and `macos_adapter_reads_the_running_signature` |
+| iOS with a declared team | reject `package_identity_unsupported` | same |
+| Any refusal | publishes nothing, keeps state and downloads | `tampered_installs_...`, `init_reports_a_typed_integrity_refusal_and_keeps_user_data` |
+| Legacy build, any YAML (even a garbage manifest line) | accept, gate never runs | `legacy_ignores_the_manifest_line_entirely`, `legacy_never_runs_the_gate`, engine `UpdaterIntegrity.*` (legacy) |
+| Hardened engine without manifest keys; keys on legacy | build fails | `security_inputs::tests::hardened_requires_a_valid_build_manifest_signer`; `scripts/test_build_rust_updater.py` `UpdaterSecurityEnvironmentTest`; GN asserts |
+| Hardened `Updater::Init` failure | typed reason recorded, not latched | engine `UpdaterIntegrity.HardenedInitFailureRecordsTheTypedReason` |
+| Hardened release or patch without a usable signing key, or an identity for the wrong platform | refused before building | CLI `security_profile_test.dart` `hardenedBuildManifestProblems`, `release_command_test.dart`, `patch_command_test.dart`; flutter_tools `updateShorebirdYaml under hardened` |
+
+Evidence class: Rust unit and integration tests (macOS host, including real
+Mach-O loader and code-signing APIs), Android cross-compilation (`aarch64`
+and `armv7`) for the ELF path, engine unit tests built in both profiles,
+flutter_tools and CLI unit tests, and CI wiring (`cli-artifacts` runs the
+updater gate tests on Linux and macOS hosts, and the Windows engine jobs run
+the whole updater suite). There is no device, store-distribution or
+end-to-end lifecycle evidence yet.
+
+The rules were also checked on this host against the real engine artifacts of
+the current toolchain. For iOS `Flutter`, the Dart and Rust measurements are
+equal. For `FlutterMacOS` arm64, three measurements are equal: Dart on the
+universal file, Rust on the thinned file, and Rust in memory after `dlopen`
+of the framework. Re-signing with `codesign -f -s -` changes the file bytes
+but not the measurement.
+
+### 9.7 Deferred
+
+- **P4.** Move the build-manifest signer under the release root, adding key
+  IDs, rotation, revocation, a KMS/HSM signing interface and a new contract
+  version. Store the manifest digest with the release record so the server
+  can compare it.
+- **P6.**
+  - Android module measurement source (Gradle Maven `libflutter.so`).
+  - Windows Authenticode adapter.
+  - A hardened toolchain in CI that carries `shorebird_build_manifest_keys`.
+  - Re-verification of the final distributed artifact by the CLI (IPA, AAB,
+    app bundle).
+  - Lifecycle negative cases: a tampered YAML and a replaced engine library
+    on a real install, and recovery by reinstall.
+  - Device evidence for the Android and iOS paths.
+  - Measuring cold-start cost on devices.

@@ -46,6 +46,7 @@ class SchemaFilesTest(unittest.TestCase):
         identity = load('build-identity.baseline-ae8a61a.json')
         self.assertEqual(v.validate_build_identity(identity), [])
         self.assertEqual(v.validate_artifact_catalog(load('artifact-catalog.baseline-ae8a61a.json'), identity), [])
+        self.assertEqual(v.validate_build_manifest(load('build-manifest.linux-x64.json')), [])
 
     def test_optional_reference_validator_agrees(self):
         try:
@@ -54,7 +55,8 @@ class SchemaFilesTest(unittest.TestCase):
             self.skipTest('jsonschema is not installed; the built-in subset validator is authoritative')
         for kind, name in (('security-policy', 'security-policy.hardened.json'),
                            ('build-identity', 'build-identity.baseline-ae8a61a.json'),
-                           ('artifact-catalog', 'artifact-catalog.baseline-ae8a61a.json')):
+                           ('artifact-catalog', 'artifact-catalog.baseline-ae8a61a.json'),
+                           ('build-manifest', 'build-manifest.linux-x64.json')):
             jsonschema.validate(load(name), v.load_schema(kind))
 
 
@@ -224,6 +226,28 @@ class ArtifactCatalogTest(unittest.TestCase):
         identity = copy.deepcopy(self.identity)
         identity['upstream']['flutter_engine']['revision'] = 'b' * 40
         self.assertTrue(any('upstream_engine_revision' in e for e in self.errors(self.catalog, identity)))
+
+
+class BuildManifestTest(unittest.TestCase):
+    def setUp(self):
+        self.manifest = load('build-manifest.linux-x64.json')
+
+    def test_only_hardened_and_exact_fields(self):
+        for change in ({'security_profile': 'legacy'}, {'contract_version': 2},
+                       {'extra': 1}, {'config_sha256': 'AB' * 32},
+                       {'toolchain_id': 'sha256:1'}):
+            self.assertNotEqual(v.validate_build_manifest(self.manifest | change), [], change)
+
+    def test_modules_and_identities(self):
+        module = self.manifest['modules'][0]
+        self.assertNotEqual(v.validate_build_manifest(self.manifest | {'modules': [module, module]}), [])
+        self.assertNotEqual(v.validate_build_manifest(self.manifest | {'modules': [module | {'platform': 'web'}]}), [])
+        identity = {'android_signing_cert_sha256': ['ab' * 32], 'apple_team_ids': ['ABCDE12345']}
+        self.assertEqual(v.validate_build_manifest(self.manifest | {'package_identity': identity}), [])
+        for bad in ({'android_signing_cert_sha256': ['AB' * 32], 'apple_team_ids': []},
+                    {'android_signing_cert_sha256': [], 'apple_team_ids': ['abcde12345']},
+                    {'android_signing_cert_sha256': ['ab' * 32, 'ab' * 32], 'apple_team_ids': []}):
+            self.assertNotEqual(v.validate_build_manifest(self.manifest | {'package_identity': bad}), [], bad)
 
 
 class CliTest(unittest.TestCase):

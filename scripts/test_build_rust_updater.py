@@ -9,9 +9,11 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[1]
-CONFIGURE = runpy.run_path(
+_MODULE = runpy.run_path(
     str(ROOT / 'flutter/engine/src/flutter/shell/common/shorebird/build_rust_updater.py')
-)['_configure_msvc_env']
+)
+CONFIGURE = _MODULE['_configure_msvc_env']
+CONFIGURE_SECURITY = _MODULE['_configure_security_env']
 ARM64 = 'aarch64_pc_windows_msvc'
 X64 = 'x86_64_pc_windows_msvc'
 
@@ -55,6 +57,53 @@ class UpdaterMsvcEnvironmentTest(unittest.TestCase):
                 old = subprocess.run(command + ['/MT'], input='', text=True, capture_output=True)
                 self.assertNotEqual(old.returncode, 0)
                 self.assertIn('/MT', old.stderr)
+
+
+class UpdaterSecurityEnvironmentTest(unittest.TestCase):
+    """The compiled-policy inputs come from GN args only (P1, P3)."""
+
+    TOOLCHAIN = 'sha256:' + '70229e40' * 8
+    KEY = 'A' * 43 + '='
+
+    @staticmethod
+    def args(**overrides):
+        values = dict(
+            security_profile='legacy',
+            toolchain_id='',
+            security_development_exceptions='false',
+            trust_root_key_id=[],
+            build_manifest_key=[],
+        )
+        values.update(overrides)
+        return type('Args', (), values)
+
+    def test_hardened_requires_a_build_manifest_key(self):
+        env = {}
+        error = CONFIGURE_SECURITY(
+            env, self.args(security_profile='hardened', toolchain_id=self.TOOLCHAIN)
+        )
+        self.assertIn('--build-manifest-key', error)
+
+    def test_hardened_passes_manifest_keys_and_scrubs_inherited_ones(self):
+        env = {'SHOREBIRD_BUILD_MANIFEST_KEYS': 'inherited'}
+        error = CONFIGURE_SECURITY(
+            env,
+            self.args(
+                security_profile='hardened',
+                toolchain_id=self.TOOLCHAIN,
+                build_manifest_key=[self.KEY, 'B' * 43 + '='],
+            ),
+        )
+        self.assertIsNone(error)
+        self.assertEqual(env['SHOREBIRD_BUILD_MANIFEST_KEYS'], f"{self.KEY},{'B' * 43}=")
+
+    def test_legacy_refuses_manifest_keys_and_drops_inherited_ones(self):
+        env = {'SHOREBIRD_BUILD_MANIFEST_KEYS': 'inherited'}
+        self.assertIsNone(CONFIGURE_SECURITY(env, self.args()))
+        self.assertNotIn('SHOREBIRD_BUILD_MANIFEST_KEYS', env)
+        self.assertIsNotNone(
+            CONFIGURE_SECURITY({}, self.args(build_manifest_key=[self.KEY]))
+        )
 
 
 if __name__ == '__main__':

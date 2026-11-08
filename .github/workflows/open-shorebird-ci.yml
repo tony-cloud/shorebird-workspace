@@ -361,6 +361,18 @@ jobs:
           rustc --version
           cargo --version
 
+      - name: Test updater integrity gate
+        if: ${{ matrix.artifact_os != 'windows' }}
+        working-directory: updater
+        run: |
+          set -euo pipefail
+          # Hardening P3: the startup integrity gate, module measurement on this
+          # host's real loader (ELF or Mach-O), package identity adapters and
+          # the hardened init paths. Windows runs the whole updater suite in its
+          # engine jobs.
+          cargo test -p updater --locked -- --test-threads=1 \
+            integrity module_measurement package_identity security_inputs hardened_admission
+
       - name: Cache pub packages
         uses: actions/cache@v4
         with:
@@ -386,6 +398,8 @@ jobs:
               test/general.shard/shorebird/shorebird_replacement_host_test.dart \
               test/general.shard/shorebird/shorebird_build_key_test.dart \
               test/general.shard/shorebird/shorebird_artifact_catalog_test.dart \
+              test/general.shard/shorebird/shorebird_build_manifest_test.dart \
+              test/general.shard/shorebird/shorebird_yaml_test.dart \
               test/general.shard/cache_test.dart \
               test/general.shard/build_system/targets/assets_test.dart \
               test/general.shard/build_system/targets/common_test.dart \

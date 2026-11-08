@@ -34,6 +34,7 @@ KINDS = {
     'security-policy': 'security-policy.v1.schema.json',
     'build-identity': 'build-identity.v1.schema.json',
     'artifact-catalog': 'artifact-catalog.v1.schema.json',
+    'build-manifest': 'build-manifest.v1.schema.json',
 }
 RESERVED_PROFILES = {'hardened-diversified'}
 
@@ -265,10 +266,27 @@ def validate_artifact_catalog(catalog: dict, identity: dict | None = None) -> li
     return errors
 
 
+def validate_build_manifest(manifest: dict) -> list[str]:
+    """Hardening P3 build manifest (the decoded JSON of the shorebird.yaml line)."""
+    schema = load_schema('build-manifest')
+    errors = schema_errors(manifest, schema, schema)
+    if errors:
+        return errors
+    targets = [(module['platform'], module['arch']) for module in manifest['modules']]
+    if len(set(targets)) != len(targets):
+        errors.append('$.modules: one entry per platform/arch')
+    for field in ('android_signing_cert_sha256', 'apple_team_ids'):
+        values = manifest['package_identity'][field]
+        if len(set(values)) != len(values):
+            errors.append(f'$.package_identity.{field}: values must be unique')
+    return errors
+
+
 VALIDATORS = {
     'security-policy': validate_security_policy,
     'build-identity': validate_build_identity,
     'artifact-catalog': validate_artifact_catalog,
+    'build-manifest': validate_build_manifest,
 }
 
 
@@ -304,6 +322,8 @@ def main(argv: list[str] | None = None) -> int:
             elif args.kind == 'artifact-catalog':
                 identity = _load(args.build_identity) if args.build_identity else None
                 errors = validate_artifact_catalog(document, identity)
+            elif args.kind == 'build-manifest':
+                errors = validate_build_manifest(document)
             else:
                 errors = validate_build_identity(document)
         except (OSError, json.JSONDecodeError, ContractError) as error:

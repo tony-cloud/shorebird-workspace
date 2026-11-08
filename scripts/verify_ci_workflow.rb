@@ -2665,6 +2665,22 @@ assert!(
     run_text_by_job.fetch('cli-artifacts').include?('test/general.shard/cache_test.dart'),
   'cli-artifacts must run the flutter_tools artifact catalog/origin and cache tests on every host'
 )
+cli_artifact_steps = jobs.fetch('cli-artifacts').fetch('steps')
+integrity_step = cli_artifact_steps.find { |step| step['name'] == 'Test updater integrity gate' }
+assert!(
+  integrity_step &&
+    integrity_step['working-directory'] == 'updater' &&
+    integrity_step['if'].to_s.include?("matrix.artifact_os != 'windows'") &&
+    integrity_step['run'].to_s.include?('cargo test -p updater --locked -- --test-threads=1') &&
+    %w[integrity module_measurement package_identity security_inputs hardened_admission].all? { |filter| integrity_step['run'].to_s.include?(filter) } &&
+    cli_artifact_steps.index(integrity_step) > cli_artifact_steps.index { |step| step['name'] == 'Set up Rust' },
+  'cli-artifacts must run the P3 updater integrity tests on the Linux and macOS hosts (real ELF/Mach-O loaders)'
+)
+assert!(
+  run_text_by_job.fetch('cli-artifacts').include?('test/general.shard/shorebird/shorebird_build_manifest_test.dart') &&
+    run_text_by_job.fetch('cli-artifacts').include?('test/general.shard/shorebird/shorebird_yaml_test.dart'),
+  'cli-artifacts must run the flutter_tools build-manifest (P3) and shorebird.yaml tests on every host'
+)
 source_check_runs = job_runs(jobs.fetch('source-checks')).join("\n")
 [
   'bash -n flutter/bin/internal/shorebird_dart_sdk.sh',
