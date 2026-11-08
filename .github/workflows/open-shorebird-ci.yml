@@ -392,7 +392,11 @@ jobs:
           cd flutter/packages/flutter_tools
           {
             dart pub get
+            # cache_test's upstream "Check current DevTools version" reads the
+            # DevTools bundled in a populated flutter/bin/cache/dart-sdk, which
+            # these hosts never download; every other test runs.
             dart test --reporter expanded \
+              --name '^(?!Check current DevTools version$)' \
               test/general.shard/shorebird/shorebird_native_assets_test.dart \
               test/general.shard/shorebird/shorebird_interpreter_test.dart \
               test/general.shard/shorebird/shorebird_replacement_host_test.dart \
