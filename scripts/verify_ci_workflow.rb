@@ -1141,6 +1141,52 @@ assert!(
     flutter_deps.include?("'version': '#{dart_tool_sdk_tag}'"),
   'Flutter DEPS must keep its Dart source/tool SDK pins aligned with the workspace Dart SDK'
 )
+# Duplicated build-input pins (HARDENING_CONTRACTS.md "Pinned input
+# reconciliation"). Local and CI engine builds symlink third_party/{dart,updater}
+# to the root checkouts, and packaged CLIs derive their Flutter/engine pair from
+# the gitlink; a clean gclient checkout or a source-run CLI reads these copies
+# instead, so each copy must name exactly the root checkout identity.
+checkout_revision = lambda do |path|
+  ok, revision = capture_command('git', '-C', repo_path(repo_root, path), 'rev-parse', 'HEAD')
+  assert!(ok && revision.strip.match?(/\A[0-9a-f]{40}\z/), "must be able to read the #{path} checkout revision")
+  revision.strip
+end
+updater_revision = checkout_revision.call('updater')
+flutter_revision = checkout_revision.call('flutter')
+deps_pin = lambda do |name|
+  values = flutter_deps.scan(/["']#{Regexp.escape(name)}["']\s*:\s*["']([^"']*)["']/).flatten
+  assert!(values.length == 1, "Flutter DEPS must declare #{name} exactly once")
+  values.first
+end
+{
+  'updater_rev' => updater_revision,
+  'dart_sdk_revision' => dart_revision.strip,
+}.each do |name, expected|
+  assert!(
+    deps_pin.call(name) == expected,
+    "Flutter DEPS #{name} must equal the workspace checkout revision #{expected} (clean gclient checkouts resolve this pin)"
+  )
+end
+{
+  'updater_git' => 'updater',
+  'dart_sdk_git' => 'dart-sdk',
+}.each do |name, submodule|
+  ok, url = capture_command('git', '-C', repo_root, 'config', '-f', '.gitmodules', "submodule.#{submodule}.url")
+  assert!(
+    ok && deps_pin.call(name) == url.strip,
+    "Flutter DEPS #{name} must equal the root .gitmodules #{submodule} URL"
+  )
+end
+flutter_engine_version = read_repo_file(repo_root, 'flutter/bin/internal/engine.version')
+{
+  'shorebird/bin/internal/flutter.version' => flutter_revision,
+  'shorebird/bin/internal/engine.version' => flutter_engine_version.strip,
+}.each do |path, expected|
+  assert!(
+    expected.match?(/\A[0-9a-f]{40}\z/) && read_repo_file(repo_root, path) == "#{expected}\n",
+    "#{path} must name exactly #{expected} from the workspace Flutter checkout (source-run CLI launchers read it)"
+  )
+end
 assert!(
   flutter_android_host_app_settings.include?('System.getenv("FLUTTER_STORAGE_BASE_URL") ?: "http://localhost:8080"') &&
     flutter_android_host_app_settings.include?('$flutterStorageUrl/download.flutter.io') &&
