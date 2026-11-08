@@ -1,0 +1,112 @@
+{
+  "schema": "open-shorebird.build-identity",
+  "contract_version": 1,
+  "security_profile": "legacy",
+  "diversification_profile_id": null,
+  "upstream": {
+    "flutter": {
+      "repository": "https://github.com/flutter/flutter.git",
+      "revision": "737ba8f885dc774b53b442759999a312c9461e4e",
+      "release": "3.47.8"
+    },
+    "flutter_engine": {
+      "repository": "https://github.com/flutter/flutter.git",
+      "revision": "cf636b1dfb818dd6a3ff16e390e93b1a036969c8"
+    },
+    "dart": {
+      "repository": "https://dart.googlesource.com/sdk.git",
+      "revision": "416e33b0ffaef062a60ec966bb8c82ed2b83f128"
+    },
+    "shorebird": {
+      "repository": "https://github.com/shorebirdtech/shorebird.git",
+      "revision": "5f04c3ace43b02d0fec7c19b99c88a85989c704f"
+    }
+  },
+  "fork": {
+    "workspace": {
+      "repository": "https://github.com/tony-cloud/shorebird-workspace.git",
+      "revision": "ae8a61a6334488d29f4acdb471bc28689c553636"
+    },
+    "flutter": {
+      "repository": "https://github.com/tony-cloud/flutter.git",
+      "revision": "11ebb7f9029566f885e8b16351303df5ac736715"
+    },
+    "dart_sdk": {
+      "repository": "https://github.com/tony-cloud/dart-sdk.git",
+      "revision": "c3a98bfdfd296ad0f778e0a545ce1d3a18259068"
+    },
+    "updater": {
+      "repository": "https://github.com/tony-cloud/shorebird-updater.git",
+      "revision": "b886d638d785eacda6c309e94c5976e0587a2401"
+    },
+    "shorebird_cli": {
+      "repository": "https://github.com/tony-cloud/shorebird.git",
+      "revision": "08e1ebed6f41165503768eedb940a07935c2c5eb"
+    },
+    "shorebird_server": {
+      "repository": "https://github.com/tony-cloud/shorebird-server.git",
+      "revision": "3479ee0445a4db67eb223d8abbbaaf65202a909b"
+    }
+  },
+  "toolchain": {
+    "engine_revision": "44a553c3b3c7797c7f0f20961d46a8b17e06444c",
+    "toolchain_id": "sha256:2ed7b9476de5e6981a988d7e854b8b2bc33897af1d88dea6a9e0134b586e63f2"
+  },
+  "artifacts": [
+    {
+      "name": "linux-engine-x64.tar.gz",
+      "sha256": "3d47a2789c4687c60746bd797570c679ad3b09fca9c62440c211638b01cf962c",
+      "size": 40735523
+    },
+    {
+      "name": "linux-engine-arm64.tar.gz",
+      "sha256": "66c2d493ebcca87cd1b1ae0aa57b57d378c6c05a728d8733c19f5a2e113b07f7",
+      "size": 34709146
+    },
+    {
+      "name": "macos-engine-arm64.tar.gz",
+      "sha256": "884453bcbe1e4a64f9bdf7b4dc19d751c628c03dbf417c233916309910403560",
+      "size": 39086760
+    },
+    {
+      "name": "macos-engine-x64.tar.gz",
+      "sha256": "23bcae72108c520f02d117b6da006736eaedc8abacaa45bcf8394aeb0e606587",
+      "size": 40815892
+    },
+    {
+      "name": "macos-engine-universal.tar.gz",
+      "sha256": "9a530ce6dceb1b0ed2af066c6b109ff7bc986b61744faee837b06cfe1287fc1e",
+      "size": 37162593
+    },
+    {
+      "name": "ios-interpreter-engine.tar.gz",
+      "sha256": "6225b2f495fa6f134c3cef628ebaeae9de8c0480c2a3de938baf9614a0e8682c",
+      "size": 48404380
+    },
+    {
+      "name": "windows-engine-x64.tar.gz",
+      "sha256": "a6bb5df699d8af105ce2493525c625dedd30cd9504c19d9793a7e5f4f27414b7",
+      "size": 150062157
+    },
+    {
+      "name": "windows-engine-arm64.tar.gz",
+      "sha256": "db80cf372a7fa497f2feab285738137b03db21ee2884aa3dd9c1b7e313e0a5dc",
+      "size": 141444928
+    },
+    {
+      "name": "android-engine-arm.tar.gz",
+      "sha256": "4a900bafb0e291d3eb02bb3fe8eae33cd527739c907390d1e36db03ff54df313",
+      "size": 341306498
+    },
+    {
+      "name": "android-engine-arm64.tar.gz",
+      "sha256": "418c2259c55bd3afc605edf48d36e3aeacc61ab64d4c485e181043dc5feba874",
+      "size": 356395655
+    },
+    {
+      "name": "android-engine-x64.tar.gz",
+      "sha256": "2b53915d4c88edab544652a031bd642eec2868458232b37d0901285697553899",
+      "size": 358344017
+    }
+  ]
+}

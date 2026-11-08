@@ -1,0 +1,101 @@
+{
+  "schema": "open-shorebird.artifact-catalog",
+  "contract_version": 1,
+  "toolchain_id": "sha256:2ed7b9476de5e6981a988d7e854b8b2bc33897af1d88dea6a9e0134b586e63f2",
+  "security_profile": "legacy",
+  "diversification_profile_id": null,
+  "engine_revision": "44a553c3b3c7797c7f0f20961d46a8b17e06444c",
+  "upstream_engine_revision": "cf636b1dfb818dd6a3ff16e390e93b1a036969c8",
+  "origins": {
+    "flutter-official": {
+      "class": "official",
+      "base_url": "https://storage.googleapis.com"
+    },
+    "project-artifacts": {
+      "class": "custom-project",
+      "base_url": "https://artifacts.example.invalid/shorebird"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "flutter_infra_release/flutter/$engine/flutter_patched_sdk_product.zip",
+      "origin": "project-artifacts",
+      "class": "custom-toolchain",
+      "revision": "44a553c3b3c7797c7f0f20961d46a8b17e06444c",
+      "platform": "any",
+      "sha256": "e17cd939dd49bfd069a4416f6fd347f9afa9c9469d628bb30394f993a4697189",
+      "size": 4122813,
+      "required": true
+    },
+    {
+      "path": "flutter_infra_release/flutter/$engine/linux-x64-release/artifacts.zip",
+      "origin": "project-artifacts",
+      "class": "custom-toolchain",
+      "revision": "44a553c3b3c7797c7f0f20961d46a8b17e06444c",
+      "platform": "linux-x64",
+      "sha256": "6a19f06962ec7c60e7fdeea6bdfc9c313d40b0a13221ff6975e9816e4fff55bd",
+      "size": 2067779,
+      "required": true
+    },
+    {
+      "path": "flutter_infra_release/flutter/$engine/linux-x64-release/linux-x64-flutter-gtk.zip",
+      "origin": "project-artifacts",
+      "class": "custom-toolchain",
+      "revision": "44a553c3b3c7797c7f0f20961d46a8b17e06444c",
+      "platform": "linux-x64",
+      "sha256": "c7ce1e5ecd680389d3fa51b3811a634970783d902a0c5099f594c1c2c6b3b2c6",
+      "size": 11882478,
+      "required": true
+    },
+    {
+      "path": "flutter_infra_release/flutter/$engine/linux-x64/font-subset.zip",
+      "origin": "project-artifacts",
+      "class": "custom-toolchain",
+      "revision": "44a553c3b3c7797c7f0f20961d46a8b17e06444c",
+      "platform": "linux-x64",
+      "sha256": "9550a05d1e030fbd042432788533b155f325c15a54ca6a74f6cbd4a940ce7614",
+      "size": 2399370,
+      "required": true
+    },
+    {
+      "path": "flutter_infra_release/flutter/$engine/windows-x64-release/windows-x64-flutter.zip",
+      "origin": "project-artifacts",
+      "class": "custom-toolchain",
+      "revision": "44a553c3b3c7797c7f0f20961d46a8b17e06444c",
+      "platform": "windows-x64",
+      "sha256": "56357c4c77cd028580aa182ed9fdd1a3e1862f93381a1420cfebfae81e5d3549",
+      "size": 73375287,
+      "required": true
+    },
+    {
+      "path": "flutter_infra_release/flutter/$engine/windows-x64/font-subset.zip",
+      "origin": "project-artifacts",
+      "class": "custom-toolchain",
+      "revision": "44a553c3b3c7797c7f0f20961d46a8b17e06444c",
+      "platform": "windows-x64",
+      "sha256": "b29192ec40b3ad0c4149d1f48a00f040528ea36c788c8a79ee72addfab77d728",
+      "size": 2174881,
+      "required": true
+    },
+    {
+      "path": "flutter_infra_release/flutter/$engine/sky_engine.zip",
+      "origin": "flutter-official",
+      "class": "official-unchanged",
+      "revision": "cf636b1dfb818dd6a3ff16e390e93b1a036969c8",
+      "platform": "any",
+      "sha256": "49552685ac987e187da700aca3e927413d4151d3416e7d634b471df3aa2d6e62",
+      "size": 1545119,
+      "required": true
+    },
+    {
+      "path": "flutter_infra_release/flutter/$engine/flutter_gpu.zip",
+      "origin": "flutter-official",
+      "class": "official-unchanged",
+      "revision": "cf636b1dfb818dd6a3ff16e390e93b1a036969c8",
+      "platform": "any",
+      "sha256": "7638dc1e4c21c48e23a168c3627d9007fa848b876e7729a87e33d65e5cdf180c",
+      "size": 92214,
+      "required": false
+    }
+  ]
+}

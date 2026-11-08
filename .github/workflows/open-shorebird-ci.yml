@@ -209,6 +209,10 @@ jobs:
           python3 -m py_compile scripts/write_artifact_manifest.py
           python3 -m py_compile scripts/write_cli_toolchain_pins.py scripts/test_cli_toolchain_pins.py
           python3 scripts/test_cli_toolchain_pins.py -v
+          python3 -m py_compile scripts/inventory_release_binaries.py scripts/test_inventory_release_binaries.py
+          python3 scripts/test_inventory_release_binaries.py -v
+          python3 -m py_compile scripts/validate_hardening_contracts.py scripts/test_hardening_contracts.py
+          python3 scripts/test_hardening_contracts.py -v
           python3 -m py_compile scripts/verify_dart_sdk_tooling.py
           python3 -m py_compile scripts/verify_native_cache_engine_tests.py scripts/verify_macos_interpreter_engine_tests.py
           python3 scripts/test_macos_interpreter_engine_tests.py -v

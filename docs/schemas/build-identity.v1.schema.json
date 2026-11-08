@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/tony-cloud/shorebird-workspace/docs/schemas/build-identity.v1.schema.json",
+  "title": "Open Shorebird build-identity manifest, contract v1",
+  "description": "Separates official upstream revisions from fork/toolchain identities for one native toolchain build, binds the security profile, and lists output digests. See docs/HARDENING_CONTRACTS.md section 3. toolchain_id is recomputed by scripts/validate_hardening_contracts.py.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "contract_version",
+    "security_profile",
+    "diversification_profile_id",
+    "upstream",
+    "fork",
+    "toolchain",
+    "artifacts"
+  ],
+  "properties": {
+    "schema": {"const": "open-shorebird.build-identity"},
+    "contract_version": {"const": 1},
+    "security_profile": {"enum": ["legacy", "hardened", "hardened-diversified"]},
+    "diversification_profile_id": {"type": ["string", "null"], "pattern": "^[a-z0-9][a-z0-9.-]{0,63}$"},
+    "upstream": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["flutter", "flutter_engine", "dart"],
+      "properties": {
+        "flutter": {"$ref": "#/$defs/upstream_release"},
+        "flutter_engine": {"$ref": "#/$defs/source"},
+        "dart": {"$ref": "#/$defs/source"},
+        "shorebird": {"$ref": "#/$defs/source"},
+        "updater": {"$ref": "#/$defs/source"}
+      }
+    },
+    "fork": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workspace", "flutter", "dart_sdk", "updater", "shorebird_cli"],
+      "properties": {
+        "workspace": {"$ref": "#/$defs/source"},
+        "flutter": {"$ref": "#/$defs/source"},
+        "dart_sdk": {"$ref": "#/$defs/source"},
+        "updater": {"$ref": "#/$defs/source"},
+        "shorebird_cli": {"$ref": "#/$defs/source"},
+        "shorebird_server": {"$ref": "#/$defs/source"}
+      }
+    },
+    "toolchain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["engine_revision", "toolchain_id"],
+      "properties": {
+        "engine_revision": {"$ref": "#/$defs/revision"},
+        "toolchain_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "sha256", "size"],
+        "properties": {
+          "name": {"type": "string", "minLength": 1},
+          "sha256": {"$ref": "#/$defs/sha256"},
+          "size": {"type": "integer", "minimum": 0}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "revision"],
+      "properties": {
+        "repository": {"type": "string", "pattern": "^https://[^\\s]+$"},
+        "revision": {"$ref": "#/$defs/revision"}
+      }
+    },
+    "upstream_release": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "revision", "release"],
+      "properties": {
+        "repository": {"type": "string", "pattern": "^https://[^\\s]+$"},
+        "revision": {"$ref": "#/$defs/revision"},
+        "release": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.]+)?$"}
+      }
+    }
+  }
+}

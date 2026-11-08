@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/tony-cloud/shorebird-workspace/docs/schemas/security-policy.v1.schema.json",
+  "title": "Open Shorebird security policy, contract v1",
+  "description": "The release security policy compiled into a native release (engine + updater) and recorded in release metadata. See docs/HARDENING_CONTRACTS.md section 2. Cross-field rules that JSON Schema cannot express are enforced by scripts/validate_hardening_contracts.py.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "contract_version",
+    "security_profile",
+    "signatures",
+    "patch_verification",
+    "patch_response_verification",
+    "trust_roots",
+    "update_origin_policy",
+    "development_exceptions",
+    "diversification_profile_id",
+    "toolchain_id"
+  ],
+  "properties": {
+    "schema": {"const": "open-shorebird.security-policy"},
+    "contract_version": {"const": 1},
+    "security_profile": {"$ref": "#/$defs/security_profile"},
+    "signatures": {"enum": ["optional", "required"]},
+    "patch_verification": {"enum": ["strict", "install_only"]},
+    "patch_response_verification": {"enum": ["optional", "required"]},
+    "trust_roots": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["key_id", "algorithm", "role"],
+        "properties": {
+          "key_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "algorithm": {"enum": ["rsa-pkcs1-sha256"]},
+          "role": {"enum": ["patch-signing"]}
+        }
+      }
+    },
+    "update_origin_policy": {"enum": ["any", "https-only"]},
+    "development_exceptions": {"type": "boolean"},
+    "diversification_profile_id": {"type": ["string", "null"], "pattern": "^[a-z0-9][a-z0-9.-]{0,63}$"},
+    "toolchain_id": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"security_profile": {"const": "hardened"}}},
+      "then": {
+        "properties": {
+          "signatures": {"const": "required"},
+          "patch_verification": {"const": "strict"},
+          "patch_response_verification": {"const": "required"},
+          "trust_roots": {"minItems": 1},
+          "update_origin_policy": {"const": "https-only"},
+          "diversification_profile_id": {"type": "null"},
+          "toolchain_id": {"type": "string"}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"security_profile": {"const": "legacy"}}},
+      "then": {
+        "properties": {
+          "diversification_profile_id": {"type": "null"},
+          "development_exceptions": {"const": false}
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "security_profile": {"enum": ["legacy", "hardened", "hardened-diversified"]}
+  }
+}

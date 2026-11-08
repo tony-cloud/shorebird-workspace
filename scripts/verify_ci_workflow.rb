@@ -329,6 +329,21 @@ required_files = %w[
   scripts/write_artifact_manifest.py
   scripts/write_cli_toolchain_pins.py
   scripts/test_cli_toolchain_pins.py
+  scripts/inventory_release_binaries.py
+  scripts/test_inventory_release_binaries.py
+  scripts/validate_hardening_contracts.py
+  scripts/test_hardening_contracts.py
+  docs/HARDENING_CONTRACTS.md
+  docs/schemas/security-policy.v1.schema.json
+  docs/schemas/build-identity.v1.schema.json
+  docs/schemas/artifact-catalog.v1.schema.json
+  docs/schemas/examples/security-policy.legacy-default.json
+  docs/schemas/examples/security-policy.hardened.json
+  docs/schemas/examples/build-identity.baseline-ae8a61a.json
+  docs/schemas/examples/artifact-catalog.baseline-ae8a61a.json
+  shorebird/bin/internal/flutter.version
+  shorebird/bin/internal/engine.version
+  shorebird/packages/artifact_proxy/lib/src/artifact_proxy.dart
   scripts/package_android_maven.py
   scripts/verify_android_maven.py
   scripts/run_server_client_smoke.sh
@@ -1187,6 +1202,20 @@ flutter_engine_version = read_repo_file(repo_root, 'flutter/bin/internal/engine.
     "#{path} must name exactly #{expected} from the workspace Flutter checkout (source-run CLI launchers read it)"
   )
 end
+# The official upstream pair: the Flutter release tag restored for version
+# detection and the official engine revision that serves unchanged artifacts
+# must be the pair official Flutter published together.
+version_tag_script = read_repo_file(repo_root, 'scripts/prepare_flutter_version_tag.py')
+upstream_flutter_revision = version_tag_script[/^REVISION = '([0-9a-f]{40})'$/, 1]
+base_engine_default = workflow.dig('env', 'BASE_FLUTTER_ENGINE_REVISION').to_s[/'([0-9a-f]{40})'/, 1]
+upstream_engine_ok, upstream_engine_revision = capture_command(
+  'git', '-C', repo_path(repo_root, 'flutter'), 'show', "#{upstream_flutter_revision}:bin/internal/engine.version"
+)
+assert!(
+  upstream_flutter_revision && base_engine_default && upstream_engine_ok &&
+    upstream_engine_revision.strip == base_engine_default,
+  'BASE_FLUTTER_ENGINE_REVISION must default to the engine.version of the official Flutter release revision in prepare_flutter_version_tag.py'
+)
 assert!(
   flutter_android_host_app_settings.include?('System.getenv("FLUTTER_STORAGE_BASE_URL") ?: "http://localhost:8080"') &&
     flutter_android_host_app_settings.include?('$flutterStorageUrl/download.flutter.io') &&
@@ -1919,6 +1948,13 @@ assert!(
   source_runs.include?('python3 -m py_compile scripts/write_cli_toolchain_pins.py scripts/test_cli_toolchain_pins.py') &&
     source_runs.include?('python3 scripts/test_cli_toolchain_pins.py -v'),
   'Source checks must exercise actual CLI toolchain pin generation and archive verification in an isolated gitlink fixture'
+)
+assert!(
+  source_runs.include?('python3 -m py_compile scripts/inventory_release_binaries.py scripts/test_inventory_release_binaries.py') &&
+    source_runs.include?('python3 scripts/test_inventory_release_binaries.py -v') &&
+    source_runs.include?('python3 -m py_compile scripts/validate_hardening_contracts.py scripts/test_hardening_contracts.py') &&
+    source_runs.include?('python3 scripts/test_hardening_contracts.py -v'),
+  'Source checks must exercise the binary inventory parser and the hardening contract v1 schemas/validator'
 )
 %w[android_native_app.py android_native_cache_e2e.py owned_host_processes.py android_native/compile_check.py].each do |path|
   assert!(source_runs.include?("python3 -m py_compile testapps/license_flavor_patch_test/tool/#{path}"), "Source checks must syntax-check the Android host fixture #{path}")

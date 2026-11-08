@@ -1,0 +1,13 @@
+{
+  "schema": "open-shorebird.security-policy",
+  "contract_version": 1,
+  "security_profile": "legacy",
+  "signatures": "optional",
+  "patch_verification": "strict",
+  "patch_response_verification": "optional",
+  "trust_roots": [],
+  "update_origin_policy": "any",
+  "development_exceptions": false,
+  "diversification_profile_id": null,
+  "toolchain_id": null
+}
