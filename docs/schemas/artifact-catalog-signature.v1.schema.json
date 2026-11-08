@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/tony-cloud/shorebird-workspace/docs/schemas/artifact-catalog-signature.v1.schema.json",
+  "title": "Open Shorebird artifact catalog signature, contract v1",
+  "description": "Detached Ed25519 signature over b\"open-shorebird.artifact-catalog-signature.v1:\" + catalog_sha256, where catalog_sha256 is the SHA-256 of the catalog file, which must be its own canonical JSON. See docs/HARDENING_CONTRACTS.md section 8.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "contract_version", "algorithm", "key_id", "catalog_sha256", "signature"],
+  "properties": {
+    "schema": {"const": "open-shorebird.artifact-catalog-signature"},
+    "contract_version": {"const": 1},
+    "algorithm": {"const": "ed25519"},
+    "key_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "catalog_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "signature": {"type": "string", "pattern": "^[A-Za-z0-9+/]{86}==$"}
+  }
+}

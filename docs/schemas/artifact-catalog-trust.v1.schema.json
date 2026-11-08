@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/tony-cloud/shorebird-workspace/docs/schemas/artifact-catalog-trust.v1.schema.json",
+  "title": "Open Shorebird artifact catalog trust, contract v1",
+  "description": "Ed25519 keys a toolchain accepts for artifact catalogs. key_id is sha256 over the 32-byte raw public key. Hardened toolchains accept only usage=production. See docs/HARDENING_CONTRACTS.md section 8.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "contract_version", "keys"],
+  "properties": {
+    "schema": {"const": "open-shorebird.artifact-catalog-trust"},
+    "contract_version": {"const": 1},
+    "keys": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["key_id", "algorithm", "public_key", "usage", "description"],
+        "properties": {
+          "key_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "algorithm": {"const": "ed25519"},
+          "public_key": {"type": "string", "pattern": "^[A-Za-z0-9+/]{43}=$"},
+          "usage": {"enum": ["production", "development"]},
+          "description": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  }
+}
