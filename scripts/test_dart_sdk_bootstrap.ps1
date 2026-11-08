@@ -47,13 +47,39 @@ function Write-Lock([string]$root, [string]$baseUrl, [string]$assets) {
     Set-Content (Join-Path $root 'bin/internal/shorebird_dart_sdk.pins') $lines
 }
 
+$script:shimDir = $null
+function Get-SevenZipShimDir {
+    if ($script:shimDir) { return $script:shimDir }
+    $script:shimDir = Join-Path $Work '7z-shim'
+    New-Item -ItemType Directory -Force $script:shimDir | Out-Null
+    foreach ($tool in '7z', '7za') {
+        $real = Get-Command $tool -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+        if (-not $real) { continue }
+        $shim = Join-Path $script:shimDir $tool
+        Set-Content $shim "#!/usr/bin/env bash`nargs=()`nfor a in `"`$@`"; do args+=(`"`${a//\\//}`"); done`nexec '$($real.Source)' `"`${args[@]}`"`n"
+        & chmod +x $shim
+    }
+    return $script:shimDir
+}
+
 $script:out = ''
 function Invoke-Bootstrap([string]$root, [int]$expected, [hashtable]$environment = @{}) {
     $names = @('SHOREBIRD_ORIGIN_MODE', 'SHOREBIRD_DOWNLOAD_URL', 'SHOREBIRD_FLUTTER_STORAGE_BASE_URL', 'FLUTTER_STORAGE_BASE_URL',
         'SHOREBIRD_ARTIFACT_BASE_URL', 'SHOREBIRD_DART_SDK_RELEASE_BASE_URL', 'SHOREBIRD_DART_SDK_SHA256', 'PROCESSOR_ARCHITECTURE')
     foreach ($name in $names) { [Environment]::SetEnvironmentVariable($name, $environment[$name]) }
-    $script:out = (& pwsh -NoProfile -NonInteractive -File (Join-Path $root 'bin/internal/update_dart_sdk.ps1') *>&1 | Out-String)
-    $status = $LASTEXITCODE
+    # update_dart_sdk.ps1 is Windows-only and hands native 7z/7za Windows-style
+    # '\' paths, which name the wrong directory on a non-Windows host (e.g. the
+    # Linux CI runner, which ships 7z). There, put a shim first on PATH that
+    # translates '\' to '/' and runs the real tool, so the 7z branch is still
+    # exercised; Windows hosts use their 7z unchanged.
+    $savedPath = $env:PATH
+    if (-not $IsWindows) { $env:PATH = (Get-SevenZipShimDir) + [IO.Path]::PathSeparator + $env:PATH }
+    try {
+        $script:out = (& pwsh -NoProfile -NonInteractive -File (Join-Path $root 'bin/internal/update_dart_sdk.ps1') *>&1 | Out-String)
+        $status = $LASTEXITCODE
+    } finally {
+        $env:PATH = $savedPath
+    }
     foreach ($name in $names) { [Environment]::SetEnvironmentVariable($name, $null) }
     if ($status -ne $expected) { Write-Host $script:out; Fail "expected exit $expected, got $status" }
 }
