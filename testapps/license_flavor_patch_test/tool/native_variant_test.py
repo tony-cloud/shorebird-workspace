@@ -333,13 +333,59 @@ class DesktopTest(unittest.TestCase):
                 (flutter/'bin/internal/engine.version').write_text('e'*40)
                 (flutter/'bin/cache/engine_stamp.json').write_text('stale')
                 (flutter/'bin/cache/flutter.version.json').write_text('stale')
+            commands=[]
+            def output(command,cwd=None):
+                commands.append(command)
+                return b'1700000000\n'
+            lifecycle.output=output
             def generate(*args,**kwargs):
                 for flutter in roots:
-                    self.assertFalse((flutter/'bin/cache/engine_stamp.json').exists())
+                    # Inherited copies are gone; the authored stamp dates the pinned engine
+                    # so flutter_tools never falls back to `git log <engine id>`.
+                    stamp=json.loads((flutter/'bin/cache/engine_stamp.json').read_text())
+                    self.assertEqual(stamp['git_revision'],'e'*40)
+                    self.assertEqual(stamp['git_revision_date'],'2023-11-14T22:13:20Z')
                     self.assertFalse((flutter/'bin/cache/flutter.version.json').exists())
             with mock.patch.object(native.Lifecycle,'run_command',side_effect=generate):
                 lifecycle.run_command(['private-flutter-create'],name='generate-windows')
             self.assertTrue(lifecycle._private_metadata_cleared)
+            self.assertEqual(commands,[['git','-C',work/'flutter','log','-1','--format=%ct','HEAD']])
+            for name in ('tooling','vended'):
+                self.assertEqual(set(lifecycle.manifest['private_flutter_metadata'][name]['removed_inherited_metadata']),
+                                 {'engine_stamp.json','flutter.version.json'})
+                self.assertTrue(lifecycle.manifest['private_flutter_metadata'][name]['authored_engine_stamp'])
+
+    def test_driver_failure_prints_sanitized_reason_and_build_excerpt(self):
+        module,kind=windows_variant_e2e.native,windows_variant_e2e.Lifecycle
+        for error,reason in ((module.FixtureError('variant-build-base failed (private log removed during cleanup)'),
+                              'variant-build-base failed (private log removed during cleanup)'),
+                             (ValueError('C:\\Users\\private token=SECRET'),'unavailable')):
+            with self.subTest(error=type(error).__name__),tempfile.TemporaryDirectory() as temp:
+                root=Path(temp)
+                args=SimpleNamespace(phase='run',execute=True,arch='arm64',work=root/'work',results=root/'results',
+                    engine_src=root/'engine',tooling_dart=root/'dart',patch_tool=root/'patch',pub_cache=root/'pub',provider_probe=None)
+                instance=mock.Mock(manifest={'schema':v2.SCHEMA,'result':'failed','runtime_acceptance':False,
+                    'stages':[{'name':'isolated-toolchain','evidence':True}],
+                    'command_failure':{'operation':'variant-build-base','exit_code':70,'timed_out':False,'classification':'unknown',
+                        'exception_types':[],'build_codes':['C2220','C4996'],'known_messages':['windows_build_failed'],
+                        'excerpt':['<path> error C2220: the following warning is treated as an error'],'tail':['Build process failed.']}})
+                instance.execute.side_effect=error
+                factory=mock.Mock(return_value=instance,target_os=kind.target_os)
+                printed=[]
+                with mock.patch.object(module,'parser',return_value=mock.Mock(parse_args=mock.Mock(return_value=args))), \
+                     mock.patch.object(module.architecture,'require_native_host'), \
+                     mock.patch.object(module,'preflight',return_value={'engine':'aarch64'}), \
+                     mock.patch('builtins.print',side_effect=lambda *a,**k: printed.append(' '.join(map(str,a)))):
+                    self.assertEqual(run_driver(module,factory,[]),1)
+                text='\n'.join(printed)
+                self.assertIn('Native V2 windows lifecycle failure: type={} after_stage=isolated-toolchain reason={} '
+                              'command=variant-build-base exit_code=70'.format(type(error).__name__,reason),text)
+                self.assertIn('build_codes=C2220,C4996',text)
+                self.assertIn('failure excerpt: <path> error C2220',text)
+                self.assertIn('failure tail: Build process failed.',text)
+                self.assertNotIn('SECRET',text)
+                value=json.loads((root/'results/results.json').read_text())
+                self.assertNotIn('SECRET',json.dumps(value))
 
     def test_windows_online_checked_launch_rejects_same_variant_current_epoch_rewrite(self):
         native=windows_variant_e2e.native

@@ -9,6 +9,7 @@
 #include <filesystem>
 #endif
 #include <map>
+#include <memory>
 #include <mutex>
 #include <stdexcept>
 #include <string>
@@ -132,6 +133,20 @@ inline std::string bounded(const char* text, size_t maximum) {
   if (size > maximum) throw std::runtime_error("Context bound");
   return std::string(text, size);
 }
+// MSVC deprecates getenv/_wgetenv (C4996), and the generated Windows Runner
+// builds with /W4 /WX, so Windows reads the environment through _dupenv_s.
+inline std::string environment(const char* name, size_t maximum) {
+#ifdef _WIN32
+  char* value = nullptr;
+  size_t size = 0;
+  const errno_t status = _dupenv_s(&value, &size, name);
+  std::unique_ptr<char, void (*)(void*)> owned(value, std::free);
+  if (status != 0) throw std::runtime_error("Missing context");
+  return bounded(owned.get(), maximum);
+#else
+  return bounded(std::getenv(name), maximum);
+#endif
+}
 inline bool hex64(const std::string& value) {
   return value.size() == 64 && value.find_first_not_of("0123456789abcdef") == std::string::npos;
 }
@@ -146,7 +161,7 @@ inline Json validate(const char* id, const char* aad, const char* context) {
   const std::string key = bounded(id,128);
   if (key.size() != 16 || key.find_first_not_of("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-") != std::string::npos) throw std::runtime_error("Key ID");
   Json actual = Decoder(bounded(context,65536)).parse();
-  Json allowed = Decoder(bounded(std::getenv("SHOREBIRD_VARIANT_CONTEXTS"),65536)).parse();
+  Json allowed = Decoder(environment("SHOREBIRD_VARIANT_CONTEXTS",65536)).parse();
   bool found = false;
   if (allowed.type != 'a') throw std::runtime_error("Missing authenticated grants");
   for (const Json& candidate : allowed.array) if (candidate == actual) found = true;
@@ -186,14 +201,17 @@ inline bool receipt(const Json& context, const char* key_id, unsigned long pid) 
   static std::mutex receipt_mutex;
   std::lock_guard<std::mutex> lock(receipt_mutex);
   const Json& descriptor = context.at("selection");
-  const std::string nonce = bounded(std::getenv("SHOREBIRD_E2E_RECEIPT"),128);
+  const std::string nonce = environment("SHOREBIRD_E2E_RECEIPT",128);
   if (nonce.empty() || nonce.find_first_not_of("0123456789abcdef") != std::string::npos) return false;
 #ifdef _WIN32
-  const wchar_t* wide_path = _wgetenv(L"SHOREBIRD_VARIANT_PROVIDER_RECEIPT");
-  if (!wide_path) return false;
-  std::ofstream output(std::filesystem::path(wide_path), std::ios::app);
+  wchar_t* wide_value = nullptr;
+  size_t wide_size = 0;
+  const errno_t wide_status = _wdupenv_s(&wide_value, &wide_size, L"SHOREBIRD_VARIANT_PROVIDER_RECEIPT");
+  std::unique_ptr<wchar_t, void (*)(void*)> wide_path(wide_value, std::free);
+  if (wide_status != 0 || !wide_path) return false;
+  std::ofstream output(std::filesystem::path(wide_path.get()), std::ios::app);
 #else
-  std::ofstream output(bounded(std::getenv("SHOREBIRD_VARIANT_PROVIDER_RECEIPT"),4096), std::ios::app);
+  std::ofstream output(environment("SHOREBIRD_VARIANT_PROVIDER_RECEIPT",4096), std::ios::app);
 #endif
   output << "{\"nonce\":\"" << nonce << "\",\"pid\":" << pid
          << ",\"epoch\":\"" << descriptor.at("epoch").string()

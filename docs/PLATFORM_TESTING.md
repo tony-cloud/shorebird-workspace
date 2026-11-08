@@ -625,6 +625,70 @@ OpenAPI contract at `/openapi.yaml`, and CI verifies that endpoint from the
 packaged Linux x64 archive. CI server artifacts therefore package `web/` and
 `openapi.yaml` next to the binary instead of uploading a bare executable.
 
+## Local Windows ARM64 lifecycle VM
+
+Test Windows fixture, CLI, flutter_tools and engine changes on the local
+Parallels VM ("CWindows 11", native ARM64) before pushing to CI. One CI cycle
+takes four hours or more. The runbook copies the job "Build Windows engine
+artifacts (native ARM64)": the same workflow env, VsDevCmd
+`-arch=arm64 -host_arch=arm64`, gclient config, GN args, ninja targets,
+lifecycle preparation, fixture arguments, and V2 receipt validator.
+
+```sh
+testapps/license_flavor_patch_test/tool/run_windows_lifecycle_vm.sh setup   # once, elevated in the VM
+testapps/license_flavor_patch_test/tool/run_windows_lifecycle_vm.sh all     # sync + build + encrypted lifecycle
+testapps/license_flavor_patch_test/tool/run_windows_lifecycle_vm.sh variant # V2 variant lifecycle (after a build)
+testapps/license_flavor_patch_test/tool/run_windows_lifecycle_vm.sh sync build lifecycle variant
+```
+
+- **Inputs.** `sync` records each repo's HEAD: the root and every submodule,
+  including depot_tools. Uncommitted and untracked files that are not ignored
+  are written as a synthetic commit, built from a temporary index. The Mac
+  index, refs and files stay unchanged. The synthetic commit is put in a git
+  bundle under `.agents/windows-vm/sync/<stamp>/` on this volume. The VM reads
+  the bundle through the Parallels share `\\Mac\TonyCL6APFS`. Pushed commits are
+  fetched from the public GitHub remotes, with full history, as in
+  `actions/checkout` with `fetch-depth: 0`.
+- **Engine build.** No CI artifact contains the full `out/windows_release_arm64`
+  directory that the local-engine lifecycle needs. So `build` builds it on the
+  VM. The first build takes a few hours: about 1.5 h of gclient sync plus
+  compilation on 8 vCPUs, with the x64 clang-cl running emulated, as on the
+  hosted runner. After that, ninja is incremental, and gclient sync runs only
+  when `.gclient` or a DEPS file changes (`GCLIENT_SYNC=always|never` overrides
+  this).
+- **Storage.** Everything large stays on the VM disk under `C:\sb`:
+  - `ws` holds the checkout, gclient deps and engine out dir.
+  - `tmp` holds the pub caches and lifecycle work dirs.
+  - `tools` holds Go, Rust and cargo.
+  - `downloads` holds the installers.
+
+  Logs and the sanitized `results.json` files come back to
+  `.agents/windows-vm/{logs,results}` on this volume. Nothing large goes to the
+  Mac system disk.
+- **VM memory.** The VM has 12 GB of RAM and was set up without a pagefile, so
+  its commit limit was 12 GB. Under ninja's default parallelism, the 2-3 GB
+  frontend_server and gen_kernel steps aborted with
+  `runtime/vm/zone.cc: 95: error: Out of memory`. `setup` now sets
+  `PagingFiles = C:\pagefile.sys 16384 32768` and turns automatic management
+  off. The pagefile takes effect after `prlctl restart "CWindows 11"`, which
+  gives a 28 GB commit limit. `build` defaults to one ninja job per 3 GB of
+  commit limit, at most cores + 2 (9 jobs here). `BUILD_JOBS` overrides this.
+  The VM memory size itself is unchanged (12288 MB). With the VM stopped,
+  `prlctl set "CWindows 11" --memsize 24576` would raise it.
+- **Locking.** Every mode that touches the VM checkout takes
+  `C:\sb\runbook.lock` and passes its token to each VM phase script. A phase
+  script refuses to run without the token. A busy lock exits 75 and names its
+  holder. Use `status` to inspect the lock and `unlock` to clear a lock left by a
+  killed session.
+- **Cleanup.** After `lifecycle`, `variant` or `all`, the runbook stops leftover
+  processes started from `C:\sb`, plus MSBuild and compiler servers. The VM
+  itself keeps running.
+- **Differences from CI.** The VM runs VS 2026 Community, not Enterprise. The
+  lifecycle pub cache persists between runs: pass
+  `LIFECYCLE_ARGS=-FreshPubCache` for a fresh one. `verify_dart_tool_sdk.sh`
+  is skipped because it needs Ruby. The VM runs as the interactive user,
+  elevated, not as `runneradmin`.
+
 ## Linux Runtime Smoke
 
 Linux runtime validation is scripted for a Linux host:

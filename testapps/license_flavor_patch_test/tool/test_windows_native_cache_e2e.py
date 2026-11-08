@@ -752,6 +752,102 @@ class ExecutionBoundaryTest(unittest.TestCase):
             lifecycle.cleanup()
             self.assertEqual((cache / 'state.json').read_text(), 'other app')
 
+    def test_owned_tree_removal_retries_only_transient_windows_locks(self):
+        def locked(code, filename):
+            error = PermissionError(13, 'locked C:\\Users\\private token=SECRET', filename)
+            error.winerror = code
+            return error
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / 'owned'
+            (root / 'flutter/bin/cache/secret-name dir').mkdir(parents=True)
+            target = root / 'flutter/bin/cache/secret-name dir/a.dll'
+            target.write_text('x')
+            real = shutil.rmtree
+            calls, sleeps = [], []
+            def flaky(path, onerror=None):
+                calls.append(path)
+                if len(calls) < 3:
+                    raise locked(32, str(target))
+                real(path)
+            with mock.patch.object(e2e.shutil, 'rmtree', side_effect=flaky):
+                e2e.remove_owned_tree(root, sleep=sleeps.append)
+            self.assertFalse(root.exists())
+            self.assertEqual(sleeps, [0.25, 0.5])
+            root.mkdir()
+            for code, clock in ((2, None), (32, iter([0, 0, 61]))):
+                ticks = (lambda values: (lambda: next(values)))(clock) if clock else (lambda: 0)
+                with self.subTest(winerror=code), \
+                        mock.patch.object(e2e.shutil, 'rmtree', side_effect=locked(code, str(target))), \
+                        self.assertRaises(e2e.OwnedTreeRemovalError) as raised:
+                    e2e.remove_owned_tree(root, sleep=lambda _: None, clock=ticks)
+                item = e2e.cleanup_failure('work-tree', raised.exception)
+                self.assertEqual(item, {'action': 'work-tree', 'type': 'PermissionError', 'winerror': code, 'errno': 13,
+                                        'path': 'flutter/bin/cache'})
+                self.assertNotIn('SECRET', e2e.describe_cleanup_failure(item))
+            self.assertEqual(e2e.sanitized_relative(root, '/elsewhere/private'), '<outside-owned-tree>')
+
+    def test_server_rows_close_the_sqlite_handle(self):
+        # An unclosed read-only connection kept server.sqlite open and failed cleanup (WinError 32).
+        with tempfile.TemporaryDirectory() as temp:
+            work = Path(temp)
+            with contextlib.closing(e2e.sqlite3.connect(work / 'server.sqlite')) as database:
+                database.execute('CREATE TABLE releases (id INTEGER, version TEXT)')
+                database.execute("INSERT INTO releases VALUES (1, '1.0.0+1')")
+                database.commit()
+            lifecycle = object.__new__(e2e.Lifecycle)
+            lifecycle.work = work
+            opened = []
+            real = e2e.sqlite3.connect
+            def connect(*args, **kwargs):
+                connection = mock.Mock(wraps=real(*args, **kwargs))
+                opened.append(connection)
+                return connection
+            with mock.patch.object(e2e.sqlite3, 'connect', side_effect=connect):
+                self.assertEqual(lifecycle.rows('SELECT id, version FROM releases'), [(1, '1.0.0+1')])
+            self.assertEqual(len(opened), 1)
+            opened[0].close.assert_called_once_with()
+
+    def test_cleanup_failure_names_action_code_and_owned_path(self):
+        with tempfile.TemporaryDirectory() as temp:
+            work = Path(temp) / 'work'
+            (work / 'app/build').mkdir(parents=True)
+            args = mock.Mock(arch='arm64', work=work)
+            with mock.patch.object(e2e, 'OwnedWindowsJob'), mock.patch.object(e2e, 'free_port', return_value=12345):
+                lifecycle = e2e.Lifecycle(args)
+            lifecycle.work_owned = True
+            error = PermissionError(13, 'C:\\Users\\private', str(work / 'app/build/x.pdb'))
+            error.winerror = 32
+            removal = e2e.OwnedTreeRemovalError(error, work, str(work / 'app/build/x.pdb'))
+            lifecycle.job.close.side_effect = e2e.FixtureError('Owned Windows processes still running after job termination: 2')
+            with mock.patch.object(e2e, 'remove_owned_tree', side_effect=removal), \
+                    self.assertRaises(e2e.FixtureError) as raised:
+                lifecycle.cleanup()
+            message = str(raised.exception)
+            self.assertIn('action=process-job type=FixtureError reason=Owned Windows processes still running after job termination: 2', message)
+            self.assertIn('action=work-tree type=PermissionError winerror=32 errno=13 path=app/build/x.pdb', message)
+            self.assertNotIn('private', message)
+            self.assertEqual([item['action'] for item in lifecycle.manifest['cleanup_failures']], ['process-job', 'work-tree'])
+
+    def test_job_close_terminates_and_waits_for_owned_processes(self):
+        for counts, expected in (([2, 1, 0], None), ([1] * 1000, 'still running after job termination: 1')):
+            with self.subTest(counts=counts[:3]):
+                job = object.__new__(e2e.OwnedWindowsJob)
+                job.handle = 7
+                job.kernel = mock.Mock()
+                values = iter(counts)
+                job.active_processes = lambda: next(values)
+                clock = iter(range(0, 10000, 5))
+                with mock.patch.object(e2e.time, 'monotonic', side_effect=lambda: next(clock)), \
+                        mock.patch.object(e2e.time, 'sleep'), mock.patch.dict('sys.modules', {'ctypes.wintypes': mock.Mock()}):
+                    if expected:
+                        with self.assertRaisesRegex(e2e.FixtureError, expected):
+                            job.close(timeout=30)
+                    else:
+                        job.close(timeout=30)
+                job.kernel.TerminateJobObject.assert_called_once_with(7, 1)
+                job.kernel.CloseHandle.assert_called_once_with(7)
+                self.assertIsNone(job.handle)
+
     def test_owned_child_is_suspended_and_assigned_before_resume(self):
         job = object.__new__(e2e.OwnedWindowsJob)
         calls = []

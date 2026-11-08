@@ -60,10 +60,16 @@ class NativeDesktopVariant:
 
     def clear_private_metadata(self):
         flutter_ref = self.manifest['sources']['flutter']['head']
-        self.manifest['private_flutter_metadata'] = {
-            name: protocol.clear_private_flutter_metadata(path,self.work)
-            for name,path in (('tooling',self.work / 'flutter'),
-                ('vended',self.work / 'cli/bin/cache/flutter' / flutter_ref))}
+        # Inherited informational metadata is dropped, then the authored engine
+        # stamp is restored: without engine_stamp.json flutter_tools falls back to
+        # `git log <engine id>` (not a commit in this checkout) on every command.
+        commit_time = int(self.output(['git','-C',self.work / 'flutter','log','-1','--format=%ct','HEAD']).decode().strip())
+        metadata = {}
+        for name,path in (('tooling',self.work / 'flutter'),('vended',self.work / 'cli/bin/cache/flutter' / flutter_ref)):
+            metadata[name] = protocol.clear_private_flutter_metadata(path,self.work)
+            self.module.stage_local_engine_metadata(path,commit_time)
+            metadata[name]['authored_engine_stamp'] = True
+        self.manifest['private_flutter_metadata'] = metadata
         self._private_metadata_cleared = True
 
     def run_command(self,*args,**kwargs):
@@ -496,6 +502,23 @@ class NativeDesktopVariant:
             final_application_data=self.previous_data)
 
 
+def print_failure(target_os, manifest):
+    """Print the sanitized failure: fixed keys, numbers, authored reasons and pre-redacted excerpts only."""
+    failure, detail = manifest.get('failure', {}), manifest.get('command_failure') or {}
+    label = 'Native V2 ' + target_os + ' lifecycle'
+    print(label + ' failed; sanitized stage evidence retained.', flush=True)
+    print('{} failure: type={} after_stage={} reason={} command={} exit_code={} timed_out={} classification={} '
+          'exception_types={} build_codes={} pub_conflict_packages={} known_messages={}'.format(
+              label, failure.get('type'), failure.get('after_stage'), failure.get('reason', 'unavailable'),
+              detail.get('operation', 'none'), detail.get('exit_code'), detail.get('timed_out'),
+              detail.get('classification', 'none'),
+              *(','.join(detail.get(key, [])) or 'none'
+                for key in ('exception_types', 'build_codes', 'pub_conflict_packages', 'known_messages'))), flush=True)
+    for kind in ('excerpt', 'tail'):
+        for line in detail.get(kind, []):
+            print('{} failure {}: {}'.format(label, kind, line), flush=True)
+
+
 def run_driver(module, lifecycle_type, argv=None):
     parser = module.parser()
     parser.add_argument('--lease-seconds',type=int,default=90)
@@ -527,11 +550,18 @@ def run_driver(module, lifecycle_type, argv=None):
         lifecycle.execute()
     except Exception as error:
         manifest['failure'] = {'type':type(error).__name__,'after_stage':manifest['stages'][-1]['name'] if manifest['stages'] else 'preparation'}
+        # Same sanitized console evidence as the V1 drivers: fixed enums, numbers,
+        # authored FixtureError text and redacted excerpts only.
+        if isinstance(error, module.FixtureError):
+            manifest['failure']['reason'] = str(error)
+        print_failure(lifecycle_type.target_os, manifest)
     finally:
         try:
             if lifecycle: lifecycle.cleanup()
             manifest['cleanup'] = 'owned platform processes, services, private work, app cache and provider keys removed'
         except Exception as error:
             manifest.update(result='failed',runtime_acceptance=False,cleanup='failed: ' + type(error).__name__)
+            print('Native V2 {} lifecycle cleanup failed: {}'.format(lifecycle_type.target_os,
+                  str(error) if isinstance(error, module.FixtureError) else type(error).__name__), flush=True)
         module.private_write(args.results / 'results.json',json.dumps(manifest,indent=2))
     return 0 if manifest.get('result') == 'passed' else 1

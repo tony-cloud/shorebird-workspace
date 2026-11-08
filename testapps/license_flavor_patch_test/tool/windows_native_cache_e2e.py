@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import contextlib
 import hashlib
 import hmac
 import http.server
@@ -170,6 +171,25 @@ class FixtureError(RuntimeError):
     """Only authored, secret-free diagnostic messages may survive cleanup."""
 
 
+def cleanup_failure(action, error):
+    """Fixed identifiers only: action label, exception class, errno/winerror, owned relative path."""
+    result = {'action': action, 'type': getattr(error, 'error_type', type(error).__name__)}
+    for key, value in (('winerror', getattr(error, 'winerror_code', getattr(error, 'winerror', None))),
+                       ('errno', getattr(error, 'errno_code', getattr(error, 'errno', None)))):
+        if isinstance(value, int):
+            result[key] = value
+    if getattr(error, 'relative', None):
+        result['path'] = error.relative
+    if isinstance(error, FixtureError):
+        result['reason'] = str(error)[:200]
+    return result
+
+
+def describe_cleanup_failure(item):
+    return ' '.join('{}={}'.format(key, item[key]) for key in ('action', 'type', 'winerror', 'errno', 'path', 'reason')
+                    if key in item)
+
+
 def sha256(data):
     return hashlib.sha256(data).hexdigest()
 
@@ -208,7 +228,8 @@ def command_failure(name, code, timed_out, path):
               'classification': classification,
               'classification_scan_truncated': size > 2 * FAILURE_SCAN_BYTES}
     result.update(error_signature(raw_head, raw_tail, classification))
-    if name == 'release':
+    # CLI builds (V1 release/patch, V2 variant-build-*): MSBuild/compiler output decides.
+    if name in ('release', 'patch') or name.startswith('variant-build-'):
         result['excerpt'] = sanitized_excerpt(raw_tail)
         # Unfiltered last lines: the decisive assemble line may match no keyword.
         if classification == 'unknown':
@@ -762,12 +783,58 @@ def stop_process(process):
             process.wait(timeout=10)
 
 
-def remove_owned_tree(path):
+# Windows sharing violation (32), access denied (5, also a file still mapped by an
+# exiting process) and directory not empty (145): transient right after owned
+# processes are terminated; retried within a bound, never on other errors.
+TRANSIENT_REMOVE_WINERRORS = frozenset({5, 32, 145})
+REMOVE_DEADLINE_SECONDS = 60
+
+
+class OwnedTreeRemovalError(OSError):
+    """Owned tree removal failed; carries only identifiers safe to print."""
+    def __init__(self, error, root, filename):
+        super().__init__(error.errno, type(error).__name__)
+        self.error_type = type(error).__name__
+        self.winerror_code = getattr(error, 'winerror', None)
+        self.errno_code = error.errno
+        self.relative = sanitized_relative(root, filename)
+
+
+def sanitized_relative(root, filename):
+    """At most the first three owned path components, restricted to a safe alphabet."""
+    try:
+        parts = Path(os.fsdecode(filename)).resolve().relative_to(Path(root).resolve()).parts[:3]
+    except (TypeError, ValueError, OSError):
+        return '<outside-owned-tree>'
+    return '/'.join(re.sub(r'[^A-Za-z0-9_.+-]', '_', part)[:40] for part in parts) or '.'
+
+
+def remove_owned_tree(path, *, deadline=REMOVE_DEADLINE_SECONDS, sleep=time.sleep, clock=time.monotonic):
     # Git marks pack files read-only on Windows. Only session-owned trees reach here.
+    failed = {}
     def writable_remove(function, filename, _error):
-        os.chmod(filename, stat.S_IWRITE | stat.S_IREAD)
-        function(filename)
-    shutil.rmtree(path, onerror=writable_remove)
+        try:
+            os.chmod(filename, stat.S_IWRITE | stat.S_IREAD)
+            function(filename)
+        except OSError as error:
+            failed['filename'] = filename
+            raise
+    start, delay = clock(), 0.25
+    while True:
+        failed.clear()
+        try:
+            shutil.rmtree(path, onerror=writable_remove)
+            return
+        except FileNotFoundError:
+            if not Path(path).exists():
+                return
+            raise
+        except OSError as error:
+            transient = getattr(error, 'winerror', None) in TRANSIENT_REMOVE_WINERRORS
+            if not transient or clock() - start + delay > deadline:
+                raise OwnedTreeRemovalError(error, path, failed.get('filename', error.filename or path)) from None
+            sleep(delay)
+            delay = min(delay * 2, 4)
 
 
 class OwnedWindowsJob:
@@ -864,8 +931,38 @@ class OwnedWindowsJob:
             stop_process(process)
             raise
 
-    def close(self):
-        if self.handle:
+    def active_processes(self):
+        import ctypes
+        from ctypes import wintypes
+        class Accounting(ctypes.Structure):  # JOBOBJECT_BASIC_ACCOUNTING_INFORMATION
+            _fields_ = [('user', ctypes.c_int64), ('kernel', ctypes.c_int64), ('period_user', ctypes.c_int64),
+                        ('period_kernel', ctypes.c_int64), ('page_faults', wintypes.DWORD),
+                        ('total', wintypes.DWORD), ('active', wintypes.DWORD), ('terminated', wintypes.DWORD)]
+        info = Accounting()
+        query = self.kernel.QueryInformationJobObject
+        query.argtypes = [wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD, ctypes.c_void_p]
+        if not query(self.handle, 1, ctypes.byref(info), ctypes.sizeof(info), None):
+            raise FixtureError('Cannot query owned Windows process job')
+        return info.active
+
+    def close(self, timeout=30):
+        # KILL_ON_JOB_CLOSE terminates asynchronously; files of a dying process stay
+        # locked. Terminate explicitly and wait until no owned process remains before
+        # the caller removes the session tree.
+        if not self.handle:
+            return
+        from ctypes import wintypes
+        try:
+            self.kernel.TerminateJobObject.argtypes = [wintypes.HANDLE, wintypes.UINT]
+            self.kernel.TerminateJobObject(self.handle, 1)
+            deadline = time.monotonic() + timeout
+            remaining = self.active_processes()
+            while remaining and time.monotonic() < deadline:
+                time.sleep(0.2)
+                remaining = self.active_processes()
+            if remaining:
+                raise FixtureError('Owned Windows processes still running after job termination: %d' % remaining)
+        finally:
             self.kernel.CloseHandle(self.handle)
             self.handle = None
 
@@ -1230,7 +1327,10 @@ class Lifecycle:
 
     def rows(self, query, arguments=()):
         # Read-only DB access observes genuine CLI/server state; never writes it.
-        with sqlite3.connect((self.work / 'server.sqlite').as_uri() + '?mode=ro', uri=True) as database:
+        # closing(): a sqlite3 connection used as a context manager only ends the
+        # transaction; the open handle then kept server.sqlite locked (WinError 32)
+        # until garbage collection and failed work-tree cleanup on Windows ARM64.
+        with contextlib.closing(sqlite3.connect((self.work / 'server.sqlite').as_uri() + '?mode=ro', uri=True)) as database:
             return database.execute(query, arguments).fetchall()
 
     def make_observer(self):
@@ -1380,20 +1480,22 @@ class Lifecycle:
 
     def cleanup(self):
         failures = []
-        actions = [self.stop_app, lambda: stop_process(self.api), self.job.close]
-        actions += [service.close for service in (self.provision, self.observer) if service]
-        actions += [log.close for log in self.logs]
+        actions = [('app', self.stop_app), ('api', lambda: stop_process(self.api)), ('process-job', self.job.close)]
+        actions += [(name, service.close) for name, service in
+                    (('provision-service', self.provision), ('observer-service', self.observer)) if service]
+        actions += [('log', log.close) for log in self.logs]
         if self.cache_owned and self.cache is not None:
-            actions.append(lambda: remove_owned_tree(self.cache) if self.cache.exists() else None)
+            actions.append(('app-cache', lambda: remove_owned_tree(self.cache) if self.cache.exists() else None))
         if self.work_owned:
-            actions.append(lambda: remove_owned_tree(self.work) if self.work.exists() else None)
-        for action in actions:
+            actions.append(('work-tree', lambda: remove_owned_tree(self.work) if self.work.exists() else None))
+        for name, action in actions:
             try:
                 action()
             except Exception as error:
-                failures.append(type(error).__name__)
+                failures.append(cleanup_failure(name, error))
         if failures:
-            raise FixtureError('Owned resource cleanup failed')
+            self.manifest['cleanup_failures'] = failures
+            raise FixtureError('Owned resource cleanup failed: ' + '; '.join(describe_cleanup_failure(item) for item in failures))
 
 
 def parser():
@@ -1489,6 +1591,9 @@ def main(argv=None):
         except Exception as error:
             manifest['cleanup'] = 'failed: ' + type(error).__name__
             manifest['result'] = 'failed'
+            # Authored text only: action labels, error classes, codes, owned relative paths.
+            print('Windows lifecycle cleanup failed: ' + (str(error) if isinstance(error, FixtureError) else type(error).__name__),
+                  flush=True)
         private_write(args.results / 'results.json', json.dumps(manifest, indent=2))
     return 0 if manifest['result'] == 'passed' else 1
 
