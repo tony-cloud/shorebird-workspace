@@ -3,9 +3,9 @@
 Status: **v1, frozen by stage P0** of
 [the hardening plan](HARDENING_AND_UPSTREAM_DEPENDENCY_PLAN.md) on 2026-11-09.
 P1 (secure release admission) and P2 (official-source resolution) implement
-against this document. Nothing here is implemented in the CLI, engine, updater
-or server yet; the schemas, validator and pin checks are the only executable
-parts. Evidence that informed it is in [HARDENING_P0_EVIDENCE.md](HARDENING_P0_EVIDENCE.md).
+against this document. **P1 is implemented** (2026-11-09) in the updater,
+engine, flutter_tools and CLI; §7 records its decisions and its
+reject/accept matrix. The server, catalog and P2 parts are not implemented yet. Evidence that informed it is in [HARDENING_P0_EVIDENCE.md](HARDENING_P0_EVIDENCE.md).
 
 Machine-checkable parts:
 
@@ -235,3 +235,206 @@ These pins are recorded but intentionally have no equality contract:
   the installed Xcode. They are host toolchain inputs, not source pins, and are
   recorded in build logs.
 - `shorebird-server` has no duplicate pin.
+
+## 7. P1 implementation decisions (secure release admission)
+
+P1 answers the two questions P0 left open and fixes where each rule lives.
+Nothing here changes a v1 schema, a wire format or a legacy default.
+
+### 7.1 Compiled policy: build-time constants, not runtime input
+
+The engine GN args `shorebird_security_profile` (`"legacy"` default),
+`shorebird_toolchain_id`, `shorebird_security_development_exceptions` and
+`shorebird_trust_root_key_ids` (`flutter/engine/src/flutter/common/config.gni`)
+are the single source:
+
+- GN asserts reject `hardened-diversified`, any unknown profile, hardened
+  without a toolchain ID, and development exceptions or pinned roots outside
+  hardened. Hardened adds the define `SHOREBIRD_SECURITY_HARDENED=1`.
+- `build_rust_updater.py` removes any inherited `SHOREBIRD_SECURITY_*`
+  variable and sets `SHOREBIRD_SECURITY_PROFILE`, `SHOREBIRD_TOOLCHAIN_ID`,
+  `SHOREBIRD_SECURITY_DEVELOPMENT_EXCEPTIONS` and
+  `SHOREBIRD_TRUST_ROOT_KEY_IDS` from the GN args only. The action's command
+  line carries the profile, so a profile change reruns it.
+- The updater's `build.rs` validates the same inputs with
+  `library/src/security_inputs.rs` (shared with the library's unit tests) and
+  generates `OUT_DIR/compiled_security_policy.rs`: four `const`s, the same
+  bytes for the same inputs. An invalid or reserved input fails the build.
+  There is no runtime setter. The only override is a `#[cfg(test)]`
+  thread-local that is never compiled into a shipped library, including the
+  `test-hooks` cdylib.
+
+A generated Rust file was chosen over reading an environment variable at run
+time because it is reproducible, reviewable and impossible to change after
+the build. YAML, Dart (FFI) and remote configuration have no path to these
+constants.
+
+The engine cross-checks the linked library: `Updater::Init` compares
+`shorebird_compiled_security_profile()` (new engine C API) with its own
+compiled profile and refuses initialization on a mismatch, so a stale or
+substituted updater library cannot run with weaker checks than the engine
+was built for. `updater.cc` also `static_assert`s that the compiled profile
+is one of the two v1 profiles.
+
+### 7.2 Compiled floor versus release policy; trust roots
+
+One engine build serves many apps, and each app has its own signing key. The
+compiled floor is therefore {profile, toolchain ID, development exceptions,
+optional pinned trust-root key IDs}. The app's trust root is the bundled
+`patch_public_key`:
+
+- In hardened, the CLI embeds the Shorebird-managed key fetched at release
+  time (`SHOREBIRD_PUBLIC_KEY`).
+- Customer keys (`--public-key-path`/`--public-key-cmd`) are refused in
+  hardened. The server cannot sign patch-check responses for a customer key,
+  and hardened requires signed responses.
+
+An operator who builds an engine for a specific app can pin
+`shorebird_trust_root_key_ids`. The updater then also requires
+`sha256(DER(patch_public_key))` to be one of them.
+
+Bundled YAML is a platform-signed package resource, but in-process code cannot
+detect its replacement on a repacked app. That detection is P3.
+
+The full `security-policy.v1` document is the per-release record: the compiled
+floor plus the app's trust root. Storing it with the release is P4 (see §7.6).
+
+### 7.3 Bundled declaration and startup admission
+
+flutter_tools (`compileShorebirdYaml`) writes these keys only for hardened
+builds:
+
+- `security_profile: hardened`
+- `security_contract_version: 1`
+- `toolchain_id: sha256:…`
+- `security_development_exceptions: true`, only in development builds.
+
+It also forces `patch_verification: strict` and
+`patch_response_verification: required`. A checked-in shorebird.yaml that
+contains any of these four keys is rejected in every profile.
+
+The legacy output is unchanged byte for byte. The updater parses the four
+keys (`yaml.rs`) and records any duplicated key.
+
+`security::admit` runs at the top of `set_config_with_binding`, the common
+path of `shorebird_init`, `shorebird_init_with_options` and
+`shorebird_init_selection_v2`. No entry point is a weaker retry path. A
+refusal publishes no configuration: no key is requested, no patch is
+selected, and the engine boots the bundled base. `updater::init` reports a
+typed `InitError::SecurityPolicy`. Error messages never contain URLs, keys or
+signatures.
+
+Defense in depth:
+
+- `cache::check_patch_signature`, the legacy "no key configured ⇒ accept"
+  site, refuses unsigned content whenever the compiled profile is hardened.
+- `network::download_to_path` checks every server-supplied download URL
+  against the origin policy before any request.
+- The default ureq requests use `https_only(true)` in hardened, which covers
+  every redirect hop, so an HTTPS-to-HTTP redirect fails. The development
+  exception does not follow redirects at all.
+
+### 7.4 HTTP origins
+
+Defaults stay as they are: the legacy and development default `base_url`
+remains `http://localhost:8080`, and legacy accepts any scheme.
+
+Hardened requires an explicit `base_url` with these properties:
+
+- `https` scheme, case-insensitive;
+- a non-empty host and a numeric port, if any;
+- no userinfo;
+- no whitespace or control characters.
+
+The updater's default URL never applies in hardened.
+
+The only exception is development builds. A hardened engine built with
+`shorebird_security_development_exceptions = true` may use `http` to
+`localhost`, `127.0.0.0/8` or `[::1]`:
+
+- The build prints a cargo warning, and the updater logs a warning at every
+  initialization.
+- The exception works only when the YAML also declares
+  `security_development_exceptions: true`, and both directions must match.
+  A development engine therefore refuses a production declaration, and a
+  production engine refuses a development one.
+- `shorebird release` never writes the key. It refuses a toolchain whose
+  `toolchain_security.json` declares `development_exceptions: true`, and it
+  allows no HTTP, not even loopback.
+
+### 7.5 CLI release admission
+
+- `shorebird release --security-profile=<legacy|hardened>` defaults to
+  `legacy`, and `hardened-diversified` is refused as reserved.
+- The installed toolchain's floor is read from
+  `<shorebird root>/bin/internal/toolchain_security.json`. Its keys are exactly
+  `schema` (`open-shorebird.toolchain-security`), `contract_version` (1),
+  `security_profile`, `toolchain_id` and `development_exceptions`. Unknown keys
+  or versions fail closed, and an absent file means a legacy toolchain.
+  Toolchain packaging writes the file; that is P6's job.
+- Admission runs in `ReleaseCommand.assertArgsAreValid` before any build, for
+  every platform. A release is refused when:
+  - the requested profile differs from the toolchain's, in either direction
+    (hardened is never auto-selected);
+  - the toolchain is a development toolchain;
+  - the shorebird.yaml contains a reserved key.
+- In addition, a hardened release is refused when:
+  - `--no-patch-signing` or a customer key is passed;
+  - `base_url` is missing, uses a non-`https` scheme (including loopback), or
+    carries userinfo;
+  - `patch_verification` is not `strict` or `patch_response_verification` is
+    not `required`;
+  - `--flutter-version` names anything other than the pinned revision.
+- After the signing key is resolved, the build stops unless the key is
+  non-null and managed. Hardened builds receive `SHOREBIRD_SECURITY_PROFILE`
+  and `SHOREBIRD_TOOLCHAIN_ID`; legacy build environments are byte-identical.
+- `shorebird patch` on a hardened toolchain passes the same variables. It
+  refuses customer-signing arguments, a release whose signing is not managed,
+  and a YAML below the floor.
+
+### 7.6 Reject/accept matrix and deferred work
+
+| Case | `legacy` compiled | `hardened` compiled |
+| --- | --- | --- |
+| No security keys in YAML (every existing release) | accept, unchanged | reject (profile mismatch) |
+| YAML `security_profile: hardened`, matching ID and version | reject (mismatch) | accept |
+| Missing or empty `patch_public_key` | accept (unsigned legacy) | reject (missing trust root) |
+| Key not in pinned `shorebird_trust_root_key_ids` | n/a (build refuses pins) | reject |
+| `patch_verification: install_only` | accept | reject (weaker than floor) |
+| `patch_response_verification: optional` | accept | reject |
+| Verification keys omitted | defaults: strict, optional | floor: strict, required |
+| `http://` origin, or no `base_url` (default `http://localhost:8080`) | accept | reject; loopback `http` only with matching development exception |
+| Userinfo in origin, or HTTPS-to-HTTP redirect | accept | reject |
+| `toolchain_id` differs from the compiled ID | reject when both present | reject; missing ID also rejected |
+| `security_contract_version` other than 1 | reject | reject; missing version also rejected |
+| `security_profile: hardened-diversified` | reject | reject (build also refuses it) |
+| Duplicate YAML key | accept (last wins, as before) | reject |
+| Unsigned patch reaching signature verification | accept when no key (legacy) | reject |
+| Engine and updater library compiled with different profiles | engine refuses `Init` | engine refuses `Init` |
+
+Tests: updater `security::tests`, `security_inputs::tests`,
+`yaml::security_declaration_tests`, `config::tests::hardened_admission`,
+`cache::signing::tests::hardened_policy_never_accepts_unsigned_content` and
+`network::tests::hardened_transport`; engine `UpdaterSecurityProfile.*` in
+`updater_unittests.cc`; flutter_tools `shorebird_yaml_test.dart` group
+`security profiles`; CLI `security_profile_test.dart`,
+`release_command_test.dart`, `releaser_test.dart`, `patch_command_test.dart`,
+`shorebird_env_test.dart` and `artifact_builder_test.dart`.
+
+Deferred:
+
+- **P4 (server and protocol).** Store `security_profile` and `toolchain_id`
+  in the release record, reject mismatched patch uploads on the server, and
+  make `shorebird patch` follow the release's recorded profile instead of the
+  installed toolchain's. Until then, `shorebird patch` enforces the toolchain
+  floor and the device enforces the release's compiled floor. Split signing
+  roles are also P4; hardened uses the managed key until then.
+- **P3.** Detect a replaced bundled shorebird.yaml or `patch_public_key` on a
+  repacked or tampered install. P1 makes a tampered YAML fail closed when it
+  is weaker or inconsistent, not when it is internally consistent.
+- **P6.** Packaging of hardened toolchains: CI GN args, writing
+  `toolchain_security.json`, and toolchain-scoped artifact routes (P2), since
+  hardened and legacy engines share `engine.version` today. Also P6:
+  end-to-end lifecycle cases for a hardened release, including the negative
+  boot cases on a device or host.
+

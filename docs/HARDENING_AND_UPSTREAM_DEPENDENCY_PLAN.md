@@ -1,7 +1,7 @@
 # Updater protection, optional VM diversification, and official Flutter sources
 
-Date: 2026-11-08 (Asia/Shanghai). Status: **P0 delivered 2026-11-09** (see the
-P0 row in §8); P1–P6 not started. Source inspection and upstream documentation
+Date: 2026-11-08 (Asia/Shanghai). Status: **P0 and P1 delivered 2026-11-09**
+(see the P0/P1 rows in §8 and `HARDENING_CONTRACTS.md` §7); P2–P6 not started. Source inspection and upstream documentation
 research informed this plan. P0 added CI-artifact inventory and pin contracts
 but no new security test, runtime test, or device validation.
 
@@ -397,13 +397,13 @@ dependencies for custom operations.
 
 ## 8. Delivery sequence and ownership
 
-Rows P1–P6 are future work; P0 is delivered. The stages are reviewable changes
+Rows P2–P6 are future work; P0 and P1 are delivered. The stages are reviewable changes
 with gates.
 
 | Stage | Main owners / files | Exit condition |
 | --- | --- | --- |
 | P0 — Freeze evidence and contracts | Root CI/scripts; `flutter/DEPS`; source/build records; existing acceptance matrix | Resolve root/DEPS/symlink inputs, inventory real binaries/exports/origins, capture lifecycle/performance baselines, and define security/profile/catalog versions. **Delivered 2026-11-09:** `updater_rev` and the CLI `flutter.version` realigned, and `verify_ci_workflow.rb` now fails on any duplicated-pin drift; `scripts/inventory_release_binaries.py` was run on baseline run 42464951579, with exports, origins and CI/size baselines in `HARDENING_P0_EVIDENCE.md`; contract v1 (profiles, build identity, artifact catalog, compatibility) is in `HARDENING_CONTRACTS.md` with JSON Schemas under `docs/schemas/` and `scripts/validate_hardening_contracts.py`. |
-| P1 — Secure release admission | Updater `config.rs`, `yaml.rs`, `network.rs`, `selection_v2.rs`, cache/boot modules; engine `shell/common/shorebird/updater.cc`; Flutter `shorebird_yaml.dart`; CLI packaging | A new hardened release cannot ship or boot with missing roots, downgraded verification, incompatible identity, or production HTTP. Existing v2 semantics and old-release compatibility remain explicit. |
+| P1 — Secure release admission | Updater `config.rs`, `yaml.rs`, `network.rs`, `selection_v2.rs`, cache/boot modules; engine `shell/common/shorebird/updater.cc`; Flutter `shorebird_yaml.dart`; CLI packaging | A new hardened release cannot ship or boot with missing roots, downgraded verification, incompatible identity, or production HTTP. Existing v2 semantics and old-release compatibility remain explicit. **Delivered 2026-11-09:** hardened is opt-in via the engine GN arg `shorebird_security_profile`, compiled into the updater as `build.rs`-generated constants. Startup admission (`updater/library/src/security.rs`) runs on every init path. The engine refuses an updater library compiled with a different profile. flutter_tools writes the bundled declaration, and `shorebird release --security-profile=hardened` refuses to package without a managed trust root, with HTTP or with a mismatched toolchain. Legacy output and behavior are unchanged. Decisions and the reject/accept matrix are in `HARDENING_CONTRACTS.md` §7. This is unit and integration test evidence only, with no device or lifecycle run. Release-record storage moves to P4, tamper detection of the bundled YAML to P3, and hardened toolchain packaging and end-to-end cases to P6. |
 | P2 — Official-source resolution and signed toolchain supply | CLI `shorebird_env.dart`, `shorebird_process.dart`, `cache.dart`, launchers; artifact proxy/catalog; Flutter cache/SDK scripts/Gradle; root manifest and CI scripts | Clean, immutable, verified bootstrap works with compatible official artifacts direct; custom pairs stay matched; no implicit Shorebird hosted traffic or silent stock fallback. |
 | P3 — Updater self-integrity | Engine/Rust startup boundary, platform signing/module adapters, packaging build manifest, app key providers | Real repacked/replaced/config-tampered installs are rejected under documented platform trust assumptions; integrity failures recover without granting protected keys or destroying user data. |
 | P4 — Signing separation and installation trust | Server selection/signing handlers and DB migrations; protocol/client packages; CLI; updater verifiers; engine adapters; golden fixtures | New version supports constrained online signing, separately approved artifact signatures, key rotation/revocation/recovery, and authenticated key provisioning; legacy releases remain operable. |
