@@ -80,6 +80,16 @@ on:
         required: false
         default: ""
         type: string
+      publish_server_release:
+        description: Publish the signed shorebird-server update build as a GitHub release of tony-cloud/shorebird-server.
+        required: false
+        default: false
+        type: boolean
+      server_release_version:
+        description: Optional shorebird-server release version (vX.Y.Z = stable, vX.Y.Z-pre = dev); empty computes the next dev version.
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: read
@@ -669,6 +679,64 @@ jobs:
           DART_BIN: dart
         run: ./scripts/run_server_client_smoke.sh
 
+      - name: Build signed server update
+        working-directory: shorebird-server
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          SERVER_RELEASE_VERSION: ${{ inputs.server_release_version }}
+          # Self-update signing (shorebird-server/docs/SELF_UPDATE.md, "Signing key"):
+          # a dedicated Ed25519 key, not a role of the P4 release root. The
+          # public keys are pinned into the binary; the secret never is.
+          SHOREBIRD_SERVER_UPDATE_SIGNING_KEY: ${{ secrets.SHOREBIRD_SERVER_UPDATE_SIGNING_KEY }}
+          SHOREBIRD_SERVER_UPDATE_PUBLIC_KEYS: ${{ vars.SHOREBIRD_SERVER_UPDATE_PUBLIC_KEYS }}
+        run: |
+          set -euo pipefail
+          version_args=()
+          if [[ -n "${SERVER_RELEASE_VERSION:-}" ]]; then
+            version_args=(--version "$SERVER_RELEASE_VERSION")
+          fi
+          server_version="$(python3 scripts/build_update_zip.py --print-version "${version_args[@]}")"
+          out="$RUNNER_TEMP/server-update"
+          rm -rf "$out"
+          if [[ -n "${SHOREBIRD_SERVER_UPDATE_SIGNING_KEY:-}" ]]; then
+            if [[ -z "${SHOREBIRD_SERVER_UPDATE_PUBLIC_KEYS:-}" ]]; then
+              echo "::error::SHOREBIRD_SERVER_UPDATE_SIGNING_KEY is set but the SHOREBIRD_SERVER_UPDATE_PUBLIC_KEYS variable is not"
+              exit 1
+            fi
+            key="$RUNNER_TEMP/server-update-signing.pem"
+            (umask 077 && printf '%s\n' "$SHOREBIRD_SERVER_UPDATE_SIGNING_KEY" > "$key")
+            python3 scripts/build_update_zip.py --production --key "$key" \
+              --trusted-keys "$SHOREBIRD_SERVER_UPDATE_PUBLIC_KEYS" \
+              --out "$out" --target "${GOOS}-${GOARCH}" "${version_args[@]}"
+            rm -f "$key"
+            signing=production
+          else
+            # Forks and PRs have no signing secret: exercise the same pipeline
+            # with the public DEVELOPMENT-ONLY key and publish nothing from it.
+            python3 scripts/build_update_zip.py --development \
+              --out "$out" --target "${GOOS}-${GOARCH}" "${version_args[@]}"
+            signing=development
+          fi
+          asset="shorebird-server-${GOOS}-${GOARCH}${{ matrix.extension }}"
+          release="$out/$server_version/release"
+          test -s "$release/$asset" && test -s "$release/$asset.manifest.json" && test -s "$release/$asset.sig"
+          {
+            echo "SERVER_VERSION=$server_version"
+            echo "SERVER_UPDATE_SIGNING=$signing"
+          } >> "$GITHUB_ENV"
+          if [[ "$signing" == production ]]; then
+            echo "SERVER_UPDATE_BINARY=$release/$asset" >> "$GITHUB_ENV"
+            update_dir="../shorebird-server-update-${GOOS}-${GOARCH}"
+            mkdir -p "$update_dir"
+            cp "$release/$asset" "$release/$asset.manifest.json" "$release/$asset.sig" "$release/VERSION" "$update_dir/"
+            cp "$out/$server_version"/shorebird-server-update-*.zip "$update_dir/"
+            for file in "$update_dir"/*; do
+              ../scripts/write_sha256.sh "$file" "$file.sha256"
+            done
+          fi
+          echo "shorebird-server $server_version ($signing signing)"
+
       - name: Build server binary
         working-directory: shorebird-server
         env:
@@ -678,9 +746,17 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p ../artifacts/server-${GOOS}-${GOARCH}
-          go build -trimpath -ldflags="-s -w" \
-            -o ../artifacts/server-${GOOS}-${GOARCH}/shorebird-server${{ matrix.extension }} \
-            ./cmd/server
+          if [[ -n "${SERVER_UPDATE_BINARY:-}" ]]; then
+            # The production-signed image: versioned and pinned, so an
+            # installed archive can update itself (docs/SELF_UPDATE.md).
+            cp "$SERVER_UPDATE_BINARY" ../artifacts/server-${GOOS}-${GOARCH}/shorebird-server${{ matrix.extension }}
+          else
+            # Versioned but without a pinned update key: self-update reports
+            # trust_unconfigured, as before this change.
+            go build -trimpath -ldflags="-s -w -X github.com/shorebird-server/internal/version.Version=${SERVER_VERSION}" \
+              -o ../artifacts/server-${GOOS}-${GOARCH}/shorebird-server${{ matrix.extension }} \
+              ./cmd/server
+          fi
           cp -R web ../artifacts/server-${GOOS}-${GOARCH}/
           cp .env.example ../artifacts/server-${GOOS}-${GOARCH}/
           cp README.md ../artifacts/server-${GOOS}-${GOARCH}/
@@ -691,6 +767,8 @@ jobs:
             "name": "shorebird-server-${GOOS}-${GOARCH}",
             "git_sha": "${{ github.sha }}",
             "server_git_sha": "${server_revision}",
+            "server_version": "${SERVER_VERSION}",
+            "server_update_signing": "${SERVER_UPDATE_SIGNING}",
             "runner_os": "${{ runner.os }}",
             "goos": "${GOOS}",
             "goarch": "${GOARCH}",
@@ -755,6 +833,73 @@ jobs:
             shorebird-server-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz
             shorebird-server-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz.sha256
           if-no-files-found: error
+
+      - name: Upload signed server update
+        if: ${{ env.SERVER_UPDATE_SIGNING == 'production' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: shorebird-server-update-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: |
+            shorebird-server-update-${{ matrix.goos }}-${{ matrix.goarch }}/shorebird-server-*
+            shorebird-server-update-${{ matrix.goos }}-${{ matrix.goarch }}/VERSION
+            shorebird-server-update-${{ matrix.goos }}-${{ matrix.goarch }}/*.sha256
+          if-no-files-found: error
+
+  server-release:
+    name: Publish shorebird-server release
+    needs: server-artifacts
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Only an explicit manual dispatch publishes; ordinary pushes never do.
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_server_release }}
+    env:
+      GH_TOKEN: ${{ secrets.SHOREBIRD_SERVER_RELEASE_TOKEN }}
+      SERVER_RELEASE_REPOSITORY: tony-cloud/shorebird-server
+    steps:
+      - name: Checkout workspace
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Download signed server updates
+        uses: actions/download-artifact@v4
+        with:
+          pattern: shorebird-server-update-*
+          path: server-release-input
+
+      - name: Publish release
+        run: |
+          set -euo pipefail
+          if [[ -z "${GH_TOKEN:-}" ]]; then
+            echo "::error::SHOREBIRD_SERVER_RELEASE_TOKEN is not configured"
+            exit 1
+          fi
+          expected=5
+          found=$(find server-release-input -mindepth 1 -maxdepth 1 -type d -name 'shorebird-server-update-*' | wc -l | tr -d ' ')
+          if [[ "$found" != "$expected" ]]; then
+            echo "::error::expected $expected production-signed platform builds, found $found (is SHOREBIRD_SERVER_UPDATE_SIGNING_KEY configured?)"
+            exit 1
+          fi
+          versions=$(cat server-release-input/*/VERSION | sort -u)
+          if [[ $(wc -l <<<"$versions") != 1 ]]; then
+            echo "::error::platform builds disagree on the version: $versions"
+            exit 1
+          fi
+          version=$(tr -d '[:space:]' <<<"$versions")
+          assets=release-assets
+          rm -rf "$assets"
+          mkdir -p "$assets"
+          cp server-release-input/*/shorebird-server-* "$assets/"
+          cp "$(ls server-release-input/*/VERSION | head -n 1)" "$assets/VERSION"
+          (cd "$assets" && sha256sum -c ./*.sha256)
+          prerelease=()
+          if [[ "$version" == *-* ]]; then
+            prerelease=(--prerelease)
+          fi
+          target="$(git -C shorebird-server rev-parse HEAD)"
+          gh release create "$version" "$assets"/* --repo "$SERVER_RELEASE_REPOSITORY" --target "$target" \
+            --title "shorebird-server $version" --notes "Signed self-update build of shorebird-server $target." "${prerelease[@]}"
 
   verify-vm-offsets:
     name: Verify VM runtime offsets
