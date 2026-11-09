@@ -93,11 +93,37 @@ REQUIRED["shorebird"] |= {
 }
 
 
+# P6: shorebird_unittests of the arm64 engine configured as a hardened
+# toolchain. Every legacy control still runs, plus the integrity and
+# security-profile controls, and the log must show the binary's compiled
+# profile is hardened (the profile-mismatch refusal names it).
+REQUIRED["shorebird-hardened"] = REQUIRED["shorebird"] | {
+    "UpdaterSecurityProfile.EngineProfileIsOneOfTheContractProfiles",
+    "UpdaterSecurityProfile.LinkedRustUpdaterMatchesTheEngineProfile",
+    "UpdaterSecurityProfile.MismatchedUpdaterLibraryIsNeverInitialized",
+    "UpdaterIntegrity.HardenedInitFailureRecordsTheTypedReason",
+    "UpdaterIntegrity.SuccessfulInitRecordsNoFailure",
+}
+SUITE_ARCHES = {"shorebird-hardened": ("arm64",)}
+PROFILE_MARKERS = {"shorebird-hardened": "differs from the engine's hardened;"}
+
+
 def required_tests(suite, arch):
     if arch not in ("arm64", "x64"):
         raise ValueError(f"Unsupported macOS artifact architecture: {arch}")
+    if arch not in SUITE_ARCHES.get(suite, ("arm64", "x64")):
+        raise ValueError(f"macOS suite {suite} does not run on {arch}")
     required = REQUIRED[suite]
     return required
+
+
+def check_profile_marker(evidence, suite):
+    marker = PROFILE_MARKERS.get(suite)
+    if marker is None:
+        return
+    log = evidence / f"{suite}-tests.log"
+    if marker not in log.read_text(errors="replace"):
+        raise SystemExit(f"{log}: no {marker!r}; the engine was not built with the hardened profile")
 
 
 def main():
@@ -112,7 +138,10 @@ def main():
     args = parser.parse_args()
     if args.arch is None:
         parser.error("--arch is required when validating on an unknown host")
-    for suite in sorted(args.suite or REQUIRED):
+    suites = args.suite or [suite for suite in REQUIRED
+                            if args.arch in SUITE_ARCHES.get(suite, ("arm64", "x64"))]
+    for suite in sorted(suites):
+        check_profile_marker(args.evidence, suite)
         inventory = listed_tests(args.evidence / f"{suite}-list.txt",
                                  platform="macos", required=required_tests(suite, args.arch))
         count = validate_report(args.evidence / f"{suite}.xml", inventory)

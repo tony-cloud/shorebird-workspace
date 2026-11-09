@@ -350,8 +350,8 @@ def validate_build_manifest(manifest: dict) -> list[str]:
     targets = [(module['platform'], module['arch']) for module in manifest['modules']]
     if len(set(targets)) != len(targets):
         errors.append('$.modules: one entry per platform/arch')
-    for field in ('android_signing_cert_sha256', 'apple_team_ids'):
-        values = manifest['package_identity'][field]
+    for field in ('android_signing_cert_sha256', 'apple_team_ids', 'windows_signing_cert_sha256'):
+        values = manifest['package_identity'].get(field, [])
         if len(set(values)) != len(values):
             errors.append(f'$.package_identity.{field}: values must be unique')
     errors.extend(_development_profile_rules(manifest, production=False))

@@ -329,6 +329,24 @@ class ReleaseDocumentsTest(unittest.TestCase):
         # A v1 manifest has no delegations binding.
         self.assertNotEqual(v.validate_build_manifest(manifest | {'contract_version': 1}), [])
 
+    def test_windows_authenticode_identity_is_an_optional_p6_field(self):
+        # Contract section 12: optional, present only when declared, never
+        # empty; v1 (P3) manifests never carry it.
+        manifest = load('build-manifest.v2.linux-x64.json')
+        base = manifest['package_identity']
+        self.assertNotIn('windows_signing_cert_sha256', base)
+        ok = base | {'windows_signing_cert_sha256': ['cd' * 32, 'ef' * 32]}
+        self.assertEqual(v.validate_build_manifest(manifest | {'package_identity': ok}), [])
+        v3 = load('build-manifest.v3.ios-arm64.json')
+        self.assertEqual(v.validate_build_manifest(v3 | {'package_identity': v3['package_identity'] | {
+            'windows_signing_cert_sha256': ['cd' * 32]}}), [])
+        for bad in ([], ['CD' * 32], ['cd' * 31], ['cd' * 32, 'cd' * 32], 'cd' * 32):
+            identity = base | {'windows_signing_cert_sha256': bad}
+            self.assertNotEqual(v.validate_build_manifest(manifest | {'package_identity': identity}), [], bad)
+        v1 = load('build-manifest.linux-x64.json')
+        identity = v1['package_identity'] | {'windows_signing_cert_sha256': ['cd' * 32]}
+        self.assertNotEqual(v.validate_build_manifest(v1 | {'package_identity': identity}), [])
+
     def test_release_record_rules(self):
         entry = self.record['build_manifests'][0]
         for change in ({'security_profile': 'legacy'}, {'contract_version': 1}, {'build_manifests': []},

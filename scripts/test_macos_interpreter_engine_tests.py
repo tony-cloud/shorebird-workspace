@@ -4,7 +4,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from verify_macos_interpreter_engine_tests import REQUIRED, required_tests
+from verify_macos_interpreter_engine_tests import REQUIRED, SUITE_ARCHES, required_tests
 from verify_native_cache_engine_tests import listed_tests
 
 
@@ -42,10 +42,32 @@ class MacosInventoryTest(unittest.TestCase):
                              platform='macos', required=required_tests('shorebird', arch))
 
     def test_both_architectures_require_complete_same_inventory(self):
-        for suite in REQUIRED:
+        for suite in set(REQUIRED) - set(SUITE_ARCHES):
             self.assertEqual(required_tests(suite, 'arm64'), required_tests(suite, 'x64'))
             self.assertEqual(listed_tests(self.inventory(REQUIRED[suite]), platform='macos',
                                          required=required_tests(suite, 'x64')), REQUIRED[suite])
+
+    def test_hardened_suite_is_arm64_and_keeps_every_legacy_control(self):
+        # P6: the hardened-toolchain shorebird_unittests run (arm64 only).
+        self.assertLess(REQUIRED['shorebird'], REQUIRED['shorebird-hardened'])
+        control = 'UpdaterIntegrity.HardenedInitFailureRecordsTheTypedReason'
+        with self.assertRaisesRegex(ValueError, control):
+            listed_tests(self.inventory(REQUIRED['shorebird-hardened'] - {control}),
+                         platform='macos', required=required_tests('shorebird-hardened', 'arm64'))
+        with self.assertRaisesRegex(ValueError, 'does not run on x64'):
+            required_tests('shorebird-hardened', 'x64')
+
+    def test_hardened_suite_requires_the_hardened_profile_in_its_log(self):
+        import subprocess, sys
+        script = Path(__file__).with_name('verify_macos_interpreter_engine_tests.py')
+        with tempfile.TemporaryDirectory() as directory:
+            evidence = Path(directory)
+            (evidence / 'shorebird-hardened-tests.log').write_text(
+                "updater security profile legacy differs from the engine's legacy; not initializing\n")
+            result = subprocess.run([sys.executable, str(script), str(evidence), '--arch=arm64',
+                                     '--suite=shorebird-hardened'], capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('not built with the hardened profile', result.stderr)
 
     def test_suite_selection_is_limited_to_known_suites(self):
         import subprocess, sys

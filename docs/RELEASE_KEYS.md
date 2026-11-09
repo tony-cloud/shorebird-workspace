@@ -115,6 +115,26 @@ prints `SHOREBIRD_RELEASE_TRUST` and either
 `SHOREBIRD_BUILD_MANIFEST_SIGNER` plus `SHOREBIRD_BUILD_MANIFEST_SIGNER_KEY_ID`
 (§10.5). Paths only, no key material.
 
+## Hardened toolchain engines (P6)
+
+```sh
+scripts/hardened_toolchain.py --profile hardened --production \
+  --release-pins release-pins/release-pins.json describe
+```
+
+reads the root pin and delegations floor written by `sync --write-repo-pins`
+(or `OPEN_SHOREBIRD_RELEASE_ROOT`). It prints the engine GN args, the
+toolchain ID and the `toolchain_security.json` the CLI reads. Use `gn-args`,
+`toolchain-security --output <shorebird>/bin/internal/toolchain_security.json`
+and `verify-args <out>/args.gn` for each step. For `hardened-diversified`,
+add `--diversification-profile PRIVATE/diversification-profile.json`
+(`HARDENING_CONTRACTS.md` §11.11). Then publish the catalog with
+`OPEN_SHOREBIRD_ARTIFACT_CATALOG_PROFILE=hardened-diversified` and
+`OPEN_SHOREBIRD_DIVERSIFICATION_PROFILE_ID`. `--production` refuses every
+DEVELOPMENT-ONLY input. A Windows release that declares its Authenticode
+signer sets `SHOREBIRD_WINDOWS_SIGNING_CERT_SHA256` on the build machine
+(§12.4). The lifecycle runbook for devices is in §12.9.
+
 ## KMS/HSM signers
 
 `init --production --external build-manifest=PUB.pem` (also `artifact-catalog`

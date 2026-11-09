@@ -15,6 +15,9 @@ documents listed as v2 below; every other document stays v1. **Contract v3
 (2026-11-09) in the Dart VM and dart2bytecode, the updater, engine build,
 flutter_tools, CLI and scripts; §11 records it. Only `hardened-diversified`
 documents use v3; legacy and hardened outputs are unchanged byte for byte.
+**P6 (platform acceptance) is implemented** (2026-11-09) up to production
+keys and physical devices; §12 records it, with the remaining operator and
+device actions in §12.9.
 The server parts of P1–P5 are not implemented yet. Evidence that informed it is in [HARDENING_P0_EVIDENCE.md](HARDENING_P0_EVIDENCE.md).
 
 Machine-checkable parts:
@@ -33,6 +36,7 @@ Machine-checkable parts:
 | Release record (P4) | `docs/schemas/release-record.v2.schema.json` | `docs/schemas/examples/release-record.v2.json` |
 | Security policy v3 (P5) | `docs/schemas/security-policy.v3.schema.json` | `docs/schemas/examples/security-policy.v3.hardened-diversified.json` |
 | Build manifest v3 (P5) | `docs/schemas/build-manifest.v3.schema.json` | `docs/schemas/examples/build-manifest.v3.ios-arm64.json` |
+| Windows Authenticode identity (P6) | optional `package_identity.windows_signing_cert_sha256` in the v2 and v3 build-manifest schemas | `scripts/test_hardening_contracts.py` (§12.4) |
 | Release record v3 (P5) | `docs/schemas/release-record.v3.schema.json` | `docs/schemas/examples/release-record.v3.json` |
 | Build identity, artifact catalog v3 (P5) | `docs/schemas/build-identity.v3.schema.json`, `docs/schemas/artifact-catalog.v3.schema.json` | v1 examples with the v3 fields (tests) |
 | Diversification profile (P5) | `docs/schemas/diversification-profile.v3.schema.json` | `scripts/testdata/diversification/profile.DEVELOPMENT-ONLY.json` |
@@ -759,13 +763,15 @@ artifact that the build packages.
 | macOS | each slice of `FlutterMacOS.xcframework/macos-arm64_x86_64/.../FlutterMacOS` |
 | Windows | `flutter_windows.dll` |
 | Linux | `libflutter_linux_gtk.so` |
+| Android | `lib/<abi>/libflutter.so` of each engine jar Gradle resolved (P6, §12.2) |
 
-Android has no expected value: `libflutter.so` reaches the build through
-Gradle's Maven resolution, which flutter_tools does not see. Wiring that is
-P6. Android is therefore the only platform where a missing module entry is
-accepted. When an entry is present there, it is enforced.
+Android had no expected value before P6, and a missing Android entry was
+accepted. P6 measures the jars Gradle resolves (§12.2). Since then a
+missing entry is `module_unbound` on every platform (§12.3).
 
-The updater measures once per process. Its startup cost has not been measured on devices yet (P6).
+The updater measures once per process. Its cost is logged on every hardened
+start. Desktop figures are in §12.7; device figures are an operator action
+(§12.9).
 
 ### 9.3 Platform package identity adapters
 
@@ -774,12 +780,13 @@ The updater measures once per process. Its startup cost has not been measured on
 | Android | SHA-256 of each signer certificate in the installed `base.apk` APK Signature Scheme v3.1/v3/v2 block (v1-only APKs have no identity). Every installed signer must be listed. Several allowed digests cover rotation and Play App Signing. | implemented; parser unit-tested, device untested |
 | macOS | `SecCodeCheckValidity` of the running process, then its `kSecCodeInfoTeamIdentifier`. Ad-hoc or unsigned code has no team and fails. | implemented; tested on this host (ad-hoc path) |
 | iOS | No public API exposes the running team identifier. A manifest that declares one fails closed (`package_identity_unsupported`), and the CLI and flutter_tools refuse to write one. | unsupported |
-| Windows | Authenticode signer of the loaded module | unsupported (P6) |
+| Windows | `WinVerifyTrust` (offline) of the loaded engine module's file, opened share-read and re-measured equal to the loaded module; SHA-256 of the primary signer's leaf certificate (§12.4) | implemented (P6); tested on a Windows ARM64 VM |
 | Linux | none: deployment trust (package manager, file ownership) | unsupported |
 
 Identities are optional. They are declared with
 `SHOREBIRD_ANDROID_SIGNING_CERT_SHA256` (hex, or keytool form with colons)
-and `SHOREBIRD_APPLE_TEAM_IDS`. A declaration applies only to the platform
+, `SHOREBIRD_APPLE_TEAM_IDS` and (P6)
+`SHOREBIRD_WINDOWS_SIGNING_CERT_SHA256`. A declaration applies only to the platform
 that can verify it, and both flutter_tools and the CLI refuse it for any
 other platform. The Android adapter reads the signer that the OS verified at
 install time. It does not re-verify the APK.
@@ -888,16 +895,11 @@ but not the measurement.
 ### 9.7 Deferred
 
 - **P4.** Done client-side in contract v2 (§10); the server parts are §10.9.
-- **P6.**
-  - Android module measurement source (Gradle Maven `libflutter.so`).
-  - Windows Authenticode adapter.
-  - A hardened toolchain in CI that carries `shorebird_release_root`.
-  - Re-verification of the final distributed artifact by the CLI (IPA, AAB,
-    app bundle).
-  - Lifecycle negative cases: a tampered YAML and a replaced engine library
-    on a real install, and recovery by reinstall.
-  - Device evidence for the Android and iOS paths.
-  - Measuring cold-start cost on devices.
+- **P6.** Done in §12. That covers the Android measurement source, the
+  Windows Authenticode adapter, the hardened CI leg and toolchain tooling,
+  final-artifact re-verification, and lifecycle negatives with startup cost
+  on a macOS install. Device evidence and device cold-start cost are the
+  operator actions in §12.9.
 
 ## 10. Contract v2: release root of trust (P4)
 
@@ -1175,12 +1177,10 @@ lifecycle evidence.
   record is kept but not enforced.
 - **P5.** The `hardened-diversified` profile: implemented as contract v3
   (§11).
-- **P6.**
-  - A hardened CI toolchain built with `shorebird_release_root`, which writes
-    a v2 `toolchain_security.json`.
-  - Production values for `OPEN_SHOREBIRD_RELEASE_TRUST` and
-    `OPEN_SHOREBIRD_RELEASE_ROOT`.
-  - Lifecycle and device evidence for rotation and revocation.
+- **P6.** The hardened toolchain tooling and its CI leg are in §12.6.
+  Production values for `OPEN_SHOREBIRD_RELEASE_TRUST` and
+  `OPEN_SHOREBIRD_RELEASE_ROOT`, and device evidence for rotation and
+  revocation, are operator actions (§12.9).
 
 ### 10.10 Operator procedures
 
@@ -1521,9 +1521,11 @@ Implementation decisions recorded here (not in the plan):
   replacement; macOS arm64 was checked locally (§11.9).
 - **P4b.** Server storage and enforcement of the release record, which
   now includes `diversification_profile_id`.
-- **P6.** A diversified CI toolchain (a release-lineage engine build with
-  `dart_bytecode_profile`, its `toolchain_security.json` v3 and catalog);
-  lifecycle and device evidence for diversified releases.
+- **P6.** `hardened_toolchain.py --profile hardened-diversified` produces the
+  engine args, `toolchain_security.json` v3 and the toolchain ID, and
+  `publish_artifact_catalog.sh` produces the v3 catalog (§12.6). Building
+  the release-lineage engine with the private profile, and lifecycle and
+  device evidence for diversified releases, are operator actions (§12.9).
 
 ### 11.11 Operator procedures
 
@@ -1534,3 +1536,249 @@ Implementation decisions recorded here (not in the plan):
 | Release and patch machines | `SHOREBIRD_DIVERSIFICATION_PROFILE=PRIVATE/diversification-profile.json` |
 | Reproduce or recover | `scripts/diversification_profile.py derive PRIVATE/diversification-seed.json` re-creates the profile byte for byte; a lost seed and profile mean a new native release with a new profile, never a guessed map |
 | Check | `scripts/diversification_profile.py verify PROFILE --production --expect-id ID` |
+
+## 12. P6 decisions (platform acceptance and rollout)
+
+P6 closes the hand-offs of §9.7, §10.9 and §11.10 that need no production
+key, owner secret or physical device, and turns each remaining one into a
+single command for the operator (§12.9). It adds no contract version. The
+one document change is an optional field, `windows_signing_cert_sha256`, in
+`package_identity` of the v2 and v3 build manifests (§12.4). The updater and
+flutter_tools that read and write it ship together in one toolchain, and a
+release always runs the updater it was built with, so no released app ever
+reads a manifest written by a newer toolchain. Legacy output and behaviour
+are unchanged: every P6 path runs only for `hardened` and
+`hardened-diversified`.
+
+### 12.1 Evidence classes
+
+| Class | What it shows | Where |
+| --- | --- | --- |
+| Unit / integration (host) | gate, adapters, packaging, re-verification and tooling rules, including every refusal | Rust updater suite, flutter_tools and CLI tests, Gradle plugin tests, `scripts/test_*.py` |
+| Engine unit tests, hardened build | the engine compiled with `shorebird_security_profile = "hardened"` and a release-root pin runs its integrity and profile controls | `shorebird_unittests` of a hardened `macos_release_arm64` (local) and the CI leg in §12.6 |
+| Windows host (ARM64 VM) | the Authenticode adapter on a real `WinVerifyTrust` | `windows_adapter_verifies_authenticode_on_the_open_file` and the integrity suite on the Parallels "CWindows 11" VM |
+| Real install, desktop | the gate on a built, installed app: tamper, replace, reinstall, startup cost | `scripts/hardened_lifecycle.py desktop` on macOS arm64 (§12.7) |
+| Device (Android, iOS) | the same on devices | operator action (§12.9); the runbook is `scripts/hardened_lifecycle.py android` / `ios` |
+
+All P6 evidence uses DEVELOPMENT-ONLY trust material: the committed release
+root, delegations and build-manifest key, and a throwaway patch key. That is
+enough to show the gate's behaviour. It says nothing about production key
+custody, which stays an operator action.
+
+### 12.2 Android engine measurement
+
+Gradle resolves `libflutter.so` from Maven (`io.flutter:<abi>_<mode>`), out
+of flutter_tools' sight (§9.2). P6 hands those jars to the build:
+
+- The Flutter Gradle plugin (`ShorebirdEngineJars.kt`, one optional
+  `@InputFiles` on `BaseFlutterTask`, like `shorebirdTraceFile`) takes, for a
+  hardened build only (`SHOREBIRD_SECURITY_PROFILE` set and not `legacy`),
+  the per-ABI engine jars of the variant's `<variant>RuntimeClasspath`
+  through an artifact view filtered to `io.flutter:*_<mode>` modules. It
+  passes their absolute paths to `flutter assemble` as the JSON array
+  `SHOREBIRD_ANDROID_ENGINE_JARS`. A legacy build never resolves anything
+  new.
+- flutter_tools (`shorebirdAndroidEngineModuleMeasurements`) opens each jar
+  and measures its single `lib/<abi>/libflutter.so` under the §9.2 ELF rule.
+  The ABIs map to `aarch64`, `arm`, `x86_64` and `x86`. It refuses to sign
+  when the variable is unset or empty, is not a JSON array of strings, names
+  a missing jar, or a jar has no `libflutter.so`, more than one, an unknown
+  ABI, or repeats an ABI.
+
+The packaged library is the jar's library: AGP copies it without change, and
+strips only the symbol table, which is not in a `PT_LOAD` segment. The
+Android re-verification (§12.5) checks exactly that on the distributed AAB
+and APK.
+
+### 12.3 Strict module binding on every platform
+
+§9.2 accepted a missing module entry on Android only. Now that Android
+entries exist, that exception is gone. A hardened manifest without an entry
+for the running platform and architecture is refused with `module_unbound`
+everywhere. A release built by an earlier toolchain keeps its own (earlier)
+updater, so this does not affect apps already built.
+
+The gate's cost is logged on every hardened start as
+`Integrity check passed (N us)`, and the failure line also carries the
+microseconds. That log line is the startup-cost measurement point of §12.7.
+
+### 12.4 Windows Authenticode identity
+
+| | |
+| --- | --- |
+| Declaration | `SHOREBIRD_WINDOWS_SIGNING_CERT_SHA256`: one or more SHA-256 digests (hex or colon form) of the DER Authenticode signing certificate. Several digests allow rotation. flutter_tools and the CLI refuse it for any other platform. |
+| Manifest | `package_identity.windows_signing_cert_sha256`: a sorted, non-empty list of lowercase hex digests (optional; v2 and v3 schemas, validator uniqueness) |
+| Adapter | `package_identity::windows_module_signers` checks the loaded engine module's file. It opens the file with `FILE_SHARE_READ` only, so nobody can write to or replace it during the check. It re-measures those bytes and requires them to equal the measurement of the loaded module, so the signer belongs to the bytes that run. It then calls `WinVerifyTrust(WINTRUST_ACTION_GENERIC_VERIFY_V2)` on the same handle, with no UI, `WTD_REVOKE_NONE` and `WTD_CACHE_ONLY_URL_RETRIEVAL`: the device check never uses the network, like the clock-free rule of §10.3. Only `ERROR_SUCCESS` is accepted. The signer is the leaf certificate of the primary signer (`WTHelperProvDataFromStateData` → `WTHelperGetProvSignerFromChain` → `WTHelperGetProvCertFromChain`), and its DER SHA-256 must be listed. The state is always closed. |
+| Failures | an unsigned or invalid file, a file that differs from the loaded module, or no signer gives `package_identity_unavailable`. A signer not listed gives `package_identity_mismatch`. |
+| Not covered | revocation (offline by design; rotation by listing digests is the control), catalog-signed files, and the signature of the executable or other DLLs (the engine module contains the updater, §9.2) |
+
+### 12.5 Re-verification of the final distributed artifact
+
+`shorebird release` (hardened and hardened-diversified) re-verifies what it
+is about to upload, after the platform build and after the release record is
+built. A failure stops the release before anything is uploaded. It runs the hidden flutter_tools command
+`flutter shorebird-verify-artifact --artifact=<path> --platform=<p>
+--record-manifest=<sha256>...` with the same security environment as the
+build (`shorebird_release_artifact.dart`).
+
+- It reads the artifact as a directory (`.app`, xcarchive, Windows
+  `Release`, Linux bundle) without following symbolic links, or as a ZIP
+  (`.aab`, `.apk`, `.ipa`). It finds every bundled `shorebird.yaml` and every
+  packaged engine library: Android `lib/<abi>/libflutter.so`, iOS
+  `Flutter.framework/Flutter` (simulator slices ignored), macOS each slice of
+  `FlutterMacOS`, Windows `flutter_windows.dll` (architecture from the PE
+  machine), Linux `libflutter_linux_gtk.so` (from the ELF machine).
+- Every manifest is verified the way the updater verifies it: last line,
+  single occurrence, `v2.`/`v3.` prefix, release trust against the compiled
+  root, role key, Ed25519 signature, policy fields (profile, toolchain,
+  development flag, root, delegations digest, diversification profile), and
+  the configuration digest. Its digest must be one of the release record's
+  `build_manifests`.
+- Every packaged engine library must have a manifest module entry for its
+  platform and architecture (`module_unbound`), with an equal measurement
+  (`module_mismatch`).
+- Refusal codes: `artifact_missing`, `no_config`, `no_engine`,
+  `unsupported`, `ambiguous`, `not_recorded`, `module_unbound`,
+  `module_mismatch`, and the manifest codes. The CLI prints the code and
+  fails the release.
+
+The CLI skips an Android archive (AAR), and logs that it did. Its host app
+packages the engine, so the AAR has no engine to bind. Package identities
+(APK signer, team ID, Authenticode) are applied by the store or the
+operator after the build. Re-verification therefore checks binding and
+measurement only, and the device checks identity.
+
+### 12.6 Hardened toolchain tooling and CI
+
+`scripts/hardened_toolchain.py` is the single description of a hardened or
+hardened-diversified toolchain build. From the profile, the release-root pin
+(`--release-root`/`OPEN_SHOREBIRD_RELEASE_ROOT`, `--release-pins` from
+`provision_release_keys.sh`, or the DEVELOPMENT-ONLY root with
+`--development`), the delegations floor and, for diversified builds, the
+lineage profile, it prints or writes:
+
+- `gn-args`: the engine `--gn-args` fragment (`shorebird_security_profile`,
+  `shorebird_toolchain_id`, `shorebird_release_root`,
+  `shorebird_release_min_delegations_version`, the development flag,
+  `dart_bytecode_profile`);
+- `toolchain-security`: `bin/internal/toolchain_security.json`, v2 for
+  hardened and v3 for diversified, accepted by the CLI's
+  `ToolchainSecurity.parse`;
+- `verify-args`: checks a built `args.gn` against the description;
+- `github-env`: the same values for a CI job.
+
+The toolchain ID is computed the way `artifact_catalog.py` computes it (§3;
+contract 3 plus the profile ID for diversified builds), so the engine, the
+CLI and the catalog cannot disagree. Any DEVELOPMENT-ONLY input makes it a
+development toolchain: the engine gets
+`shorebird_security_development_exceptions = true`,
+`toolchain_security.json` says so, and `shorebird release` refuses it.
+`--production` refuses DEVELOPMENT-ONLY inputs outright.
+`publish_artifact_catalog.sh` now also writes the v3 catalog of a diversified
+toolchain (`OPEN_SHOREBIRD_ARTIFACT_CATALOG_PROFILE=hardened-diversified`
+plus `OPEN_SHOREBIRD_DIVERSIFICATION_PROFILE_ID`). It refuses one without
+the profile ID, the production key or the release root.
+
+CI (`open-shorebird-ci.yml`, checked by `verify_ci_workflow.rb`):
+
+- `macos-engine-tests` gains one arm64 leg, `shorebird-hardened`. It builds
+  the same engine configuration plus the `hardened_toolchain.py --development`
+  GN args. `verify-args` checks its `args.gn`, and its `toolchain_security.json`
+  is kept as evidence. It runs `shorebird_unittests`. The inventory
+  validator requires every legacy control plus the integrity and
+  security-profile controls. It also requires the log to show that the
+  binary's compiled profile is hardened.
+- `source-checks` runs `test_hardened_toolchain.py` and
+  `test_hardened_lifecycle.py`. `cli-artifacts` runs the re-verification
+  tests on every host.
+
+The release engines CI publishes stay legacy. A published hardened toolchain
+needs the production root (an owner variable). Its engine shares
+`engine.version` with the legacy engines, so it also needs its own artifact
+store and catalog origin. Both are operator actions (§12.9).
+
+### 12.7 Lifecycle negatives and startup cost
+
+`scripts/hardened_lifecycle.py` runs the lifecycle on a real installation in
+four steps:
+
+1. `baseline`: launched N times; the gate must pass.
+2. `tampered-config`: `base_url` in the bundled YAML is redirected; the gate
+   must refuse with `config_digest_mismatch`.
+3. `replaced-engine`: one byte of a measured read-only section of the engine
+   library is flipped (ELF `.rodata`, PE `.rdata`, Mach-O `__TEXT,__cstring`,
+   every slice), and the package is re-signed the way an attacker can; the
+   gate must refuse with `module_mismatch`.
+4. `reinstalled`: the original is installed again and launched N times; the
+   gate must pass.
+
+It reads the gate's log lines, records the startup-cost samples and writes
+JSON evidence. It exits 0 only if every expectation holds.
+
+Result on macOS arm64 (2026-11-09, local hardened `macos_release_arm64`
+engine with the DEVELOPMENT-ONLY root, a `flutter create` app, release
+build). The artifact re-verification passed. Then:
+
+| Step | Result |
+| --- | --- |
+| baseline ×5 | passed |
+| tampered-config | refused `config_digest_mismatch`; the bundled release ran |
+| replaced-engine (ad-hoc re-signed) | refused `module_mismatch`; the bundled release ran |
+| reinstalled ×5 | passed |
+| Gate cost (10 launches) | 9.0–66.1 ms, median 36.6 ms. The distribution is bimodal: about 9 ms when the framework pages are cached, and 55–66 ms otherwise. The gate hashes every non-writable section of the roughly 30 MB `FlutterMacOS` once per process. |
+
+A debug-build host test (`integrity_gate_startup_cost_on_this_host`) gives
+about 1.2 ms (p50) for the gate itself, excluding the measurement. So the
+cost is the module measurement. A measurement that hashes only executable
+sections, or the on-disk code-signing hash, would cost less. That is a
+contract change that would need its own review, and it is not part of P6.
+
+### 12.8 Reject/accept matrix (P6 additions)
+
+| Case | Result | Tests |
+| --- | --- | --- |
+| Hardened Android build: engine jars from Gradle | one module entry per ABI | Gradle `ShorebirdEngineJarsTest`; flutter_tools `Android binds the libflutter.so of every engine jar Gradle resolved` |
+| Android jars unset, empty, not JSON, missing, wrong layout, unknown or duplicate ABI | build refused | `Android refuses to sign without a measurable engine library for each jar` |
+| Legacy Android build | no jar resolution, output unchanged | `only hardened builds hand engine jars to flutter assemble` |
+| Hardened manifest without the running module (any platform, Android included) | reject `module_unbound` | `rejects_a_replaced_or_unmeasurable_engine_module` |
+| Windows: listed signer / unlisted signer / malformed declaration | accept / `package_identity_mismatch` / manifest refused | `windows_authenticode_identity_binds_the_module_signer`, `windows_identity_shape_is_checked`; validator `test_windows_authenticode_identity_is_an_optional_p6_field` |
+| Windows: unsigned file, file differs from loaded module, embedded-signed system file | `0x800B0100` refused / refused / one stable digest | `windows_adapter_verifies_authenticode_on_the_open_file` (Windows ARM64 VM) |
+| Windows identity declared for another platform | build and release refused | flutter_tools `a Windows Authenticode identity is written only for Windows, only when declared`; CLI `security_profile_test.dart` |
+| Distributed artifact: tampered YAML, replaced engine, extra unbound ABI, manifest not in the record, other toolchain, no config | release refused before upload | `shorebird_release_artifact_test.dart`; CLI `release_command_test.dart` (`a distributable that fails re-verification is never uploaded`) |
+| Legacy release | never re-verified | `release_command_test.dart`; `re-verification is only for hardened toolchains` |
+| Toolchain inputs: development root without `--development`, development inputs with `--production`, malformed pins, legacy engine with security args, diversified non-interpreter engine | refused | `test_hardened_toolchain.py` |
+| Diversified catalog: other profile ID, missing ID, hardened verifier, development signature | refused | `test_artifact_catalog.py` `test_hardened_diversified_catalog_names_its_profile`, `test_hardened_diversified_catalog_needs_the_profile_id` |
+| Installed macOS app: tampered YAML / replaced engine / reinstall | `config_digest_mismatch` / `module_mismatch` / pass | §12.7 (`hardened_lifecycle.py`; orchestration in `test_hardened_lifecycle.py`) |
+
+### 12.9 Operator and device actions
+
+Every action below is a single command. Each needs a production key, an owner
+secret or variable, or a physical device. None was faked.
+
+- [ ] **Production release root and delegations.**
+      `scripts/provision_release_keys.sh` (`docs/RELEASE_KEYS.md`), then set
+      `OPEN_SHOREBIRD_RELEASE_ROOT`, `OPEN_SHOREBIRD_RELEASE_TRUST` and the
+      catalog key as described there.
+- [ ] **Hardened toolchain engines.** Build with
+      `--gn-args="$(scripts/hardened_toolchain.py --profile hardened --production gn-args)"`,
+      or `--profile hardened-diversified --diversification-profile PRIVATE/diversification-profile.json`.
+      Write `bin/internal/toolchain_security.json` with
+      `scripts/hardened_toolchain.py ... --production toolchain-security --output ...`,
+      and publish the catalog with `OPEN_SHOREBIRD_ARTIFACT_CATALOG_PROFILE`
+      set to the profile, to a store separate from the legacy mirror.
+- [ ] **Android device.** On a release built with the hardened toolchain and
+      the release keystore, run
+      `scripts/hardened_lifecycle.py --output android.json android --apk app-release.apk --package <id> --keystore <ks> --ks-pass env:KS_PASS`.
+      It needs adb and build-tools. Also declare
+      `SHOREBIRD_ANDROID_SIGNING_CERT_SHA256` to cover the APK-signer path.
+- [ ] **iOS device.** On a signed `Runner.app`, run
+      `scripts/hardened_lifecycle.py --output ios.json ios --app Runner.app --bundle-id <id> --device <udid> --identity "<Apple Development identity>"`.
+      It uses `xcrun devicectl`. The re-signed mutated copies need a
+      development profile that covers the device.
+- [ ] **Windows and Linux installs.** Run
+      `scripts/hardened_lifecycle.py --output windows.json desktop --platform windows --app build\windows\arm64\runner\Release`
+      on a Windows host with an Authenticode-signed `flutter_windows.dll`,
+      and the `linux` equivalent on a Linux bundle.
+- [ ] **Startup cost on devices.** These are the `startup_cost` samples in
+      the Android and iOS evidence. Compare them with the macOS figures in
+      §12.7.

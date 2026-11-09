@@ -1,0 +1,176 @@
+{
+  "date": "2026-11-09",
+  "evidence_class": "real install on a macOS arm64 host (not a device; DEVELOPMENT-ONLY release root)",
+  "inputs": {
+    "artifact_reverification": "flutter shorebird-verify-artifact --platform=macos: verified, 1 manifest, module macos/aarch64 sha256:5be78cdd40953f0fb3ce7649ab91b282035cb40cc5964ba23b5bd64afe822e92",
+    "command": "scripts/hardened_lifecycle.py --runs 5 --seconds 5 desktop --platform macos --app hardened_app.app",
+    "engine": "local build out/macos_release_arm64_hardened (engine.version 44a553c3b3c7797c7f0f20961d46a8b17e06444c plus uncommitted P6 updater changes); gn args from scripts/hardened_toolchain.py --profile hardened --development",
+    "release_trust": "scripts/testdata/release-trust/release-trust.DEVELOPMENT-ONLY.json",
+    "toolchain_id": "sha256:3bda5a69a26a24fb83b7ff14611b02ddfe2a6518a9d3e7613dd128b89f60ed28"
+  },
+  "record": "HARDENING-P6 macOS lifecycle negatives",
+  "result": {
+    "accepted": true,
+    "failures": [],
+    "launches": [
+      {
+        "code": null,
+        "lines": [
+          "2026-11-09 21:46:51.124 Df hardened_app[46835:5efc990] [dev.shorebird:updater::integrity] [shorebird] Integrity check passed (17531 us)"
+        ],
+        "micros": 17531,
+        "outcome": "passed",
+        "run": 1,
+        "variant": "baseline"
+      },
+      {
+        "code": null,
+        "lines": [
+          "2026-11-09 21:47:06.795 Df hardened_app[47434:5efd069] [dev.shorebird:updater::integrity] [shorebird] Integrity check passed (55726 us)"
+        ],
+        "micros": 55726,
+        "outcome": "passed",
+        "run": 2,
+        "variant": "baseline"
+      },
+      {
+        "code": null,
+        "lines": [
+          "2026-11-09 21:47:17.419 Df hardened_app[47803:5efd554] [dev.shorebird:updater::integrity] [shorebird] Integrity check passed (9116 us)"
+        ],
+        "micros": 9116,
+        "outcome": "passed",
+        "run": 3,
+        "variant": "baseline"
+      },
+      {
+        "code": null,
+        "lines": [
+          "2026-11-09 21:47:24.493 Df hardened_app[48131:5efd8ce] [dev.shorebird:updater::integrity] [shorebird] Integrity check passed (9014 us)"
+        ],
+        "micros": 9014,
+        "outcome": "passed",
+        "run": 4,
+        "variant": "baseline"
+      },
+      {
+        "code": null,
+        "lines": [
+          "2026-11-09 21:47:31.505 Df hardened_app[48491:5efdca5] [dev.shorebird:updater::integrity] [shorebird] Integrity check passed (9547 us)"
+        ],
+        "micros": 9547,
+        "outcome": "passed",
+        "run": 5,
+        "variant": "baseline"
+      },
+      {
+        "code": "config_digest_mismatch",
+        "lines": [
+          "[ERROR:flutter/shell/common/shorebird/updater.cc(181)] Shorebird integrity check failed (config_digest_mismatch); running the bundled release without patches. Reinstall the app from its original source.",
+          "2026-11-09 21:47:43.095 F  hardened_app[49075:5efe2ee] [dev.shorebird:updater::integrity] [shorebird] integrity check failed: config_digest_mismatch (282 us). Patches and protected keys are disabled; the bundled release runs. Reinstall the app from its original source.",
+          "2026-11-09 21:47:43.095 F  hardened_app[49075:5efe2ee] [dev.shorebird:updater::c_api] [shorebird] Error initializing updater: Integrity check refused this installation: config_digest_mismatch"
+        ],
+        "micros": null,
+        "outcome": "refused",
+        "run": 1,
+        "variant": "tampered-config"
+      },
+      {
+        "code": "module_mismatch",
+        "lines": [
+          "[ERROR:flutter/shell/common/shorebird/updater.cc(181)] Shorebird integrity check failed (module_mismatch); running the bundled release without patches. Reinstall the app from its original source.",
+          "2026-11-09 21:47:54.842 F  hardened_app[49644:5efeb33] [dev.shorebird:updater::integrity] [shorebird] integrity check failed: module_mismatch (17723 us). Patches and protected keys are disabled; the bundled release runs. Reinstall the app from its original source.",
+          "2026-11-09 21:47:54.842 F  hardened_app[49644:5efeb33] [dev.shorebird:updater::c_api] [shorebird] Error initializing updater: Integrity check refused this installation: module_mismatch"
+        ],
+        "micros": null,
+        "outcome": "refused",
+        "run": 1,
+        "variant": "replaced-engine"
+      },
+      {
+        "code": null,
+        "lines": [
+          "2026-11-09 21:48:10.532 Df hardened_app[50660:5eff7d7] [dev.shorebird:updater::integrity] [shorebird] Integrity check passed (17151 us)"
+        ],
+        "micros": 17151,
+        "outcome": "passed",
+        "run": 1,
+        "variant": "reinstalled"
+      },
+      {
+        "code": null,
+        "lines": [
+          "2026-11-09 21:48:30.542 Df hardened_app[53227:5f00f1f] [dev.shorebird:updater::integrity] [shorebird] Integrity check passed (65336 us)"
+        ],
+        "micros": 65336,
+        "outcome": "passed",
+        "run": 2,
+        "variant": "reinstalled"
+      },
+      {
+        "code": null,
+        "lines": [
+          "2026-11-09 21:48:52.070 Df hardened_app[57831:5f03929] [dev.shorebird:updater::integrity] [shorebird] Integrity check passed (59070 us)"
+        ],
+        "micros": 59070,
+        "outcome": "passed",
+        "run": 3,
+        "variant": "reinstalled"
+      },
+      {
+        "code": null,
+        "lines": [
+          "2026-11-09 21:49:11.749 Df hardened_app[60723:5f051df] [dev.shorebird:updater::integrity] [shorebird] Integrity check passed (63797 us)"
+        ],
+        "micros": 63797,
+        "outcome": "passed",
+        "run": 4,
+        "variant": "reinstalled"
+      },
+      {
+        "code": null,
+        "lines": [
+          "2026-11-09 21:49:32.029 Df hardened_app[62563:5f0636f] [dev.shorebird:updater::integrity] [shorebird] Integrity check passed (66055 us)"
+        ],
+        "micros": 66055,
+        "outcome": "passed",
+        "run": 5,
+        "variant": "reinstalled"
+      }
+    ],
+    "platform": "macos",
+    "release": {
+      "manifest_contract_version": 2,
+      "modules": [
+        {
+          "arch": "aarch64",
+          "measurement": "sha256:5be78cdd40953f0fb3ce7649ab91b282035cb40cc5964ba23b5bd64afe822e92",
+          "platform": "macos"
+        }
+      ],
+      "security_development_exceptions": "true",
+      "security_profile": "hardened",
+      "toolchain_id": "sha256:3bda5a69a26a24fb83b7ff14611b02ddfe2a6518a9d3e7613dd128b89f60ed28"
+    },
+    "schema": "open-shorebird.hardened-lifecycle-evidence",
+    "startup_cost": {
+      "max_us": 66055,
+      "min_us": 9014,
+      "p50_us": 36628,
+      "samples_us": [
+        17531,
+        55726,
+        9116,
+        9014,
+        9547,
+        17151,
+        65336,
+        59070,
+        63797,
+        66055
+      ]
+    },
+    "subject": "hardened_app.app (flutter create, release, macOS arm64)",
+    "version": 1
+  }
+}

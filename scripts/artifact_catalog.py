@@ -302,6 +302,7 @@ def verify_catalog(
     engine_revision: str | None = None,
     allow_unsigned: bool = False,
     release_trust: Any = None,
+    diversification_profile_id: str | None = None,
 ) -> tuple[dict, str]:
     """Returns (catalog, trust) where trust is production/development/unsigned.
 
@@ -311,8 +312,13 @@ def verify_catalog(
 
     Raises CatalogError with a precise reason when the catalog must not be used.
     """
-    if profile not in ('legacy', 'hardened'):
+    if profile not in ('legacy', 'hardened', 'hardened-diversified'):
         raise CatalogError(f'unsupported security profile {profile}')
+    # hardened-diversified follows every hardened rule (section 11.7) and the
+    # catalog must name the toolchain's own profile.
+    hardened = profile != 'legacy'
+    if (profile == 'hardened-diversified') != (diversification_profile_id is not None):
+        raise CatalogError('a diversification profile ID is expected exactly for hardened-diversified')
     trust_errors = validate_trust(trust)
     if trust_errors:
         raise CatalogError('trust document: ' + '; '.join(trust_errors))
@@ -324,14 +330,16 @@ def verify_catalog(
         raise CatalogError('catalog: ' + '; '.join(errors))
     if engine_revision is not None and catalog['engine_revision'] != engine_revision:
         raise CatalogError(f'catalog is for engine {catalog["engine_revision"]}, not {engine_revision}')
-    if profile == 'hardened' and catalog['security_profile'] != 'hardened':
-        raise CatalogError('a hardened toolchain requires a hardened catalog')
-    if profile == 'hardened' and release_trust is None:
+    if hardened and catalog['security_profile'] != profile:
+        raise CatalogError(f'a {profile} toolchain requires a {profile} catalog')
+    if catalog.get('diversification_profile_id') != diversification_profile_id:
+        raise CatalogError('the catalog names another diversification profile')
+    if hardened and release_trust is None:
         raise CatalogError('a hardened toolchain verifies the catalog signer under the release root '
                            '(--release-trust and --root-pin)')
     digest = hashlib.sha256(catalog_bytes).hexdigest()
     if signature_bytes is None:
-        if profile == 'hardened':
+        if hardened:
             raise CatalogError('unsigned catalog: a hardened toolchain requires a production signature')
         if not allow_unsigned:
             raise CatalogError('unsigned catalog: set the explicit development override to accept it')
@@ -348,9 +356,9 @@ def verify_catalog(
     if not ed25519_verify(base64.b64decode(key['public_key']), signed_message(digest),
                           base64.b64decode(signature['signature'])):
         raise CatalogError('catalog signature does not verify')
-    if key['usage'] != 'production' and profile == 'hardened':
+    if key['usage'] != 'production' and hardened:
         raise CatalogError('a hardened toolchain rejects a catalog signed by a development key')
-    if profile == 'hardened':
+    if hardened:
         try:
             release_trust.role_key('artifact-catalog', signature['key_id'])
         except ValueError as error:  # release_trust.TrustError
@@ -425,6 +433,7 @@ def generate_catalog(
     toolchain_id: str,
     custom_base_url: str,
     security_profile: str = 'legacy',
+    diversification_profile_id: str | None = None,
     official_base_url: str = 'https://storage.googleapis.com',
     official_entries: list[dict] | None = None,
 ) -> dict:
@@ -461,12 +470,14 @@ def generate_catalog(
         artifacts.append({**entry, 'origin': 'flutter-official', 'class': 'official-unchanged',
                           'revision': upstream})
     artifacts.sort(key=lambda item: item['path'])
+    # Contract v3 (section 11.7): exactly the hardened-diversified catalog is
+    # v3 and names its profile; legacy and hardened catalogs are unchanged.
     catalog = {
         'schema': 'open-shorebird.artifact-catalog',
-        'contract_version': 1,
+        'contract_version': 3 if diversification_profile_id else 1,
         'toolchain_id': toolchain_id,
         'security_profile': security_profile,
-        'diversification_profile_id': None,
+        'diversification_profile_id': diversification_profile_id,
         'engine_revision': engine_revision,
         'upstream_engine_revision': upstream,
         'origins': {
@@ -496,8 +507,15 @@ def check_completeness(catalog: dict, overrides: list[str], upstream: str) -> No
             raise CatalogError(f'{artifact["path"]}: an official artifact must never satisfy a custom route')
 
 
-def toolchain_id_from_checkout(root: Path, security_profile: str) -> str:
-    """Contract section 3 toolchain_id for the checkout at root."""
+def toolchain_id_from_checkout(root: Path, security_profile: str,
+                               diversification_profile_id: str | None = None) -> str:
+    """Contract section 3 toolchain_id for the checkout at root.
+
+    A `hardened-diversified` toolchain is a contract v3 build identity naming
+    its diversification profile (section 11.7); every other profile is v1.
+    """
+    if (security_profile == 'hardened-diversified') != (diversification_profile_id is not None):
+        raise CatalogError('a diversification profile ID is required exactly for hardened-diversified')
     from validate_hardening_contracts import toolchain_id
 
     def head(path: Path) -> str:
@@ -519,9 +537,9 @@ def toolchain_id_from_checkout(root: Path, security_profile: str) -> str:
                                     'revision': head(root / 'shorebird-server')}
     engine = (root / 'flutter' / 'bin' / 'internal' / 'engine.version').read_text().strip()
     return toolchain_id({
-        'contract_version': 1,
+        'contract_version': 3 if diversification_profile_id else 1,
         'security_profile': security_profile,
-        'diversification_profile_id': None,
+        'diversification_profile_id': diversification_profile_id,
         'toolchain': {'engine_revision': engine},
         'fork': fork,
     })
@@ -579,7 +597,10 @@ def main(argv: list[str] | None = None) -> int:
     generate.add_argument('--engine-revision', required=True)
     generate.add_argument('--custom-base-url', required=True,
                           help='https URL of the immutable custom artifact store, including the bucket')
-    generate.add_argument('--security-profile', default='legacy', choices=('legacy', 'hardened'))
+    generate.add_argument('--security-profile', default='legacy',
+                          choices=('legacy', 'hardened', 'hardened-diversified'))
+    generate.add_argument('--diversification-profile-id',
+                          help='hardened-diversified: the sha256: profile ID (contract v3 catalog)')
     generate.add_argument('--toolchain-id', help='defaults to the workspace checkout identity')
     generate.add_argument('--workspace-root', type=Path, default=ROOT)
     generate.add_argument('--output', type=Path)
@@ -594,7 +615,8 @@ def main(argv: list[str] | None = None) -> int:
     verify.add_argument('--catalog', type=Path, required=True)
     verify.add_argument('--signature', type=Path)
     verify.add_argument('--trust', type=Path, default=TRUST_FILE)
-    verify.add_argument('--profile', choices=('legacy', 'hardened'), default='legacy')
+    verify.add_argument('--profile', choices=('legacy', 'hardened', 'hardened-diversified'), default='legacy')
+    verify.add_argument('--diversification-profile-id', help='hardened-diversified: the expected profile ID')
     verify.add_argument('--engine-revision')
     verify.add_argument('--allow-unsigned', action='store_true')
     verify.add_argument('--release-trust', type=Path, help='hardened: the release-trust bundle')
@@ -612,11 +634,15 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         if args.command == 'generate':
-            identity = args.toolchain_id or toolchain_id_from_checkout(args.workspace_root, args.security_profile)
+            if (args.security_profile == 'hardened-diversified') != bool(args.diversification_profile_id):
+                raise CatalogError('--diversification-profile-id is required exactly for hardened-diversified')
+            identity = args.toolchain_id or toolchain_id_from_checkout(
+                args.workspace_root, args.security_profile, args.diversification_profile_id)
             catalog = generate_catalog(
                 mirror_root=args.mirror_root, engine_revision=args.engine_revision,
                 toolchain_id=identity, custom_base_url=args.custom_base_url,
-                security_profile=args.security_profile)
+                security_profile=args.security_profile,
+                diversification_profile_id=args.diversification_profile_id)
             output = args.output or (args.mirror_root / 'shorebird' / args.engine_revision / CATALOG_FILE_NAME)
             _write_canonical(output, catalog)
             print(f'{output}: {len(catalog["artifacts"])} artifacts, sha256 '
@@ -642,7 +668,7 @@ def main(argv: list[str] | None = None) -> int:
             catalog, usage = verify_catalog(
                 args.catalog.read_bytes(), signature, trust, profile=args.profile,
                 engine_revision=args.engine_revision, allow_unsigned=args.allow_unsigned,
-                release_trust=release)
+                release_trust=release, diversification_profile_id=args.diversification_profile_id)
             if usage != 'production':
                 print(f'warning: {args.catalog} is {usage}-signed; never use it for a production release',
                       file=sys.stderr)

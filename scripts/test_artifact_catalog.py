@@ -235,6 +235,30 @@ class VerifyTest(CatalogFixture):
         # Legacy never consults the release root.
         self.assertEqual(self.verify(release_trust=None)[1], 'production')
 
+    def test_hardened_diversified_catalog_names_its_profile(self):
+        # P6: the v3 catalog of a hardened-diversified toolchain (section 11.7).
+        profile_id = 'sha256:' + '3' * 64
+        catalog = self.generate(security_profile='hardened-diversified', diversification_profile_id=profile_id)
+        self.assertEqual((catalog['contract_version'], catalog['security_profile'],
+                          catalog['diversification_profile_id']), (3, 'hardened-diversified', profile_id))
+        data = canonical_json(catalog)
+        signature = sign_with_seed(data, PRODUCTION_SEED)
+        trust = verified_release_trust()
+        parsed, usage = self.verify(data, signature, profile='hardened-diversified',
+                                    diversification_profile_id=profile_id, release_trust=trust)
+        self.assertEqual((parsed['diversification_profile_id'], usage), (profile_id, 'production'))
+        for kwargs, message in (
+            ({'profile': 'hardened-diversified', 'diversification_profile_id': 'sha256:' + '4' * 64},
+             'another diversification profile'),
+            ({'profile': 'hardened-diversified'}, 'exactly for hardened-diversified'),
+            ({'profile': 'hardened'}, 'requires a hardened catalog'),
+        ):
+            with self.subTest(kwargs=kwargs), self.assertRaisesRegex(ac.CatalogError, message):
+                self.verify(data, signature, release_trust=trust, **kwargs)
+        with self.assertRaisesRegex(ac.CatalogError, 'rejects a catalog signed by a development key'):
+            self.verify(data, canonical_json(ac.sign_catalog(data, ac.DEVELOPMENT_KEY)),
+                        profile='hardened-diversified', diversification_profile_id=profile_id, release_trust=trust)
+
     def test_unsigned_catalog(self):
         with self.assertRaisesRegex(ac.CatalogError, 'unsigned catalog: set the explicit development override'):
             self.verify(signature=None)
@@ -328,7 +352,8 @@ class PublishScriptTest(CatalogFixture):
         environment = {k: v for k, v in os.environ.items()
                        if k not in ('OPEN_SHOREBIRD_ARTIFACT_CATALOG_SIGNING_KEY',
                                     'OPEN_SHOREBIRD_ARTIFACT_CATALOG_TRUST', 'GITHUB_ACTIONS',
-                                    'OPEN_SHOREBIRD_RELEASE_TRUST', 'OPEN_SHOREBIRD_RELEASE_ROOT')}
+                                    'OPEN_SHOREBIRD_RELEASE_TRUST', 'OPEN_SHOREBIRD_RELEASE_ROOT',
+                                    'OPEN_SHOREBIRD_DIVERSIFICATION_PROFILE_ID')}
         environment.update(env)
         return subprocess.run([str(self.SCRIPT), str(self.mirror), ENGINE, 'https://artifacts.example.invalid/shorebird'],
                               capture_output=True, text=True, env=environment)
@@ -381,6 +406,32 @@ class PublishScriptTest(CatalogFixture):
                                           profile='hardened', engine_revision=ENGINE,
                                           release_trust=verified_release_trust())
         self.assertEqual((parsed['security_profile'], usage), ('hardened', 'production'))
+
+    @unittest.skipUnless(openssl_ed25519(), 'openssl without Ed25519 support')
+    def test_hardened_diversified_catalog_needs_the_profile_id(self):
+        trust = self.tmp / 'trust.json'
+        trust.write_bytes(canonical_json(production_trust()))
+        bundle, pin = release_trust_for()
+        environment = {'OPEN_SHOREBIRD_ARTIFACT_CATALOG_SIGNING_KEY': self.production_pem().read_text(),
+                       'OPEN_SHOREBIRD_ARTIFACT_CATALOG_TRUST': str(trust),
+                       'OPEN_SHOREBIRD_ARTIFACT_CATALOG_PROFILE': 'hardened-diversified',
+                       'OPEN_SHOREBIRD_RELEASE_TRUST': json.dumps(bundle),
+                       'OPEN_SHOREBIRD_RELEASE_ROOT': base64.b64encode(pin).decode()}
+        refused = self.run_script(environment)
+        self.assertEqual(refused.returncode, 64)
+        self.assertIn('OPEN_SHOREBIRD_DIVERSIFICATION_PROFILE_ID', refused.stderr)
+        self.assertFalse(self.catalog_files()[0].exists())
+        profile_id = 'sha256:' + '3' * 64
+        result = self.run_script({**environment, 'OPEN_SHOREBIRD_DIVERSIFICATION_PROFILE_ID': profile_id})
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('verified (production)', result.stdout)
+        catalog, signature = self.catalog_files()
+        parsed, _ = ac.verify_catalog(catalog.read_bytes(), signature.read_bytes(), production_trust(),
+                                      profile='hardened-diversified', diversification_profile_id=profile_id,
+                                      engine_revision=ENGINE, release_trust=verified_release_trust())
+        self.assertEqual((parsed['contract_version'], parsed['diversification_profile_id']), (3, profile_id))
+        self.assertEqual(parsed['toolchain_id'],
+                         ac.toolchain_id_from_checkout(ac.ROOT, 'hardened-diversified', profile_id))
 
     def test_hardened_catalog_without_the_secret_is_refused(self):
         result = self.run_script({'OPEN_SHOREBIRD_ARTIFACT_CATALOG_PROFILE': 'hardened'})

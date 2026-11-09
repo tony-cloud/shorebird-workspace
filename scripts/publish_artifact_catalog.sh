@@ -20,7 +20,10 @@
 # Catalog profile: a production-signed catalog is generated for the hardened
 # profile (OPEN_SHOREBIRD_ARTIFACT_CATALOG_PROFILE=legacy opts out); a
 # development-signed one is always legacy, and asking for hardened without the
-# production key is an error.
+# production key is an error. hardened-diversified (contract v3, P6) also needs
+# OPEN_SHOREBIRD_DIVERSIFICATION_PROFILE_ID, the sha256: profile ID the
+# diversified engine compiled (scripts/hardened_toolchain.py describe), and
+# yields a v3 catalog naming it.
 #
 # Release root (contract v2, HARDENING_CONTRACTS.md section 10): a hardened
 # catalog's signer must also be the current artifact-catalog delegate of the
@@ -44,21 +47,31 @@ if [[ -n "${OPEN_SHOREBIRD_ARTIFACT_CATALOG_SIGNING_KEY:-}" ]]; then
   profile="${OPEN_SHOREBIRD_ARTIFACT_CATALOG_PROFILE:-hardened}"
 else
   profile="${OPEN_SHOREBIRD_ARTIFACT_CATALOG_PROFILE:-legacy}"
-  if [[ "$profile" == hardened ]]; then
-    echo "error: a hardened artifact catalog needs the production key in OPEN_SHOREBIRD_ARTIFACT_CATALOG_SIGNING_KEY" >&2
+  if [[ "$profile" != legacy ]]; then
+    echo "error: a $profile artifact catalog needs the production key in OPEN_SHOREBIRD_ARTIFACT_CATALOG_SIGNING_KEY" >&2
     exit 1
   fi
 fi
 case "$profile" in
   legacy | hardened) ;;
-  *) echo "error: OPEN_SHOREBIRD_ARTIFACT_CATALOG_PROFILE must be legacy or hardened, not $profile" >&2; exit 64 ;;
+  hardened-diversified) ;;
+  *) echo "error: OPEN_SHOREBIRD_ARTIFACT_CATALOG_PROFILE must be legacy, hardened or hardened-diversified, not $profile" >&2; exit 64 ;;
 esac
+profile_args=()
+if [[ "$profile" == hardened-diversified ]]; then
+  if [[ ! "${OPEN_SHOREBIRD_DIVERSIFICATION_PROFILE_ID:-}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+    echo "error: a hardened-diversified artifact catalog needs OPEN_SHOREBIRD_DIVERSIFICATION_PROFILE_ID (sha256:<64 hex>)" >&2
+    exit 64
+  fi
+  profile_args=(--diversification-profile-id "$OPEN_SHOREBIRD_DIVERSIFICATION_PROFILE_ID")
+fi
 
 python3 "$ROOT/scripts/artifact_catalog.py" generate \
   --mirror-root "$mirror_root" \
   --engine-revision "$engine_revision" \
   --custom-base-url "$custom_base_url" \
   --security-profile "$profile" \
+  ${profile_args[@]+"${profile_args[@]}"} \
   --workspace-root "$ROOT" \
   --output "$catalog"
 
@@ -82,9 +95,9 @@ else
 fi
 
 release_args=()
-if [[ "$profile" == hardened ]]; then
+if [[ "$profile" != legacy ]]; then
   if [[ -z "${OPEN_SHOREBIRD_RELEASE_TRUST:-}" || -z "${OPEN_SHOREBIRD_RELEASE_ROOT:-}" ]]; then
-    echo "error: a hardened artifact catalog needs OPEN_SHOREBIRD_RELEASE_TRUST and OPEN_SHOREBIRD_RELEASE_ROOT (the release root that delegates the catalog key)" >&2
+    echo "error: a $profile artifact catalog needs OPEN_SHOREBIRD_RELEASE_TRUST and OPEN_SHOREBIRD_RELEASE_ROOT (the release root that delegates the catalog key)" >&2
     exit 1
   fi
   release_trust="$OPEN_SHOREBIRD_RELEASE_TRUST"
@@ -97,7 +110,8 @@ fi
 
 verify_output="$(python3 "$ROOT/scripts/artifact_catalog.py" verify \
   --catalog "$catalog" --signature "$catalog.sig" --trust "$trust" \
-  --profile "$profile" --engine-revision "$engine_revision" ${release_args[@]+"${release_args[@]}"} 2>&1)" || {
+  --profile "$profile" --engine-revision "$engine_revision" ${profile_args[@]+"${profile_args[@]}"} \
+  ${release_args[@]+"${release_args[@]}"} 2>&1)" || {
   printf '%s\n' "$verify_output" >&2
   echo "error: the signed artifact catalog does not verify against $trust" >&2
   exit 1

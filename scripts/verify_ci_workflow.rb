@@ -378,6 +378,15 @@ required_files = %w[
   docs/schemas/examples/build-manifest.v3.ios-arm64.json
   docs/schemas/examples/release-record.v3.json
   dart-sdk/runtime/tools/bytecode_profile.py
+  scripts/hardened_toolchain.py
+  scripts/test_hardened_toolchain.py
+  scripts/hardened_lifecycle.py
+  scripts/test_hardened_lifecycle.py
+  flutter/packages/flutter_tools/lib/src/shorebird/shorebird_release_artifact.dart
+  flutter/packages/flutter_tools/lib/src/shorebird/shorebird_verify_artifact_command.dart
+  flutter/packages/flutter_tools/test/general.shard/shorebird/shorebird_release_artifact_test.dart
+  flutter/packages/flutter_tools/gradle/src/main/kotlin/ShorebirdEngineJars.kt
+  flutter/packages/flutter_tools/gradle/src/test/kotlin/ShorebirdEngineJarsTest.kt
   dart-sdk/pkg/dart2bytecode/lib/bytecode_profile.dart
   dart-sdk/pkg/dart2bytecode/test/bytecode_profile_test.dart
   flutter/packages/flutter_tools/test/general.shard/shorebird/shorebird_replacement_test.dart
@@ -2600,7 +2609,7 @@ assert!(macos_matrix_runners == jobs.fetch('macos-engine').dig('strategy', 'matr
 assert!(macos_tests_job['runs-on'] == '${{ matrix.runner }}' && macos_tests_job['timeout-minutes'].to_i.between?(1, 360), 'macOS test jobs must fit the hosted job limit')
 macos_test_build_run = macos_tests_steps.find { |step| step['name'] == 'Build macOS engine test target' }.fetch('run')
 %w[
-  shorebird)\ target=flutter/shell/common/shorebird:shorebird_unittests
+  shorebird\ |\ shorebird-hardened)\ target=flutter/shell/common/shorebird:shorebird_unittests
   embedder)\ target=flutter/shell/platform/embedder:embedder_unittests
   runtime)\ target=flutter/runtime:runtime_unittests
   cocoa)\ target=flutter/shell/platform/darwin/macos:flutter_desktop_darwin_unittests
@@ -2633,8 +2642,8 @@ macos_commands = macos_run.lines.map(&:strip)
   '"$out/runtime_unittests" --gtest_filter="$runtime_filter" --gtest_repeat=1 --gtest_output="xml:$results/runtime.xml" > "$results/runtime-tests.log" 2>&1',
   %q{embedder_filter='ShorebirdInterpreterEmbedderTest.*:EmbedderTest.InvalidAOTDataSourcesMustReturnError:EmbedderTest.CanCreateAndCollectAValidElfSource:EmbedderTest.CanLaunchAndShutdownWithAValidElfSource'},
   %q{cocoa_filter='FlutterEngineTest.FullInterpreterNeverUsesNativeOrElfRoute:FlutterEngineTest.LegacyProfileKeepsPublicInitializerAndElfRoute:FlutterDartProjectShorebirdTest.*'},
-  '"$out/shorebird_unittests" --gtest_list_tests > "$results/shorebird-list.txt" 2> "$results/shorebird-list-stderr.log"',
-  '"$out/shorebird_unittests" --gtest_output="xml:$results/shorebird.xml" > "$results/shorebird-tests.log" 2>&1',
+  '"$out/shorebird_unittests" --gtest_list_tests > "$results/$SUITE-list.txt" 2> "$results/$SUITE-list-stderr.log"',
+  '"$out/shorebird_unittests" --gtest_output="xml:$results/$SUITE.xml" > "$results/$SUITE-tests.log" 2>&1',
   '"$out/embedder_unittests" --gtest_filter="$embedder_filter" --gtest_list_tests > "$results/embedder-list.txt" 2> "$results/embedder-list-stderr.log"',
   '"$out/embedder_unittests" --gtest_filter="$embedder_filter" --gtest_output="xml:$results/embedder.xml" > "$results/embedder-tests.log" 2>&1',
   '"$out/flutter_desktop_darwin_unittests" --gtest_filter="$cocoa_filter" --gtest_list_tests > "$results/cocoa-list.txt" 2> "$results/cocoa-list-stderr.log"',
@@ -2656,7 +2665,7 @@ macos_verify_job = jobs.fetch('macos-engine-tests-verify')
 macos_verify_run = job_runs(macos_verify_job).join("\n")
 macos_verify_download = macos_verify_job.fetch('steps').find { |step| step['uses'].to_s.start_with?('actions/download-artifact@') }
 assert!(Array(macos_verify_job['needs']).sort == %w[macos-engine-tests source-checks] && macos_verify_download.dig('with', 'pattern') == 'macos-interpreter-engine-tests-${{ matrix.arch }}-*' && macos_verify_download.dig('with', 'merge-multiple') == true, 'macOS inventory aggregation must wait for and download every per-target evidence artifact for its architecture')
-assert!(macos_verify_run.include?('for suite in shorebird embedder runtime cocoa') && macos_verify_run.include?('python3 scripts/verify_macos_interpreter_engine_tests.py macos-test-evidence/${{ matrix.arch }} --arch=${{ matrix.arch }}') && !macos_verify_run.include?('--suite') && macos_verify_job.fetch('steps').none? { |step| step.key?('continue-on-error') || step.key?('if') }, 'macOS inventory aggregation must run the unrestricted all-suite validator with no skips')
+assert!(macos_verify_run.include?('suites="shorebird embedder runtime cocoa"') && macos_verify_run.include?('for suite in $suites; do') && macos_verify_run.include?('python3 scripts/verify_macos_interpreter_engine_tests.py macos-test-evidence/${{ matrix.arch }} --arch=${{ matrix.arch }}') && !macos_verify_run.include?('--suite') && macos_verify_job.fetch('steps').none? { |step| step.key?('continue-on-error') || step.key?('if') }, 'macOS inventory aggregation must run the unrestricted all-suite validator with no skips')
 assert!(macos_validator.include?('"X64"') && macos_validator.include?('"Arm64"') && macos_validator.include?('MacArchitectures/MacInterpreterSelectionV2Test.'), 'macOS validator must still require natively executed MacArchitectures Arm64 and X64 controls')
 # Acceptance gates must wait for the artifact build, every test target, and the aggregated inventory.
 %w[macos-engine macos-engine-tests macos-engine-tests-verify].each do |gate|
@@ -3875,6 +3884,43 @@ assert!(ios_mixed_run.include?('dart_mixed_mode=true shorebird_mixed_mode=true s
   ios_mixed_run.include?("if grep -qF 'mixed_dev_patch' \"$engine_strings\"; then") &&
   ios_mixed_run.include?('flutter/engine/src/out/ios_release/Flutter.framework/Flutter'),
   'iOS engine must contain mixed mode and must not contain the mixed_dev_patch hook')
+
+# P6 (HARDENING_CONTRACTS.md section 12): the hardened toolchain is exercised in CI.
+# One extra macos-engine-tests leg (arm64 only) configures the identical engine as a
+# hardened toolchain with the DEVELOPMENT-ONLY release root and runs shorebird_unittests.
+hardened_legs = macos_matrix.fetch('include').select { |entry| entry['suite'] == 'shorebird-hardened' }
+assert!(hardened_legs.length == 1 && hardened_legs.first['arch'] == 'arm64' &&
+  hardened_legs.first['runner'] == macos_matrix_runners['arm64'] && hardened_legs.first['rust_target'] == 'aarch64-apple-darwin',
+  'macos-engine-tests must add exactly one arm64 shorebird-hardened leg on the arm64 runner')
+hardened_configure = macos_tests_steps.find { |step| step['name'] == 'Configure macOS engine' }
+assert!(hardened_configure.dig('env', 'SUITE') == '${{ matrix.suite }}' &&
+  hardened_configure['run'].include?('if [ "$SUITE" = shorebird-hardened ]; then') &&
+  hardened_configure['run'].include?('security_args=(--gn-args="$(python3 "$GITHUB_WORKSPACE/scripts/hardened_toolchain.py" --profile hardened --development gn-args)")') &&
+  hardened_configure['run'].include?('${security_args[@]+"${security_args[@]}"}'),
+  'the hardened leg must append scripts/hardened_toolchain.py GN args to the identical base configuration')
+hardened_args = macos_tests_steps.find { |step| step['name'] == 'Verify macOS engine args' }
+assert!(hardened_args.dig('env', 'SUITE') == '${{ matrix.suite }}' && hardened_args['run'].include?('set -euo pipefail') &&
+  hardened_args['run'].include?('verify-args flutter/engine/src/out/macos_release_${{ matrix.arch }}/args.gn') &&
+  hardened_args['run'].include?('toolchain-security --output artifacts/macos-interpreter-tests/toolchain_security.json'),
+  'the hardened leg must verify its args.gn and publish its toolchain_security.json as evidence')
+assert!(macos_run.include?('shorebird | shorebird-hardened)') && macos_validator.include?('REQUIRED["shorebird-hardened"]') &&
+  macos_validator.include?("differs from the engine's hardened;") &&
+  macos_verify_run.include?('suites="$suites shorebird-hardened"') &&
+  macos_verify_run.include?('test -s "macos-test-evidence/arm64/toolchain_security.json"'),
+  'the hardened leg must execute and validate the complete shorebird inventory plus the hardened controls, proven hardened by its log')
+[
+  'python3 -m py_compile scripts/hardened_toolchain.py scripts/test_hardened_toolchain.py scripts/hardened_lifecycle.py scripts/test_hardened_lifecycle.py',
+  'python3 scripts/test_hardened_toolchain.py -v',
+  'python3 scripts/test_hardened_lifecycle.py -v',
+].each do |command|
+  assert!(source_check_runs.include?(command), "source-checks must run #{command} (P6 hardened toolchain and lifecycle tooling)")
+end
+assert!(run_text_by_job.fetch('cli-artifacts').include?('test/general.shard/shorebird/shorebird_release_artifact_test.dart'),
+  'cli-artifacts must run the P6 final-artifact re-verification tests on every host')
+publish_catalog = read_repo_file(repo_root, 'scripts/publish_artifact_catalog.sh')
+assert!(publish_catalog.include?('hardened-diversified) ;;') && publish_catalog.include?('OPEN_SHOREBIRD_DIVERSIFICATION_PROFILE_ID') &&
+  publish_catalog.include?('--diversification-profile-id "$OPEN_SHOREBIRD_DIVERSIFICATION_PROFILE_ID"'),
+  'publish_artifact_catalog.sh must produce the v3 catalog of a hardened-diversified toolchain')
 
 puts "workflow yaml ok: #{workflow_path}"
 puts "workflow run blocks ok: #{scripts.length} checked"

@@ -227,6 +227,9 @@ jobs:
           python3 -m py_compile scripts/artifact_catalog.py scripts/dart_sdk_lock.py scripts/test_artifact_catalog.py
           python3 scripts/test_artifact_catalog.py -v
           python3 scripts/dart_sdk_lock.py check flutter
+          python3 -m py_compile scripts/hardened_toolchain.py scripts/test_hardened_toolchain.py scripts/hardened_lifecycle.py scripts/test_hardened_lifecycle.py
+          python3 scripts/test_hardened_toolchain.py -v
+          python3 scripts/test_hardened_lifecycle.py -v
           python3 scripts/artifact_catalog.py check-trust
           python3 -m py_compile scripts/release_trust.py scripts/test_release_trust.py
           python3 scripts/test_release_trust.py -v
@@ -428,6 +431,7 @@ jobs:
               test/general.shard/shorebird/shorebird_release_trust_test.dart \
               test/general.shard/shorebird/shorebird_yaml_test.dart \
               test/general.shard/shorebird/shorebird_replacement_test.dart \
+              test/general.shard/shorebird/shorebird_release_artifact_test.dart \
               test/general.shard/cache_test.dart \
               test/general.shard/build_system/targets/assets_test.dart \
               test/general.shard/build_system/targets/common_test.dart \
@@ -3617,6 +3621,13 @@ jobs:
           - arch: x64
             runner: ${{ inputs.macos_x64_heavy_runner || 'macos-15-intel' }}
             rust_target: x86_64-apple-darwin
+          # P6: the same engine configured as a hardened toolchain (DEVELOPMENT-ONLY
+          # release root; scripts/hardened_toolchain.py) runs shorebird_unittests,
+          # whose security-profile and integrity controls change with the profile.
+          - arch: arm64
+            suite: shorebird-hardened
+            runner: ${{ inputs.macos_heavy_runner || 'macos-15' }}
+            rust_target: aarch64-apple-darwin
     steps:
       - name: Checkout workspace
         uses: actions/checkout@v4
@@ -3682,7 +3693,16 @@ jobs:
 
       - name: Configure macOS engine
         working-directory: flutter/engine/src
+        env:
+          SUITE: ${{ matrix.suite }}
         run: |
+          set -euo pipefail
+          # The hardened suite adds the toolchain's security GN args to the identical
+          # base configuration (flutter/tools/gn appends repeated --gn-args).
+          security_args=()
+          if [ "$SUITE" = shorebird-hardened ]; then
+            security_args=(--gn-args="$(python3 "$GITHUB_WORKSPACE/scripts/hardened_toolchain.py" --profile hardened --development gn-args)")
+          fi
           ./flutter/tools/gn \
             --mac \
             --runtime-mode=release \
@@ -3690,7 +3710,8 @@ jobs:
             --target-dir=macos_release_${{ matrix.arch }} \
             --no-prebuilt-dart-sdk \
             --enable-unittests \
-            --gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=true shorebird_enable_aot_patching=true shorebird_use_interpreter=false flutter_prebuilt_dart_sdk=false'
+            --gn-args='dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=true shorebird_enable_aot_patching=true shorebird_use_interpreter=false flutter_prebuilt_dart_sdk=false' \
+            ${security_args[@]+"${security_args[@]}"}
 
       - name: Build macOS engine test target
         working-directory: flutter/engine/src
@@ -3731,7 +3752,7 @@ jobs:
           sampler=$!
           trap 'kill "$sampler" 2>/dev/null || true' EXIT
           case "$SUITE" in
-            shorebird) target=flutter/shell/common/shorebird:shorebird_unittests ;;
+            shorebird | shorebird-hardened) target=flutter/shell/common/shorebird:shorebird_unittests ;;
             embedder) target=flutter/shell/platform/embedder:embedder_unittests ;;
             runtime) target=flutter/runtime:runtime_unittests ;;
             cocoa) target=flutter/shell/platform/darwin/macos:flutter_desktop_darwin_unittests ;;
@@ -3788,7 +3809,10 @@ jobs:
           if-no-files-found: error
 
       - name: Verify macOS engine args
+        env:
+          SUITE: ${{ matrix.suite }}
         run: |
+          set -euo pipefail
           ./scripts/verify_engine_args.sh \
             flutter/engine/src/out/macos_release_${{ matrix.arch }}/args.gn \
             dart_dynamic_modules=false \
@@ -3797,6 +3821,13 @@ jobs:
             shorebird_enable_aot_patching=true \
             shorebird_use_interpreter=false \
             flutter_prebuilt_dart_sdk=false
+          if [ "$SUITE" = shorebird-hardened ]; then
+            mkdir -p artifacts/macos-interpreter-tests
+            python3 scripts/hardened_toolchain.py --profile hardened --development \
+              verify-args flutter/engine/src/out/macos_release_${{ matrix.arch }}/args.gn
+            python3 scripts/hardened_toolchain.py --profile hardened --development \
+              toolchain-security --output artifacts/macos-interpreter-tests/toolchain_security.json
+          fi
 
       - name: Test macOS interpreter integration
         env:
@@ -3821,9 +3852,9 @@ jobs:
                 "$out/runtime_unittests" --gtest_filter="$runtime_filter" --gtest_repeat=1 --gtest_output="xml:$results/runtime.xml" > "$results/runtime-tests.log" 2>&1
               )
               ;;
-            shorebird)
-              "$out/shorebird_unittests" --gtest_list_tests > "$results/shorebird-list.txt" 2> "$results/shorebird-list-stderr.log"
-              "$out/shorebird_unittests" --gtest_output="xml:$results/shorebird.xml" > "$results/shorebird-tests.log" 2>&1
+            shorebird | shorebird-hardened)
+              "$out/shorebird_unittests" --gtest_list_tests > "$results/$SUITE-list.txt" 2> "$results/$SUITE-list-stderr.log"
+              "$out/shorebird_unittests" --gtest_output="xml:$results/$SUITE.xml" > "$results/$SUITE-tests.log" 2>&1
               ;;
             embedder)
               "$out/embedder_unittests" --gtest_filter="$embedder_filter" --gtest_list_tests > "$results/embedder-list.txt" 2> "$results/embedder-list-stderr.log"
@@ -3872,7 +3903,12 @@ jobs:
       - name: Verify complete macOS interpreter test inventory
         run: |
           set -euo pipefail
-          for suite in shorebird embedder runtime cocoa; do
+          suites="shorebird embedder runtime cocoa"
+          if [ "${{ matrix.arch }}" = arm64 ]; then
+            suites="$suites shorebird-hardened"
+            test -s "macos-test-evidence/arm64/toolchain_security.json"
+          fi
+          for suite in $suites; do
             test -s "macos-test-evidence/${{ matrix.arch }}/$suite.xml"
           done
           python3 scripts/verify_macos_interpreter_engine_tests.py macos-test-evidence/${{ matrix.arch }} --arch=${{ matrix.arch }}
