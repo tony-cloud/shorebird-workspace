@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/tony-cloud/shorebird-workspace/docs/schemas/diversification-profile.v3.schema.json",
+  "title": "Open Shorebird diversification profile, contract v3",
+  "description": "Build input of a hardened-diversified native-release lineage (P5). bytecode.wire_opcodes[i] is the wire byte of public Dart bytecode opcode i (the PUBLIC_KERNEL_BYTECODES_LIST order of dart-sdk/runtime/vm/constants_kbc.h, whose names hash to opcode_table_sha256). It is a permutation of 0..N-1 with Trap kept at 0, derived from a private seed by scripts/diversification_profile.py. profile_id is sha256: over the canonical JSON of this document. native_layout is reserved and must be null in contract v3. See docs/HARDENING_CONTRACTS.md section 11. The permutation rules that JSON Schema cannot express are enforced by scripts/diversification_profile.py verify.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "contract_version",
+    "bytecode",
+    "native_layout"
+  ],
+  "properties": {
+    "schema": {
+      "const": "open-shorebird.diversification-profile"
+    },
+    "contract_version": {
+      "const": 3
+    },
+    "bytecode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scheme",
+        "format_version",
+        "opcode_table_sha256",
+        "wire_opcodes"
+      ],
+      "properties": {
+        "scheme": {
+          "const": "opcode-permutation-v1"
+        },
+        "format_version": {
+          "const": 3
+        },
+        "opcode_table_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "wire_opcodes": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "native_layout": {
+      "type": "null"
+    }
+  }
+}

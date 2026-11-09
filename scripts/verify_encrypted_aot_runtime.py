@@ -10,6 +10,12 @@ Use --structural for the opted-in boot-only structural baseline and delta.
 Use --full-replacement for the experimental complete-domain wrapper profile.
 Add --product to exercise matching PRODUCT compiler, platform and shared runtime.
 Use --full-replacement-ffi for the native ARM64 PRODUCT full-domain FFI fixture.
+
+Hardened-diversified (contract v3): --bytecode-profile names the
+profile the SDK was built with (GN dart_bytecode_profile). Fixtures are then
+DBP3 and every envelope carries bytecode_profile_id. In both modes an envelope
+whose profile binding does not match the VM is refused before the key
+callback runs.
 """
 
 import argparse
@@ -32,7 +38,12 @@ void main(List<String> args) {
     throw ArgumentError('Expected baseline, payload, and output directory');
   }
   final target = <String, String>{};
+  String? profileId;
   for (final argument in args.skip(3)) {
+    if (argument.startsWith('--bytecode-profile-id=') && profileId == null) {
+      profileId = argument.substring('--bytecode-profile-id='.length);
+      continue;
+    }
     final match = RegExp(r'^--(target-os|target-arch)=([a-z0-9_]+)$')
         .firstMatch(argument);
     if (match == null || target.containsKey(match.group(1))) {
@@ -53,7 +64,8 @@ void main(List<String> args) {
   final baseline = File(args[0]).readAsBytesSync();
   final delta = File(args[1]).readAsBytesSync();
   final out = Directory(args[2])..createSync(recursive: true);
-  Map<String, Object?> envelope(String expiry, int nonceSeed) {
+  Map<String, Object?> envelope(String expiry, int nonceSeed,
+      {String? bytecodeProfileId}) {
     final metadata = PatchMetadata(
       appId: 'encrypted-aot-host-app', appBuildId: '1.0.0+1',
       baseFlavorId: 'free', baseLicenseType: 'free',
@@ -62,6 +74,7 @@ void main(List<String> args) {
       targetOs: targetOs, targetArch: targetArch,
       runtimeMode: runtimeModeDartBytecodeInterpreter,
       offlineExpiresAt: expiry,
+      bytecodeProfileId: bytecodeProfileId,
     );
     return encryptArtifact(
       artifact: linkArtifacts(baseSnapshot: baseline, patchSnapshot: delta,
@@ -72,9 +85,17 @@ void main(List<String> args) {
       nonce: List<int>.generate(12, (i) => i + nonceSeed),
     ).toJson();
   }
-  final valid = envelope('9999-12-31T23:59:59.999999Z', 0);
+  final valid = envelope('9999-12-31T23:59:59.999999Z', 0,
+      bytecodeProfileId: profileId);
+  // An envelope whose bytecode profile binding does not match the VM: unbound
+  // for a profiled VM, bound to some profile for a canonical one.
+  final mismatch = envelope('9999-12-31T23:59:59.999999Z', 64,
+      bytecodeProfileId: profileId == null ? 'sha256:${'0' * 64}' : null);
+  File('${out.path}/profile-mismatch.json')
+      .writeAsStringSync(jsonEncode(mismatch));
   File('${out.path}/valid.json').writeAsStringSync(jsonEncode(valid));
-  final expired = envelope('2000-01-01T00:00:00.000Z', 32);
+  final expired = envelope('2000-01-01T00:00:00.000Z', 32,
+      bytecodeProfileId: profileId);
   File('${out.path}/expired.json').writeAsStringSync(jsonEncode(expired));
   final tampered = Map<String, Object?>.of(valid);
   final ciphertext = base64Decode(tampered['encrypted_payload_base64'] as String);
@@ -172,8 +193,30 @@ void Reject(const char* label, const char* path,
   std::cout << "PASS: " << label << "; prior bodies and license preserved" << std::endl;
 }
 
+// A profile-binding mismatch is refused with the other metadata checks,
+// before the key callback runs and before anything is decrypted.
+void RejectBeforeKey(const char* label, const char* path,
+                     const Dart_AotPatchInstallOptions& options) {
+  const auto envelope = Read(path);
+  Payload payload;
+  const int previous_requests = key_requests;
+  const auto result = Dart_InstallAotPatch(
+      envelope.data(), envelope.size(), &options, &payload.bytes, &payload.length);
+  if (!Dart_IsError(result) || payload.bytes != nullptr || payload.length != 0 ||
+      key_requests != previous_requests ||
+      (std::strstr(Dart_GetError(result), "bytecode_profile_id") == nullptr &&
+       std::strstr(Dart_GetError(result), "bytecode profile") == nullptr)) {
+    std::cerr << "Unexpected profile-binding result: " << label << std::endl;
+    if (Dart_IsError(result)) std::cerr << Dart_GetError(result) << std::endl;
+    std::exit(9);
+  }
+  VerifyBodies(1);
+  std::cout << "PASS: " << label << " refused before the key callback ("
+            << Dart_GetError(result) << ")" << std::endl;
+}
+
 int main(int argc, char** argv) {
-  if (argc != 8 || !Dart_IsPrecompiledRuntime() || !Dart_AotPatchingEnabled()) {
+  if (argc != 9 || !Dart_IsPrecompiledRuntime() || !Dart_AotPatchingEnabled()) {
     std::cerr << "Requires the precompiled interpreter/AES runtime" << std::endl;
     return 5;
   }
@@ -208,6 +251,7 @@ int main(int argc, char** argv) {
   wrong_key = false;
   Reject("tampered ciphertext", argv[3], options, "AES-GCM decryption failed");
   Reject("authenticated expired envelope", argv[4], options, "offline license has expired");
+  RejectBeforeKey("bytecode profile binding mismatch", argv[8], options);
 
   {
     const auto envelope = Read(argv[2]);
@@ -257,7 +301,11 @@ def main():
                          help='Verify encrypted native ARM64 PRODUCT full-domain FFI')
     parser.add_argument('--product', action='store_true',
                         help='Use PRODUCT compiler/runtime (requires a boot profile)')
+    parser.add_argument('--bytecode-profile', type=Path,
+                        help='hardened-diversified profile the SDK was built with')
     args = parser.parse_args()
+    if args.bytecode_profile and args.full_replacement_ffi:
+        parser.error('--bytecode-profile is not wired into the FFI fixture')
     if args.full_replacement_ffi:
         args.product = True
     if args.product and not (args.structural or args.full_replacement or
@@ -318,14 +366,25 @@ def main():
                 '--envelope-producer', producer,
                 '--envelope-packages', packages,
                 '--envelope-dart', tooling_dart,
+                *(['--bytecode-profile', args.bytecode_profile.resolve()]
+                  if args.bytecode_profile else []),
             ])
             print(output, end='')
             return
 
         fixture = work / 'sdk-fixture'
+        profile_args, producer_args = [], []
+        if args.bytecode_profile:
+            sys.path.insert(0, str(root / 'scripts'))
+            import diversification_profile
+            profile_path = args.bytecode_profile.resolve()
+            identifier = diversification_profile.check(
+                diversification_profile.load_json(profile_path), names=None)
+            profile_args = ['--bytecode-profile', profile_path]
+            producer_args = [f'--bytecode-profile-id={identifier}']
         run('sdk-fixture', [sys.executable, sdk / 'tools/test_aot_bytecode_patch.py',
                            '--build-dir', build, '--work-dir', fixture,
-                           '--cxx', args.cxx])
+                           '--cxx', args.cxx, *profile_args])
         print('PASS: reused SDK baseline and structural-delta fixture', flush=True)
 
         producer = work / 'encrypt_fixture.dart'
@@ -333,7 +392,8 @@ def main():
         envelopes = work / 'envelopes'
         run('dart-encryption', [tooling_dart, f'--packages={packages}', producer,
                                 fixture / 'baseline.bytecode',
-                                fixture / 'valid.bytecode', envelopes])
+                                fixture / 'valid.bytecode', envelopes,
+                                *producer_args])
         print('PASS: envelopes encrypted by the real Dart patch tooling', flush=True)
 
         source = work / 'encrypted_runtime.cc'
@@ -350,7 +410,8 @@ def main():
                                           envelopes / 'tampered.json',
                                           envelopes / 'expired.json',
                                           fixture / 'valid.bytecode',
-                                          baseline_hash, delta_hash])
+                                          baseline_hash, delta_hash,
+                                          envelopes / 'profile-mismatch.json'])
         print(output, end='')
 
 

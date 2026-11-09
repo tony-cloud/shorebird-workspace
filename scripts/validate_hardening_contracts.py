@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Validate hardening contract documents (docs/HARDENING_CONTRACTS.md).
 
-Kinds: security-policy (v1, v2), build-identity, artifact-catalog,
-build-manifest (v1, v2), and the contract v2 release-trust documents
-(release-root, release-delegations, release-trust, release-record). Each
-document is
+Kinds: security-policy (v1, v2, v3), build-identity (v1, v3),
+artifact-catalog (v1, v3), build-manifest (v1, v2, v3), the contract v2
+release-trust documents (release-root, release-delegations, release-trust,
+release-record v2/v3), and the contract v3 diversification documents
+(diversification-profile, diversification-seed). Each document is
 checked against its JSON Schema in docs/schemas/ (with a dependency-free
 validator for the keyword subset those schemas use) and then against the
 cross-field rules JSON Schema cannot express: reserved profiles, recomputed
@@ -19,6 +20,7 @@ Usage:
   validate_hardening_contracts.py release-root|release-delegations FILE   (signed envelope or payload)
   validate_hardening_contracts.py release-trust FILE
   validate_hardening_contracts.py release-record FILE
+  validate_hardening_contracts.py diversification-profile|diversification-seed FILE
 
 Release-trust documents are checked for shape here; their signatures are
 verified against a pinned root by scripts/release_trust.py verify.
@@ -39,22 +41,28 @@ from inventory_release_binaries import REQUIRES_CUSTOM_ROUTE  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_DIR = ROOT / 'docs' / 'schemas'
-CONTRACT_VERSION = 2
+CONTRACT_VERSION = 3
 # Every schema file per kind, by contract version. A document of a versioned
 # kind is checked against the schema its own contract_version names.
 SCHEMAS = {
-    'security-policy': {1: 'security-policy.v1.schema.json', 2: 'security-policy.v2.schema.json'},
-    'build-identity': {1: 'build-identity.v1.schema.json'},
-    'artifact-catalog': {1: 'artifact-catalog.v1.schema.json'},
-    'build-manifest': {1: 'build-manifest.v1.schema.json', 2: 'build-manifest.v2.schema.json'},
+    'security-policy': {1: 'security-policy.v1.schema.json', 2: 'security-policy.v2.schema.json',
+                        3: 'security-policy.v3.schema.json'},
+    'build-identity': {1: 'build-identity.v1.schema.json', 3: 'build-identity.v3.schema.json'},
+    'artifact-catalog': {1: 'artifact-catalog.v1.schema.json', 3: 'artifact-catalog.v3.schema.json'},
+    'build-manifest': {1: 'build-manifest.v1.schema.json', 2: 'build-manifest.v2.schema.json',
+                       3: 'build-manifest.v3.schema.json'},
     'release-root': {2: 'release-root.v2.schema.json'},
     'release-delegations': {2: 'release-delegations.v2.schema.json'},
     'release-trust': {2: 'release-trust.v2.schema.json'},
-    'release-record': {2: 'release-record.v2.schema.json'},
+    'release-record': {2: 'release-record.v2.schema.json', 3: 'release-record.v3.schema.json'},
+    'diversification-profile': {3: 'diversification-profile.v3.schema.json'},
+    'diversification-seed': {3: 'diversification-seed.v3.schema.json'},
 }
 # The newest schema per kind.
 KINDS = {kind: files[max(files)] for kind, files in SCHEMAS.items()}
+# Reserved before contract v3 (P5 defines it in v3 only).
 RESERVED_PROFILES = {'hardened-diversified'}
+DIVERSIFIED_CONTRACT_VERSION = 3
 
 
 class ContractError(ValueError):
@@ -215,12 +223,29 @@ def _common(document: dict, kind: str) -> list[str]:
     if errors:
         return errors
     version = document['contract_version']
+    if version >= DIVERSIFIED_CONTRACT_VERSION:
+        # The v3 schemas pin hardened-diversified and a sha256: profile id.
+        return errors
     if document['security_profile'] in RESERVED_PROFILES:
         errors.append(f'$.security_profile: {document["security_profile"]} is reserved and not admissible '
                       f'under contract v{version}')
     if document['diversification_profile_id'] is not None:
         errors.append(f'$.diversification_profile_id: must be null under contract v{version}')
     return errors
+
+
+def _development_profile_rules(document: dict, production: bool) -> list[str]:
+    """The DEVELOPMENT-ONLY diversification profile (contract section 11.2)."""
+    identifier = document.get('diversification_profile_id')
+    if identifier is None or identifier not in _diversification().development_profile_ids():
+        return []
+    if production:
+        return ['$.diversification_profile_id: production packaging rejects the DEVELOPMENT-ONLY '
+                'diversification profile']
+    if not document.get('development_exceptions'):
+        return ['$.diversification_profile_id: the DEVELOPMENT-ONLY diversification profile requires '
+                'development_exceptions']
+    return []
 
 
 def validate_security_policy(policy: dict, *, production: bool = False) -> list[str]:
@@ -248,6 +273,7 @@ def validate_security_policy(policy: dict, *, production: bool = False) -> list[
                 errors.append('$.release_root: production packaging rejects the DEVELOPMENT-ONLY release root')
             elif not policy['development_exceptions']:
                 errors.append('$.release_root: the DEVELOPMENT-ONLY release root requires development_exceptions')
+    errors.extend(_development_profile_rules(policy, production))
     return errors
 
 
@@ -328,7 +354,26 @@ def validate_build_manifest(manifest: dict) -> list[str]:
         values = manifest['package_identity'][field]
         if len(set(values)) != len(values):
             errors.append(f'$.package_identity.{field}: values must be unique')
+    errors.extend(_development_profile_rules(manifest, production=False))
     return errors
+
+
+def _diversification():
+    # Lazy: diversification_profile imports this module for canonical_json.
+    import diversification_profile
+    return diversification_profile
+
+
+def validate_diversification_profile(profile: Any) -> list[str]:
+    """Shape and permutation rules; the opcode table is checked when the Dart
+    SDK checkout is present (scripts/diversification_profile.py verify)."""
+    dp = _diversification()
+    names = dp.opcode_names() if dp.CONSTANTS_KBC.is_file() else None
+    return dp.validate_profile(profile, names)
+
+
+def validate_diversification_seed(record: Any) -> list[str]:
+    return _diversification().validate_seed_record(record)
 
 
 def _release_trust():
@@ -368,8 +413,11 @@ def validate_release_trust(bundle: Any) -> list[str]:
 
 
 def validate_release_record(record: Any) -> list[str]:
-    """What a hardened release stores as UpdateReleaseMetadata.security_record."""
-    schema = load_schema('release-record')
+    """What a hardened release stores as UpdateReleaseMetadata.security_record
+    (v2), or a hardened-diversified release (v3)."""
+    schema, errors = _versioned_schema(record, 'release-record')
+    if schema is None:
+        return errors
     errors = schema_errors(record, schema, schema)
     if errors:
         return errors
@@ -392,6 +440,8 @@ VALIDATORS = {
     'release-delegations': lambda document: validate_release_payload(document, 'release-delegations'),
     'release-trust': validate_release_trust,
     'release-record': validate_release_record,
+    'diversification-profile': validate_diversification_profile,
+    'diversification-seed': validate_diversification_seed,
 }
 
 

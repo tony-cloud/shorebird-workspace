@@ -2,6 +2,7 @@
 """Check Windows updater compiler/CRT settings without building the updater."""
 
 import base64
+import hashlib
 import json
 from pathlib import Path
 import runpy
@@ -88,6 +89,7 @@ class UpdaterSecurityEnvironmentTest(unittest.TestCase):
             trust_root_key_id=[],
             release_root='',
             release_min_delegations_version='1',
+            diversification_profile='',
         )
         values.update(overrides)
         return type('Args', (), values)
@@ -137,6 +139,119 @@ class UpdaterSecurityEnvironmentTest(unittest.TestCase):
         self.assertNotIn('SHOREBIRD_RELEASE_MIN_DELEGATIONS_VERSION', env)
         self.assertIsNotNone(CONFIGURE_SECURITY({}, self.args(release_root=self.root())))
         self.assertIsNotNone(CONFIGURE_SECURITY({}, self.args(release_min_delegations_version='2')))
+
+
+class UpdaterDiversificationEnvironmentTest(unittest.TestCase):
+    """hardened-diversified (P5, contract v3): the profile comes from GN only."""
+
+    TOOLCHAIN = UpdaterSecurityEnvironmentTest.TOOLCHAIN
+    root = staticmethod(UpdaterSecurityEnvironmentTest.root)
+    args = staticmethod(UpdaterSecurityEnvironmentTest.args)
+    hardened = UpdaterSecurityEnvironmentTest.hardened
+
+    DEVELOPMENT_PROFILE = ROOT / 'scripts/testdata/diversification/profile.DEVELOPMENT-ONLY.json'
+    DEVELOPMENT_ID = 'sha256:832856d0bed27833434e3f26b65d03cedc313f9850c2577ca7565c4dc644f46d'
+
+    @staticmethod
+    def encode(profile):
+        return base64.b64encode(json.dumps(profile, sort_keys=True, separators=(',', ':')).encode()).decode()
+
+    @classmethod
+    def development(cls):
+        return json.loads(cls.DEVELOPMENT_PROFILE.read_text(encoding='utf-8'))
+
+    @classmethod
+    def profile(cls, **overrides):
+        """An operator profile: the development one with its wires rotated
+        (Trap stays 0, no fixed points), so its ID is not the development ID."""
+        profile = cls.development()
+        wires = profile['bytecode']['wire_opcodes']
+        profile['bytecode']['wire_opcodes'] = [0] + wires[2:] + wires[1:2]
+        for key, value in overrides.items():
+            if key in profile['bytecode']:
+                profile['bytecode'][key] = value
+            else:
+                profile[key] = value
+        return profile
+
+    def diversified(self, **overrides):
+        values = dict(security_profile='hardened-diversified', toolchain_id=self.TOOLCHAIN,
+                      release_root=self.root(), diversification_profile=self.encode(self.profile()))
+        values.update(overrides)
+        return self.args(**values)
+
+    def test_diversified_passes_the_profile_and_the_hardened_inputs(self):
+        env = {'SHOREBIRD_DIVERSIFICATION_PROFILE': 'inherited', 'SHOREBIRD_RELEASE_ROOT': 'inherited'}
+        self.assertIsNone(CONFIGURE_SECURITY(env, self.diversified()))
+        self.assertEqual(env['SHOREBIRD_SECURITY_PROFILE'], 'hardened-diversified')
+        self.assertEqual(env['SHOREBIRD_DIVERSIFICATION_PROFILE'], self.encode(self.profile()))
+        self.assertEqual(env['SHOREBIRD_RELEASE_ROOT'], self.root())
+        self.assertEqual(env['SHOREBIRD_TOOLCHAIN_ID'], self.TOOLCHAIN)
+
+    def test_diversified_has_every_hardened_requirement(self):
+        self.assertIn('--diversification-profile',
+                      CONFIGURE_SECURITY({}, self.diversified(diversification_profile='')))
+        self.assertIn('--toolchain-id', CONFIGURE_SECURITY({}, self.diversified(toolchain_id='')))
+        self.assertIn('--release-root', CONFIGURE_SECURITY({}, self.diversified(release_root='')))
+
+    def test_the_profile_is_refused_and_scrubbed_outside_diversified(self):
+        encoded = self.encode(self.profile())
+        for args in (self.args(diversification_profile=encoded),
+                     self.hardened(diversification_profile=encoded)):
+            self.assertIn('hardened-diversified', CONFIGURE_SECURITY({}, args))
+        for args in (self.args(), self.hardened()):
+            env = {'SHOREBIRD_DIVERSIFICATION_PROFILE': encoded}
+            self.assertIsNone(CONFIGURE_SECURITY(env, args))
+            self.assertNotIn('SHOREBIRD_DIVERSIFICATION_PROFILE', env)
+
+    def test_development_profile_needs_development_exceptions(self):
+        development = self.encode(self.development())
+        error = CONFIGURE_SECURITY({}, self.diversified(diversification_profile=development))
+        self.assertIn('DEVELOPMENT-ONLY', error)
+        self.assertIsNone(CONFIGURE_SECURITY({}, self.diversified(
+            diversification_profile=development, security_development_exceptions='true')))
+
+    def test_matches_the_reference_encoding(self):
+        # The committed profile's canonical bytes hash to its published ID.
+        raw = base64.b64decode(self.encode(self.development()))
+        self.assertEqual('sha256:' + hashlib.sha256(raw).hexdigest(), self.DEVELOPMENT_ID)
+
+    def test_malformed_profiles_are_refused(self):
+        good = json.dumps(self.profile(), sort_keys=True, separators=(',', ':'))
+        identity = list(range(176))
+        sixteen = [0] + list(range(1, 17)) + list(range(18, 176)) + [17]
+        cases = {
+            'pretty': base64.b64encode(json.dumps(self.profile(), sort_keys=True, indent=1).encode()).decode(),
+            'unsorted': base64.b64encode(json.dumps(
+                dict(reversed(list(self.profile().items()))), separators=(',', ':')).encode()).decode(),
+            'duplicate key': base64.b64encode(
+                good.replace('"contract_version":3,', '"contract_version":3,"contract_version":3,').encode()
+            ).decode(),
+            'trailing newline': self.encode(self.profile()) + '\n',
+            'url-safe alphabet': self.encode(self.profile()).replace('/', '_').replace('+', '-') + '_',
+            'not base64': 'not base64!',
+            'oversized': base64.b64encode(b' ' * 8192).decode(),
+            'extra field': self.encode(self.profile(extra=1)),
+            'native layout': self.encode(self.profile(native_layout={})),
+            'contract': self.encode(self.profile(contract_version=2)),
+            'scheme': self.encode(self.profile(scheme='opcode-permutation-v2')),
+            'format': self.encode(self.profile(format_version=4)),
+            'table hash': self.encode(self.profile(opcode_table_sha256='AB' * 32)),
+            'one opcode': self.encode(self.profile(wire_opcodes=[0])),
+            'too many': self.encode(self.profile(wire_opcodes=[0] + list(range(256, 0, -1)))),
+            'trap moved': self.encode(self.profile(wire_opcodes=[1, 0] + list(range(3, 176)) + [2])),
+            'not a permutation': self.encode(self.profile(wire_opcodes=[0, 2, 2])),
+            'float': self.encode(self.profile(wire_opcodes=[0, 2.0, 1])),
+            'identity': self.encode(self.profile(wire_opcodes=identity)),
+            'sixteen fixed points': self.encode(self.profile(wire_opcodes=sixteen)),
+        }
+        for name, encoded in cases.items():
+            with self.subTest(name):
+                self.assertIsNotNone(
+                    CONFIGURE_SECURITY({}, self.diversified(diversification_profile=encoded)), name)
+        fifteen = [0] + list(range(1, 16)) + list(range(17, 176)) + [16]
+        self.assertIsNone(CONFIGURE_SECURITY({}, self.diversified(
+            diversification_profile=self.encode(self.profile(wire_opcodes=fifteen)))))
 
 
 if __name__ == '__main__':

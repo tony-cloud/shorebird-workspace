@@ -1,0 +1,22 @@
+{
+  "schema": "open-shorebird.build-manifest",
+  "contract_version": 3,
+  "security_profile": "hardened-diversified",
+  "toolchain_id": "sha256:7c4f83368bdce6f8f3cb8002a9aeefd5df6fd1c65ddbbaf16dfe431fc46a8930",
+  "development_exceptions": false,
+  "diversification_profile_id": "sha256:7e73995ee3966f7396c2375869944324678b9f545a038b96d7c4416883413feb",
+  "signer_key_id": "sha256:fe812c12f3ab4ce6ac5db69ac352f906cb1b11ef43fb33e252ef7ff552263889",
+  "delegations_sha256": "f43f35fa5b0ddb23297d727779bd22577385a3a175d48e79f7919ad7f4789679",
+  "config_sha256": "084c8d654284c0fcf92ed9e81414a15dd19532612e6301d9e184e4e0e62426c4",
+  "modules": [
+    {
+      "platform": "ios",
+      "arch": "aarch64",
+      "measurement": "sha256:096335fc0c85ad3247f97fcfc503e861dd0fd0d6278c7f30f5f04ffb35a455f3"
+    }
+  ],
+  "package_identity": {
+    "android_signing_cert_sha256": [],
+    "apple_team_ids": []
+  }
+}

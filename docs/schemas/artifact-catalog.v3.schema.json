@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/tony-cloud/shorebird-workspace/docs/schemas/artifact-catalog.v3.schema.json",
+  "title": "Open Shorebird artifact catalog, contract v3",
+  "description": "Maps every Flutter-tool artifact route of one toolchain to its origin, revision, platform, digest, size, and required status. See docs/HARDENING_CONTRACTS.md section 4. Route/class consistency is enforced by scripts/validate_hardening_contracts.py. Contract v3 (P5) is used only by hardened-diversified toolchains: security_profile is hardened-diversified and diversification_profile_id is the sha256: profile id. Legacy and hardened documents stay contract v1. See docs/HARDENING_CONTRACTS.md section 11.7.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "contract_version",
+    "toolchain_id",
+    "security_profile",
+    "diversification_profile_id",
+    "engine_revision",
+    "upstream_engine_revision",
+    "origins",
+    "artifacts"
+  ],
+  "properties": {
+    "schema": {
+      "const": "open-shorebird.artifact-catalog"
+    },
+    "contract_version": {
+      "const": 3
+    },
+    "toolchain_id": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "security_profile": {
+      "const": "hardened-diversified"
+    },
+    "diversification_profile_id": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "engine_revision": {
+      "$ref": "#/$defs/revision"
+    },
+    "upstream_engine_revision": {
+      "$ref": "#/$defs/revision"
+    },
+    "origins": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "class",
+          "base_url"
+        ],
+        "properties": {
+          "class": {
+            "enum": [
+              "official",
+              "custom-project"
+            ]
+          },
+          "base_url": {
+            "type": "string",
+            "pattern": "^https://[^\\s?#]+[^/\\s?#]$"
+          }
+        }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "origin",
+          "class",
+          "revision",
+          "platform",
+          "sha256",
+          "size",
+          "required"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "pattern": "^(flutter_infra_release/flutter/\\$engine/|download\\.flutter\\.io/io/flutter/[a-z0-9_]+/1\\.0\\.0-\\$engine/)[^\\s]+$"
+          },
+          "origin": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+          },
+          "class": {
+            "enum": [
+              "official-unchanged",
+              "custom-toolchain"
+            ]
+          },
+          "revision": {
+            "$ref": "#/$defs/revision"
+          },
+          "platform": {
+            "enum": [
+              "any",
+              "android-arm",
+              "android-arm64",
+              "android-x64",
+              "ios-arm64",
+              "darwin-arm64",
+              "darwin-x64",
+              "linux-arm64",
+              "linux-x64",
+              "windows-arm64",
+              "windows-x64"
+            ]
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "required": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "revision": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    }
+  }
+}

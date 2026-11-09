@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/tony-cloud/shorebird-workspace/docs/schemas/diversification-seed.v3.schema.json",
+  "title": "Open Shorebird diversification seed record, contract v3",
+  "description": "Private release record of a hardened-diversified lineage (P5): the 32-byte random seed (canonical base64) and the id of the profile derived from it with open-shorebird.diversification.v1. Never committed (except the published DEVELOPMENT-ONLY fixture), never shipped, never an encryption key. Losing it means restoring this record or issuing a new native release with a new profile. See docs/HARDENING_CONTRACTS.md section 11.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "contract_version",
+    "derivation",
+    "seed",
+    "profile_id"
+  ],
+  "properties": {
+    "schema": {
+      "const": "open-shorebird.diversification-seed"
+    },
+    "contract_version": {
+      "const": 3
+    },
+    "derivation": {
+      "const": "open-shorebird.diversification.v1"
+    },
+    "seed": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9+/]{43}=$"
+    },
+    "profile_id": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}

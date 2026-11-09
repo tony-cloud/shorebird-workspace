@@ -363,6 +363,25 @@ required_files = %w[
   updater/library/testdata/release-trust.DEVELOPMENT-ONLY.json
   flutter/packages/flutter_tools/lib/src/shorebird/shorebird_release_trust.dart
   flutter/packages/flutter_tools/test/general.shard/shorebird/shorebird_release_trust_test.dart
+  scripts/diversification_profile.py
+  scripts/test_diversification_profile.py
+  scripts/testdata/diversification/seed.DEVELOPMENT-ONLY.json
+  scripts/testdata/diversification/profile.DEVELOPMENT-ONLY.json
+  docs/schemas/diversification-profile.v3.schema.json
+  docs/schemas/diversification-seed.v3.schema.json
+  docs/schemas/security-policy.v3.schema.json
+  docs/schemas/build-identity.v3.schema.json
+  docs/schemas/artifact-catalog.v3.schema.json
+  docs/schemas/build-manifest.v3.schema.json
+  docs/schemas/release-record.v3.schema.json
+  docs/schemas/examples/security-policy.v3.hardened-diversified.json
+  docs/schemas/examples/build-manifest.v3.ios-arm64.json
+  docs/schemas/examples/release-record.v3.json
+  dart-sdk/runtime/tools/bytecode_profile.py
+  dart-sdk/pkg/dart2bytecode/lib/bytecode_profile.dart
+  dart-sdk/pkg/dart2bytecode/test/bytecode_profile_test.dart
+  flutter/packages/flutter_tools/test/general.shard/shorebird/shorebird_replacement_test.dart
+  shorebird/packages/shorebird_cli/test/fixtures/diversification/profile.DEVELOPMENT-ONLY.json
   shorebird/bin/internal/flutter.version
   shorebird/bin/internal/engine.version
   shorebird/packages/artifact_proxy/lib/src/artifact_proxy.dart
@@ -1821,6 +1840,7 @@ required_jobs = %w[
   cli-artifacts
   server-artifacts
   custom-dart-sdk
+  custom-dart-sdk-diversified
   custom-dart-sdk-macos
   custom-dart-sdk-macos-x64
   custom-dart-sdk-windows
@@ -1894,7 +1914,7 @@ assert!(
   )
 end
 
-%w[custom-dart-sdk custom-dart-sdk-macos custom-dart-sdk-macos-x64 custom-dart-sdk-windows linux-engine android-engine ios-engine macos-engine macos-engine-tests windows-engine android-host-tools].each do |job_name|
+%w[custom-dart-sdk custom-dart-sdk-diversified custom-dart-sdk-macos custom-dart-sdk-macos-x64 custom-dart-sdk-windows linux-engine android-engine ios-engine macos-engine macos-engine-tests windows-engine android-host-tools].each do |job_name|
   condition = jobs.fetch(job_name).fetch('if', '').to_s
   assert!(
     condition.include?("github.event_name != 'workflow_dispatch'") &&
@@ -1926,6 +1946,7 @@ end
 end
 {
   'custom-dart-sdk' => 'SDK_MIN_FREE_DISK_GB',
+  'custom-dart-sdk-diversified' => 'SDK_MIN_FREE_DISK_GB',
   'custom-dart-sdk-macos' => 'SDK_MIN_FREE_DISK_GB',
   'custom-dart-sdk-macos-x64' => 'SDK_MIN_FREE_DISK_GB',
   'custom-dart-sdk-windows' => 'SDK_MIN_FREE_DISK_GB',
@@ -2037,6 +2058,12 @@ assert!(
     source_runs.include?('python3 scripts/test_release_trust.py -v') &&
     source_runs.include?('python3 scripts/validate_hardening_contracts.py release-trust scripts/testdata/release-trust/release-trust.DEVELOPMENT-ONLY.json'),
   'Source checks must exercise the contract v2 release root of trust (reference tool, cross-language fixtures, role separation)'
+)
+assert!(
+  source_runs.include?('python3 -m py_compile scripts/diversification_profile.py scripts/test_diversification_profile.py dart-sdk/runtime/tools/bytecode_profile.py') &&
+    source_runs.include?('python3 scripts/test_diversification_profile.py -v') &&
+    source_runs.include?('python3 scripts/validate_hardening_contracts.py diversification-profile scripts/testdata/diversification/profile.DEVELOPMENT-ONLY.json'),
+  'Source checks must exercise the contract v3 diversification reference tool, its agreement with the VM build generator and the cross-repo DEVELOPMENT-ONLY fixture'
 )
 assert!(
   source_runs.include?('python3 -m py_compile scripts/provision_release_keys.py scripts/test_provision_release_keys.py') &&
@@ -2354,6 +2381,7 @@ assert!(
 )
 assert!(
   jobs.fetch('custom-dart-sdk').fetch('runs-on').to_s.include?("inputs.linux_heavy_runner || 'ubuntu-latest'") &&
+    jobs.fetch('custom-dart-sdk-diversified').fetch('runs-on').to_s.include?("inputs.linux_heavy_runner || 'ubuntu-latest'") &&
     jobs.fetch('android-engine').fetch('runs-on').to_s.include?("inputs.linux_heavy_runner || 'ubuntu-latest'") &&
     jobs.fetch('web-sdk').fetch('runs-on').to_s.include?("inputs.linux_heavy_runner || 'ubuntu-latest'") &&
     jobs.fetch('custom-dart-sdk-macos').fetch('runs-on').to_s.include?("inputs.macos_heavy_runner || 'macos-15'") &&
@@ -2480,6 +2508,53 @@ run_text_by_job = jobs.transform_values { |job| job_runs(job).join("\n") }
   end
 end
 assert!(run_text_by_job.fetch('custom-dart-sdk').include?('pkg/dart2bytecode/test/native_assets_profile_test.dart'), 'Linux SDK must test native-assets carrier profile and imported-component contracts')
+%w[custom-dart-sdk custom-dart-sdk-linux-arm64].each do |job_name|
+  assert!(run_text_by_job.fetch(job_name).include?('pkg/dart2bytecode/test/bytecode_profile_test.dart'), "#{job_name} must test the contract v3 dart2bytecode profile encoding and its refusals")
+end
+# Hardening P5 (contract v3): a canonical VM refuses DBP3 bytecode, and a VM
+# built with the DEVELOPMENT-ONLY profile runs its own patches and refuses
+# canonical and foreign-profile ones, plain and encrypted.
+dev_profile = 'scripts/testdata/diversification/profile.DEVELOPMENT-ONLY.json'
+canonical_refusal = jobs.fetch('custom-dart-sdk').fetch('steps').find { |step| step['name'] == 'Verify a canonical VM refuses profiled bytecode' }
+assert!(
+  canonical_refusal &&
+    !canonical_refusal.key?('if') && !canonical_refusal['continue-on-error'] &&
+    canonical_refusal['run'].to_s.include?('python3 dart-sdk/tools/test_aot_bytecode_patch.py') &&
+    canonical_refusal['run'].to_s.include?("--foreign-bytecode-profile #{dev_profile}") &&
+    !canonical_refusal['run'].to_s.include?('--bytecode-profile '),
+  'custom-dart-sdk must prove that a canonical VM refuses profiled (DBP3) bytecode'
+)
+diversified = jobs.fetch('custom-dart-sdk-diversified')
+diversified_steps = diversified.fetch('steps')
+diversified_runs = run_text_by_job.fetch('custom-dart-sdk-diversified')
+assert!(
+  diversified.fetch('timeout-minutes').to_i <= 180 &&
+    diversified_runs.include?("python3 scripts/diversification_profile.py encode #{dev_profile}") &&
+    diversified_runs.include?('dart_enable_shorebird_interpreter=true') &&
+    diversified_runs.include?('dart_enable_aot_patching=true') &&
+    diversified_runs.include?('dart_dynamic_modules=false') &&
+    diversified_runs.include?('dart_bytecode_profile=\"$profile\"') &&
+    diversified_runs.include?('grep -F "dart_bytecode_profile = \"$profile\"" out/ReleaseX64/args.gn') &&
+    diversified_runs.include?('ninja -C out/ReleaseX64 create_sdk runtime gen_snapshot dartaotruntime dart_engine_aot_shared dart gen_snapshot_product dartaotruntime_product vm_platform_product dart_engine_aot_shared_product'),
+  'custom-dart-sdk-diversified must build the SDK with the DEVELOPMENT-ONLY bytecode profile and check it reached args.gn'
+)
+assert!(
+  !diversified_runs.include?('upload-artifact') && upload_names(diversified).empty?,
+  'custom-dart-sdk-diversified is a regression job: its DEVELOPMENT-ONLY SDK must never be uploaded'
+)
+body = diversified_steps.find { |step| step['name'] == 'Run diversified body patch regression' }
+assert!(
+  body && body['run'].to_s.include?('set -euo pipefail') &&
+    body['run'].to_s.include?("--bytecode-profile #{dev_profile}") &&
+    body['run'].to_s.include?('--foreign-bytecode-profile "$foreign"') &&
+    body['run'].to_s.include?("wires[1], wires[2] = wires[2], wires[1]"),
+  'custom-dart-sdk-diversified must run its own patches and refuse canonical and foreign-profile ones'
+)
+['', ' --structural', ' --full-replacement', ' --structural --product', ' --full-replacement --product'].each do |mode|
+  expected = "python3 scripts/verify_encrypted_aot_runtime.py#{mode} --build-dir dart-sdk/out/ReleaseX64 --tooling-dart dart-sdk/out/ReleaseX64/dart-sdk/bin/dart --bytecode-profile #{dev_profile}"
+  step = diversified_steps.find { |candidate| candidate['run'].to_s.strip == expected }
+  assert!(step && !step.key?('if') && !step['continue-on-error'], "custom-dart-sdk-diversified must run: #{expected}")
+end
 macos_steps = jobs.fetch('macos-engine').fetch('steps')
 macos_tests_job = jobs.fetch('macos-engine-tests')
 macos_tests_steps = macos_tests_job.fetch('steps')
@@ -2737,15 +2812,17 @@ assert!(
     integrity_step['working-directory'] == 'updater' &&
     integrity_step['if'].to_s.include?("matrix.artifact_os != 'windows'") &&
     integrity_step['run'].to_s.include?('cargo test -p updater --locked -- --test-threads=1') &&
-    %w[integrity release_trust module_measurement package_identity security_inputs hardened_admission].all? { |filter| integrity_step['run'].to_s.include?(filter) } &&
+    %w[integrity release_trust module_measurement package_identity security_inputs hardened_admission diversif].all? { |filter| integrity_step['run'].to_s.include?(filter) } &&
+    integrity_step['run'].to_s.match?(/^\s*integrity release_trust module_measurement package_identity security_inputs hardened_admission diversif\s*$/) &&
     cli_artifact_steps.index(integrity_step) > cli_artifact_steps.index { |step| step['name'] == 'Set up Rust' },
   'cli-artifacts must run the P3 updater integrity tests on the Linux and macOS hosts (real ELF/Mach-O loaders)'
 )
 assert!(
   run_text_by_job.fetch('cli-artifacts').include?('test/general.shard/shorebird/shorebird_build_manifest_test.dart') &&
     run_text_by_job.fetch('cli-artifacts').include?('test/general.shard/shorebird/shorebird_yaml_test.dart') &&
-    run_text_by_job.fetch('cli-artifacts').include?('test/general.shard/shorebird/shorebird_release_trust_test.dart'),
-  'cli-artifacts must run the flutter_tools build-manifest (P3), release-trust (P4) and shorebird.yaml tests on every host'
+    run_text_by_job.fetch('cli-artifacts').include?('test/general.shard/shorebird/shorebird_release_trust_test.dart') &&
+    run_text_by_job.fetch('cli-artifacts').include?('test/general.shard/shorebird/shorebird_replacement_test.dart'),
+  'cli-artifacts must run the flutter_tools build-manifest (P3), release-trust (P4), replacement (P5) and shorebird.yaml tests on every host'
 )
 source_check_runs = job_runs(jobs.fetch('source-checks')).join("\n")
 [

@@ -87,7 +87,10 @@ class SchemaFilesTest(unittest.TestCase):
                                     ('artifact-catalog', 1, 'artifact-catalog.baseline-ae8a61a.json'),
                                     ('build-manifest', 1, 'build-manifest.linux-x64.json'),
                                     ('build-manifest', 2, 'build-manifest.v2.linux-x64.json'),
-                                    ('release-record', 2, 'release-record.v2.json')):
+                                    ('release-record', 2, 'release-record.v2.json'),
+                                    ('security-policy', 3, 'security-policy.v3.hardened-diversified.json'),
+                                    ('build-manifest', 3, 'build-manifest.v3.ios-arm64.json'),
+                                    ('release-record', 3, 'release-record.v3.json')):
             jsonschema.validate(load(name), v.load_schema(kind, version))
 
 
@@ -110,10 +113,11 @@ class SecurityPolicyTest(unittest.TestCase):
         policy = load('security-policy.hardened.json')
         policy['security_profile'] = 'hardened-diversified'
         self.assertRejected(policy, 'reserved')
-        for field, value, fragment in (('contract_version', 3, 'must be one of [1, 2]'),
+        for field, value, fragment in (('contract_version', 4, 'must be one of [1, 2, 3]'),
+                                       ('contract_version', 3, 'must be "hardened-diversified"'),
                                        ('contract_version', 2, 'missing required property release_root'),
-                                       ('contract_version', '1', 'must be one of [1, 2]'),
-                                       ('contract_version', True, 'must be one of [1, 2]'),
+                                       ('contract_version', '1', 'must be one of [1, 2, 3]'),
+                                       ('contract_version', True, 'must be one of [1, 2, 3]'),
                                        ('security_profile', 'Hardened', 'must be one of')):
             policy = load('security-policy.legacy-default.json')
             policy[field] = value
@@ -347,6 +351,111 @@ class ReleaseDocumentsTest(unittest.TestCase):
         self.assertNotEqual(v.validate_release_trust(self.bundle | {'contract_version': 1}), [])
 
 
+DIVERSIFICATION_TESTDATA = ROOT / 'scripts/testdata/diversification'
+DEVELOPMENT_PROFILE_ID = 'sha256:832856d0bed27833434e3f26b65d03cedc313f9850c2577ca7565c4dc644f46d'
+
+
+class DiversifiedContractTest(unittest.TestCase):
+    """Contract v3 (P5): hardened-diversified documents."""
+
+    def assertErrors(self, errors: list[str], fragment: str):
+        self.assertTrue(any(fragment in error for error in errors), errors)
+
+    def test_v3_examples_are_valid_and_agree(self):
+        policy = load('security-policy.v3.hardened-diversified.json')
+        manifest = load('build-manifest.v3.ios-arm64.json')
+        record = load('release-record.v3.json')
+        self.assertEqual(v.validate_security_policy(policy, production=True), [])
+        self.assertEqual(v.validate_build_manifest(manifest), [])
+        self.assertEqual(v.validate_release_record(record), [])
+        for document in (manifest, record):
+            self.assertEqual(document['diversification_profile_id'], policy['diversification_profile_id'])
+            self.assertEqual(document['toolchain_id'], policy['toolchain_id'])
+        entry = record['build_manifests'][0]
+        self.assertEqual(entry['manifest_sha256'], hashlib.sha256(v.canonical_json(manifest)).hexdigest())
+        for name in ('profile.DEVELOPMENT-ONLY.json', 'seed.DEVELOPMENT-ONLY.json'):
+            kind = 'diversification-profile' if name.startswith('profile') else 'diversification-seed'
+            document = json.loads((DIVERSIFICATION_TESTDATA / name).read_text(encoding='utf-8'))
+            self.assertEqual(v.VALIDATORS[kind](document), [], name)
+
+    def test_v3_is_only_for_hardened_diversified(self):
+        policy = load('security-policy.v3.hardened-diversified.json')
+        for profile in ('hardened', 'legacy'):
+            self.assertErrors(v.validate_security_policy(policy | {'security_profile': profile}),
+                              'must be "hardened-diversified"')
+        self.assertErrors(v.validate_security_policy(policy | {'diversification_profile_id': None}),
+                          '$.diversification_profile_id')
+        self.assertErrors(v.validate_security_policy(policy | {'diversification_profile_id': 'seed-1'}),
+                          'does not match')
+        # Hardened requirements still apply.
+        for field, value in (('signatures', 'optional'), ('patch_verification', 'install_only'),
+                             ('patch_response_verification', 'optional'), ('update_origin_policy', 'any'),
+                             ('trust_roots', []), ('toolchain_id', None), ('release_root', None)):
+            with self.subTest(field=field):
+                self.assertNotEqual(v.validate_security_policy(policy | {field: value}), [])
+        # A v2 (or v1) document can neither name the profile nor carry an id.
+        hardened = load('security-policy.v2.hardened.json')
+        self.assertErrors(v.validate_security_policy(hardened | {'security_profile': 'hardened-diversified'}),
+                          'reserved')
+        self.assertErrors(v.validate_security_policy(hardened | {'diversification_profile_id': DEVELOPMENT_PROFILE_ID}),
+                          '$.diversification_profile_id')
+
+    def test_development_profile_rules(self):
+        policy = load('security-policy.v3.hardened-diversified.json') | {
+            'diversification_profile_id': DEVELOPMENT_PROFILE_ID}
+        self.assertErrors(v.validate_security_policy(policy), 'requires development_exceptions')
+        policy['development_exceptions'] = True
+        self.assertEqual(v.validate_security_policy(policy), [])
+        self.assertErrors(v.validate_security_policy(policy, production=True),
+                          'rejects the DEVELOPMENT-ONLY diversification profile')
+        manifest = load('build-manifest.v3.ios-arm64.json') | {'diversification_profile_id': DEVELOPMENT_PROFILE_ID}
+        self.assertErrors(v.validate_build_manifest(manifest), 'requires development_exceptions')
+        self.assertEqual(v.validate_build_manifest(manifest | {'development_exceptions': True}), [])
+
+    def test_v3_manifest_and_record_shape(self):
+        manifest = load('build-manifest.v3.ios-arm64.json')
+        missing = {k: val for k, val in manifest.items() if k != 'diversification_profile_id'}
+        self.assertErrors(v.validate_build_manifest(missing), 'missing required property diversification_profile_id')
+        self.assertErrors(v.validate_build_manifest(manifest | {'security_profile': 'hardened'}),
+                          'must be "hardened-diversified"')
+        v2 = load('build-manifest.v2.linux-x64.json')
+        self.assertErrors(v.validate_build_manifest(v2 | {'diversification_profile_id': DEVELOPMENT_PROFILE_ID}),
+                          'unknown property diversification_profile_id')
+        record = load('release-record.v3.json')
+        missing = {k: val for k, val in record.items() if k != 'diversification_profile_id'}
+        self.assertErrors(v.validate_release_record(missing), 'missing required property diversification_profile_id')
+        self.assertErrors(v.validate_release_record(record | {'contract_version': 4}), 'must be one of [2, 3]')
+        v2record = load('release-record.v2.json')
+        self.assertErrors(v.validate_release_record(v2record | {'diversification_profile_id': DEVELOPMENT_PROFILE_ID}),
+                          'unknown property diversification_profile_id')
+
+    def test_v3_build_identity_and_catalog(self):
+        identity = load('build-identity.baseline-ae8a61a.json')
+        catalog = load('artifact-catalog.baseline-ae8a61a.json')
+        profile_id = load('security-policy.v3.hardened-diversified.json')['diversification_profile_id']
+        identity.update(contract_version=3, security_profile='hardened-diversified',
+                        diversification_profile_id=profile_id)
+        rehash(identity)
+        self.assertEqual(v.validate_build_identity(identity), [])
+        # The toolchain id binds the profile id: another profile is another toolchain.
+        other = copy.deepcopy(identity)
+        other['diversification_profile_id'] = DEVELOPMENT_PROFILE_ID
+        self.assertNotEqual(v.toolchain_id(other), identity['toolchain']['toolchain_id'])
+        self.assertErrors(v.validate_build_identity(other), '$.toolchain.toolchain_id')
+        catalog.update(contract_version=3, security_profile='hardened-diversified',
+                       diversification_profile_id=profile_id,
+                       toolchain_id=identity['toolchain']['toolchain_id'])
+        self.assertEqual(v.validate_artifact_catalog(catalog, identity), [])
+        self.assertErrors(v.validate_artifact_catalog(catalog | {'diversification_profile_id': DEVELOPMENT_PROFILE_ID},
+                                                      identity), 'must equal the build identity')
+        self.assertErrors(v.validate_artifact_catalog(catalog | {'security_profile': 'hardened'}),
+                          'must be "hardened-diversified"')
+        self.assertErrors(v.validate_artifact_catalog(catalog | {'diversification_profile_id': None}),
+                          '$.diversification_profile_id')
+        v1 = load('artifact-catalog.baseline-ae8a61a.json')
+        self.assertErrors(v.validate_artifact_catalog(v1 | {'security_profile': 'hardened-diversified'}), 'reserved')
+
+
 class CliTest(unittest.TestCase):
     def run_cli(self, *args: str) -> tuple[int, str]:
         stderr = io.StringIO()
@@ -370,7 +479,11 @@ class CliTest(unittest.TestCase):
             self.assertEqual(self.run_cli('security-policy', str(dev), '--production')[0], 1)
         for kind, path in (('release-trust', RELEASE_TRUST_TESTDATA / 'release-trust.DEVELOPMENT-ONLY.json'),
                            ('release-record', EXAMPLES / 'release-record.v2.json'),
-                           ('build-manifest', EXAMPLES / 'build-manifest.v2.linux-x64.json')):
+                           ('build-manifest', EXAMPLES / 'build-manifest.v2.linux-x64.json'),
+                           ('release-record', EXAMPLES / 'release-record.v3.json'),
+                           ('build-manifest', EXAMPLES / 'build-manifest.v3.ios-arm64.json'),
+                           ('diversification-profile', DIVERSIFICATION_TESTDATA / 'profile.DEVELOPMENT-ONLY.json'),
+                           ('diversification-seed', DIVERSIFICATION_TESTDATA / 'seed.DEVELOPMENT-ONLY.json')):
             self.assertEqual(self.run_cli(kind, str(path)), (0, ''), kind)
 
 

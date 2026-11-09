@@ -1,0 +1,26 @@
+{
+  "schema": "open-shorebird.release-record",
+  "contract_version": 3,
+  "security_profile": "hardened-diversified",
+  "toolchain_id": "sha256:7c4f83368bdce6f8f3cb8002a9aeefd5df6fd1c65ddbbaf16dfe431fc46a8930",
+  "diversification_profile_id": "sha256:7e73995ee3966f7396c2375869944324678b9f545a038b96d7c4416883413feb",
+  "development_exceptions": false,
+  "release_root_sha256": "sha256:e5738d44aaeb527b8cc32e649b24c855167299fb26b478a07595ab924863a16a",
+  "root_version": 1,
+  "delegations_version": 1,
+  "delegations_sha256": "f43f35fa5b0ddb23297d727779bd22577385a3a175d48e79f7919ad7f4789679",
+  "build_manifests": [
+    {
+      "manifest_sha256": "8d6053663d59d53f1d5d417d7126c439cd61b6703d6435948769df4cf4c8b96f",
+      "signer_key_id": "sha256:fe812c12f3ab4ce6ac5db69ac352f906cb1b11ef43fb33e252ef7ff552263889",
+      "config_sha256": "084c8d654284c0fcf92ed9e81414a15dd19532612e6301d9e184e4e0e62426c4",
+      "modules": [
+        {
+          "platform": "ios",
+          "arch": "aarch64",
+          "measurement": "sha256:096335fc0c85ad3247f97fcfc503e861dd0fd0d6278c7f30f5f04ffb35a455f3"
+        }
+      ]
+    }
+  ]
+}

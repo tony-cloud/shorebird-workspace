@@ -1,0 +1,7 @@
+{
+  "contract_version": 3,
+  "derivation": "open-shorebird.diversification.v1",
+  "profile_id": "sha256:832856d0bed27833434e3f26b65d03cedc313f9850c2577ca7565c4dc644f46d",
+  "schema": "open-shorebird.diversification-seed",
+  "seed": "oZZgWotkQKvHevglnNR3ySxf4DOer+RdhjxfuTmyY8I="
+}

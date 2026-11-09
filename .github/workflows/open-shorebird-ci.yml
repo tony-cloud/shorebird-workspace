@@ -231,6 +231,9 @@ jobs:
           python3 -m py_compile scripts/release_trust.py scripts/test_release_trust.py
           python3 scripts/test_release_trust.py -v
           python3 scripts/validate_hardening_contracts.py release-trust scripts/testdata/release-trust/release-trust.DEVELOPMENT-ONLY.json
+          python3 -m py_compile scripts/diversification_profile.py scripts/test_diversification_profile.py dart-sdk/runtime/tools/bytecode_profile.py dart-sdk/tools/test_aot_bytecode_patch.py scripts/verify_encrypted_aot_runtime.py
+          python3 scripts/test_diversification_profile.py -v
+          python3 scripts/validate_hardening_contracts.py diversification-profile scripts/testdata/diversification/profile.DEVELOPMENT-ONLY.json
           python3 -m py_compile scripts/provision_release_keys.py scripts/test_provision_release_keys.py
           python3 scripts/test_provision_release_keys.py -v
           python3 -m py_compile shorebird-server/deploy/linux/install_lib.py shorebird-server/deploy/linux/build_installer.py shorebird-server/deploy/linux/test_install.py
@@ -388,8 +391,9 @@ jobs:
           # trust (contract v2), module measurement on this host's real loader
           # (ELF or Mach-O), package identity adapters and the hardened init
           # paths. Windows runs the whole updater suite in its engine jobs.
+          # P5: the hardened-diversified admission, gate and build inputs.
           cargo test -p updater --locked -- --test-threads=1 \
-            integrity release_trust module_measurement package_identity security_inputs hardened_admission
+            integrity release_trust module_measurement package_identity security_inputs hardened_admission diversif
 
       - name: Cache pub packages
         uses: actions/cache@v4
@@ -423,6 +427,7 @@ jobs:
               test/general.shard/shorebird/shorebird_build_manifest_test.dart \
               test/general.shard/shorebird/shorebird_release_trust_test.dart \
               test/general.shard/shorebird/shorebird_yaml_test.dart \
+              test/general.shard/shorebird/shorebird_replacement_test.dart \
               test/general.shard/cache_test.dart \
               test/general.shard/build_system/targets/assets_test.dart \
               test/general.shard/build_system/targets/common_test.dart \
@@ -1095,6 +1100,7 @@ jobs:
           out/ReleaseX64/dart-sdk/bin/dart --packages=.dart_tool/package_config.json
           third_party/pkg/test/pkgs/test/bin/test.dart
           pkg/dart2bytecode/test/patch_test.dart
+          pkg/dart2bytecode/test/bytecode_profile_test.dart
           pkg/dart2bytecode/test/full_replacement_test.dart
           pkg/dart2bytecode/test/native_assets_profile_test.dart
           pkg/frontend_server/test/shorebird_native_assets_descriptor_test.dart
@@ -1108,6 +1114,12 @@ jobs:
           python3 scripts/verify_encrypted_aot_runtime.py
           --build-dir dart-sdk/out/ReleaseX64
           --tooling-dart dart-sdk/out/ReleaseX64/dart-sdk/bin/dart
+
+      - name: Verify a canonical VM refuses profiled bytecode
+        run: >-
+          python3 dart-sdk/tools/test_aot_bytecode_patch.py
+          --build-dir dart-sdk/out/ReleaseX64
+          --foreign-bytecode-profile scripts/testdata/diversification/profile.DEVELOPMENT-ONLY.json
 
       - name: Run PRODUCT no-TFA startup regression
         run: python3 dart-sdk/tools/test_aot_no_tfa_startup.py --build-dir dart-sdk/out/ReleaseX64
@@ -1202,6 +1214,127 @@ jobs:
             dart-sdk-linux-x64.zip
             dart-sdk-linux-x64.zip.sha256
           if-no-files-found: error
+
+  custom-dart-sdk-diversified:
+    name: Build hardened-diversified Dart SDK (P5)
+    needs: source-checks
+    runs-on: ${{ inputs.linux_heavy_runner || 'ubuntu-latest' }}
+    timeout-minutes: 180
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.full_sdk_build }}
+    steps:
+      - name: Checkout workspace
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install depot_tools
+        run: |
+          if [ ! -d depot_tools ]; then
+            git clone --depth 1 \
+              https://chromium.googlesource.com/chromium/tools/depot_tools.git \
+              depot_tools
+          fi
+          echo "$GITHUB_WORKSPACE/depot_tools" >> "$GITHUB_PATH"
+
+      - name: Verify depot_tools build tools
+        run: |
+          python3 --version
+          gclient help >/dev/null
+          ninja --version
+
+      - name: Free Ubuntu runner disk
+        run: ./scripts/free_ci_disk_linux.sh
+
+      - name: Check runner capacity
+        run: CI_MIN_FREE_DISK_GB="$SDK_MIN_FREE_DISK_GB" ./scripts/check_ci_capacity.sh
+
+      - name: Write gclient config
+        run: ./scripts/write_gclient.sh linux
+
+      - name: Sync open-source links
+        run: ./scripts/sync_open_sources.sh
+
+      - name: gclient sync
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_gclient_sync }}
+        run: gclient sync --no-history
+
+      - name: Generate diversified Dart SDK build files
+        run: |
+          set -euo pipefail
+          # Contract v3 (HARDENING_CONTRACTS.md section 11): the published
+          # DEVELOPMENT-ONLY profile; production profiles never reach CI.
+          profile="$(python3 scripts/diversification_profile.py encode scripts/testdata/diversification/profile.DEVELOPMENT-ONLY.json)"
+          cd dart-sdk
+          python3 tools/gn.py \
+            --mode release \
+            --arch x64 \
+            --gn-args="dart_dynamic_modules=false dart_enable_aot_patching=true dart_enable_shorebird_interpreter=true dart_bytecode_profile=\"$profile\""
+          grep -F "dart_bytecode_profile = \"$profile\"" out/ReleaseX64/args.gn
+
+      - name: Build diversified Dart SDK
+        working-directory: dart-sdk
+        run: ninja -C out/ReleaseX64 create_sdk runtime gen_snapshot dartaotruntime dart_engine_aot_shared dart gen_snapshot_product dartaotruntime_product vm_platform_product dart_engine_aot_shared_product
+
+      - name: Resolve public encryption tooling
+        working-directory: shorebird
+        run: ../dart-sdk/out/ReleaseX64/dart-sdk/bin/dart pub get
+
+      - name: Run diversified body patch regression
+        run: |
+          set -euo pipefail
+          # A second valid profile (two wire bytes swapped) that this VM was
+          # not built with: its patches, and canonical ones, must be refused.
+          foreign="$RUNNER_TEMP/foreign-bytecode-profile.json"
+          python3 - "$foreign" <<'PY'
+          import json, sys
+          sys.path.insert(0, 'scripts')
+          import diversification_profile as d
+          profile = d.load_json(d.DEVELOPMENT_PROFILE)
+          wires = profile['bytecode']['wire_opcodes']
+          wires[1], wires[2] = wires[2], wires[1]
+          d.check(profile, names=d.opcode_names())
+          open(sys.argv[1], 'w').write(json.dumps(profile))
+          PY
+          python3 dart-sdk/tools/test_aot_bytecode_patch.py \
+            --build-dir dart-sdk/out/ReleaseX64 \
+            --bytecode-profile scripts/testdata/diversification/profile.DEVELOPMENT-ONLY.json \
+            --foreign-bytecode-profile "$foreign"
+
+      - name: Run diversified encrypted body patch regression
+        run: >-
+          python3 scripts/verify_encrypted_aot_runtime.py
+          --build-dir dart-sdk/out/ReleaseX64
+          --tooling-dart dart-sdk/out/ReleaseX64/dart-sdk/bin/dart
+          --bytecode-profile scripts/testdata/diversification/profile.DEVELOPMENT-ONLY.json
+
+      - name: Run diversified encrypted structural patch regression
+        run: >-
+          python3 scripts/verify_encrypted_aot_runtime.py --structural
+          --build-dir dart-sdk/out/ReleaseX64
+          --tooling-dart dart-sdk/out/ReleaseX64/dart-sdk/bin/dart
+          --bytecode-profile scripts/testdata/diversification/profile.DEVELOPMENT-ONLY.json
+
+      - name: Run diversified encrypted full replacement regression
+        run: >-
+          python3 scripts/verify_encrypted_aot_runtime.py --full-replacement
+          --build-dir dart-sdk/out/ReleaseX64
+          --tooling-dart dart-sdk/out/ReleaseX64/dart-sdk/bin/dart
+          --bytecode-profile scripts/testdata/diversification/profile.DEVELOPMENT-ONLY.json
+
+      - name: Run diversified PRODUCT encrypted structural patch regression
+        run: >-
+          python3 scripts/verify_encrypted_aot_runtime.py --structural --product
+          --build-dir dart-sdk/out/ReleaseX64
+          --tooling-dart dart-sdk/out/ReleaseX64/dart-sdk/bin/dart
+          --bytecode-profile scripts/testdata/diversification/profile.DEVELOPMENT-ONLY.json
+
+      - name: Run diversified PRODUCT encrypted full replacement regression
+        run: >-
+          python3 scripts/verify_encrypted_aot_runtime.py --full-replacement --product
+          --build-dir dart-sdk/out/ReleaseX64
+          --tooling-dart dart-sdk/out/ReleaseX64/dart-sdk/bin/dart
+          --bytecode-profile scripts/testdata/diversification/profile.DEVELOPMENT-ONLY.json
 
   custom-dart-sdk-macos:
     name: Build custom Dart SDK (macOS arm64)
@@ -4723,6 +4856,7 @@ jobs:
           out/ReleaseARM64/dart-sdk/bin/dart --packages=.dart_tool/package_config.json
           third_party/pkg/test/pkgs/test/bin/test.dart
           pkg/dart2bytecode/test/patch_test.dart
+          pkg/dart2bytecode/test/bytecode_profile_test.dart
           pkg/dart2bytecode/test/full_replacement_test.dart
           pkg/dart2bytecode/test/native_assets_profile_test.dart
           pkg/frontend_server/test/shorebird_native_assets_descriptor_test.dart

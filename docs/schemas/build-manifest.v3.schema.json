@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/tony-cloud/shorebird-workspace/docs/schemas/build-manifest.v3.schema.json",
+  "title": "Open Shorebird hardened-diversified build manifest, contract v3",
+  "description": "Manifest a hardened-diversified build appends to the bundled shorebird.yaml as the final line `shorebird_build_manifest: v3.<base64url(manifest JSON bytes)>.<base64url(Ed25519 signature)>.<base64url(release-trust JSON)>`. Contract v2 (build-manifest.v2) plus diversification_profile_id, the id of the bytecode profile compiled into the engine (GN dart_bytecode_profile). The signature domain is unchanged: b\"open-shorebird.build-manifest-signature.v2:\" + the lowercase hex SHA-256 of the exact manifest bytes, by a build-manifest key delegated under the compiled release root. See docs/HARDENING_CONTRACTS.md sections 10.5 and 11.6.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "contract_version",
+    "security_profile",
+    "toolchain_id",
+    "development_exceptions",
+    "diversification_profile_id",
+    "signer_key_id",
+    "delegations_sha256",
+    "config_sha256",
+    "modules",
+    "package_identity"
+  ],
+  "properties": {
+    "schema": {
+      "const": "open-shorebird.build-manifest"
+    },
+    "contract_version": {
+      "const": 3
+    },
+    "security_profile": {
+      "const": "hardened-diversified"
+    },
+    "toolchain_id": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "development_exceptions": {
+      "type": "boolean"
+    },
+    "diversification_profile_id": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "signer_key_id": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "delegations_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "config_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "modules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "platform",
+          "arch",
+          "measurement"
+        ],
+        "properties": {
+          "platform": {
+            "enum": [
+              "android",
+              "ios",
+              "linux",
+              "macos",
+              "windows"
+            ]
+          },
+          "arch": {
+            "enum": [
+              "aarch64",
+              "arm",
+              "x86",
+              "x86_64"
+            ]
+          },
+          "measurement": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        }
+      }
+    },
+    "package_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "android_signing_cert_sha256",
+        "apple_team_ids"
+      ],
+      "properties": {
+        "android_signing_cert_sha256": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "apple_team_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z0-9]{10}$"
+          }
+        }
+      }
+    }
+  }
+}

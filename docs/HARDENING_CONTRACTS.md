@@ -1,4 +1,4 @@
-# Hardening contracts, versions 1 and 2
+# Hardening contracts, versions 1, 2 and 3
 
 Status: **v1, frozen by stage P0** of
 [the hardening plan](HARDENING_AND_UPSTREAM_DEPENDENCY_PLAN.md) on 2026-11-09.
@@ -10,8 +10,12 @@ implemented** (2026-11-09); §9 records its decisions, platform adapters and
 reject/accept matrix. **Contract v2 (P4, release root of trust) is
 implemented client-side** (2026-11-09) in the updater, engine build,
 flutter_tools, CLI and scripts; §10 records it. Contract v2 changes only the
-documents listed as v2 below; every other document stays v1. The server parts
-of P1–P4 are not implemented yet. Evidence that informed it is in [HARDENING_P0_EVIDENCE.md](HARDENING_P0_EVIDENCE.md).
+documents listed as v2 below; every other document stays v1. **Contract v3
+(P5, the `hardened-diversified` profile) is implemented client-side**
+(2026-11-09) in the Dart VM and dart2bytecode, the updater, engine build,
+flutter_tools, CLI and scripts; §11 records it. Only `hardened-diversified`
+documents use v3; legacy and hardened outputs are unchanged byte for byte.
+The server parts of P1–P5 are not implemented yet. Evidence that informed it is in [HARDENING_P0_EVIDENCE.md](HARDENING_P0_EVIDENCE.md).
 
 Machine-checkable parts:
 
@@ -27,6 +31,12 @@ Machine-checkable parts:
 | Release delegations (P4) | `docs/schemas/release-delegations.v2.schema.json` | `scripts/testdata/release-trust/delegations.v1.DEVELOPMENT-ONLY.json` |
 | Release-trust bundle (P4) | `docs/schemas/release-trust.v2.schema.json` | `scripts/testdata/release-trust/release-trust.DEVELOPMENT-ONLY.json` |
 | Release record (P4) | `docs/schemas/release-record.v2.schema.json` | `docs/schemas/examples/release-record.v2.json` |
+| Security policy v3 (P5) | `docs/schemas/security-policy.v3.schema.json` | `docs/schemas/examples/security-policy.v3.hardened-diversified.json` |
+| Build manifest v3 (P5) | `docs/schemas/build-manifest.v3.schema.json` | `docs/schemas/examples/build-manifest.v3.ios-arm64.json` |
+| Release record v3 (P5) | `docs/schemas/release-record.v3.schema.json` | `docs/schemas/examples/release-record.v3.json` |
+| Build identity, artifact catalog v3 (P5) | `docs/schemas/build-identity.v3.schema.json`, `docs/schemas/artifact-catalog.v3.schema.json` | v1 examples with the v3 fields (tests) |
+| Diversification profile (P5) | `docs/schemas/diversification-profile.v3.schema.json` | `scripts/testdata/diversification/profile.DEVELOPMENT-ONLY.json` |
+| Diversification seed record (P5) | `docs/schemas/diversification-seed.v3.schema.json` | `scripts/testdata/diversification/seed.DEVELOPMENT-ONLY.json` (public test seed) |
 
 `scripts/validate_hardening_contracts.py` checks a document against its schema
 and the cross-field rules below. It has no third-party dependency: it implements
@@ -57,22 +67,22 @@ hardened policy's trust-root key ID are placeholders, not deployments.
 - **Revisions and digests.** Revisions are full 40-hex git SHAs. Digests are
   lowercase SHA-256 (`sha256:<hex>` when the value is an ID).
 - **Reserved profile.** `hardened-diversified` is a valid enum value, so
-  documents can name it. Contract v1 nevertheless rejects it everywhere, and
-  `diversification_profile_id` must be `null`. P5 defines it in a later
-  contract version.
+  documents can name it. Contracts v1 and v2 nevertheless reject it
+  everywhere, and `diversification_profile_id` must be `null`. Contract v3
+  (§11, P5) defines it, and only v3 documents may use it.
 
 ## 2. Security profiles
 
 | Field | `legacy` | `hardened` | `hardened-diversified` |
 | --- | --- | --- | --- |
-| `signatures` | `optional` or `required` (as the release shipped) | `required` | reserved |
-| `patch_verification` | `strict` or `install_only` | `strict` | reserved |
-| `patch_response_verification` | `optional` or `required` | `required` | reserved |
-| `trust_roots` | empty unless signatures are required | ≥ 1 | reserved |
-| `update_origin_policy` | `any` (HTTP allowed, as today) | `https-only` | reserved |
-| `development_exceptions` | `false` (concept does not exist) | `false` in production; `true` only in visibly development builds | reserved |
-| `diversification_profile_id` | `null` | `null` | non-null in a later version |
-| `toolchain_id` | `null` or the build identity's ID | required: the build identity's `toolchain_id` | reserved |
+| `signatures` | `optional` or `required` (as the release shipped) | `required` | as `hardened` (v3, §11) |
+| `patch_verification` | `strict` or `install_only` | `strict` | as `hardened` |
+| `patch_response_verification` | `optional` or `required` | `required` | as `hardened` |
+| `trust_roots` | empty unless signatures are required | ≥ 1 | as `hardened` |
+| `update_origin_policy` | `any` (HTTP allowed, as today) | `https-only` | as `hardened` |
+| `development_exceptions` | `false` (concept does not exist) | `false` in production; `true` only in visibly development builds | as `hardened` |
+| `diversification_profile_id` | `null` | `null` | required: the profile ID (contract v3, §11.2) |
+| `toolchain_id` | `null` or the build identity's ID | required: the build identity's `toolchain_id` | as `hardened` |
 
 Cross-field rules:
 
@@ -382,7 +392,8 @@ The only exception is development builds. A hardened engine built with
 ### 7.5 CLI release admission
 
 - `shorebird release --security-profile=<legacy|hardened>` defaults to
-  `legacy`, and `hardened-diversified` is refused as reserved.
+  `legacy`, and `hardened-diversified` is refused as reserved. (Contract v3
+  accepts it on a diversified toolchain, §11.7.)
 - The installed toolchain's floor is read from
   `<shorebird root>/bin/internal/toolchain_security.json`. Its keys are exactly
   `schema` (`open-shorebird.toolchain-security`), `contract_version` (1),
@@ -424,7 +435,7 @@ The only exception is development builds. A hardened engine built with
 | Userinfo in origin, or HTTPS-to-HTTP redirect | accept | reject |
 | `toolchain_id` differs from the compiled ID | reject when both present | reject; missing ID also rejected |
 | `security_contract_version` other than 1 | reject | reject; missing version also rejected |
-| `security_profile: hardened-diversified` | reject | reject (build also refuses it) |
+| `security_profile: hardened-diversified` | reject | reject (build also refuses it); accepted only by a `hardened-diversified` updater (§11.6) |
 | Duplicate YAML key | accept (last wins, as before) | reject |
 | Unsigned patch reaching signature verification | accept when no key (legacy) | reject |
 | Engine and updater library compiled with different profiles | engine refuses `Init` | engine refuses `Init` |
@@ -1162,7 +1173,8 @@ lifecycle evidence.
 
   The server stores `UpdateReleaseMetadata` as opaque JSON today, so the
   record is kept but not enforced.
-- **P5.** The `hardened-diversified` profile, a later contract version.
+- **P5.** The `hardened-diversified` profile: implemented as contract v3
+  (§11).
 - **P6.**
   - A hardened CI toolchain built with `shorebird_release_root`, which writes
     a v2 `toolchain_security.json`.
@@ -1190,3 +1202,335 @@ unchanged. Production and DEVELOPMENT-ONLY directories cannot be mixed.
 | Rotate or revoke a delegate | `rotate ROLE [--revoke] [--raise-floor]`: delegations N+1 with `--previous` (revocations carried forward); `--raise-floor` raises `shorebird_release_min_delegations_version` to N+1 for a compromise (§10.3) | `delegate --previous ... --revoke ID`, re-bundle |
 | Rotate the root (planned) | `rotate root [--repin]`: root N+1 signed by both thresholds, delegations re-signed under it, chain re-bundled; `--repin` lets new engines pin it | `root --previous root.vN.json --previous-key ...`, then `delegate` and `bundle` |
 | Check | `verify`: private directory, repository pins and GitHub variables agree; secrets exist | `release_trust.py verify --root-pin ... --production --at now` |
+
+## 11. Contract v3: `hardened-diversified` (P5)
+
+P5 defines the profile that P1 reserved. A `hardened-diversified` release is a
+`hardened` release (every rule of §7, §9 and §10 applies unchanged) whose Dart
+bytecode uses a release-specific opcode map. Contract v3 changes only the
+documents listed as v3 below. Legacy and hardened builds never read a v3
+document, and their YAML, manifests, bytecode, envelopes, release metadata and
+updater behavior are unchanged byte for byte.
+
+### 11.1 Scope and decisions
+
+| Question (plan §5, §6, §8) | Decision |
+| --- | --- |
+| First target | The Dart bytecode interpreter (plan §5.1). Bytecode exists only for interpreter releases (iOS and iOS framework body/structural/full, macOS full), so the profile is refused for every other release (CLI) and for any engine built without `dart_enable_shorebird_interpreter` (GN). Native AOT instructions and the mixed-mode ARM64 path are not remapped. |
+| What is diversified | One subprofile: a permutation of the wire bytes of the 176 public opcodes. `Trap` keeps byte 0, so zero-filled memory still traps. VM-internal opcodes keep their canonical bytes: they are produced by the VM itself and are refused in files. |
+| Compact/wide pairs | Not adjacent on the wire. Width, operands and the wide flag are properties of the *semantic* opcode, which is decoded first; no consumer reads parity, ranges or the `+1` relation from a wire byte. |
+| Where decoding happens | Compiler: only at the serialization boundary (`_writeBytecodeInstructions`/`_readBytecodeInstructions`), so code generation, jump patching, validation, golden text and the disassembler keep semantic bytes. VM: at every opcode read (`KernelBytecode::DecodeOpcode`, one 256-byte table lookup), never by rewriting loaded bytecode into a canonical copy (plan §5.3). |
+| Seed scope and lifetime | One random 32-byte seed per application/native-release lineage, kept with the release records. Changing it needs a new native release and a fresh baseline; it is never re-randomized per patch or per process. |
+| Map secrecy | Not a security boundary (plan §5.2). The engine necessarily contains the decode table. The seed and the profile document stay with the release records; the app carries only the nonsecret `profile_id`. |
+| Profile binding | The profile id is compiled into the VM and the updater, declared in the bundled YAML, bound by the signed build manifest, recorded in the release record, written into every bytecode component header and every envelope's authenticated metadata. A mismatch anywhere is refused before any instruction is interpreted, and the envelope check runs before the key callback. |
+| Native layout, BoringSSL | Reserved (`native_layout: null` in v3), see §11.8. |
+| Obfuscation | Unchanged: interpreter releases still refuse `--obfuscate` (plan §5.1). Diversification does not imply name obfuscation. |
+
+### 11.2 Profile, seed and derivation
+
+`scripts/diversification_profile.py` is the reference implementation.
+
+- **Profile** (`diversification-profile.v3.schema.json`), canonical JSON:
+  `schema: open-shorebird.diversification-profile`, `contract_version: 3`,
+  `bytecode: {scheme: opcode-permutation-v1, format_version: 3, opcode_table_sha256, wire_opcodes}`,
+  `native_layout: null`.
+  - `wire_opcodes[i]` is the wire byte of public opcode `i`, in the order of
+    `PUBLIC_KERNEL_BYTECODES_LIST` (`dart-sdk/runtime/vm/constants_kbc.h`),
+    which is also dart2bytecode's `Opcode` enum order.
+  - `opcode_table_sha256` is the SHA-256 of the opcode names (`Trap`, `Dup`,
+    …, without the `k` prefix) joined by `\n`. A consumer whose own table
+    hashes differently refuses the profile.
+  - Rules beyond the schema: a permutation of `0..N-1`, `N` = the table size
+    (≤ 256), `wire_opcodes[0] == 0`, and fewer than 16 fixed points besides
+    `Trap` (a derived profile has about one; this refuses hand-made weak maps).
+- **`profile_id`** = `sha256:` + hex SHA-256 of the canonical profile bytes.
+  The bytecode header carries the 32 raw digest bytes.
+- **Encoded form** (GN, `build.rs`): base64 of the canonical bytes, at most
+  8192 characters. Consumers reject non-canonical base64 or JSON and
+  duplicate keys.
+- **Seed record** (`diversification-seed.v3.schema.json`): `schema:
+  open-shorebird.diversification-seed`, `contract_version: 3`, `derivation:
+  open-shorebird.diversification.v1`, `seed` (canonical base64 of 32 random
+  bytes), `profile_id`. Private: `new` refuses a directory inside a git work
+  tree and writes mode 0600 files.
+- **Derivation `open-shorebird.diversification.v1`**:
+  1. `subkey = HMAC-SHA256(seed, "open-shorebird.diversification.v1/bytecode-opcode-permutation")`.
+  2. Stream: `HMAC-SHA256(subkey, uint32_be(counter))` blocks for counter
+     0, 1, …, read as big-endian `uint32` values.
+  3. `below(n)`: draw until `x < 2^32 - (2^32 mod n)`, return `x mod n`.
+  4. `L = [1, …, N-1]`; for `i` from `len(L)-1` down to 1: `j = below(i+1)`,
+     swap `L[i]` and `L[j]`. `wire_opcodes = [0] + L`.
+- **Development profile.** `scripts/testdata/diversification/` holds a
+  deliberately public seed (`SHA-256("open-shorebird DEVELOPMENT-ONLY diversification seed v1")`)
+  and its profile, id
+  `sha256:832856d0bed27833434e3f26b65d03cedc313f9850c2577ca7565c4dc644f46d`.
+  As with the development root (§10.4), every build input refuses it unless
+  development exceptions are on, and `--production` refuses it outright.
+
+### 11.3 Profiled bytecode format (`DBP3`)
+
+| Field | Canonical (`DBC3`, unchanged) | Profiled |
+| --- | --- | --- |
+| magic (UInt32) | `0x44424333` | `0x44425033` (`DBP3`) |
+| format version (UInt32) | 3 | 3 |
+| profile digest | absent | 32 raw bytes: the profile id's digest |
+| section table | 14 × (count, offset) | same; offsets account for the 32 extra bytes |
+| instruction opcode bytes | semantic | `wire_opcodes[semantic]` |
+
+Everything else (operands, jump offsets, constant pool, metadata) is
+identical, so a profiled component differs from the canonical one only in its
+header and its opcode bytes.
+
+- **dart2bytecode** takes `--bytecode-profile=<profile.json>` (absent: output
+  unchanged). It validates the profile against its own opcode table, writes
+  `DBP3`, and reads (`--patch-base`, full-replacement admission,
+  `dump_bytecode`) only components whose header names the same profile. A
+  `DBC3` input under a profile, a `DBP3` input without one, and a different
+  digest all fail with a typed error.
+- **VM** (`dart_bytecode_profile` GN arg, §11.5). A profiled VM accepts only
+  `DBP3` with its compiled digest; a canonical VM accepts only `DBC3` (it
+  already refuses `DBP3` as an unknown magic). A patch is refused with
+  `RejectBytecodePatch`; a base component fails startup as before. The
+  full-replacement opcode admission (`ReadBytecode`) checks the wire byte range
+  and then the decoded opcode, so its forbidden-opcode categories are
+  unchanged. The interpreter, the breakpoint patcher (the saved byte is a
+  wire byte), the VM-internal instruction arrays (encoded at compile time),
+  hot reload, the FFI validator and the disassembler all go through the same
+  decode/encode functions.
+- **SBR wrapper** (full replacement). The wrapper is unchanged. Its component
+  must be `DBP3` with the expected digest when the build is diversified, and
+  `DBC3` otherwise (flutter_tools `shorebird_replacement.dart`,
+  `open_aot_patch_tools` `full_replacement.dart`).
+
+### 11.4 Envelope binding
+
+Encrypted interpreter envelopes (`open-aot-vmcode-encrypted-v1`) gain one
+optional metadata field, `bytecode_profile_id` (the profile id string). It is
+part of the AES-GCM associated data like every metadata field.
+
+- `open_aot_patch_tools` `PatchMetadata.bytecodeProfileId` writes it only when
+  set, so canonical envelopes are byte-identical.
+- A profiled VM requires it and requires it to equal its compiled id; a
+  canonical VM refuses an envelope that carries it. Both checks run with the
+  other metadata checks, before the key callback and before decryption. Old
+  VMs refuse it as an unknown field.
+
+### 11.5 Compiled inputs
+
+| Input | Where | Rule |
+| --- | --- | --- |
+| `dart_bytecode_profile` | Dart GN (`runtime/runtime_args.gni`) | encoded profile (§11.2) or `""`. `gn gen` validates it against `constants_kbc.h` (`runtime/tools/bytecode_profile.py`) and defines `DART_BYTECODE_PROFILE`, the wire table and the digest for every VM target. Requires `dart_enable_shorebird_interpreter`. This is the single source of the map: the engine reads the same arg. |
+| `shorebird_security_profile = "hardened-diversified"` | engine GN (`common/config.gni`) | requires `dart_bytecode_profile` and `dart_enable_shorebird_interpreter`, plus every hardened requirement (toolchain ID, release root). `dart_bytecode_profile` is refused for `legacy` and `hardened`. Defines `SHOREBIRD_SECURITY_HARDENED=1` and `SHOREBIRD_SECURITY_DIVERSIFIED=1`. |
+| `SHOREBIRD_DIVERSIFICATION_PROFILE` | `build_rust_updater.py` → `build.rs` | set only from `dart_bytecode_profile`, scrubbed otherwise. `security_inputs.rs` validates it (§11.2 rules) and generates `COMPILED_DIVERSIFICATION_PROFILE_ID`. The development profile needs development exceptions. |
+
+The updater's compiled profile is one of three values. `hardened-diversified`
+is hardened for every P1–P4 rule (signatures, HTTPS, integrity gate, release
+root). `shorebird_compiled_security_profile()` returns
+`hardened-diversified`, and the engine's `Updater::Init` cross-check compares
+it with the engine's compiled profile as before.
+
+### 11.6 Declaration, admission and build manifest v3
+
+- **YAML.** flutter_tools writes, for `SHOREBIRD_SECURITY_PROFILE=hardened-diversified`
+  with `SHOREBIRD_DIVERSIFICATION_PROFILE_ID`:
+  `security_profile: hardened-diversified`, `security_contract_version: 3`,
+  `toolchain_id`, `diversification_profile_id`, and the v3 manifest line. A
+  checked-in `shorebird.yaml` containing `diversification_profile_id` is
+  rejected in every profile, like the other reserved keys.
+- **Admission** (updater `security::admit`):
+
+  | Compiled | YAML declares | Result |
+  | --- | --- | --- |
+  | `legacy` | anything with `hardened-diversified` or contract 3 | reject (unchanged rule: only 1 or 2, profile mismatch) |
+  | `hardened` | `diversification_profile_id` present, or `hardened-diversified` | reject |
+  | `hardened-diversified` | `hardened-diversified`, contract 3, matching ID | hardened checks, then the gate |
+  | `hardened-diversified` | anything else (missing or other ID, contract 2, `hardened`) | reject before keys or patches |
+
+- **Build manifest v3** (`build-manifest.v3.schema.json`): v2 plus
+  `diversification_profile_id`, with `contract_version: 3` and
+  `security_profile: hardened-diversified`. Token
+  `shorebird_build_manifest: v3.<manifest>.<signature>.<release-trust>`. The
+  signature domain stays `open-shorebird.build-manifest-signature.v2:`: the
+  domain separates document types and trust models, and v3 changes neither;
+  the payload's contract version and the token prefix separate the versions. A
+  hardened gate refuses a `v3.` token and a diversified gate refuses `v2.`
+  (`manifest_malformed`); a v3 manifest whose ID differs from the compiled ID
+  fails `manifest_policy_mismatch`.
+
+### 11.7 Toolchain, CLI and records
+
+- **`toolchain_security.json` v3**: the v2 keys plus
+  `diversification_profile_id`. v3 is used only by diversified toolchains,
+  and a diversified toolchain must be v3. v1 and v2 files are read unchanged
+  and must not carry the key.
+- **`shorebird release --security-profile=hardened-diversified`**: every
+  hardened refusal (§7.5, §10), plus:
+  - the toolchain must be a v3 diversified toolchain;
+  - `SHOREBIRD_DIVERSIFICATION_PROFILE` must name a valid profile whose ID
+    equals the toolchain's;
+  - the release must use the bytecode interpreter
+    (`aot_patch_runtime_mode: dart-bytecode-interpreter`); every other
+    platform or mode is refused before building.
+  The build gets the hardened environment plus
+  `SHOREBIRD_DIVERSIFICATION_PROFILE_ID`; every dart2bytecode invocation gets
+  `--bytecode-profile`; every envelope gets `bytecode_profile_id`. Legacy and
+  hardened argv, environments and envelopes are unchanged.
+- **`shorebird patch`** on a diversified toolchain applies the same checks
+  and inputs, so a patch can only be produced for the release's profile.
+- **`release-record.v3`**: v2 plus `diversification_profile_id`; all records
+  merged for one release must agree on it.
+- **`security-policy.v3`**: v2 with `diversification_profile_id` a
+  `sha256:` ID, required exactly for `hardened-diversified`, and `null`
+  otherwise. `build-identity` and `artifact-catalog` accept contract v3 only
+  for `hardened-diversified` with a non-null ID; the toolchain ID formula of
+  §3 already includes the profile ID, so caches keyed by toolchain ID are
+  profile-scoped. Hardened catalogs and diversified catalogs follow the same
+  signer rule (§10.6).
+
+### 11.8 Native layout and BoringSSL
+
+- **BoringSSL symbol prefixing: evaluated and not adopted.** P0 found no
+  BoringSSL export on any platform (`HARDENING_P0_EVIDENCE.md` §1, finding
+  2), and release engines are stripped of local symbols except the Android
+  Maven `libflutter.so`, which still carries debug information. Prefixing
+  renames symbols that a shipped binary does not expose, so it does not change
+  what a symbol-, offset- or signature-based hook sees. Stripping the Android
+  library is the cheaper and stronger control and stays a P6 measurement
+  item. BoringSSL keeps the pinned upstream revision, its GN build and its
+  assembly; standard TLS and cryptography are unchanged.
+- **Native layout diversification is reserved** (`native_layout` must be
+  `null` in v3). Deterministic function ordering and Apple/Linux export
+  minimization change shipped engine bytes on every platform, so they need
+  native-host and device measurement with extraction and hook tools before a
+  claim can be made (plan §5.4, §9). That evaluation is P5b. A later contract
+  version may define the subprofile; v3 consumers refuse a non-null value.
+
+### 11.9 Reject/accept matrix
+
+Every row is covered by a named test. Evidence classes: **unit** (Rust, Dart,
+Python, C++ unit tests), **build** (GN/`build.rs` refusals), and **host
+runtime** (the AOT harnesses run a real VM built with and without the
+DEVELOPMENT-ONLY profile and apply real patches). There is no device evidence
+yet (§11.10).
+
+Profile, seed and inputs:
+
+| Case | Result | Tests |
+| --- | --- | --- |
+| Reference derivation of the published seed; 16 further seeds | the committed profile; valid, ≤ 15 fixed points | `test_diversification_profile.py` `DerivationTest`; Dart `bytecode_profile_test.dart` (same wire prefix) |
+| Python reference, VM generator, dart2bytecode, updater, CLI agree on validity and ID | identical | `VmGeneratorAgreementTest`, `CrossRepoFixtureTest`; `security_inputs::tests::rendering_is_deterministic_rust`; CLI `computes the reference profile id of the shared fixture` |
+| Non-canonical base64/JSON, duplicate or extra key, `native_layout` ≠ null, other schema/contract/scheme/format, wrong opcode-table hash, not a permutation, Trap moved, ≥ 16 fixed points, oversized | refused by every consumer; `gn gen` fails | `ProfileRulesTest`, `VmGeneratorAgreementTest.test_refuses_what_the_reference_refuses`; `malformed_diversification_profiles_fail_the_build`; py `test_malformed_profiles_are_refused`; CLI `BytecodeProfile refuses …`; Dart `invalid profiles are refused` |
+| DEVELOPMENT-ONLY profile without development exceptions, or with `--production` | refused | `test_check_and_production`; `development_profile_needs_a_development_build`; py `test_development_profile_needs_development_exceptions`; flutter_tools `the DEVELOPMENT-ONLY diversification profile needs a development build`; CLI `refuses the DEVELOPMENT-ONLY profile on a production toolchain` |
+| `new` into a git work tree (without `--development`) | refused; files mode 0600 otherwise | `CliTest.test_refusals`, `test_new_derive_verify_and_gn_args` |
+| Diversified engine without toolchain ID, release root, interpreter or profile; profile for `legacy`/`hardened` | build fails; inherited value scrubbed | `diversified_has_every_hardened_requirement`, `diversification_profile_is_refused_outside_diversified` (Rust and py); GN asserts (spot-checked) |
+| v3 documents: profile ID required exactly for `hardened-diversified`; v3 for another profile; v1/v2 naming a profile; DEVELOPMENT-ONLY ID in a production manifest | accept / reject | `test_hardening_contracts.py` `test_v3_is_only_for_hardened_diversified`, `test_diversification_and_development_rules`, `test_reserved_and_versioning` |
+
+Bytecode and VM (host runtime, both builds):
+
+| Case | Canonical VM | Diversified VM |
+| --- | --- | --- |
+| Own patch (body; structural and full replacement, plain and encrypted, non-PRODUCT and PRODUCT) | accept (DBC3) | accept (DBP3) |
+| DBP3 patch from the DEVELOPMENT-ONLY profile | reject ("profile does not match this VM") | — |
+| Canonical DBC3 patch | — | reject |
+| Patch from another valid profile (two wire bytes swapped) | — | reject (digest) |
+| Envelope with `bytecode_profile_id` | reject before the key callback | required; another ID rejected before the key callback |
+| Envelope without `bytecode_profile_id` | accept (byte-identical) | reject before the key callback |
+
+Host runs: macOS arm64 (local, canonical and DEVELOPMENT-ONLY builds, PRODUCT
+structural and full replacement included) and the Linux x64 CI job. Tests:
+`dart-sdk/tools/test_aot_bytecode_patch.py`
+(`--bytecode-profile`, `--foreign-bytecode-profile`),
+`test_aot_structural_patch.py` and `test_aot_full_replacement.py`
+(`--bytecode-profile`), `scripts/verify_encrypted_aot_runtime.py`
+(`RejectBeforeKey`: the key-request count is unchanged). dart2bytecode
+(`bytecode_profile_test.dart`): DBP3 header and digest, a profiled component
+differs from the canonical one only in header and opcode bytes and decodes back
+to it; the component reader (shared by `--patch-base`, full-replacement
+admission and `dump_bytecode`) refuses DBC3 under a profile, DBP3 without one
+and another digest; `--patch-base` across profiles and an invalid
+`--bytecode-profile` fail without writing output. Existing `patch_test`, `full_replacement_test`,
+`bytecode_generator_test` (golden output) are unchanged and pass.
+
+Updater, engine and flutter_tools:
+
+| Case | Result | Tests |
+| --- | --- | --- |
+| Diversified updater, matching diversified YAML | accept; hardened floor forced | `security::tests::diversified_accepts_the_build_output_and_forces_the_hardened_floor`; `config::tests::hardened_admission::diversified_updater_boots_the_diversified_build_output` |
+| Diversified updater: missing, other, uppercase or empty ID; contract 2; `hardened`, missing or unsigned declaration; duplicated ID | reject before keys or patches | `diversified_rejects_another_profile_or_declaration`; `diversified_refusals_publish_nothing_on_any_entry_point` |
+| Hardened updater given the ID or the diversified output | reject (`UnexpectedDiversificationProfile` / contract 3 / `ProfileMismatch`) | `hardened_rejects_a_diversification_declaration`, `hardened_rejects_incompatible_identity_and_versions` |
+| Legacy updater given the diversified declaration or contract 3 | reject | `legacy_updater_refuses_a_hardened_declaration`, `legacy_accepts_known_contract_versions_only` |
+| Diversified keeps signatures and HTTPS | unsigned refused; `http` refused | `cache::signing::tests::diversified_policy_never_accepts_unsigned_content`; `hardened_download_refuses_http_before_any_request` |
+| Gate: v3 token under diversified | accept (config, module and trust rules still apply) | `integrity::tests::diversified_gate_accepts_the_v3_build_output` |
+| Gate: v3 token to hardened; v2 token to diversified; v2 manifest carrying the key | `manifest_malformed` | `each_gate_accepts_only_its_own_token_version` |
+| Gate: other ID | `manifest_policy_mismatch` | `diversified_manifest_binds_the_compiled_profile` |
+| Gate: missing, null, malformed or duplicate ID; contract 2 or `hardened` inside v3 | `manifest_malformed` / `manifest_policy_mismatch` | `diversified_manifest_binds_the_compiled_profile` |
+| flutter_tools v3 output verified by the Rust gate | accept; refused by a hardened gate or under another profile | `integrity::tests::flutter_tools_v3_output_verifies`; Dart `matches the v3 token the updater verifies` |
+| Compiled profile name across C API and engine; engine and updater compiled differently | `hardened-diversified`; engine refuses `Init` | `compiled_security_profile_names_each_contract_profile`; engine `UpdaterSecurityProfile.*` (incl. `LinkedRustUpdaterMatchesTheEngineProfile`) |
+| flutter_tools YAML: v3 declarations; ID required exactly for diversified; ID is a reserved checked-in key in every profile | accept / reject | `hardened-diversified writes the contract v3 declarations`, `the diversification profile ID is required exactly for hardened-diversified`, `source yaml cannot contain the reserved declaration keys in any profile` |
+| flutter_tools manifest and record | v3 token and `release-record.v3`; hardened record stays v2 | `hardened-diversified writes the v3 manifest and a release-record.v3`, `a hardened release record stays release-record.v2` |
+| Catalog: v3 for own profile | accept | `hardened-diversified: a contract v3 catalog naming its own profile` |
+| Catalog: other ID; v3 to hardened or legacy; v1 to diversified; unsigned; dev key; non-delegate, role-confused or revoked signer; no release trust | reject | `hardened-diversified: catalog profile, contract and signer rules`, `contract v3 is admissible only for hardened-diversified with a profile` |
+| SBR wrapper: DBP3 with matching digest | accept | flutter_tools `accepts a DBP3 component bound to the configured profile`; open_aot_patch_tools `is accepted with the expected digest` |
+| SBR wrapper: DBC3 under diversified; other or no ID; DBP3 under legacy or hardened; wrong version, digest or truncated header | reject | `refuses a DBC3 component, another profile, or no profile ID`, `refuses a DBP3 header with a wrong version or digest`; open_aot_patch_tools `DBP3 profiled component (contract v3)` group |
+
+CLI and patch tools:
+
+| Case | Result | Tests |
+| --- | --- | --- |
+| Diversified toolchain: iOS or iOS-framework interpreter release, macOS full replacement | accept; diversified variables, `--bytecode-profile`, envelope ID and v3 record | `release_command_test.dart` group `on a hardened-diversified toolchain` |
+| Diversified toolchain: Android, Linux, Windows, iOS without the interpreter declaration, `ios-aot-link`, native-AOT override, macOS without full replacement | reject before building | `refuses a non-interpreter release` group; patch `refuses a non-interpreter patch` |
+| No or invalid `SHOREBIRD_DIVERSIFICATION_PROFILE`; a profile the toolchain was not built with; DEVELOPMENT-ONLY profile on a production toolchain; development toolchain for release | reject before building | release and patch groups `on a hardened-diversified toolchain` |
+| Every hardened refusal (§7.5, §10) | still applies | `still applies every hardened refusal`, `still applies the hardened refusals` |
+| `hardened-diversified` on a legacy or hardened toolchain; `hardened`/`legacy` on a diversified one | reject | `refuses a hardened-diversified release`, `refuses a hardened release`, `refuses a legacy release` |
+| `toolchain_security.json` v3 rules; v1/v2 naming a profile; v3 without the ID or for another profile | accept / reject | `security_profile_test.dart` group `refuses a contract v3 file`, `reads a contract v3 hardened-diversified toolchain` |
+| Release records: v2 for diversified, v3 for another profile or for hardened, records that disagree | reject | `readReleaseRecord` group `hardened-diversified (release-record v3)` |
+| Envelope `bytecode_profile_id`: omitted when unset; authenticated when set; malformed | byte-identical / tamper fails decryption / reject | `patch_artifact_test.dart` group `bytecode_profile_id (contract v3)` |
+
+Legacy and hardened (byte identity): the existing golden and exact-output
+tests are unchanged and pass (updater YAML and admission, `_kUpdaterGolden`,
+flutter_tools `legacy output is unchanged`, hardened declaration and v2
+manifest/record tests, CLI exact-argv and canonical-envelope tests,
+dart2bytecode golden output, the canonical VM harnesses).
+
+Implementation decisions recorded here (not in the plan):
+
+- **iOS framework** releases use the same interpreter runtime as iOS apps and
+  are admitted; every non-interpreter release is refused.
+- **A legacy updater ignores a lone `diversification_profile_id` key**, as it
+  ignores every unknown YAML key today; it still rejects the
+  `hardened-diversified` declaration and contract 3. Legacy behavior stays
+  byte-identical. The CLI and flutter_tools refuse the key in a checked-in
+  `shorebird.yaml` for every profile.
+- **The envelope field is optional and omitted when unset**, so canonical
+  envelopes and their AAD are unchanged; a key present with a null or
+  malformed value is refused.
+- **The updater validates the encoded profile without a crypto dependency**:
+  a valid profile has exactly one canonical encoding, which `build.rs`
+  compares byte for byte; its SHA-256 is pinned against the `sha2` crate.
+
+### 11.10 Deferred
+
+- **P5b.** Native layout subprofile and its measurement (§11.8); extraction
+  and TLS-hook tool assessment on control versus diversified builds (plan §9
+  "Extraction resistance"); device performance against the ≤5% CPU / ≤10% RSS
+  budgets; the native ARM64 FFI full-replacement fixture
+  (`verify_encrypted_aot_runtime.py --full-replacement-ffi` refuses
+  `--bytecode-profile` until it is wired). The CI job
+  `custom-dart-sdk-diversified` (Linux x64) covers body, structural and full
+  replacement, plain and encrypted, and PRODUCT structural and full
+  replacement; macOS arm64 was checked locally (§11.9).
+- **P4b.** Server storage and enforcement of the release record, which
+  now includes `diversification_profile_id`.
+- **P6.** A diversified CI toolchain (a release-lineage engine build with
+  `dart_bytecode_profile`, its `toolchain_security.json` v3 and catalog);
+  lifecycle and device evidence for diversified releases.
+
+### 11.11 Operator procedures
+
+| Step | Command |
+| --- | --- |
+| Create a lineage profile (once per native-release lineage) | `scripts/diversification_profile.py new --output-dir PRIVATE` (prints the profile ID; writes `diversification-seed.json` and `diversification-profile.json`, mode 0600) |
+| Engine build inputs | `scripts/diversification_profile.py gn-args PRIVATE/diversification-profile.json --production` prints `shorebird_security_profile`, `dart_bytecode_profile` and the `toolchain_security.json` fields |
+| Release and patch machines | `SHOREBIRD_DIVERSIFICATION_PROFILE=PRIVATE/diversification-profile.json` |
+| Reproduce or recover | `scripts/diversification_profile.py derive PRIVATE/diversification-seed.json` re-creates the profile byte for byte; a lost seed and profile mean a new native release with a new profile, never a guessed map |
+| Check | `scripts/diversification_profile.py verify PROFILE --production --expect-id ID` |
