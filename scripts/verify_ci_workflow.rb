@@ -353,6 +353,9 @@ required_files = %w[
   docs/schemas/examples/release-record.v2.json
   scripts/release_trust.py
   scripts/test_release_trust.py
+  scripts/provision_release_keys.py
+  scripts/provision_release_keys.sh
+  scripts/test_provision_release_keys.py
   scripts/testdata/release-trust/root.v1.DEVELOPMENT-ONLY.json
   scripts/testdata/release-trust/delegations.v1.DEVELOPMENT-ONLY.json
   scripts/testdata/release-trust/release-trust.DEVELOPMENT-ONLY.json
@@ -388,6 +391,15 @@ required_files = %w[
   shorebird/packages/shorebird_code_push_protocol/README.md
   shorebird-server/internal/api/handlers/openapi.yaml
   shorebird-server/internal/api/handlers/router.go
+  shorebird-server/deploy/linux/install.sh
+  shorebird-server/deploy/linux/install_body.sh
+  shorebird-server/deploy/linux/install_lib.py
+  shorebird-server/deploy/linux/build_installer.py
+  shorebird-server/deploy/linux/test_install.py
+  shorebird-server/deploy/linux/server.env.example
+  shorebird-server/deploy/linux/server-update.json
+  shorebird-server/deploy/systemd/shorebird-server.service
+  shorebird-server/signing/server-update.trusted-keys
   shorebird/packages/artifact_proxy/lib/src/artifact_manifest_client.dart
   shorebird/packages/artifact_proxy/lib/src/artifact_proxy.dart
   shorebird/packages/artifact_proxy/lib/config.dart
@@ -2025,6 +2037,13 @@ assert!(
     source_runs.include?('python3 scripts/test_release_trust.py -v') &&
     source_runs.include?('python3 scripts/validate_hardening_contracts.py release-trust scripts/testdata/release-trust/release-trust.DEVELOPMENT-ONLY.json'),
   'Source checks must exercise the contract v2 release root of trust (reference tool, cross-language fixtures, role separation)'
+)
+assert!(
+  source_runs.include?('python3 -m py_compile scripts/provision_release_keys.py scripts/test_provision_release_keys.py') &&
+    source_runs.include?('python3 scripts/test_provision_release_keys.py -v') &&
+    source_runs.include?('python3 shorebird-server/deploy/linux/build_installer.py --check') &&
+    source_runs.include?('python3 shorebird-server/deploy/linux/test_install.py -v'),
+  'Source checks must exercise release key provisioning (fake gh, order, refusals) and the signed shorebird-server installer'
 )
 %w[android_native_app.py android_native_cache_e2e.py owned_host_processes.py android_native/compile_check.py].each do |path|
   assert!(source_runs.include?("python3 -m py_compile testapps/license_flavor_patch_test/tool/#{path}"), "Source checks must syntax-check the Android host fixture #{path}")

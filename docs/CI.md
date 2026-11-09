@@ -435,7 +435,9 @@ against its tested digest, then uploads the generated `shorebird_dart_sdk.pins`
 `OPEN_SHOREBIRD_ARTIFACT_CATALOG_SIGNING_KEY` is set, the catalog is
 production-signed and hardened. Otherwise it is signed with the
 DEVELOPMENT-ONLY key and gets a warning annotation. See
-`docs/HARDENING_CONTRACTS.md` §8.
+`docs/HARDENING_CONTRACTS.md` §8. `scripts/provision_release_keys.sh` creates
+and sets this secret together with the release-trust variables and the server
+update key in the required order (`docs/RELEASE_KEYS.md`).
 
 Apple engines run on separate runners so iOS outputs do not exhaust the disk before the macOS build.
 

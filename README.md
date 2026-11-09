@@ -162,6 +162,9 @@ Generated build output under that app is ignored by this meta-repository.
 - `docs/CI.md` describes the GitHub Actions jobs for source checks, CLI/server
   artifacts, manual custom SDK/engine builds, and opt-in runtime smokes.
 - `docs/REPOSITORIES.md` records the remote URL inventory and cleanup policy.
+- `docs/RELEASE_KEYS.md` is the operator quickstart: one command provisions the
+  release keys, repository pins and GitHub secrets; one script installs
+  shorebird-server.
 - `docs/PLATFORM_TESTING.md` documents the Linux, macOS, and later iOS test
   flow.
 

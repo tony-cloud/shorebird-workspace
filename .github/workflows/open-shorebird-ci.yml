@@ -231,6 +231,11 @@ jobs:
           python3 -m py_compile scripts/release_trust.py scripts/test_release_trust.py
           python3 scripts/test_release_trust.py -v
           python3 scripts/validate_hardening_contracts.py release-trust scripts/testdata/release-trust/release-trust.DEVELOPMENT-ONLY.json
+          python3 -m py_compile scripts/provision_release_keys.py scripts/test_provision_release_keys.py
+          python3 scripts/test_provision_release_keys.py -v
+          python3 -m py_compile shorebird-server/deploy/linux/install_lib.py shorebird-server/deploy/linux/build_installer.py shorebird-server/deploy/linux/test_install.py
+          python3 shorebird-server/deploy/linux/build_installer.py --check
+          python3 shorebird-server/deploy/linux/test_install.py -v
           ./scripts/test_dart_sdk_bootstrap.sh
           python3 -m py_compile scripts/verify_dart_sdk_tooling.py
           python3 -m py_compile scripts/verify_native_cache_engine_tests.py scripts/verify_macos_interpreter_engine_tests.py

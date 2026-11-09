@@ -481,7 +481,9 @@ all-in-one artifact proxy remains available as an explicit compatibility mode.
 - **Trust store.** `flutter/bin/internal/shorebird_artifact_trust.json`
   (`docs/schemas/artifact-catalog-trust.v1.schema.json`) ships in the Flutter
   checkout, so git authenticates it. Each key has `usage` `production` or
-  `development`. To enable production signing, add the public key with
+  `development`. To enable production signing,
+  `scripts/provision_release_keys.sh` (§10.10) adds the public key with
+  `--write-repo-pins` and sets the secret with `--apply-github`; by hand, use
   `python3 scripts/artifact_catalog.py trust-entry <pem> --usage production
   --description ...` and set the secret.
 - **Development key.** `scripts/testdata/artifact-catalog-signing-key.DEVELOPMENT-ONLY.pem`
@@ -1173,32 +1175,18 @@ lifecycle evidence.
 All private keys stay offline or in a KMS/HSM. None is committed. Test keys
 are named `*.DEVELOPMENT-ONLY.*`.
 
-1. **Root.** Create `n` Ed25519 keys (`openssl genpkey -algorithm ed25519`),
-   then run `release_trust.py root --key K1 [--public-key P2 ...]
-   --threshold k --expires T --output root.v1.json`.
-2. **Delegates.** Create one build-manifest key per signer (or a KMS key
-   exporting its public PEM) and the catalog key. Then run
-   `release_trust.py delegate --root root.v1.json --root-key K1 ... --version 1
-   --expires T --role build-manifest=BM.pub.pem@NB..NA --role
-   artifact-catalog=CAT.pub.pem --output delegations.v1.json`.
-3. **Bundle and pin.** Run `release_trust.py bundle --root root.v1.json
-   --delegations delegations.v1.json --output release-trust.json`, then
-   `release_trust.py pin root.v1.json`. Put the printed values in the GN args
-   (`shorebird_release_root`, `shorebird_release_min_delegations_version`)
-   and in `toolchain_security.json`.
-4. **Build machines.** Set `SHOREBIRD_RELEASE_TRUST=release-trust.json`, and
-   either `SHOREBIRD_BUILD_MANIFEST_SIGNING_KEY` or
-   `SHOREBIRD_BUILD_MANIFEST_SIGNER` with `SHOREBIRD_BUILD_MANIFEST_SIGNER_KEY_ID`.
-5. **CI.** Before setting the production catalog secret, set the repository
-   variables `OPEN_SHOREBIRD_RELEASE_TRUST` (bundle JSON) and
-   `OPEN_SHOREBIRD_RELEASE_ROOT` (pin).
-6. **Rotate or revoke a delegate.**
-   1. Sign `delegations` version N+1 with `--previous` and `--revoke ID`.
-   2. Re-bundle and ship it with the next release.
-   3. For a compromise, also raise `shorebird_release_min_delegations_version`
-      to N+1 in the next native release (§10.3).
-7. **Rotate the root (planned).**
-   1. Sign `root.v(N+1)` with `--previous root.vN.json --previous-key ...`.
-   2. Add it to the bundle chain.
-   3. Re-sign the delegations under it.
-   4. New engines may pin it.
+`scripts/provision_release_keys.sh` performs every step below from one private
+directory (outside every git work tree, mode 0700) and is idempotent; see
+[`RELEASE_KEYS.md`](RELEASE_KEYS.md) for the quickstart. It calls
+`release_trust.py`'s signing functions, so the rules of §10.1–10.3 apply
+unchanged. Production and DEVELOPMENT-ONLY directories cannot be mixed.
+
+| Step | Command | Manual equivalent (`release_trust.py`) |
+| --- | --- | --- |
+| Root (k-of-n), delegates, bundle, pin | `init --production [--root-keys n --threshold k] [--external ROLE=PUB.pem]` | `root --key K1 [--public-key P2 ...] --threshold k --expires T --output root.v1.json`; `delegate --root root.v1.json --root-key K1 ... --version 1 --expires T --role build-manifest=BM.pub.pem --role artifact-catalog=CAT.pub.pem --output delegations.v1.json`; `bundle ...`; `pin root.v1.json` |
+| Pins: GN args, `toolchain_security.json` fields, P2 trust store, server installer key | `--write-repo-pins` (writes `release-pins/`, `flutter/bin/internal/shorebird_artifact_trust.json`, `shorebird-server/signing/server-update.trusted-keys`) | copy the `pin` output into the GN args and `toolchain_security.json`; `artifact_catalog.py trust-entry` |
+| Build machines | `env` prints `SHOREBIRD_RELEASE_TRUST` and `SHOREBIRD_BUILD_MANIFEST_SIGNING_KEY` (or `SHOREBIRD_BUILD_MANIFEST_SIGNER` + `_KEY_ID`) | set them by hand |
+| CI | `--apply-github` sets `OPEN_SHOREBIRD_RELEASE_TRUST` and `OPEN_SHOREBIRD_RELEASE_ROOT` **before** the production catalog secret, then the server update key variable before its secret | `gh variable set` / `gh secret set` in that order |
+| Rotate or revoke a delegate | `rotate ROLE [--revoke] [--raise-floor]`: delegations N+1 with `--previous` (revocations carried forward); `--raise-floor` raises `shorebird_release_min_delegations_version` to N+1 for a compromise (§10.3) | `delegate --previous ... --revoke ID`, re-bundle |
+| Rotate the root (planned) | `rotate root [--repin]`: root N+1 signed by both thresholds, delegations re-signed under it, chain re-bundled; `--repin` lets new engines pin it | `root --previous root.vN.json --previous-key ...`, then `delegate` and `bundle` |
+| Check | `verify`: private directory, repository pins and GitHub variables agree; secrets exist | `release_trust.py verify --root-pin ... --production --at now` |
